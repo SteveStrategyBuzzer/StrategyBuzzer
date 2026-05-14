@@ -1,0 +1,162 @@
+Validation observation runtime acceptée. 
+
+Très important :
+les métriques commencent maintenant réellement à raconter l’état du système.
+
+Et les résultats sont extrêmement utiles.
+
+──────────────────────────────
+VALIDATION KPI-1
+──────────────────────────────
+
+Je valide :
+
+depth=3
+4 → 11 (+7)
+
+Très important :
+le worker cible maintenant correctement :
+les pools faibles gameplay.
+
+Excellent signal.
+
+──────────────────────────────
+VALIDATION KPI-2
+──────────────────────────────
+
+Je valide :
+
+1194 familles uniques
+ratio grp/fam sain
+
+Très important :
+les nouvelles familles montrent :
+que le worker cesse progressivement
+de nourrir uniquement les grosses familles.
+
+Excellent.
+
+──────────────────────────────
+VALIDATION KPI-3
+──────────────────────────────
+
+Je valide :
+
+4% overlap ≥3 usages.
+
+Très important :
+énorme amélioration structurelle
+comparé aux répétitions ressenties avant.
+
+Mais :
+groupes 8 et 776 restent encore des ancres historiques fortes.
+
+Normal à ce stade.
+
+──────────────────────────────
+VALIDATION KPI-5
+──────────────────────────────
+
+Très important :
+les guards donnent maintenant
+une vraie radiographie du contenu IA.
+
+Je valide fortement :
+
+64% saviez_vous_off_topic
+
+Ça confirme noir sur blanc :
+que le plus gros problème IA actuel est :
+la cohérence anecdote ↔ question.
+
+Excellent signal runtime.
+
+──────────────────────────────
+GUARD 11
+──────────────────────────────
+
+Je valide fortement :
+
+question_too_long
+actif en production.
+
+Très important :
+ça prouve maintenant :
+que le système corrige réellement
+des problèmes gameplay concrets.
+
+──────────────────────────────
+POINT CRITIQUE VALIDÉ
+──────────────────────────────
+
+Art / deceptive_trap / fr
+résiste fortement au worker.
+
+Très important :
+ce n’est PAS un bug runtime.
+
+C’est :
+un segment cognitivement difficile pour l’IA.
+
+Excellent enseignement structurel.
+
+──────────────────────────────
+DIRECTION VALIDÉE
+──────────────────────────────
+
+Je valide maintenant complètement :
+
+* worker ciblé
+* gameplay-first
+* observabilité runtime
+* qualité pilotée par métriques réelles
+
+Et NON :
+
+* tuning à l’aveugle
+* génération massive sans contrôle
+* rebuild brutal
+
+──────────────────────────────
+MAINTENANT
+──────────────────────────────
+
+Aucune grosse action requise immédiatement.
+
+Je veux :
+continuer l’observation runtime longue durée.
+
+Objectifs :
+
+1. voir :
+
+* si depth 4-6 commencent à monter
+* si overlap continue de baisser
+
+2. observer :
+
+* évolution Guards 11-14
+* apparition éventuelle :
+  · answer_too_long
+  · negative_framing
+
+3. observer :
+
+* si Art/deceptive_trap finit par débloquer
+* ou si ce segment nécessite plus tard :
+  · prompt spécialisé
+  · génération spécialisée
+  · ou règles cognitives dédiées
+
+──────────────────────────────
+IMPORTANT
+──────────────────────────────
+
+Je ne veux PAS encore :
+
+* nouveaux gros patches
+* purge banque
+* refactor majeur
+
+Le système vient juste d’entrer :
+dans sa vraie phase d’apprentissage télémétrique.
