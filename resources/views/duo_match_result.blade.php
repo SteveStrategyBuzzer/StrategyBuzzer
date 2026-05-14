@@ -152,6 +152,23 @@ $resultColor = $playerWon ? '#11998e, #38ef7d' : ($isDraw ? '#667eea, #764ba2' :
     .stat-value { font-size: 1.5rem; font-weight: 900; color: #222; }
     .stat-label { font-size: .75rem; color: #888; margin-top: 2px; }
 
+    /* ── UX 3 — Performance bars (efficiency + accuracy) ── */
+    .perf-bar-track {
+        background: #e0e4ef;
+        border-radius: 4px;
+        height: 6px;
+        margin-top: 8px;
+        overflow: hidden;
+    }
+    .perf-bar-fill {
+        height: 100%;
+        border-radius: 4px;
+        width: 0%;
+        transition: width 0.85s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .perf-bar-fill.efficiency { background: linear-gradient(90deg, #667eea 0%, #764ba2 100%); }
+    .perf-bar-fill.accuracy   { background: linear-gradient(90deg, #11998e 0%, #38ef7d 100%); }
+
     /* ── Tiebreaker badge ──────────────────────────── */
     .tiebreaker-badge {
         display: inline-flex;
@@ -265,11 +282,17 @@ $resultColor = $playerWon ? '#11998e, #38ef7d' : ($isDraw ? '#667eea, #764ba2' :
             <div class="stat-icon">⚡</div>
             <div class="stat-value">{{ $matchEfficiency }}%</div>
             <div class="stat-label">{{ __('Efficacité du Match') }}</div>
+            <div class="perf-bar-track">
+                <div class="perf-bar-fill efficiency" id="mrEfficiencyBar"></div>
+            </div>
         </div>
         <div class="stat-box">
             <div class="stat-icon">🎯</div>
             <div class="stat-value">{{ $accuracyDisplay }}%</div>
             <div class="stat-label">{{ __('Précision') }}</div>
+            <div class="perf-bar-track">
+                <div class="perf-bar-fill accuracy" id="mrAccuracyBar"></div>
+            </div>
         </div>
         <div class="stat-box">
             <div class="stat-icon">✅</div>
@@ -371,6 +394,14 @@ $resultColor = $playerWon ? '#11998e, #38ef7d' : ($isDraw ? '#667eea, #764ba2' :
 document.addEventListener('DOMContentLoaded', function() {
     // Fade in the page (body starts at opacity 0 via CSS)
     requestAnimationFrame(function() { document.body.style.opacity = '1'; });
+
+    // UX 3 — Animate efficiency + accuracy bars (CSS transition, triggered after fade)
+    setTimeout(function() {
+        var eff = document.getElementById('mrEfficiencyBar');
+        var acc = document.getElementById('mrAccuracyBar');
+        if (eff) eff.style.width = '{{ (int)$matchEfficiency }}%';
+        if (acc) acc.style.width = '{{ (int)$accuracyDisplay }}%';
+    }, 300);
 
     @if($playerWon)
     // Victory confetti burst

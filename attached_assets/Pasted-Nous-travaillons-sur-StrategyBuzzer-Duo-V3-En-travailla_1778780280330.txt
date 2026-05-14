@@ -1,0 +1,173 @@
+Nous travaillons sur StrategyBuzzer Duo V3. En travaillant sans fautes avec les spécifications au projet StrategyBuzzer pour continuer les implantations pour un Duo V3 impeccable.
+
+Architecture IMMUTABLE :
+
+* Replit = source de vérité
+* GitHub = miroir officiel
+* VM = production
+* Node = autorité gameplay
+* Laravel = rendu/persistance
+* Redis = état runtime
+* Firebase = présence uniquement
+* Worker = densification banque questions
+
+Le runtime central est maintenant relativement stabilisé :
+
+* worker stable
+* guards qualité actifs
+* checkpoint/restart stabilisés
+* télémétrie active
+* Question Bank densification active
+* phases Q→R→R→S stables
+* fades runtime déjà intégrés
+* gameplay Duo jouable
+
+IMPORTANT :
+on ne veut PLUS faire de gros refactors backend lourds.
+
+Nous sommes maintenant dans une phase :
+gameplay-first / UX-runtime.
+
+SAFE maintenant :
+
+* fade transitions
+* haptic buzz
+* safe-area mobile
+* avatars UI
+* chrono UX
+* animations
+* scoreboard UX
+* feedback visuel
+* feedback sonore
+* lisibilité mobile
+* immersion gameplay
+
+DANGEREUX maintenant :
+
+* refactor planner
+* rebuild banque
+* modifier scoring Node
+* changer logique worker
+* casser phase runtime
+* modifier guards IA
+* refactor Question API
+
+RÈGLE CRITIQUE :
+on peut raffiner l’expérience joueur AUTOUR du runtime,
+mais sans perturber :
+
+* worker
+* guards
+* densification
+* télémétrie
+* scoring Node
+* phases runtime
+* pipeline Question Bank
+
+──────────────────────────────
+ÉTAT ACTUEL DUO
+──────────────────────────────
+
+Déjà livrés et validés :
+
+* fade transitions sur toutes les pages Duo
+* haptic buzz mobile
+* score count-up animations
+* safe-area mobile
+* feedback attente joueur
+* chrono urgent rouge
+* vrai avatar adversaire dans duo_match_result
+* fade duo_waiting
+* Q→A→R→S beaucoup plus fluide
+
+Pages Duo avec fade :
+
+* duo_waiting
+* duo_question
+* duo_answer
+* duo_result
+* duo_round_scoreboard
+* duo_match_result
+
+──────────────────────────────
+OBJECTIF ACTUEL
+──────────────────────────────
+
+Continuer à rendre Duo :
+
+* fluide
+* immersif
+* lisible
+* compétitif
+* cohérent avec Solo
+
+IMPORTANT :
+Solo et Duo doivent converger vers :
+
+* même feeling
+* même rythme
+* même lisibilité
+* même logique Node
+* mêmes stats
+* même autorité runtime
+
+──────────────────────────────
+MÉTHODE OBLIGATOIRE
+──────────────────────────────
+
+Toujours :
+GREP → SLICE → PATCH → VALIDATION
+
+Toujours :
+
+* patchs petits
+* patchs isolés
+* patchs runtime-safe
+* aucun patch aveugle
+
+Toujours :
+
+* php -l
+* validation visuelle
+* slices exacts
+
+INTERDIT :
+
+* casser worker
+* toucher guards IA
+* modifier scoring Node
+* gros refactor backend
+* rebuild massif banque
+* modifier phases runtime
+
+──────────────────────────────
+PROCHAINES CIBLES UX/RUNTIME
+──────────────────────────────
+
+Cibles possibles maintenant :
+
+* lobby Duo plus compétitif
+* attente adversaire immersive
+* chrono UX
+* audio immersif
+* feedback gameplay
+* readability mobile
+* pacing manche
+* scoreboard émotionnel
+* résultats fin manche
+* fairness gameplay
+* reconnect propre
+* comportements bots
+* convergence Solo ↔ Duo
+
+Quand tu proposes un patch :
+tu dois toujours préciser :
+
+* impact gameplay
+* impact runtime
+* risque worker
+* risque guards
+* validation visuelle attendue
+
+Le focus maintenant :
+raffinage gameplay réel sans destabiliser le moteur.
