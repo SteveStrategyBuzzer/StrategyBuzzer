@@ -333,19 +333,37 @@ class QuestionsBankMonitorCommand extends Command
             }
         }
 
-        // Redis last success key
-        $lastSuccess = null;
+        // ── Heartbeat & semaphore status (resilience observability) ─────────────
+        $this->line('');
+
+        // Heartbeat: set by worker every cycle with 90s TTL.
+        $heartbeatAge = null;
+        $heartbeatStatus = '⚠  ABSENT (worker arrêté ou bloqué >90s)';
         try {
-            $raw = Redis::get(self::REDIS_LAST_SUCCESS);
-            if ($raw) {
-                $lastSuccess = is_numeric($raw)
-                    ? now()->createFromTimestamp((int) $raw)->format('Y-m-d H:i:s T')
-                    : $raw;
+            $hbRaw = Redis::get('qb:worker:heartbeat');
+            if ($hbRaw && is_numeric($hbRaw)) {
+                $heartbeatAge    = time() - (int) $hbRaw;
+                $heartbeatStatus = $heartbeatAge <= 30
+                    ? '✅ VIVANT  (' . $heartbeatAge . 's ago)'
+                    : ($heartbeatAge <= 90
+                        ? '🟡 LENT    (' . $heartbeatAge . 's ago — cycle long ou backoff)'
+                        : '⚠  STALE   (' . $heartbeatAge . 's ago — TTL expiré, worker mort?)');
             }
         } catch (\Throwable) {}
 
-        $this->line('');
-        $this->line('  Redis last_success key  : ' . ($lastSuccess ?? '(non définie — normal si worker récent)'));
+        // Semaphore: should exist while worker is alive.
+        $semKey    = config('question_bank_profiles.worker.redis_keys.semaphore', 'qb:worker:lock');
+        $semStatus = '(absent — worker non démarré ou arrêt propre)';
+        try {
+            $semVal = Redis::get($semKey);
+            $semTtl = $semVal ? Redis::ttl($semKey) : null;
+            if ($semVal && $semTtl !== null) {
+                $semStatus = 'TENU — TTL=' . $semTtl . 's  token=' . substr($semVal, 0, 28) . '…';
+            }
+        } catch (\Throwable) {}
+
+        $this->line('  Heartbeat worker        : ' . $heartbeatStatus);
+        $this->line('  Semaphore Redis         : ' . $semStatus);
 
         // Most recent group created_at
         $newest = DB::table('question_groups')

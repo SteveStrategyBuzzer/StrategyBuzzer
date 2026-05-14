@@ -9,6 +9,7 @@ use App\Services\QuestionBank\Worker\BankWorker;
 use App\Services\QuestionBank\Worker\QualityGuards;
 use App\Services\QuestionBank\Worker\WorkerRateLimiter;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Redis;
 
 class QuestionsWorkerCommand extends Command
 {
@@ -21,6 +22,23 @@ class QuestionsWorkerCommand extends Command
 
     public function handle(): int
     {
+        // ── Resilience: clear stale semaphore left by a SIGKILL'd previous instance ──
+        // Replit checkpoints send SIGTERM then SIGKILL. If PHP was blocked inside a
+        // 15-second Gemini HTTP call when SIGKILL arrived, the handler never ran and the
+        // Redis semaphore was never released. Since this workflow is a singleton (Replit
+        // runs exactly one instance), it is always safe to clear the lock on startup.
+        $semKey = config('question_bank_profiles.worker.redis_keys.semaphore', 'qb:worker:lock');
+        try {
+            $stale = Redis::get($semKey);
+            if ($stale) {
+                Redis::del($semKey);
+                $this->warn('[questions:worker] stale semaphore cleared at startup (previous SIGKILL?) — token: ' . substr($stale, 0, 32));
+            }
+        } catch (\Throwable $e) {
+            $this->warn('[questions:worker] could not check semaphore: ' . $e->getMessage());
+        }
+        // ─────────────────────────────────────────────────────────────────────────────
+
         $repo = new QuestionBankRepository();
         $needs = new BankNeedsCalculator($repo);
         $gen = new BankAIGenerator();

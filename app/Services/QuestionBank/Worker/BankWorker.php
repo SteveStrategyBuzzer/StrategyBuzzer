@@ -91,6 +91,11 @@ class BankWorker
 
                 Redis::expire($semaphoreKey, 300); // renew
 
+                // Heartbeat: proves the worker is alive and processing cycles.
+                // TTL = 90s — if missing on the monitor, the worker has been stuck
+                // for >90s (blocked on a long HTTP call or crashed post-SIGKILL).
+                Redis::set('qb:worker:heartbeat', time(), 'EX', 90);
+
                 $deficits = $this->needs->computeDeficits(limit: 1);
                 if (empty($deficits)) {
                     Log::info('[BankWorker] bank fully covered — idle sleep', [
