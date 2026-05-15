@@ -4432,6 +4432,8 @@ window.initLobbySocketListeners = function() {
         DuoSocketClient.on('connect', () => {
             console.log('[Socket.IO] Connected to Game Server');
             window.duoSocketConnected = true;
+            // Clear the JWT auto-reload guard — connection succeeded
+            try { sessionStorage.removeItem('sb_jwt_reload_' + (window.matchLobbyCode || 'lobby')); } catch(e) {}
         });
         // If already connected before this function ran, set flag immediately
         if (typeof DuoSocketClient !== 'undefined' && DuoSocketClient.isConnected()) {
@@ -4452,6 +4454,34 @@ window.initLobbySocketListeners = function() {
         DuoSocketClient.on('error', (error) => {
             console.error('[Socket.IO] Error:', error);
             window.socketLobbyReady = false;
+
+            // JWT expired — auto-reload once to get a fresh token from PHP
+            if (error && error.code === 'CONNECT_ERROR' &&
+                error.message && error.message.includes('expired')) {
+                const _reloadKey = 'sb_jwt_reload_' + (window.matchLobbyCode || 'lobby');
+                if (!sessionStorage.getItem(_reloadKey)) {
+                    sessionStorage.setItem(_reloadKey, Date.now().toString());
+                    console.warn('[Lobby] JWT expired — auto-reloading for fresh token.');
+                    window.location.reload();
+                    return;
+                } else {
+                    // Second reload still rejected — persistent auth issue, show error UI
+                    sessionStorage.removeItem(_reloadKey);
+                    console.error('[Lobby] JWT still invalid after reload — showing session error.');
+                    if (window.lobbyHideBrainTimer) window.lobbyHideBrainTimer();
+                    if (window.hideBrainSpin) window.hideBrainSpin();
+                    var _errEl = document.getElementById('brainConnectError');
+                    if (_errEl) {
+                        var _t = _errEl.querySelector('.bce-title');
+                        var _m = _errEl.querySelector('.bce-msg');
+                        if (_t) _t.textContent = '{{ __("Session expirée") }}';
+                        if (_m) _m.textContent = '{{ __("Votre session a expiré. Rechargez la page pour continuer.") }}';
+                        _errEl.classList.remove('hidden');
+                    }
+                    return;
+                }
+            }
+
             const startBtn = document.getElementById('start-btn');
             if (startBtn) {
                 startBtn.dataset.socketLobbyReady = 'false';
