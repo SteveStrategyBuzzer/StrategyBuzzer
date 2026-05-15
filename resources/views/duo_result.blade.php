@@ -1321,6 +1321,10 @@ $opponentEfficiency = $opponent_stats['efficiencyPercent'] ?? '—';
     let phaseEndsAtMs = (typeof window !== 'undefined' && window.GR_RESTORED_PHASE_ENDS_AT)
         ? Number(window.GR_RESTORED_PHASE_ENDS_AT) || null
         : null;
+    // Node-authoritative phase start time — emitted in `state` and `phase_changed`
+    // payloads as phaseStartedAtMs (handlers.ts). Used to compute the real phase
+    // duration without hardcoding any local constant.
+    let phaseStartedAtMs = null;
     
     const btnGo = document.getElementById('btnGo');
     const waitingMessage = document.getElementById('waitingMessage');
@@ -1415,12 +1419,12 @@ $opponentEfficiency = $opponent_stats['efficiencyPercent'] ?? '—';
         var secsEl = document.getElementById('countdownSecs');
         if (!fill || !secsEl) return;
 
-        // Task #78 — Until the second human signals `result_page_ready` and the
-        // server re-stamps phaseEndsAtMs, keep the bar visually frozen at 60s.
-        // This avoids the first arriver watching their bar drain while their
-        // opponent is still reading their result on /duo/answer. The freeze is
-        // released by `markResultRestamped()` when the canonical re-stamp lands.
-        if (_awaitingResultRestamp) {
+        // Task #78 — Block only if we're awaiting the re-stamp AND have no deadline.
+        // If phaseEndsAtMs is already known (restored from session or received via
+        // a state/phase_changed event), proceed immediately — the value is always
+        // Node-authoritative. This unblocks bot games and cold-reconnect scenarios
+        // where the re-stamp event is never emitted or was missed.
+        if (_awaitingResultRestamp && !phaseEndsAtMs) {
             fill.style.width = '100%';
             fill.classList.remove('urgent');
             secsEl.textContent = '60s';
@@ -1438,8 +1442,17 @@ $opponentEfficiency = $opponent_stats['efficiencyPercent'] ?? '—';
             return;
         }
 
-        var totalMs = Math.max(1, phaseEndsAtMs - Date.now());
-        fill.style.width = '100%';
+        // Compute total phase duration from Node-authoritative timestamps.
+        // Priority 1: phaseEndsAtMs − phaseStartedAtMs (both from Node payloads).
+        // Priority 2: fallback 60 000 ms — the documented RESULT phase duration,
+        //             used only when phaseStartedAtMs is not yet available.
+        var totalMs = (phaseStartedAtMs && phaseEndsAtMs > phaseStartedAtMs)
+            ? (phaseEndsAtMs - phaseStartedAtMs)
+            : 60000;
+
+        // Set bar to true elapsed position instead of always starting at 100%.
+        var remainingAtStart = Math.max(0, phaseEndsAtMs - Date.now());
+        fill.style.width = Math.max(0, Math.min(100, (remainingAtStart / totalMs) * 100)) + '%';
         fill.classList.remove('urgent');
         secsEl.classList.remove('urgent');
 
@@ -1659,15 +1672,18 @@ $opponentEfficiency = $opponent_stats['efficiencyPercent'] ?? '—';
         // deadline. When we leave RESULT, navigation handlers below take over.
         if (data.phaseEndsAtMs) {
             phaseEndsAtMs = Number(data.phaseEndsAtMs);
-            if (data.phase === 'RESULT') {
-                // Task #78 — Any phase_changed(RESULT) received WHILE we are on
-                // /duo/result is the canonical re-stamp from
-                // GameOrchestrator.handleResultPageReady (the original
-                // phase_changed → RESULT happens before we mount). Unfreeze
-                // the bar and let the real countdown begin.
-                markResultRestamped();
-                startCountdown();
-            }
+        }
+        if (data.phaseStartedAtMs) {
+            phaseStartedAtMs = Number(data.phaseStartedAtMs);
+        }
+        if (data.phase === 'RESULT' && phaseEndsAtMs) {
+            // Task #78 — Any phase_changed(RESULT) received WHILE we are on
+            // /duo/result is the canonical re-stamp from
+            // GameOrchestrator.handleResultPageReady (the original
+            // phase_changed → RESULT happens before we mount). Unfreeze
+            // the bar and let the real countdown begin.
+            markResultRestamped();
+            startCountdown();
         }
 
         if (data.phase === 'REVEAL') {
@@ -1709,14 +1725,21 @@ $opponentEfficiency = $opponent_stats['efficiencyPercent'] ?? '—';
         // (covers cold reconnect: server emits `state` on (re)join with phaseEndsAtMs).
         if (stateObj.phaseEndsAtMs) {
             phaseEndsAtMs = Number(stateObj.phaseEndsAtMs);
-            if (phase === 'RESULT') {
-                // Task #78 — Cold-reconnect path: if the server-side re-stamp
-                // already happened (both humans were on /duo/result earlier
-                // and we just disconnected/refreshed), the snapshot's
-                // phaseEndsAtMs reflects that re-stamped deadline. Unfreeze.
-                markResultRestamped();
-                startCountdown();
-            }
+        }
+        if (stateObj.phaseStartedAtMs) {
+            phaseStartedAtMs = Number(stateObj.phaseStartedAtMs);
+        }
+        // Unfreeze and start the countdown if we're on RESULT and have a deadline —
+        // whether phaseEndsAtMs came from this event or was already restored from
+        // session storage (GR_RESTORED_PHASE_ENDS_AT). This covers bot games and
+        // scenarios where the re-stamp event arrived before the page mounted.
+        if (phase === 'RESULT' && phaseEndsAtMs) {
+            // Task #78 — Cold-reconnect path: if the server-side re-stamp
+            // already happened (both humans were on /duo/result earlier
+            // and we just disconnected/refreshed), the snapshot's
+            // phaseEndsAtMs reflects that re-stamped deadline. Unfreeze.
+            markResultRestamped();
+            startCountdown();
         }
 
         if (phase === 'REVEAL' || phase === 'RESULT') {

@@ -1,0 +1,63 @@
+L’analyse est bonne, mais je ne valide pas le patch tel quel tant qu’il hardcode `RESULT_PHASE_MS = 60000` comme référence principale.
+
+Correction demandée :
+on doit garder Node autoritaire.
+
+Le countdown RESULT doit utiliser :
+
+1. `phaseEndsAtMs` comme deadline réelle
+2. une durée totale restaurée/serveur si disponible
+3. fallback 60000 seulement en dernier recours, car Duo RESULT vaut actuellement 60s
+
+Objectif :
+corriger le freeze 60s sans réintroduire de logique locale fragile.
+
+Patch accepté si :
+
+A — `_awaitingResultRestamp`
+
+* ne bloque plus le countdown si `phaseEndsAtMs` est déjà connu
+* continue de bloquer seulement si aucun deadline Node n’est disponible
+
+B — `_onResultState`
+
+* si `stateObj.phaseEndsAtMs` existe, l’utiliser
+* si phase === RESULT et `phaseEndsAtMs` existe déjà, appeler `markResultRestamped()` puis `startCountdown()`
+* ne pas dépendre uniquement du dernier event `state`
+
+C — Barre décroissante
+
+* la barre doit démarrer à la vraie position
+* la durée totale doit venir de la phase RESULT si disponible
+* fallback 60000 accepté uniquement comme filet de sécurité documenté
+* la barre doit être mise à jour toutes les 250ms ou via `requestAnimationFrame` si déjà utilisé
+* aucun double timer
+
+Important :
+si aucune variable `phaseStartedAtMs`, `phaseDurationMs`, `resultDurationMs`, ou équivalent n’existe dans ce fichier ou dans le payload socket, alors le fallback 60000 est acceptable, mais il doit être clairement marqué comme fallback RESULT uniquement, pas comme source d’autorité.
+
+Méthode :
+GREP → SLICE → PATCH → VALIDATION.
+
+Validation obligatoire :
+
+1. `php -l resources/views/duo_result.blade.php`
+2. slice `_awaitingResultRestamp`
+3. slice `_onResultState`
+4. slice `startCountdown()`
+5. vérifier absence de double timer
+6. vérifier que `phaseEndsAtMs` reste la source de deadline
+7. test visuel :
+
+   * chiffre diminue
+   * barre diminue progressivement
+   * plus de freeze à 60s
+   * plus de barre pleine figée
+
+Ne touche pas :
+
+* Node
+* GameOrchestrator
+* scoring
+* phases runtime
+* worker/guards
