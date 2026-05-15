@@ -19,13 +19,18 @@ class GameServerController extends Controller
     public function init(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'roomId'    => 'required|string',
-            'theme'     => 'required|string',
-            'niveau'    => 'required|integer|min:1|max:10',
-            'language'  => 'required|string',
-            'maxRounds' => 'required|integer|min:1',
-            'userId'    => 'nullable|integer|min:1',
+            'roomId'           => 'required|string',
+            'theme'            => 'required|string',
+            'niveau'           => 'required|integer|min:1|max:10',
+            'language'         => 'required|string',
+            'maxRounds'        => 'required|integer|min:1',
+            'userId'           => 'nullable|integer|min:1',
+            'questionsPerRound' => 'nullable|integer|min:1|max:100',
         ]);
+
+        $questionsPerRound = isset($validated['questionsPerRound'])
+            ? (int) $validated['questionsPerRound']
+            : 10;
 
         $firstQuestion = $this->pipeline->initMatch(
             $validated['roomId'],
@@ -33,7 +38,8 @@ class GameServerController extends Controller
             $validated['niveau'],
             $validated['language'],
             $validated['maxRounds'],
-            isset($validated['userId']) ? (int) $validated['userId'] : null
+            isset($validated['userId']) ? (int) $validated['userId'] : null,
+            $questionsPerRound
         );
 
         if (!$firstQuestion) {
@@ -43,7 +49,7 @@ class GameServerController extends Controller
             ], 500);
         }
 
-        $totalQuestions = $this->pipeline->getTotalNeeded($validated['maxRounds']);
+        $totalQuestions = $this->pipeline->getTotalNeeded($validated['maxRounds'], $questionsPerRound);
 
         return response()->json([
             'success' => true,

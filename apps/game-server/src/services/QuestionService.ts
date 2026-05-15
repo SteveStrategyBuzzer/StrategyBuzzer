@@ -8,6 +8,7 @@ export interface QuestionPipelineConfig {
   niveau: number;
   language: string;
   maxRounds: number;
+  questionsPerRound: number;
 }
 
 interface InitPipelineResponse {
@@ -50,6 +51,7 @@ export async function initQuestionPipeline(config: QuestionPipelineConfig): Prom
         niveau: config.niveau,
         language: config.language,
         maxRounds: config.maxRounds,
+        questionsPerRound: config.questionsPerRound,
       }),
     });
 

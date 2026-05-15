@@ -55,6 +55,7 @@ export function setupHttpRoutes(app: Express, roomManager: RoomManager, gameOrch
           niveau,
           language,
           maxRounds: config.maxRounds,
+          questionsPerRound: config.questionsPerRound,
           hasBot: hasBot === true,
         };
         console.log(`[HTTP] Stored pipeline config for room ${roomId}:`, room.pipelineConfig);

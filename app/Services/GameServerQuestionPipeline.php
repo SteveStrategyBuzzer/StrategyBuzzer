@@ -49,27 +49,31 @@ class GameServerQuestionPipeline
         return "questionPools/{$roomId}/items";
     }
 
-    public function getTotalNeeded(int $maxRounds): int
+    public function getTotalNeeded(int $maxRounds, int $questionsPerRound = self::QUESTIONS_PER_ROUND): int
     {
-        return ($maxRounds * self::QUESTIONS_PER_ROUND) 
+        $qpr = ($questionsPerRound >= 1) ? $questionsPerRound : self::QUESTIONS_PER_ROUND;
+        return ($maxRounds * $qpr)
             + self::BONUS_SKILL_QUESTIONS 
             + self::TIEBREAKER_QUESTIONS;
     }
 
-    public function initMatch(string $roomId, string $theme, int $niveau, string $language, int $maxRounds, ?int $userId = null): ?array
+    public function initMatch(string $roomId, string $theme, int $niveau, string $language, int $maxRounds, ?int $userId = null, int $questionsPerRound = self::QUESTIONS_PER_ROUND): ?array
     {
+        $qpr = ($questionsPerRound >= 1) ? $questionsPerRound : self::QUESTIONS_PER_ROUND;
+
         Log::info('[GameServerQuestionPipeline] Initializing match', [
             'room_id' => $roomId,
             'theme' => $theme,
             'niveau' => $niveau,
             'language' => $language,
             'max_rounds' => $maxRounds,
+            'questions_per_round' => $qpr,
         ]);
 
         // Phase A+B — stocker le user_id pour la mémoire cross-match joueur
         $this->userId = $userId;
 
-        $totalNeeded = $this->getTotalNeeded($maxRounds);
+        $totalNeeded = $this->getTotalNeeded($maxRounds, $qpr);
 
         // Construit UN plan unique pour la partie. Tous les joueurs présents
         // dans la salle reçoivent exactement la même séquence de slots —

@@ -10,6 +10,7 @@ export type RoomPipelineConfig = {
   niveau: number;
   language: string;
   maxRounds: number;
+  questionsPerRound: number;
   hasBot?: boolean;
 };
 

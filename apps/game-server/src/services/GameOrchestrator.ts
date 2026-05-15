@@ -154,6 +154,7 @@ export class GameOrchestrator {
         niveau: room.pipelineConfig.niveau,
         language: room.pipelineConfig.language,
         maxRounds: room.pipelineConfig.maxRounds,
+        questionsPerRound: room.pipelineConfig.questionsPerRound,
       });
 
       if (!pipelineResult.success || !pipelineResult.firstQuestion) {

@@ -1,0 +1,61 @@
+Je valide l’audit.
+
+Objectif :
+corriger la rupture `questionsPerRound` dans le pipeline Duo V3.
+
+Cause confirmée :
+
+* Lobby choisit `nb_questions`
+* Laravel transmet correctement vers Node
+* Node utilise correctement `questionsPerRound`
+* mais le pipeline PHP ne reçoit pas `questionsPerRound`
+* `GameServerQuestionPipeline.php` planifie toujours avec `QUESTIONS_PER_ROUND = 10`
+
+Patch autorisé :
+
+1. `apps/game-server/src/http/routes.ts`
+
+* ajouter `questionsPerRound: config.questionsPerRound` dans `room.pipelineConfig`
+
+2. `apps/game-server/src/services/QuestionService.ts`
+
+* envoyer `questionsPerRound` dans le payload de `initQuestionPipeline`
+
+3. `app/Services/GameServerQuestionPipeline.php`
+
+* faire accepter `questionsPerRound` dans `initMatch()`
+* remplacer le calcul hardcodé `QUESTIONS_PER_ROUND = 10` par la valeur réelle reçue
+* garder fallback 10 seulement si la valeur est absente ou invalide
+
+Contraintes :
+
+* ne pas toucher scoring Node
+* ne pas toucher phases runtime
+* ne pas toucher GameOrchestrator sauf si nécessaire pour passer `questionsPerRound`
+* ne pas modifier les guards
+* ne pas modifier worker Question Bank
+* ne pas changer le choix lobby
+* ne pas hardcoder 20/30/40
+
+Validation obligatoire :
+
+1. `php -l app/Services/GameServerQuestionPipeline.php`
+2. `npm run build` côté `apps/game-server` ou validation TypeScript équivalente
+3. slice `pipelineConfig` avec `questionsPerRound`
+4. slice payload `initQuestionPipeline`
+5. slice `initMatch()` PHP recevant `questionsPerRound`
+6. slice `getTotalNeeded()` utilisant la valeur réelle
+7. test ou log attendu :
+
+   * sélection 5 → plan suffisant
+   * sélection 10 → plan suffisant
+   * sélection 15 → plan suffisant
+   * sélection 20 → plan suffisant
+8. confirmer qu’il n’y a plus de hardcode critique `QUESTIONS_PER_ROUND = 10` dans le calcul réel
+
+Retour attendu :
+
+* fichiers modifiés
+* slices exacts
+* validation syntaxe/build
+* conclusion SAFE / WARNING / DANGEROUS
