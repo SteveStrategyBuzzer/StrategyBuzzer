@@ -1262,7 +1262,7 @@ CONTRAINTES:
 - ${answersHint}
 - ${concept_hint ? `Indice concept: ${concept_hint}` : 'Choisis un fait précis et vérifiable.'}
 - correct_answer_key DOIT être la même lettre dans TOUTES les langues
-- saviez_vous OBLIGATOIRE : anecdote concrète (≥30 caractères) portant EXCLUSIVEMENT sur le fait de la réponse correcte de CETTE question. Interdit : anecdote sur un autre fait du domaine, fait générique non lié à la bonne réponse, copie reformulée de la question.
+- saviez_vous OBLIGATOIRE : mini récompense cognitive (≥40 caractères) révélant un fait SURPRENANT, une conséquence remarquable, un contexte historique/scientifique inattendu ou une anecdote insolite — exclusivement lié à la réponse correcte et ABSENT de la question elle-même. INTERDIT ABSOLU : reformuler la réponse correcte sous forme affirmative (ex : "La bataille de la Boyne a eu lieu en 1690", "Paris est la capitale de la France"), insérer la réponse dans une phrase qui reprend les mots-clés de la question, paraphraser l'énoncé. Le saviez_vous DOIT apporter une information NOUVELLE et mémorable que ni la question ni les choix de réponse ne contiennent déjà.
 - Distracteurs (réponses incorrectes) : chacun doit être plausible pour quelqu'un qui confond un fait proche, mais UNIVOQUEMENT FAUX. Interdit : distractor évident ("Je ne sais pas"), reformulation de la bonne réponse, contradiction logique, ou réponse qui pourrait être partiellement correcte.
 - concept_family : EN ANGLAIS, kebab-case, 1-4 mots, taxonomie stable (ex: "basketball-rules", "australian-geography", "medieval-history")
 - LONGUEUR STRICTE (limites absolues, dépassement = rejet automatique) :

@@ -21,7 +21,9 @@ use Illuminate\Support\Facades\DB;
  *   - cognitive_mismatch    : heuristic flags wrong cognitive_type
  *   - depth_incoherent      : heuristic flags wrong depth band
  *   - answer_key_misaligned : letter A-D doesn't refer to same logical answer in all langs
- *   - missing_translations  : worker config requires more languages than provided
+ *   - missing_translations         : worker config requires more languages than provided
+ *   - saviez_vous_contradicts_answer : saviez_vous cites a distractor but not the correct answer
+ *   - saviez_vous_tautological       : saviez_vous is a near-reformulation of the question text
  */
 class QualityGuards
 {
@@ -300,6 +302,94 @@ class QualityGuards
                     'code'   => 'saviez_vous_too_long',
                     'detail' => "{$lang} saviez_vous={$sv} > max={$svMax}",
                 ];
+            }
+        }
+
+        // 15. Semantic consistency — saviez_vous must not endorse a distractor.
+        //
+        // If the saviez_vous explicitly contains the text of a WRONG answer
+        // (a distractor) while NOT containing the text of the CORRECT answer,
+        // the AI almost certainly mixed up the answer key — the archetypal
+        // failure is "La bataille de la Boyne a eu lieu en 1690" when the
+        // correct_answer_key points to "1688".
+        //
+        // Guard logic (French only, skipped for true_false):
+        //   1. Resolve the correct answer text from correct_answer_key.
+        //   2. Build the list of distractor texts (other answer slots).
+        //   3. If any distractor (≥ 4 chars) appears in saviez_vous AND the
+        //      correct answer text does NOT → reject saviez_vous_contradicts_answer.
+        //
+        // Short answers (< 4 chars: "Oui", "Non", "Vrai", "Faux", numbers < 4
+        // digits) are excluded from distractor matching to avoid false positives.
+        if (($payload['question_type'] ?? '') !== 'true_false' && $frTr !== null) {
+            $svForConsistency  = trim((string) ($frTr['saviez_vous'] ?? ''));
+            $correctKeyForSV   = strtoupper((string) ($frTr['correct_answer_key'] ?? ''));
+            $slotToAnswer      = [
+                'A' => trim((string) ($frTr['answer_a'] ?? '')),
+                'B' => trim((string) ($frTr['answer_b'] ?? '')),
+                'C' => trim((string) ($frTr['answer_c'] ?? '')),
+                'D' => trim((string) ($frTr['answer_d'] ?? '')),
+            ];
+            $correctAnswerText = $slotToAnswer[$correctKeyForSV] ?? '';
+
+            if ($svForConsistency !== '' && mb_strlen($correctAnswerText) >= 4) {
+                $correctPresentInSv   = mb_stripos($svForConsistency, $correctAnswerText) !== false;
+                $distractorInSv       = false;
+                $matchedDistractorVal = '';
+
+                foreach ($slotToAnswer as $slot => $answerText) {
+                    if ($slot === $correctKeyForSV || mb_strlen($answerText) < 4) {
+                        continue;
+                    }
+                    if (mb_stripos($svForConsistency, $answerText) !== false) {
+                        $distractorInSv       = true;
+                        $matchedDistractorVal = $answerText;
+                        break;
+                    }
+                }
+
+                if ($distractorInSv && !$correctPresentInSv) {
+                    return [
+                        'ok'     => false,
+                        'code'   => 'saviez_vous_contradicts_answer',
+                        'detail' => sprintf(
+                            'saviez_vous mentions distractor "%s" but not correct answer "%s" (key=%s) — likely answer_key mismatch',
+                            $matchedDistractorVal,
+                            $correctAnswerText,
+                            $correctKeyForSV
+                        ),
+                    ];
+                }
+            }
+        }
+
+        // 16. Anti-tautology — saviez_vous must add new information.
+        //
+        // A saviez_vous that merely restates the question with the answer
+        // inserted provides zero cognitive value (e.g., "La bataille de la
+        // Boyne a eu lieu en 1690" for the question "En quelle année s'est
+        // déroulée la bataille de la Boyne ?"). We detect this with 3-shingle
+        // Jaccard overlap between the saviez_vous and the question_text alone
+        // (answers are intentionally excluded so that a saviez_vous that adds
+        // context around the correct answer is not penalised).
+        //
+        // Threshold 0.20: calibrated to catch clear question→answer phrasings
+        // while allowing legitimately related content (same topic, different fact).
+        if ($frTr !== null) {
+            $svForTauto = trim((string) ($frTr['saviez_vous']    ?? ''));
+            $qtForTauto = trim((string) ($frTr['question_text']  ?? ''));
+            if ($svForTauto !== '' && $qtForTauto !== '') {
+                $tautoOverlap = $this->jaccardShingle($svForTauto, $qtForTauto);
+                if ($tautoOverlap > 0.20) {
+                    return [
+                        'ok'     => false,
+                        'code'   => 'saviez_vous_tautological',
+                        'detail' => sprintf(
+                            'saviez_vous Jaccard overlap=%.3f with question_text (> 0.20) — likely reformulation, must add new information',
+                            $tautoOverlap
+                        ),
+                    ];
+                }
             }
         }
 
