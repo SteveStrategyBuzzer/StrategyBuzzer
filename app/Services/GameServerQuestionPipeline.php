@@ -155,18 +155,28 @@ class GameServerQuestionPipeline
         Cache::put($this->getCacheKey($roomId, 'questions'), [$formattedQuestion], self::CACHE_TTL);
         Cache::put($this->getCacheKey($roomId, 'delivered_count'), 1, self::CACHE_TTL);
 
-        Log::info('[GameServerQuestionPipeline] First question generated, dispatching block job', [
-            'room_id' => $roomId,
-            'question_id' => $formattedQuestion['id'],
+        // Generate the first follow-up block (questions 2 – DEFAULT_BLOCK_SIZE+1)
+        // synchronously so the cache already holds a full ready block before
+        // RESULT phase ends and the Node prefetch fires.  This eliminates the
+        // race condition where the async queue job had not yet been picked up by
+        // the time SYNC started, causing "No question at index N — ending round early".
+        $syncGenerated = $this->generateNextBlock($roomId, self::DEFAULT_BLOCK_SIZE);
+
+        Log::info('[GameServerQuestionPipeline] First question + sync block ready, dispatching remaining job', [
+            'room_id'        => $roomId,
+            'question_id'    => $formattedQuestion['id'],
+            'sync_generated' => $syncGenerated,
+            'next_job_start' => self::DEFAULT_BLOCK_SIZE + 2,
         ]);
 
+        // Dispatch queue job only for the questions AFTER the sync block.
         GenerateGameServerQuestionsJob::dispatch(
             $roomId,
             $theme,
             $niveau,
             $language,
             $totalNeeded,
-            2,
+            self::DEFAULT_BLOCK_SIZE + 2,
             self::DEFAULT_BLOCK_SIZE
         );
 
@@ -283,6 +293,20 @@ class GameServerQuestionPipeline
         $deliveredKey = $this->getCacheKey($roomId, 'delivered_count');
         $deliveredCount = (int) Cache::get($deliveredKey, 1);
         $slice = array_slice($questions, $deliveredCount, $count);
+
+        // Synchronous fallback: if the queue worker has not yet generated the
+        // next block (worker stopped, slow start, or job not yet picked up),
+        // generate it inline so gameplay is never blocked by a missing worker.
+        if (empty($slice)) {
+            Log::warning('[GameServerQuestionPipeline] No questions ready in cache — generating block synchronously', [
+                'room_id'         => $roomId,
+                'delivered_count' => $deliveredCount,
+                'count'           => $count,
+            ]);
+            $this->generateNextBlock($roomId, $count);
+            $questions = $this->getAllQuestionsFromStore($roomId);
+            $slice     = array_slice($questions, $deliveredCount, $count);
+        }
 
         Cache::put($deliveredKey, $deliveredCount + count($slice), self::CACHE_TTL);
 
