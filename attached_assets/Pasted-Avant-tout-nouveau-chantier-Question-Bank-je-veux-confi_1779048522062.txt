@@ -1,0 +1,84 @@
+Avant tout nouveau chantier Question Bank, je veux confirmer exactement comment Solo et Duo fonctionnent avec la création et la consommation des blocs questions.
+
+Je ne veux aucun patch maintenant.
+
+Je veux un audit architecture réel :
+GREP → SLICE → ANALYSE.
+
+Questions précises :
+
+1. Fabrication des blocs
+
+* Solo et Duo utilisent-ils exactement la même fabrication Question Bank ?
+* même BankWorker ?
+* même BankAIGenerator ?
+* mêmes guards ?
+* mêmes profils de génération ?
+* mêmes domaines/depth ?
+* mêmes contraintes de longueur ?
+
+2. Consommation des blocs
+
+* Solo et Duo lisent-ils la même table `question_groups` ?
+* utilisent-ils le même `QuestionBankRepository` ?
+* utilisent-ils le même `QuestionBankPicker` ?
+* utilisent-ils le même `MatchQuestionPlanner` ?
+* ou des pipelines séparés ?
+
+3. Sélection gameplay
+   Je veux voir :
+
+* flow Solo complet
+* flow Duo complet
+  depuis :
+  sélection domaine/niveau
+  → récupération bloc
+  → question affichée gameplay
+
+4. Différences possibles
+   Vérifier si :
+
+* Solo bypass certains filtres
+* Solo utilise fallback différent
+* Duo exige prefetch différent
+* Duo filtre plus strictement
+* Solo affiche moins de données
+* Duo affiche des champs que Solo n’utilise pas
+
+5. Saviez-vous
+
+* Solo et Duo utilisent-ils exactement le même champ DB ?
+* même traduction ?
+* même récupération ?
+* même affichage ?
+
+6. Validation des blocs
+   Je veux comprendre :
+
+* où `validated=true` est décidé
+* qui décide qu’un bloc est jouable
+* si Solo peut utiliser des blocs que Duo n’utilise pas
+* si Duo révèle simplement des défauts déjà présents
+
+7. Objectif principal
+   Je veux séparer clairement :
+
+* fabrication des blocs
+* validation des blocs
+* sélection gameplay
+* affichage gameplay
+* différences Solo vs Duo
+
+Retour attendu :
+
+* architecture exacte
+* fichiers exacts
+* pipeline Solo
+* pipeline Duo
+* différences réelles
+* où commencent les divergences
+* si la banque est réellement commune ou non
+
+Aucun patch.
+Aucune supposition.
+Je veux le flow réel complet.
