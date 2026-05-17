@@ -93,17 +93,29 @@ The backend is built with Laravel 10, following an MVC pattern and integrated wi
 
 **Pages concernées :** `duo_question`, `duo_answer`, `duo_result`, `gameplay_solo`, `reponses_solo`, et futures pages MJ/Ligue.
 
-**Architecture en 5 couches :**
+**Ordre d'implémentation SAFE (5 phases) :**
 
-1. **Protection UX navigateur** — `history.pushState()` sur chaque page gameplay + interception `popstate` + blocage swipe-back mobile + remplacement immédiat par la phase réelle. Objectif : éviter l'effet visuel de retour arrière.
+- **Phase 1 — Runtime validation passive** *(risque : très faible)* — `GameplayRuntime` compare la phase/page courante vs l'état Node réel. Log les mismatches, redirige proprement vers la vraie phase. Pas de blocage Back encore.
 
-2. **Protection runtime serveur (vraie sécurité)** — chaque page gameplay valide la phase réelle Node, le `questionIndex` réel, le `round` réel et l'état réel du joueur. Si le joueur tente d'accéder à `/duo/question?question=2` mais que Node est déjà en `RESULT question=3` → refuser la page ou rediriger vers la phase réelle. Le client ne peut jamais rejouer une ancienne phase, revoir une ancienne réponse, ni réactiver un ancien timer.
+- **Phase 2 — Cache navigateur** *(risque : faible)* — Ajouter sur toutes les pages gameplay : `Cache-Control: no-store, no-cache, must-revalidate`. Réduit la restauration sauvage mobile/browser.
 
-3. **Cache navigateur** — Headers obligatoires sur toutes les pages gameplay : `Cache-Control: no-store, no-cache, must-revalidate`. Empêche le cache back-forward et la restauration automatique de page mobile.
+- **Phase 3 — pushState / popstate** *(risque : moyen — doit être testé mobile)* — `history.pushState()` + interception Back/swipe + blocage retour visuel gameplay. Le runtime reste maître, pas seulement le navigateur.
 
-4. **Reconnexion propre** — Si rechargement ou retour : `GameplayRuntime` demande l'état réel Node et restaure la vraie phase, la vraie question, le vrai timer. Jamais depuis une ancienne page locale.
+- **Phase 4 — Reconnexion intelligente** *(SAFE si Runtime déjà stable)* — Sur refresh, retour app mobile, reconnect ou wake écran : `GameplayRuntime` demande immédiatement phase réelle, question réelle, timer réel à Node.
 
-5. **Règle fondamentale** — Le blocage Back seul n'est PAS suffisant. Même si le navigateur revient visuellement ou si le cache mobile restaure la page, le runtime doit immédiatement corriger vers la vraie phase/timer/question. **Node reste toujours l'unique autorité** : phase active, question active, temps restant, état joueur, navigation réelle.
+- **Phase 5 — Harden final** — Empêcher resoumission d'une ancienne réponse, ancien timer, ancienne question, replay de page. Validation finale : impossible de revenir réellement dans une ancienne phase.
+
+**Architecture globale :**
+
+1. **Protection UX navigateur** — `history.pushState()` + interception `popstate` + blocage swipe-back mobile + remplacement immédiat par la phase réelle.
+
+2. **Protection runtime serveur (vraie sécurité)** — chaque page gameplay valide phase/`questionIndex`/`round`/état réel Node. Si le joueur tente `/duo/question?question=2` alors que Node est en `RESULT question=3` → refuser ou rediriger. Le client ne peut jamais rejouer une ancienne phase, revoir une ancienne réponse, ni réactiver un ancien timer.
+
+3. **Cache navigateur** — Headers `Cache-Control: no-store, no-cache, must-revalidate` sur toutes les pages gameplay.
+
+4. **Reconnexion propre** — `GameplayRuntime` restaure toujours depuis Node, jamais depuis une ancienne page locale.
+
+5. **Règle fondamentale** — Le blocage Back seul n'est PAS suffisant. Le runtime doit corriger immédiatement vers la vraie phase/timer/question. **Node reste l'unique autorité** : phase active, question active, temps restant, état joueur, navigation réelle.
 
 ### Future Feature — Bot Player Style Profile (Duo)
 
