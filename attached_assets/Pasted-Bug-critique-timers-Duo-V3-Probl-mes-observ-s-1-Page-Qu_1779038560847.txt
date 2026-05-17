@@ -1,0 +1,113 @@
+Bug critique timers Duo V3.
+
+Problèmes observés :
+
+1. Page Question affiche 7 sec au lieu de 8 sec
+2. Page Réponse affiche 7 sec au lieu de 10 sec
+3. Page Réponse :  la barre visuelle s'ouvre sur 7 seconde qui est correcte pour le 7 sec actuelle
+4. Page Résultat: la barre visuelle reste bloquée / ne descend pas correctement
+5.  Page Résultat:  Les secondes et les barres ne semblent pas alignées avec les durées Node attendues
+
+Je veux un audit réel avant tout patch.
+
+Aucun patch maintenant.
+
+Méthode obligatoire :
+GREP → SLICE → LOGS → ANALYSE.
+
+Vérifier précisément :
+
+1. Durées Node attendues
+
+* QUESTION_ACTIVE = ?
+* ANSWER_SELECTION / ANSWER_COLLECTION = ?
+* RESULT = ?
+* vérifier dans :
+
+  * shared types/config timers
+  * GameOrchestrator
+  * phase timeout mappings
+
+2. Payloads Node
+   Pour chaque phase :
+
+* phase
+* phaseStartedAtMs
+* phaseEndsAtMs
+* duration calculée
+* timestamp serveur si disponible
+
+3. Page Question
+   Fichier :
+   `resources/views/duo_question.blade.php`
+
+Vérifier :
+
+* chrono initial affiché
+* calcul remaining
+* Math.ceil / Math.floor
+* quand le timer démarre
+* latence entre phase start et affichage page
+* fallback local
+* phaseEndsAtMs restauré
+* pourquoi 8 devient 7
+
+4. Page Réponse
+   Fichier :
+   `resources/views/duo_answer.blade.php`
+
+Vérifier :
+
+* durée attendue 10s
+* pourquoi affichage 7s
+* calcul `answerWindowMs`
+* `phaseStartedAtMs`
+* `phaseEndsAtMs`
+* largeur initiale de la barre
+* transition CSS
+* setInterval
+* double timer ou timer bloqué
+* pourquoi la barre reste pleine ou figée
+
+5. Runtime / navigation
+   Vérifier :
+
+* délai entre phase_changed et arrivée sur la page
+* si le joueur arrive avec déjà 1-3 secondes écoulées
+* si la page démarre le chrono trop tard
+* si la durée affichée est le temps restant réel ou le temps total attendu
+
+6. Logs demandés
+   Ajouter/chercher logs existants :
+
+* phase
+* server duration = phaseEndsAtMs - phaseStartedAtMs
+* client remaining au chargement
+* displayed initial seconds
+* bar initial percent
+
+Questions à répondre :
+
+* Est-ce que Node donne vraiment 8s / 10s ?
+* Est-ce que le client reçoit la phase en retard ?
+* Est-ce que l’affichage 7s est normal parce que la page arrive 1s après le début ?
+* Est-ce que la page Réponse utilise la mauvaise phase/durée ?
+* Pourquoi la barre Réponse ne décroît pas ?
+* Est-ce un bug Node, Laravel, GameplayRuntime ou Blade JS ?
+
+Interdictions :
+
+* aucun patch avant diagnostic
+* ne pas toucher scoring
+* ne pas toucher phases runtime
+* ne pas modifier GameOrchestrator sans preuve
+* ne pas ajouter de durée locale inventée
+* ne pas masquer le vrai problème avec un affichage artificiel
+
+Retour attendu :
+
+* cause exacte
+* slices exacts
+* logs exacts
+* patch SAFE proposé seulement après analyse
+* risque Duo/Solo/MJ/Ligue
