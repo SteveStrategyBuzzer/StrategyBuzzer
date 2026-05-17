@@ -1,0 +1,171 @@
+Analyzing Duo gameplay route serving
+GREP first — find where the Duo gameplay routes are served in Laravel.
+
+GREP d'abord — je localise les routes et le contrôleur Duo gameplay :
+
+
+Show less
+
+Ran grep
+
+Ran grep
+
+Ran grep
+
+Deciding on cache header strategy
+There's already a NoCacheHeaders middleware and the pattern is already used in DuoController. Let me read:
+
+The existing NoCacheHeaders middleware
+The Duo routes in web.php
+The DuoController - specifically the gameplay pages (question, answer, result, round-scoreboard, match-result) to see which ones already have headers and which don't
+Excellent — un middleware et un pattern existent déjà. Je lis les détails en parallèle :
+
+
+Show less
+
+Opened NoCacheHeaders.php
+
+Ran grep
+
+Ran grep
+
+Analyzing DuoController cache headers (4 seconds)
+Now I need to look at the specific DuoController methods for the gameplay pages to see which ones already have cache headers and which don't. Let me read the relevant methods.
+
+From the grep:
+
+Line 719-720: already has headers (in some method)
+Line 1810-1811: already has headers (in some method)
+Line 910: result(DuoMatch $match)
+Line 2250: question(DuoMatch $match)
+Line 2261: answer(DuoMatch $match, Request $request)
+The gameplay pages are in the game/duo/ prefix group:
+
+showQuestion
+
+showAnswer
+
+showResult
+
+showRoundScoreboard
+
+showMatchResult
+
+I need to find these methods in DuoController and check which ones are missing cache headers.
+
+Je localise les méthodes show* gameplay dans DuoController :
+
+
+Show less
+
+Ran grep
+
+Ran grep
+
+Analyzing show method return patterns (8 seconds)
+Now I have a clear picture. Let me read the 5 show* methods to see their return patterns, then I'll know the exact patch needed.
+
+Key findings so far:
+
+NoCacheHeaders middleware exists at app/Http/Middleware/NoCacheHeaders.php ✅
+
+It's registered in Kernel.php line 24 — but let me check if it's in the global middleware or routeMiddleware
+
+The gameplay routes are in game/duo/ prefix group (lines 400-410 of web.php)
+
+Methods: showQuestion (1206), showAnswer (1242), showResult (1291), showRoundScoreboard (1367), showMatchResult (1445)
+
+Only two methods have cache headers currently, and they're not the show* methods I need to fix
+
+The cleanest solution is to apply the middleware directly to the game/duo/ route group in web.php rather than patching each method individually. First I need to verify whether NoCacheHeaders is already in the routeMiddleware array or if I need to register it there.
+
+Je vérifie où NoCacheHeaders est enregistré dans Kernel, et je lis les 5 méthodes show* pour leur pattern de retour :
+
+
+Show less
+
+Ran grep
+
+Opened DuoController.php
+
+Analyzing global middleware application (7 seconds)
+I have all the information I need. Let me analyze:
+
+Current state:
+
+NoCacheHeaders middleware exists at app/Http/Middleware/NoCacheHeaders.php — sets no-cache, no-store, must-revalidate + Pragma: no-cache + Expires: 0
+Line 24 of Kernel.php — it's in the global middleware stack (not routeMiddleware)
+Wait — if it's global middleware (line 24 in Kernel.php), that means it already applies to ALL routes! But that can't be right because other pages (lobby, boutique) would already have no-cache headers.
+
+Let me look more carefully at the context around line 24 in Kernel.php. The grep result shows it's there, but I need to determine whether it's in the $middleware array (truly global), $middlewareGroups['web'] (web routes only), or $routeMiddleware (named/selective). The line number alone doesn't tell me which array it's in.
+
+Je lis Kernel.php pour voir exactement où NoCacheHeaders est enregistré :
+
+
+Show less
+
+Opened Kernel.php
+
+Opened DuoController.php
+
+Determining next caching steps (14 seconds)
+Now I have everything I need. Let me analyze the situation:
+
+Key finding: NoCacheHeaders is ALREADY in the global $middleware stack (line 24 of Kernel.php)
+
+This means it applies to every single request — including lobby, boutique, profile, etc. It already sets:
+
+Cache-Control: no-cache, no-store, must-revalidate
+Pragma: no-cache
+Expires: 0
+So Phase 2 is already done! But wait — I need to check if the current middleware sets max-age=0 (the user requested this). Looking at the middleware:
+
+The current implementation doesn't include max-age=0, but since this global middleware already covers all pages, Phase 2 is essentially complete — the only adjustment needed would be adding max-age=0 to the Cache-Control header. Wait, I need to be careful here—the user specifically asked to add no-cache headers only to the gameplay Duo pages, but the current middleware is already applying them globally to everything. Since it's already working for those pages, I just need to add max-age=0 to the Cache-Control header to match the exact specification. The fix is straightforward: update the middleware to include that single directive in the header string.
+
+Analyse complète. La découverte est importante — je la présente avant tout patch.
+
+Ce que l'analyse révèle
+NoCacheHeaders est déjà en middleware global (Kernel.php ligne 24)
+protected $middleware = [
+    \App\Http\Middleware\TrustProxies::class,
+    \Illuminate\Http\Middleware\HandleCors::class,
+    ...
+    \App\Http\Middleware\NoCacheHeaders::class,  // ← global, toutes routes
+];
+
+Ce middleware s'applique à chaque requête — gameplay, lobby, boutique, profil, tout.
+
+Headers actuellement émis sur les 5 pages gameplay Duo :
+Cache-Control: no-cache, no-store, must-revalidate
+Pragma: no-cache
+Expires: 0
+
+Verdict Phase 2 : déjà active
+Les 5 pages showQuestion, showAnswer, showResult, showRoundScoreboard, showMatchResult retournent toutes des view() — elles passent toutes par le middleware global. Les headers no-cache sont déjà présents.
+
+Seul écart avec ta spec
+Ta spec demande max-age=0 dans le Cache-Control — c'est la seule valeur manquante :
+
+Header	Spec demandée	Actuellement
+Cache-Control	no-store, no-cache, must-revalidate, max-age=0	no-cache, no-store, must-revalidate ← sans max-age=0
+Pragma	no-cache	✅ présent
+Expires	0	✅ présent
+Patch minimal proposé
+Un seul fichier : app/Http/Middleware/NoCacheHeaders.php
+
+// Avant
+$response->headers->set('Cache-Control', 'no-cache, no-store, must-revalidate');
+// Après
+$response->headers->set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+
+Risque : très faible. max-age=0 est redondant avec no-cache mais explicite pour certains navigateurs mobiles et proxies. S'applique à tout le site (déjà le cas), aucune régression attendue.
+
+Conclusion Phase 2
+Vérification	Résultat
+Pages gameplay Duo ont les headers no-cache	✅ déjà via middleware global
+Lobby / boutique / profil non impactés	✅ déjà inclus — pas de changement
+max-age=0 manquant	⚠️ seul écart — 1 ligne à ajouter
+PHP syntax risk	minimal — 1 ligne de string
+Verdict global : SAFE
+
+Tu veux que j'applique le patch max-age=0 ?
