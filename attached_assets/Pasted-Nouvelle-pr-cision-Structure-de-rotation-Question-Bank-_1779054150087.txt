@@ -1,0 +1,103 @@
+Nouvelle précision — Structure de rotation Question Bank
+
+Je veux que la fabrication fonctionne comme une file de demandes structurées, pas comme une génération aléatoire.
+
+Objectif :
+fabriquer progressivement une banque massive, jusqu’à très grande échelle, avec rotation complète de toutes les variantes.
+
+Chaque demande de génération doit être définie par :
+
+* domaine
+* sous-domaine si applicable
+* depth / niveau
+* type de question : QCM ou Vrai-Faux
+* type cognitif : recognition / reasoning / deceptive_trap
+* langue source
+* quantité cible par lot, exemple 20 blocs
+
+Exemple de rotation :
+
+1. Géographie / depth 4 / QCM / deceptive_trap / 20 blocs
+2. Histoire / depth 4 / QCM / deceptive_trap / 20 blocs
+3. Faune / depth 4 / QCM / deceptive_trap / 20 blocs
+4. Art / depth 4 / QCM / deceptive_trap / 20 blocs
+5. Sport / depth 4 / QCM / deceptive_trap / 20 blocs
+
+Ensuite :
+6. Géographie / depth 4 / Vrai-Faux / deceptive_trap / 20 blocs
+7. Histoire / depth 4 / Vrai-Faux / deceptive_trap / 20 blocs
+8. Faune / depth 4 / Vrai-Faux / deceptive_trap / 20 blocs
+
+Ensuite :
+
+* même rotation avec reasoning
+* même rotation avec recognition
+* puis depth suivant
+* puis recommencer
+
+But :
+couvrir toutes les combinaisons sans saturer un seul domaine ou un seul style.
+
+Structure cible :
+GenerationRequest =
+{
+domain,
+sub_domain,
+depth,
+question_type,
+cognitive_type,
+source_language,
+target_count,
+batch_size,
+priority,
+status
+}
+
+Règle :
+la rotation doit éviter :
+
+* 50 blocs identiques du même domaine d’un coup
+* trop de QCM sans Vrai-Faux
+* trop de deceptive_trap sans reasoning/recognition
+* redondance de concepts
+* répétition de bonnes réponses
+* saturation d’un sous-domaine
+
+La fabrication doit toujours créer un bloc complet :
+
+* question
+* réponses
+* bonne réponse
+* Saviez-vous
+* domaine
+* depth
+* type question
+* type cognitif
+* style pédagogique
+
+Puis :
+review_bank
+→ vérification
+→ correction si nécessaire
+→ traduction
+→ revalidation
+→ ready_bank
+
+Important :
+les styles cognitifs sont choisis AVANT génération.
+Ils ne sont pas seulement étiquetés après.
+
+La vérification confirme ensuite que le bloc respecte bien le type cognitif demandé.
+
+Je veux un audit/proposition d’architecture :
+GREP → SLICE → ANALYSE.
+Aucun patch maintenant.
+
+Retour attendu :
+
+* structure de file de génération
+* comment représenter toutes les variantes
+* comment faire la rotation
+* comment éviter les doublons
+* comment gérer les objectifs massifs par domaine
+* comment garder le système simple sans pipeline trop lourd
