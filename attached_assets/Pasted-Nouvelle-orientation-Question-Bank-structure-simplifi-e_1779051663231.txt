@@ -1,0 +1,258 @@
+Nouvelle orientation Question Bank — structure simplifiée mais robuste
+
+Objectif :
+reprendre la qualité naturelle de l’ancien Solo :
+
+AIQuestionGeneratorService
+→ QUESTION_API_URL/generate-question
+→ retour direct IA cohérent
+→ QuestionService
+
+mais l’adapter à une banque moderne commune Solo/Duo/MJ/Ligue.
+
+Principe :
+ne pas créer un pipeline trop complexe qui dégrade la qualité.
+Créer d’abord un bloc source simple et cohérent, puis le valider, le corriger si nécessaire, le traduire, le revalider, et seulement ensuite le rendre disponible gameplay.
+
+Important :
+Aucun patch maintenant.
+Je veux d’abord un audit :
+GREP → SLICE → ANALYSE.
+
+Workflow cible :
+
+1. Génération source simple
+
+Pour chaque bloc généré :
+
+* question
+* réponses
+* bonne réponse
+* Saviez-vous
+* domaine
+* sous-domaine
+* difficulté/depth
+* type cognitif
+* style/couleur pédagogique
+* intention du bloc
+
+Le Saviez-vous doit être généré avec la question, pas séparément, pour garder la cohérence, la couleur et l’intention pédagogique du bloc.
+
+2. Rotation intelligente
+
+Ne pas générer 50 blocs du même domaine d’un coup sans contrôle.
+
+La rotation doit tenir compte de :
+
+* domaine
+* sous-domaine
+* difficulté/depth
+* type cognitif
+* langue source
+* ratio QCM / Vrai-Faux
+* concepts déjà couverts
+* redondance globale
+* saturation de réponses
+
+Exemple :
+au lieu de 50 Géographie génériques :
+
+* 10 Géographie recognition depth 3
+* 10 Géographie reasoning depth 4
+* 10 Géographie deceptive_trap depth 4
+* 10 Histoire recognition depth 3
+* 10 Faune reasoning depth 4
+
+Objectif :
+éviter saturation, redondance, réponses répétées et blocs trop semblables.
+
+3. Banque à vérifier
+
+Le bloc généré entre dans le même `question_group` avec statut logique :
+`review_bank`
+
+Important :
+
+* pas de duplication physique de banque
+* même bloc
+* même ID
+* mêmes traductions
+* même identité
+* seul le statut change
+
+Banque à vérifier = atelier qualité.
+
+4. Vérification automatique source
+
+Avant traduction, chaque bloc source doit être vérifié automatiquement :
+
+* véracité question
+* véracité bonne réponse
+* cohérence `correct_answer_key`
+* Saviez-vous vrai
+* Saviez-vous cohérent avec la bonne réponse
+* Saviez-vous ne confirme pas un distracteur
+* Saviez-vous non fade
+* Saviez-vous non tautologique
+* longueur question compatible gameplay
+* longueur réponses compatible gameplay
+* domaine respecté
+* sous-domaine respecté
+* niveau/depth respecté
+* type cognitif respecté
+* style/couleur pédagogique respecté
+* intention originale respectée
+* redondance contre toute la banque, incluant `review_bank` et `ready_bank`
+
+5. Correction contrôlée
+
+Si un bloc a un problème :
+
+* ne pas supprimer
+* ne pas dupliquer
+* corriger le même bloc
+* garder le même ID
+* préserver :
+
+  * domaine
+  * sous-domaine
+  * difficulté/depth
+  * type cognitif
+  * style pédagogique
+  * couleur du bloc
+  * intention originale
+* relancer la vérification après correction
+
+La correction doit réparer les erreurs, les longueurs, la logique ou le Saviez-vous fade sans changer la nature du bloc.
+
+6. Traduction multilingue
+
+Seulement après validation source :
+
+* traduire toutes les langues nécessaires
+* garder le même sens
+* garder la même bonne réponse
+* garder le même niveau de difficulté
+* garder le même style pédagogique
+* adapter culturellement seulement si nécessaire
+
+7. Revalidation multilingue
+
+Après traduction :
+
+* `correct_answer_key` cohérent dans toutes les langues
+* réponses alignées
+* Saviez-vous cohérent dans chaque langue
+* longueurs compatibles par langue
+* aucune langue ne change la logique du bloc
+* aucune traduction ne rend la question trop facile ou trop difficile
+* aucune traduction ne transforme le domaine ou le type cognitif
+
+8. Banque prête
+
+Si tout est OK :
+statut = `ready_bank`
+
+Gameplay sert seulement :
+
+* `ready_bank`
+
+Jamais :
+
+* `review_bank`
+* `correction_needed`
+* `correction_in_progress`
+* `blocked_critical`
+
+Banque prête = inventaire gameplay structuré.
+
+9. Structure de la Banque prête
+
+La Banque prête doit être structurée pour le gameplay.
+
+Chaque bloc `ready_bank` doit être classé/indexé par :
+
+* domaine
+* sous-domaine
+* niveau/depth
+* mode compatible : Solo, Duo, MJ, Ligue
+* type de question : QCM / Vrai-Faux
+* type cognitif : recognition / reasoning / deceptive_trap
+* langue
+* présence Saviez-vous / funFact
+* qualité Saviez-vous
+* style pédagogique / couleur du bloc
+* longueur question
+* longueur réponses
+* difficulté réelle
+* âge/niveau visé
+* usage_count
+* last_used_at
+* concept_id
+* concept_family
+
+Objectif :
+permettre au gameplay de demander rapidement :
+“donne-moi une question prête, domaine Géographie, depth 4, QCM, FR, funFact validé, non répétée récemment.”
+
+Le gameplay doit pouvoir filtrer :
+
+* par domaine
+* par sous-domaine
+* par niveau/depth
+* par type QCM / Vrai-Faux
+* par langue
+* par type cognitif
+* par disponibilité funFact validé
+* par non-répétition
+* par compatibilité mode
+* par usage_count / last_used_at
+* par concept_family
+
+10. Architecture importante
+
+* pas d’IA live pendant gameplay
+* génération hors match
+* validation hors match
+* correction hors match
+* traduction hors match
+* revalidation hors match
+* gameplay consomme seulement la banque prête
+* la Banque prête reste la même table logique
+* on ne duplique pas physiquement les blocs
+* on ajoute des statuts, index et métadonnées pour permettre une sélection rapide et propre
+
+11. Audit demandé avant patch
+
+Je veux vérifier :
+
+* comment simplifier la génération source
+* où garder question/réponse/Saviez-vous ensemble
+* comment éviter les mappings dispersés `funFact` / `fun_fact` / `saviez_vous` / `explanation`
+* comment ajouter `review_bank` / `ready_bank`
+* comment faire rotation par domaine/depth/type
+* comment vérifier la redondance contre toute la banque
+* comment préserver le même bloc et le même ID pendant correction
+* comment traduire après validation source
+* comment revalider toutes les langues
+* comment structurer/indexer la Banque prête
+* comment filtrer rapidement côté gameplay
+* quels fichiers remplacer ou conserver
+* ordre SAFE de migration sans casser Solo/Duo/MJ/Ligue
+
+Retour attendu :
+
+* architecture proposée
+* fichiers concernés
+* tables/champs/index nécessaires
+* jobs nécessaires
+* commandes nécessaires
+* risques
+* ordre SAFE des patchs
+* impact Solo
+* impact Duo
+* impact MJ
+* impact Ligue
+
+Aucun patch maintenant.
+Analyse seulement.
