@@ -1,0 +1,58 @@
+Précision importante — Banque à vérifier / Banque prête
+
+Le bloc ne doit pas être dupliqué dans une autre banque physique.
+
+Logique cible :
+
+* même bloc
+* même `question_group`
+* même traductions
+* même identité
+* seul son statut change
+
+Workflow :
+
+1. bloc fabriqué
+2. statut = `review_bank`
+3. vérification automatique
+4. correction si nécessaire
+5. re-vérification
+6. si OK : statut = `ready_bank`
+7. gameplay sert seulement `ready_bank`
+
+Donc “Banque à vérifier” et “Banque prête” sont des états logiques, pas deux tables séparées avec duplication.
+
+Deuxième point critique :
+la redondance à la création ne doit pas être vérifiée seulement contre les nouvelles questions ou la banque en cours de fabrication.
+
+Elle doit être vérifiée contre :
+
+* blocs prêts
+* blocs à vérifier
+* blocs en correction
+* anciens blocs existants
+* toutes les langues si applicable
+* toutes les variantes du même concept
+
+Objectif :
+éviter de fabriquer un bloc déjà trop proche d’un bloc existant, même si l’ancien bloc n’est pas encore dans la banque prête.
+
+Règle :
+la création doit vérifier la redondance contre toute la Question Bank, pas seulement contre la nouvelle banque.
+
+À vérifier dans l’audit :
+
+* est-ce que `QualityGuards` compare déjà contre toute la banque ?
+* est-ce que `concept_id`, `concept_family`, `text_similarity`, `correct_answer_overused` regardent seulement les blocs `validated=true` ou toute la table ?
+* est-ce que les futurs statuts `review_bank` / `ready_bank` risquent de casser les guards de redondance ?
+* est-ce que les blocs en review doivent aussi compter dans la redondance ? Réponse attendue : oui.
+* est-ce qu’un bloc corrigé garde le même identifiant ou crée une nouvelle version ?
+* comment éviter les doublons pendant correction/régénération ?
+
+Contrainte :
+ne pas créer une deuxième table duplicative pour les questions.
+Utiliser un statut logique sur le bloc.
+
+Méthode :
+GREP → SLICE → ANALYSE.
+Aucun patch maintenant.
