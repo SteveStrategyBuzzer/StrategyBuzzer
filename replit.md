@@ -87,6 +87,30 @@ The backend is built with Laravel 10, following an MVC pattern and integrated wi
 - Stripe idempotency: `Session::create()` now receives `['idempotency_key' => ...]` (keyed on `purchaseIntentId` when available).
 - Security: `Cloud_SQL_Export_2025-09-05 (09:06:02).sql` (full DB dump) removed from repo root; `.gitignore` updated with `Cloud_SQL_Export*.sql`, `*_export.sql`, `*.dump.sql` patterns.
 
+### Future Feature — Bot Player Style Profile (Duo)
+
+**Principe directeur :** l'efficacité réelle du joueur est la référence principale du bot Duo. Le bot ne connaît jamais la bonne réponse — il transforme l'efficacité observée en probabilité de réussite.
+
+**Séparation des profils :**
+
+1. **Profil global joueur** — tendances générales, domaines forts/faibles, difficulté moyenne, historique long terme.
+2. **Profil Solo** — utile pour apprendre les connaissances générales. Ne contrôle PAS le comportement Duo. Utilisable uniquement comme fallback avant 10 matchs Duo complets.
+3. **Profil Duo** — référence principale après minimum 10 matchs Duo complets. Prend en compte : efficacité Duo, buzz Duo, timing Duo, agressivité Duo, réussite par domaine/depth, comportement quand il mène/perd, réactions après erreur ou série.
+
+**Pondération recommandée :**
+
+| Phase | Profil Duo | Profil global | Tempérament bot | Variance naturelle | Profil Solo |
+|---|---|---|---|---|---|
+| Avant 10 matchs Duo | — | 20% | — | — | 10% + 70% bot générique |
+| Après 10 matchs Duo | 60% | 25% | 10% | 5% | — |
+| Après 20–30 matchs Duo | 75% | 15% | 5% | 5% | — |
+
+**Règle clé :** si le joueur a 62% d'efficacité Duo en Géographie depth 4, le bot ne joue pas comme s'il avait 85% parce qu'il est fort en Solo.
+
+**Formule bot :** `efficacité_réelle × contexte_Duo × domaine/depth × tempérament × variance_humaine_contrôlée`
+
+**Interdiction :** le bot ne doit jamais connaître la bonne réponse à l'avance.
+
 ### External Dependencies
 
 -   **Core Frameworks**: Laravel Framework, React, Inertia.js
