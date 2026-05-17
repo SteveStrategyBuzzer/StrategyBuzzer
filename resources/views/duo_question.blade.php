@@ -538,6 +538,10 @@ $mode = 'duo';
         0%, 100% { box-shadow: 0 15px 50px rgba(231, 76, 60, 0.7); }
         50%       { box-shadow: 0 15px 70px rgba(231, 76, 60, 1); }
     }
+    @keyframes flash-digit {
+        0%, 100% { opacity: 1; }
+        50%       { opacity: 0.15; }
+    }
     .chrono-circle.urgent .chrono-time {
         background: linear-gradient(180deg, #fff 0%, #FF6B6B 100%);
         -webkit-background-clip: text;
@@ -545,6 +549,7 @@ $mode = 'duo';
         /* D-H — required for gradient-text to actually render (masks base color) */
         -webkit-text-fill-color: transparent;
         color: transparent;
+        animation: flash-digit 0.5s ease-in-out infinite;
     }
 
     /* Buzz order indicator */
@@ -1163,6 +1168,10 @@ $mode = 'duo';
                 const remainingMs = Math.max(0, phaseEndsAtMs - now);
                 timeLeft = Math.ceil(remainingMs / 1000);
             } else {
+                // FALLBACK ONLY — fires when Node has not yet delivered phaseEndsAtMs
+                // (e.g. first socket frame still in flight). Not a primary timer.
+                // Will be overwritten on the next syncTimerWithServer() call.
+                console.warn('[DuoQuestion] phaseEndsAtMs absent — using local fallback tick');
                 timeLeft--;
             }
 
