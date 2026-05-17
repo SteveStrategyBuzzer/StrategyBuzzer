@@ -87,6 +87,24 @@ The backend is built with Laravel 10, following an MVC pattern and integrated wi
 - Stripe idempotency: `Session::create()` now receives `['idempotency_key' => ...]` (keyed on `purchaseIntentId` when available).
 - Security: `Cloud_SQL_Export_2025-09-05 (09:06:02).sql` (full DB dump) removed from repo root; `.gitignore` updated with `Cloud_SQL_Export*.sql`, `*_export.sql`, `*.dump.sql` patterns.
 
+### Future Feature — Anti Back Navigation (Gameplay)
+
+**Objectif :** empêcher qu'un joueur puisse revenir sur une ancienne question/réponse, revoir des informations expirées, casser la synchro gameplay, ou exploiter la navigation Back/Forward du navigateur. Fonctionne sur ordinateur, mobile (Android, iPhone), tablette, swipe navigation et gestures navigateur.
+
+**Pages concernées :** `duo_question`, `duo_answer`, `duo_result`, `gameplay_solo`, `reponses_solo`, et futures pages MJ/Ligue.
+
+**Architecture en 5 couches :**
+
+1. **Protection UX navigateur** — `history.pushState()` sur chaque page gameplay + interception `popstate` + blocage swipe-back mobile + remplacement immédiat par la phase réelle. Objectif : éviter l'effet visuel de retour arrière.
+
+2. **Protection runtime serveur (vraie sécurité)** — chaque page gameplay valide la phase réelle Node, le `questionIndex` réel, le `round` réel et l'état réel du joueur. Si le joueur tente d'accéder à `/duo/question?question=2` mais que Node est déjà en `RESULT question=3` → refuser la page ou rediriger vers la phase réelle. Le client ne peut jamais rejouer une ancienne phase, revoir une ancienne réponse, ni réactiver un ancien timer.
+
+3. **Cache navigateur** — Headers obligatoires sur toutes les pages gameplay : `Cache-Control: no-store, no-cache, must-revalidate`. Empêche le cache back-forward et la restauration automatique de page mobile.
+
+4. **Reconnexion propre** — Si rechargement ou retour : `GameplayRuntime` demande l'état réel Node et restaure la vraie phase, la vraie question, le vrai timer. Jamais depuis une ancienne page locale.
+
+5. **Règle fondamentale** — Le blocage Back seul n'est PAS suffisant. Même si le navigateur revient visuellement ou si le cache mobile restaure la page, le runtime doit immédiatement corriger vers la vraie phase/timer/question. **Node reste toujours l'unique autorité** : phase active, question active, temps restant, état joueur, navigation réelle.
+
 ### Future Feature — Bot Player Style Profile (Duo)
 
 **Principe directeur :** l'efficacité réelle du joueur est la référence principale du bot Duo. Le bot ne connaît jamais la bonne réponse — il transforme l'efficacité observée en probabilité de réussite.

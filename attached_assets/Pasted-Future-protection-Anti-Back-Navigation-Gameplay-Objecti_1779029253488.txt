@@ -1,0 +1,119 @@
+Future protection — Anti Back Navigation Gameplay
+
+Objectif :
+empêcher qu’un joueur puisse :
+
+* revenir sur une ancienne question
+* revenir sur une ancienne réponse
+* revoir des informations expirées
+* casser la synchro gameplay
+* exploiter le navigateur Back/Forward
+
+La protection doit fonctionner :
+
+* ordinateur
+* mobile
+* Android
+* iPhone
+* tablette
+* swipe navigation
+* gestures navigateur
+
+Architecture recommandée :
+
+1. Protection UX navigateur
+   Dans les pages gameplay :
+
+* duo_question
+* duo_answer
+* duo_result
+* gameplay_solo
+* reponses_solo
+* futures pages MJ/Ligue
+
+Ajouter :
+
+* history.pushState()
+* interception popstate
+* blocage swipe-back mobile
+* remplacement immédiat par la phase réelle
+
+Objectif :
+éviter l’effet visuel de retour arrière.
+
+2. Protection runtime serveur (la vraie sécurité)
+   Chaque page gameplay doit valider :
+
+* phase réelle Node
+* questionIndex réel
+* round réel
+* état réel du joueur
+
+Exemple :
+si un joueur revient sur :
+/duo/question?question=2
+
+mais Node est déjà :
+RESULT question=3
+
+alors :
+
+* refuser la page
+  ou
+* rediriger vers la phase réelle
+
+Le client ne doit jamais pouvoir :
+
+* rejouer une ancienne phase
+* revoir une ancienne réponse
+* réactiver un ancien timer
+
+3. Cache navigateur
+   Empêcher :
+
+* cache back-forward
+* restauration automatique page mobile
+
+Headers recommandés :
+
+* Cache-Control: no-store
+* no-cache
+* must-revalidate
+
+4. Reconnexion propre
+   Si le joueur recharge ou revient :
+   GameplayRuntime doit :
+
+* demander l’état réel Node
+* restaurer la vraie phase
+* restaurer la vraie question
+* restaurer le vrai timer
+
+Jamais :
+
+* restaurer une ancienne page locale
+
+5. Important
+   Le blocage Back seul n’est PAS suffisant.
+
+Même si :
+
+* le navigateur revient visuellement
+* ou le cache mobile restaure la page
+
+le runtime doit immédiatement corriger vers :
+
+* la vraie phase
+* le vrai timer
+* la vraie question
+
+6. Node reste autorité
+   Le navigateur n’est jamais autorité gameplay.
+
+Node décide :
+
+* phase active
+* question active
+* temps restant
+* état joueur
+* navigation réelle
