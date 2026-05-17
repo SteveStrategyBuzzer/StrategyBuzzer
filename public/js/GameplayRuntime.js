@@ -284,6 +284,83 @@
         console.warn('[GameplayRuntime] Disconnected:', reason);
     });
 
+    // ── Phase 1 Anti Back Navigation — passive mismatch detection ────────────
+    // Compares the current Blade page (window.CURRENT_PAGE) against the phase
+    // received from Node. If they don't match, logs a warning and navigates to
+    // the correct page via window.duoNavigate (save-then-redirect).
+    // Guard: window.__GR_MISMATCH_NAV prevents any second redirect on the same
+    // page load, avoiding loops. No pushState/popstate — Node is sole authority.
+    function _checkMismatch(phase) {
+        var page = window.CURRENT_PAGE;
+        if (!page || !phase || window.__GR_MISMATCH_NAV) return;
+        var _MAP = {
+            question: {
+                // NOTE: answer phases (ANSWER_SELECTION, BUZZ_WINNER_ANSWERING,
+                // ANSWER_COLLECTION) are NOT mapped here because only the buzz winner
+                // should redirect to Answer — the role check requires lockedAnswerPlayerId
+                // from socket state, handled by the question page's own handleGameState.
+                RESULT:           'RESULT_URL',
+                ROUND_SCOREBOARD: 'ROUND_SCOREBOARD_URL',
+                MATCH_END:        'MATCH_RESULT_URL',
+                FINISHED:         'MATCH_RESULT_URL',
+            },
+            answer: {
+                // QUESTION_ACTIVE intentionally omitted: server allows it on the
+                // answer page (buzz winner navigated here while phase still QUESTION_ACTIVE).
+                // ANSWER_COLLECTION omitted: valid grace-period phase for answer page.
+                // SYNC intentionally omitted (Patch F / #65): SYNC fires at every
+                // inter-question boundary. If a player has already answered and is
+                // waiting for RESULT, this nav would reload the answer page with
+                // answered=false, re-enabling the answer buttons (UX regression).
+                // The answer page's own _onAnswerPhaseChanged handles SYNC correctly
+                // via the isRedirecting guard — no mismatch nav needed here.
+                INTRO:            'QUESTION_URL',
+                WAITING:          'QUESTION_URL',
+                RESULT:           'RESULT_URL',
+                ROUND_SCOREBOARD: 'ROUND_SCOREBOARD_URL',
+                MATCH_END:        'MATCH_RESULT_URL',
+                FINISHED:         'MATCH_RESULT_URL',
+            },
+            result: {
+                INTRO:            'QUESTION_URL',
+                WAITING:          'QUESTION_URL',
+                SYNC:             'QUESTION_URL',
+                QUESTION_ACTIVE:  'QUESTION_URL',
+                // Patch G1 (#65) — ANSWER_SELECTION / BUZZ_WINNER_ANSWERING /
+                // ANSWER_COLLECTION intentionally omitted from the result map.
+                // In V3, the player navigates to /result immediately after submitting
+                // (~800 ms delay) before Node has finished scoring and transitioning
+                // to RESULT. These are normal transient states on /result — not
+                // mismatches. validatePhaseAccess('result') already allows them
+                // (P77.3). The result page's own _onResultState and
+                // _onResultPhaseChanged handle them correctly (stay + wait).
+                // SYNC above is sufficient to evict genuinely stale result pages
+                // (SYNC always fires before ANSWER_SELECTION of the next question).
+                ROUND_SCOREBOARD: 'ROUND_SCOREBOARD_URL',
+                MATCH_END:        'MATCH_RESULT_URL',
+                FINISHED:         'MATCH_RESULT_URL',
+            },
+            'round-scoreboard': {
+                SYNC:             'QUESTION_URL',
+                QUESTION_ACTIVE:  'QUESTION_URL',
+                RESULT:           'RESULT_URL',
+                MATCH_END:        'MATCH_RESULT_URL',
+                FINISHED:         'MATCH_RESULT_URL',
+            },
+        };
+        var entry = _MAP[page];
+        if (entry && entry[phase]) {
+            var targetKey = entry[phase];
+            var targetUrl = window[targetKey];
+            var matchId   = window.MATCH_ID;
+            if (targetUrl) {
+                console.warn('[GameplayRuntime] MISMATCH NAV page=' + page + ' phase=' + phase + ' → ' + targetKey + ' (' + targetUrl + ')');
+                window.__GR_MISMATCH_NAV = true;
+                window.duoNavigate(targetUrl + (matchId ? '?match_id=' + encodeURIComponent(matchId) : ''));
+            }
+        }
+    }
+
     // state: initial hydration and reconnect (server emits { state: GameState })
     socket.on('state', function (payload) {
         if (!payload) return;
@@ -316,79 +393,8 @@
         }
 
         // ── Canonical page/phase mismatch reconciliation ─────────────────────
-        // On reconnect the server may already be on a different phase than the
-        // current Blade page. Navigate to the correct page immediately.
-        var _page  = window.CURRENT_PAGE;
-        var _phase = data.phase;
-        if (_page && _phase && !window.__GR_MISMATCH_NAV) {
-            // Map: page → { phase → window URL key }
-            var _MAP = {
-                question: {
-                    // NOTE: answer phases (ANSWER_SELECTION, BUZZ_WINNER_ANSWERING,
-                    // ANSWER_COLLECTION) are NOT mapped here because only the buzz winner
-                    // should redirect to Answer — the role check requires lockedAnswerPlayerId
-                    // from socket state, handled by the question page's own handleGameState.
-                    RESULT:           'RESULT_URL',
-                    ROUND_SCOREBOARD: 'ROUND_SCOREBOARD_URL',
-                    MATCH_END:        'MATCH_RESULT_URL',
-                    FINISHED:         'MATCH_RESULT_URL',
-                },
-                answer: {
-                    // QUESTION_ACTIVE intentionally omitted: server allows it on the
-                    // answer page (buzz winner navigated here while phase still QUESTION_ACTIVE).
-                    // ANSWER_COLLECTION omitted: valid grace-period phase for answer page.
-                    // SYNC intentionally omitted (Patch F / #65): SYNC fires at every
-                    // inter-question boundary. If a player has already answered and is
-                    // waiting for RESULT, this nav would reload the answer page with
-                    // answered=false, re-enabling the answer buttons (UX regression).
-                    // The answer page's own _onAnswerPhaseChanged handles SYNC correctly
-                    // via the isRedirecting guard — no mismatch nav needed here.
-                    INTRO:            'QUESTION_URL',
-                    WAITING:          'QUESTION_URL',
-                    RESULT:           'RESULT_URL',
-                    ROUND_SCOREBOARD: 'ROUND_SCOREBOARD_URL',
-                    MATCH_END:        'MATCH_RESULT_URL',
-                    FINISHED:         'MATCH_RESULT_URL',
-                },
-                result: {
-                    INTRO:            'QUESTION_URL',
-                    WAITING:          'QUESTION_URL',
-                    SYNC:             'QUESTION_URL',
-                    QUESTION_ACTIVE:  'QUESTION_URL',
-                    // Patch G1 (#65) — ANSWER_SELECTION / BUZZ_WINNER_ANSWERING /
-                    // ANSWER_COLLECTION intentionally omitted from the result map.
-                    // In V3, the player navigates to /result immediately after submitting
-                    // (~800 ms delay) before Node has finished scoring and transitioning
-                    // to RESULT. These are normal transient states on /result — not
-                    // mismatches. validatePhaseAccess('result') already allows them
-                    // (P77.3). The result page's own _onResultState and
-                    // _onResultPhaseChanged handle them correctly (stay + wait).
-                    // SYNC above is sufficient to evict genuinely stale result pages
-                    // (SYNC always fires before ANSWER_SELECTION of the next question).
-                    ROUND_SCOREBOARD: 'ROUND_SCOREBOARD_URL',
-                    MATCH_END:        'MATCH_RESULT_URL',
-                    FINISHED:         'MATCH_RESULT_URL',
-                },
-                'round-scoreboard': {
-                    SYNC:             'QUESTION_URL',
-                    QUESTION_ACTIVE:  'QUESTION_URL',
-                    RESULT:           'RESULT_URL',
-                    MATCH_END:        'MATCH_RESULT_URL',
-                    FINISHED:         'MATCH_RESULT_URL',
-                },
-            };
-            var _pageMap = _MAP[_page];
-            if (_pageMap && _pageMap[_phase]) {
-                var _targetKey = _pageMap[_phase];
-                var _targetUrl = window[_targetKey];
-                var _matchId   = window.MATCH_ID;
-                if (_targetUrl) {
-                    console.warn('[GameplayRuntime] MISMATCH NAV page=' + _page + ' phase=' + _phase + ' → ' + _targetKey + ' (' + _targetUrl + ')');
-                    window.__GR_MISMATCH_NAV = true;
-                    window.duoNavigate(_targetUrl + (_matchId ? '?match_id=' + encodeURIComponent(_matchId) : ''));
-                }
-            }
-        }
+        // Delegated to shared _checkMismatch() defined above.
+        _checkMismatch(data.phase);
     });
 
     socket.on('phase_changed', function (data) {
@@ -402,6 +408,9 @@
         if (data.roundNumber !== undefined) {
             updateHeaderRound(data.roundNumber);
         }
+
+        // ── Phase 1 Anti Back Navigation — also check on live phase transitions
+        _checkMismatch(data.phase);
     });
 
     // game_state: flat hydration on join (totalQuestions, currentQuestion, etc.)
