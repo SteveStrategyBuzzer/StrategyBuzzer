@@ -1,0 +1,414 @@
+Nouvelle orientation — migration parallèle Question Bank + conceptualisation avancée des blocs
+
+Objectif :
+faire évoluer progressivement la banque de questions StrategyBuzzer vers une architecture robuste, scalable, cohérente et maintenable, sans casser le gameplay actuel et sans transformer le système en usine lourde.
+
+Important :
+on ne doit pas tout arrêter ni tout supprimer.
+
+On travaille en parallèle.
+
+──────────────────────────────
+CHEMIN A — Nouvelle fabrication
+──────────────────────────────
+
+Nouvelle structure de génération :
+
+* rotation contrôlée
+* génération simple par bloc complet
+* bloc complet question/réponses/Saviez-vous
+* review_bank
+* validation/correction
+* ready_bank
+
+Le système doit conserver la philosophie qualitative de l’ancien Solo :
+
+AIQuestionGeneratorService
+→ QUESTION_API_URL/generate-question
+→ retour IA cohérent
+→ bloc complet naturel
+
+Chaque bloc généré doit contenir dès le départ :
+
+* question
+* réponses
+* bonne réponse
+* Saviez-vous / funFact
+* domaine
+* sous-domaine
+* depth
+* type de question : QCM / Vrai-Faux
+* type cognitif :
+
+  * recognition
+  * reasoning
+  * deceptive_trap
+* style/couleur pédagogique
+* intention du bloc
+
+Le Saviez-vous doit être généré avec la question.
+Pas ajouté après.
+
+──────────────────────────────
+CHEMIN B — Ancienne banque existante
+──────────────────────────────
+
+L’ancienne banque n’est PAS supprimée.
+
+L’ancienne banque :
+
+* est auditée automatiquement
+* est corrigée progressivement
+* est revalidée
+* est migrée vers ready_bank
+
+Corrections à prévoir :
+
+* Saviez-vous fades
+* longueurs gameplay
+* erreurs factuelles
+* incohérences réponses
+* cognitive mismatch
+* domaine/depth incorrects
+* problèmes traduction
+* doublons
+* questions trop similaires
+
+Objectif :
+les deux chemins alimentent la même banque finale :
+ready_bank.
+
+Important :
+
+* ancienne banque ≠ supprimée
+* ancienne banque ≠ dupliquée
+* ancienne banque = corrigée progressivement
+
+──────────────────────────────
+STRUCTURE READY_BANK
+──────────────────────────────
+
+Gameplay doit consommer seulement :
+
+* ready_bank
+
+Jamais :
+
+* review_bank
+* correction_needed
+* correction_in_progress
+* blocked_critical
+* duplicate_blocked
+
+Chaque bloc ready_bank doit être filtrable/indexé par :
+
+* domaine
+* sous-domaine
+* depth
+* mode compatible : Solo / Duo / MJ / Ligue
+* type question : QCM / Vrai-Faux
+* type cognitif
+* langue
+* présence funFact validé
+* qualité funFact
+* longueur question
+* longueur réponses
+* difficulté réelle
+* âge/niveau visé
+* usage_count
+* last_used_at
+* concept_id
+* concept_family
+
+──────────────────────────────
+RÈGLE GÉNÉRAL
+──────────────────────────────
+
+Général n’est PAS un domaine fabriqué.
+
+Les 8 domaines réels sont :
+
+* Géographie
+* Histoire
+* Faune
+* Art
+* Sport
+* Cinéma
+* Cuisine
+* Science
+
+Général = mode de sélection équilibrée qui pige dans ces 8 domaines.
+
+Le worker ne doit jamais générer :
+domain = general
+
+Gameplay Général :
+
+* varie les domaines
+* évite répétitions
+* respecte depth
+* respecte QCM/VF
+* respecte cognitive_type
+* sert seulement ready_bank
+
+──────────────────────────────
+ROTATION CONTRÔLÉE
+──────────────────────────────
+
+La fabrication doit fonctionner par petits lots.
+
+Jamais :
+
+* 50 blocs identiques d’un coup
+* saturation mono-domaine
+
+Rotation :
+
+1. domaine
+2. type question
+3. type cognitif
+4. depth
+5. recommencer
+
+Batch recommandé :
+5 blocs maximum par variante avant rotation.
+
+Exemple :
+
+* Géographie / depth4 / QCM / recognition / 5 blocs
+* Histoire / depth4 / QCM / recognition / 5 blocs
+* Faune / depth4 / QCM / recognition / 5 blocs
+  ...
+  Puis :
+* Vrai/Faux
+  Puis :
+* reasoning
+  Puis :
+* deceptive_trap
+  Puis :
+* depth suivant
+
+Le worker doit toucher progressivement :
+
+* les 8 domaines
+* les depths Solo
+* les depths Boss
+* QCM
+* Vrai/Faux
+* les 3 cognitifs
+
+──────────────────────────────
+REGISTRE CENTRAL ANTI-DOUBLON
+──────────────────────────────
+
+Enjeu critique :
+éviter les doublons entre :
+
+* anciens blocs
+* nouveaux blocs
+* review_bank
+* correction_needed
+* ready_bank
+* blocked_critical
+
+Créer un registre anti-doublon central léger.
+
+Le registre doit vérifier :
+
+* concept_id
+* concept_family
+* domaine
+* depth
+* type cognitif
+* type question
+* bonne réponse
+* similarité texte question
+* similarité Saviez-vous
+* hash normalisé question
+* hash normalisé bonne réponse
+* usage existant dans toute la banque
+
+──────────────────────────────
+WORKFLOW ANTI-DOUBLON
+──────────────────────────────
+
+1. Avant génération
+
+* choisir segment
+* charger concepts/families déjà présents
+* envoyer concepts interdits au prompt IA
+
+2. Après génération
+
+* calcul hash question
+* calcul hash bonne réponse
+* vérifier concept_id
+* vérifier concept_family
+* vérifier similarité question
+* vérifier similarité Saviez-vous
+
+Résultats :
+
+* doublon fort → rejet/régénération
+* doublon proche → correction_needed
+* unique → review_bank
+
+3. Ancienne banque
+
+* audit automatique
+* doublon exact → garder meilleur bloc
+* doublon proche → corriger angle ou bloquer
+* OK → ready_bank
+
+Important :
+ne pas supprimer au départ.
+
+Statuts possibles :
+
+* review_bank
+* correction_needed
+* correction_in_progress
+* ready_bank
+* blocked_critical
+* duplicate_blocked
+
+──────────────────────────────
+CONCEPTUALISATION AVANCÉE DES BLOCS
+──────────────────────────────
+
+1. Empreinte conceptuelle
+
+Chaque bloc doit avoir :
+
+* sujet principal
+* angle de question
+* réponse cible
+* piège/distracteur principal
+
+2. Angle de question
+
+Deux blocs peuvent parler du même sujet seulement si l’angle est différent.
+
+Même sujet + même angle = doublon.
+
+3. Score Saviez-vous
+
+Chaque Saviez-vous reçoit un score :
+
+* fade
+* correct
+* intéressant
+* mémorable
+
+Objectif gameplay :
+servir surtout des Saviez-vous intéressants ou mémorables.
+
+4. Empreinte pédagogique
+
+Chaque bloc doit identifier :
+
+* connaissance
+* raisonnement
+* piège évité
+* notion principale
+
+5. Budget de répétition
+
+Limiter combien de fois un même concept_family peut revenir selon :
+
+* domaine
+* depth
+* type cognitif
+* type question
+
+Objectif :
+éviter une banque massive mais répétitive.
+
+──────────────────────────────
+VALIDATION AUTOMATIQUE LÉGÈRE
+──────────────────────────────
+
+Le système doit vérifier :
+
+* bonne réponse cohérente
+* correct_answer_key cohérent
+* Saviez-vous cohérent
+* Saviez-vous ne confirme pas distracteur
+* Saviez-vous non fade
+* Saviez-vous non tautologique
+* longueurs gameplay
+* domaine/depth respectés
+* type cognitif respecté
+* redondance globale
+
+Correction :
+
+* corriger le même bloc
+* garder même ID
+* garder même intention
+* garder même style pédagogique
+* relancer validation
+
+Si problème grave :
+
+* blocked_critical
+
+──────────────────────────────
+TRADUCTION ET REVALIDATION
+──────────────────────────────
+
+Après validation source :
+
+* traduire toutes les langues
+* conserver même sens
+* conserver même bonne réponse
+* conserver même niveau
+* conserver même logique cognitive
+
+Puis :
+
+* revalidation multilingue
+* correct_answer_key
+* longueurs
+* Saviez-vous
+* cohérence globale
+
+──────────────────────────────
+CONTRAINTES ABSOLUES
+──────────────────────────────
+
+* pas d’IA live gameplay
+* pas de duplication physique banque
+* même bloc = même ID
+* pas de big-bang
+* migration progressive
+* ne pas casser Solo/Duo/MJ/Ligue
+* ne pas casser worker/runtime existants
+* ne pas alourdir inutilement l’ancien Solo
+
+──────────────────────────────
+AUDIT DEMANDÉ AVANT PATCH
+──────────────────────────────
+
+Méthode obligatoire :
+GREP → SLICE → ANALYSE.
+
+Retour attendu :
+
+* comment faire fonctionner les deux chemins en parallèle
+* où placer le registre anti-doublon
+* quels champs/index ajouter
+* comment éviter d’alourdir la génération
+* comment comparer nouveaux blocs et ancienne banque
+* comment corriger progressivement l’ancienne banque
+* comment vider progressivement vers ready_bank
+* ordre SAFE des patchs
+* impacts Solo
+* impacts Duo
+* impacts MJ
+* impacts Ligue
+* risques worker/runtime
+* stratégie migration progressive
+
+Aucun patch maintenant.
+Analyse seulement.
