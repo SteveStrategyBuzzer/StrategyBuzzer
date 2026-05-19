@@ -23,6 +23,9 @@ class QuestionTranslation extends Model
         'correct_answer_key',
         'explanation',
         'saviez_vous',
+        'hash_question',
+        'hash_answer',
+        'funfact_score',
     ];
 
     public function group(): BelongsTo

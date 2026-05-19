@@ -26,20 +26,34 @@ class QuestionGroup extends Model
         'validated',
         'usage_count',
         'last_used_at',
+        'post_review_status',
+        'question_intent_id',
+        'question_intent_key',
+        'subject',
+        'angle_large',
+        'micro_angle',
+        'readable_code',
+        'correction_notes',
     ];
 
     protected $casts = [
-        'difficulty_level' => 'integer',
-        'boss_level' => 'integer',
-        'difficulty_depth' => 'integer',
-        'validated' => 'boolean',
-        'usage_count' => 'integer',
-        'last_used_at' => 'datetime',
+        'difficulty_level'   => 'integer',
+        'boss_level'         => 'integer',
+        'difficulty_depth'   => 'integer',
+        'validated'          => 'boolean',
+        'usage_count'        => 'integer',
+        'last_used_at'       => 'datetime',
+        'question_intent_id' => 'integer',
     ];
 
     public function translations(): HasMany
     {
         return $this->hasMany(QuestionTranslation::class, 'question_group_id');
+    }
+
+    public function questionIntent()
+    {
+        return $this->belongsTo(\App\Models\QuestionIntent::class, 'question_intent_id');
     }
 
     public function translationFor(string $language): ?QuestionTranslation

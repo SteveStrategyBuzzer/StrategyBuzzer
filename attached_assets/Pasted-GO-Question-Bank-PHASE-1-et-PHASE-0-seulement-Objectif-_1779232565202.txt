@@ -1,0 +1,287 @@
+GO — Question Bank PHASE -1 et PHASE 0 seulement
+
+Objectif :
+commencer la restructuration réelle de la machine à questions, mais uniquement sur :
+
+* PHASE -1 : créer la structure
+* PHASE 0 : migrer/classer l’ancienne banque vers ready_bank
+
+Ne pas commencer la nouvelle création.
+Ne pas toucher au Question Intent Engine génération 5 variantes encore.
+Ne pas modifier Node/gameplay runtime.
+
+Méthode obligatoire :
+GREP → SLICE → PATCH → VALIDATION.
+
+──────────────────────────────
+PHASE -1 — STRUCTURE
+──────────────────────────────
+
+Créer le contenant propre AVANT de migrer l’ancienne banque.
+
+À faire :
+
+1. Créer la table question_intents
+
+Rôle :
+stocker le noyau cognitif/intention de question.
+
+Champs attendus :
+
+* id
+* intent_key
+* language_source = en
+* domain
+* sub_domain nullable
+* difficulty_depth
+* subject nullable
+* angle_large nullable
+* micro_angle nullable
+* answer_target nullable
+* potential_trap nullable
+* concept_family nullable
+* source nullable
+* timestamps
+
+Important :
+intent_key = cartographie cognitive centrale.
+
+2. Ajouter à question_groups les champs nécessaires
+
+Champs :
+
+* post_review_status nullable
+* question_intent_key nullable
+* question_intent_id nullable
+* subject nullable
+* angle_large nullable
+* micro_angle nullable
+* readable_code nullable
+* correction_notes nullable
+
+Important :
+ne PAS mettre post_review_status = review_bank par défaut sur les blocs existants.
+Les blocs existants sont déjà jouables via validated=true.
+Le backfill Phase 0 décidera ready_bank / blocked / duplicate.
+
+3. Ne PAS ajouter linked_variant_group pour l’instant
+
+Décision :
+question_intent_key sert déjà de groupe logique des variantes.
+
+Donc :
+
+* pas de linked_variant_group maintenant
+* moins de duplication
+* moins de complexité
+* moins de risque de désynchronisation
+
+4. readable_code
+
+readable_code sert uniquement à audit/debug/logs.
+
+Important :
+
+* INDEX oui
+* UNIQUE non
+
+L’ID DB reste l’unicité réelle.
+
+5. Ajouter à question_translations
+
+Champs :
+
+* hash_question nullable
+* hash_answer nullable
+* funFact_score nullable
+
+Important :
+funFact_score = score du Saviez-vous :
+1 = fade
+2 = correct
+3 = intéressant
+4 = mémorable
+
+6. Créer historiques séparés
+
+Créer :
+
+* player_question_history
+* match_question_history
+
+Mais ne pas brancher gameplay encore si ce n’est pas nécessaire en Phase -1.
+
+Ces tables ne doivent PAS vivre dans ready_bank.
+
+──────────────────────────────
+PHASE 0 — MIGRATION ANCIENNE BANQUE
+──────────────────────────────
+
+Objectif :
+traiter l’ancienne banque AVANT toute nouvelle génération.
+
+À faire :
+
+1. Inventaire initial
+
+Confirmer :
+
+* nombre total question_groups
+* nombre validated=true
+* répartition domaines
+* répartition question_type
+* répartition cognitive_type
+* nombre de traductions
+* langues disponibles
+
+2. Backfill post_review_status
+
+Pour les blocs existants :
+
+* validated=true → post_review_status = ready_bank
+* problèmes critiques → blocked_critical
+* doublons exacts confirmés → duplicate_blocked
+
+Ne pas inventer 13 statuts.
+Statuts persistés seulement :
+
+* review_bank
+* correction_needed
+* ready_bank
+* blocked_critical
+* duplicate_blocked
+
+3. Backfill readable_code
+
+Format conseillé :
+DOM-Dxx-TYPE-COG-SUFFIX
+
+Exemples :
+
+* HI-D03-Q-R-12B4C
+* GE-D06-Q-T-A91FD
+* SC-D05-V-RS-8C2E1
+
+Codes :
+
+* GE = Géographie
+* HI = Histoire
+* FA = Faune
+* AR = Art
+* SP = Sport
+* CI = Cinéma
+* CU = Cuisine
+* SC = Science
+
+Type :
+
+* Q = QCM
+* V = Vrai/Faux
+
+Cognitif :
+
+* R = recognition
+* N = reasoning
+* T = deceptive_trap
+* RS = reasoning léger V/F
+
+Important :
+readable_code indexé, mais pas unique obligatoire.
+
+4. Backfill minimal question_intent_key
+
+Ne PAS laisser toute l’ancienne banque avec question_intent_key = NULL.
+
+Même si imparfait, créer une clé approximative minimale avec :
+
+* domain
+* sub_domain si disponible
+* concept_family si disponible
+* cognitive_type
+* correct_answer ou hash_answer
+* question_type si nécessaire
+
+Objectif :
+la future création ne doit pas être aveugle face à l’ancienne banque.
+
+5. Créer question_intents pour l’ancienne banque si possible
+
+Pour chaque question_intent_key reconstruit :
+
+* créer ou trouver question_intents.intent_key
+* relier question_groups.question_intent_id
+* remplir domain, sub_domain, difficulty_depth, concept_family si disponibles
+
+6. Backfill hash_question / hash_answer
+
+Pour chaque traduction :
+
+* hash_question = hash normalisé question_text
+* hash_answer = hash normalisé bonne réponse
+* funFact_score si possible, sinon nullable
+
+7. Swap repository uniquement après backfill
+
+Ne remplacer le filtre :
+validated=true
+par :
+post_review_status='ready_bank'
+
+QUE lorsque :
+
+* post_review_status est rempli
+* ready_bank contient les blocs jouables
+* validation de compte OK
+
+Invariant :
+la banque jouable ne doit jamais se vider.
+
+──────────────────────────────
+INTERDICTIONS
+──────────────────────────────
+
+Ne pas faire maintenant :
+
+* génération nouveaux blocs
+* 5 variantes
+* true_false generation
+* drop validated
+* suppression brutale ancienne banque
+* statuts 13 niveaux
+* linked_variant_group
+* switch gameplay risqué
+* modification Node
+* modification scoring
+* modification phases runtime
+
+──────────────────────────────
+VALIDATION ATTENDUE
+──────────────────────────────
+
+Après PHASE -1 :
+
+* migrations créées
+* php artisan migrate OK
+* php -l fichiers touchés
+* tables/colonnes confirmées
+* aucun changement gameplay
+
+Après PHASE 0 :
+
+* total ready_bank confirmé
+* blocked_critical confirmé
+* duplicate_blocked confirmé
+* aucun bloc jouable perdu
+* repository filtre ready_bank seulement après backfill
+* ancien validated conservé temporairement
+* gameplay encore fonctionnel
+
+Retour attendu :
+
+* commandes exécutées
+* fichiers modifiés
+* migrations créées
+* résultats inventaire
+* counts avant/après
+* risques Solo/Duo/MJ/Ligue
+* confirmation que Phase 1 n’a pas commencé

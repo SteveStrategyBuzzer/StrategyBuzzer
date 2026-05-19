@@ -260,7 +260,15 @@ class QuestionBankRepository
 
         $requireValidated = $filters['require_validated'] ?? true;
         if ($requireValidated) {
-            $query->where('validated', true);
+            // Phase 0+ : prefer post_review_status='ready_bank'.
+            // Fallback to validated=true for blocks not yet backfilled (NULL status).
+            $query->where(function ($q) {
+                $q->where('post_review_status', 'ready_bank')
+                  ->orWhere(function ($q2) {
+                      $q2->whereNull('post_review_status')
+                         ->where('validated', true);
+                  });
+            });
         }
 
         if ($withTranslationJoin && !empty($filters['language'])) {

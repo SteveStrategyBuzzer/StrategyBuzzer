@@ -19,6 +19,8 @@ class QuestionHistory extends Model
         'correct_answer',
         'theme',
         'niveau',
+        'question_intent_key',
+        'question_group_id',
     ];
 
     protected $casts = [

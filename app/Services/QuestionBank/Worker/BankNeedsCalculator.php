@@ -345,7 +345,15 @@ class BankNeedsCalculator
             ->groupBy('qg.difficulty_level', 'qg.boss_level', 'qg.difficulty_depth', 'qg.sub_domain', 'qg.cognitive_type', 'qt.language');
 
         if ($validatedOnly) {
-            $query->where('qg.validated', true);
+            // Phase 0+ : prefer post_review_status='ready_bank'.
+            // Fallback to validated=true for blocks not yet backfilled (NULL status).
+            $query->where(function ($q) {
+                $q->where('qg.post_review_status', 'ready_bank')
+                  ->orWhere(function ($q2) {
+                      $q2->whereNull('qg.post_review_status')
+                         ->where('qg.validated', true);
+                  });
+            });
         }
 
         $rows = $query->get();
