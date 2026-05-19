@@ -1,0 +1,240 @@
+Début restructuration — Machine à questions StrategyBuzzer
+
+Objectif :
+démarrer la restructuration de la Question Bank selon la logique finale validée.
+
+Aucun patch massif.
+Méthode obligatoire :
+GREP → SLICE → ANALYSE → PATCH → VALIDATION.
+
+──────────────────────────────
+PRINCIPE CENTRAL
+──────────────────────────────
+
+Replit = source de vérité.
+
+La VM reçoit seulement ce qui fonctionne.
+
+On restructure proprement dans Replit.
+
+La machine à questions doit fonctionner par phases de concentration IA :
+une seule phase active à la fois.
+
+Pas de création pendant validation.
+Pas de traduction pendant création.
+Pas de pipeline parallèle.
+
+──────────────────────────────
+PHASE 0 — BANQUE EXISTANTE
+──────────────────────────────
+
+Avant toute nouvelle création :
+traiter l’ancienne banque.
+
+Objectif :
+vider/classer l’existant vers ready_bank.
+
+Flow :
+ancienne banque
+→ inventaire
+→ catégorisation
+→ reconstruction métadonnées manquantes
+→ validation/correction
+→ traduction/revalidation si nécessaire
+→ ready_bank
+ou
+→ blocked_critical
+ou
+→ duplicate_blocked
+
+Aucune nouvelle génération avant que l’ancien stock soit classé.
+
+──────────────────────────────
+PHASE 1 — CRÉATION EN
+──────────────────────────────
+
+Créer de nouveaux blocs seulement après Phase 0.
+
+Ordre strict de fabrication d’un bloc :
+
+1. language = EN
+2. domain
+3. sub_domain secondaire si utile
+4. depth
+5. question_type
+6. cognitive_type
+7. question
+8. answers
+9. correct_answer
+10. correct_answer_key
+11. Saviez-vous / funFact
+12. funFact_score
+
+Le Saviez-vous doit être généré avec la question, pas séparément.
+
+──────────────────────────────
+VARIANTES FINALES
+──────────────────────────────
+
+On utilise 5 variantes, pas 6.
+
+QCM :
+
+* qcm / recognition
+* qcm / reasoning
+* qcm / deceptive_trap
+
+Vrai/Faux :
+
+* true_false / recognition
+* true_false / reasoning léger naturel
+
+Interdit :
+
+* true_false / deceptive_trap
+
+──────────────────────────────
+QUESTION INTENT ENGINE
+──────────────────────────────
+
+Créer un noyau d’intention.
+
+Un même noyau peut produire plusieurs variantes.
+
+Chaque variante a son propre ID de bloc.
+
+Mais les variantes partagent :
+
+* question_intent_key
+* concept_family
+* noyau cognitif
+
+question_intent_key sert à :
+
+* cartographie cognitive
+* variantes liées
+* anti-répétition perçue
+* sélection gameplay
+* historique joué
+
+Ce n’est pas seulement un anti-doublon technique.
+
+──────────────────────────────
+READY_BANK
+──────────────────────────────
+
+ready_bank = inventaire final jouable seulement.
+
+ready_bank ne corrige pas.
+ready_bank ne valide pas.
+ready_bank ne contient pas de statut temporaire.
+
+Un bloc est dans ready_bank seulement s’il est jouable.
+
+Chaque bloc ready_bank :
+
+* a un ID unique
+* contient toutes ses traductions
+* le joueur voit la langue selon son profil/session
+
+La langue ne crée pas un nouveau bloc.
+
+ready_bank doit rester simple à chercher :
+
+* id
+* language availability
+* domain
+* depth
+* question_type
+* cognitive_type
+* question_intent_key
+* concept_family
+* funFact_score
+
+Les textes restent dans question_translations ou équivalent.
+
+──────────────────────────────
+HISTORIQUE JOUÉ
+──────────────────────────────
+
+L’historique joué ne doit PAS être dans ready_bank.
+
+Prévoir séparé :
+
+* match_question_history
+* player_question_history
+
+But :
+éviter dans le même match ou trop récemment :
+
+* même question
+* même question_intent_key
+* même expérience cognitive
+
+Objectif :
+diversité perçue joueur.
+
+──────────────────────────────
+STATUTS SIMPLES
+──────────────────────────────
+
+Ne pas utiliser 13 statuts persistés.
+
+Statuts suffisants :
+
+* review_bank
+* correction_needed
+* ready_bank
+* blocked_critical
+* duplicate_blocked
+
+Bank 1 / Bank 2 sont des étapes logiques, pas une usine de statuts.
+
+──────────────────────────────
+PHASES FUTURES
+──────────────────────────────
+
+Phase 1 :
+création EN → validation structurelle → review_bank
+
+Phase 2 :
+validation cognitive
+→ factualité
+→ doublons
+→ gameplay
+→ Saviez-vous
+→ correction si nécessaire
+→ prêt pour traduction
+
+Phase 3 :
+traduction
+→ revalidation multilingue
+→ correction traduction si nécessaire
+→ ready_bank
+
+Phase 4 :
+nouvelle rotation seulement quand la phase active est terminée.
+
+──────────────────────────────
+PREMIÈRE ACTION
+──────────────────────────────
+
+Ne pas coder directement.
+
+Commencer par :
+GREP → SLICE → ANALYSE.
+
+Retour attendu :
+
+1. tables actuelles concernées
+2. champs manquants exacts
+3. migrations minimales nécessaires
+4. fichiers à modifier
+5. ordre SAFE des patchs
+6. impact Solo
+7. impact Duo
+8. impact MJ
+9. impact Ligue
+10. stratégie Phase 0 pour vider l’ancienne banque vers ready_bank
+
+Aucun patch sans validation.
