@@ -558,7 +558,7 @@ class DuoController extends Controller
 
     public function getRankings(Request $request)
     {
-        $division = $request->input('division', 'bronze');
+        $division = $request->input('division', 'novice');
         $rankings = $this->divisionService->getRankingsForDivision('duo', $division);
 
         return response()->json([
@@ -1139,8 +1139,8 @@ class DuoController extends Controller
         $playerStats = PlayerDuoStat::firstOrCreate(['user_id' => $user->id], ['level' => 0]);
         $opponentStats = PlayerDuoStat::firstOrCreate(['user_id' => $opponent->id], ['level' => 0]);
 
-        $playerDivision = $this->divisionService->getOrCreateDivision($user, 'duo')->division ?? 'Bronze';
-        $opponentDivision = $this->divisionService->getOrCreateDivision($opponent, 'duo')->division ?? 'Bronze';
+        $playerDivision = $this->divisionService->getOrCreateDivision($user, 'duo')->division ?? 'Novice';
+        $opponentDivision = $this->divisionService->getOrCreateDivision($opponent, 'duo')->division ?? 'Novice';
 
         $theme = $gameState['theme'] ?? 'Culture générale';
         $nbQuestions = $gameState['nb_questions'] ?? 10;
@@ -2517,23 +2517,20 @@ class DuoController extends Controller
     public function joinQueue(Request $request)
     {
         $request->validate([
-            'target_division' => 'required|string|in:bronze,argent,or,platine,diamant,legende',
+            'target_division' => 'required|string|in:novice,intermediaire,expert',
         ]);
 
         $user = Auth::user();
         $targetDivision = $request->target_division;
 
         $division = $this->divisionService->getOrCreateDivision($user, 'duo');
-        $currentDivision = $division->division ?? 'bronze';
+        $currentDivision = $division->division ?? 'novice';
 
-        $divisions = ['bronze', 'argent', 'or', 'platine', 'diamant', 'legende'];
+        $divisions = ['novice', 'intermediaire', 'expert'];
         $divisionFees = [
-            'bronze' => 0,
-            'argent' => 0,
-            'or' => 50,
-            'platine' => 100,
-            'diamant' => 200,
-            'legende' => 500
+            'novice'        => 0,
+            'intermediaire' => 0,
+            'expert'        => 50,
         ];
 
         $currentIndex = array_search($currentDivision, $divisions);
@@ -2613,7 +2610,7 @@ class DuoController extends Controller
     public function getQueueOpponents(Request $request)
     {
         $request->validate([
-            'target_division' => 'required|string|in:bronze,argent,or,platine,diamant,legende',
+            'target_division' => 'required|string|in:novice,intermediaire,expert',
         ]);
 
         $user = Auth::user();
@@ -2661,7 +2658,7 @@ class DuoController extends Controller
     {
         $request->validate([
             'opponent_id' => 'required|integer|exists:users,id',
-            'target_division' => 'required|string|in:bronze,argent,or,platine,diamant,legende',
+            'target_division' => 'required|string|in:novice,intermediaire,expert',
         ]);
 
         $user = Auth::user();
@@ -2704,16 +2701,13 @@ class DuoController extends Controller
         }
 
         $division = $this->divisionService->getOrCreateDivision($user, 'duo');
-        $currentDivision = $division->division ?? 'bronze';
+        $currentDivision = $division->division ?? 'novice';
 
-        $divisions = ['bronze', 'argent', 'or', 'platine', 'diamant', 'legende'];
+        $divisions = ['novice', 'intermediaire', 'expert'];
         $divisionFees = [
-            'bronze' => 0,
-            'argent' => 0,
-            'or' => 50,
-            'platine' => 100,
-            'diamant' => 200,
-            'legende' => 500
+            'novice'        => 0,
+            'intermediaire' => 0,
+            'expert'        => 50,
         ];
 
         $currentIndex = array_search($currentDivision, $divisions);

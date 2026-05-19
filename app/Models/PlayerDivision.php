@@ -30,15 +30,18 @@ class PlayerDivision extends Model
     public function getDivisionName(): string
     {
         $divisions = [
-            'bronze' => 'Bronze',
-            'argent' => 'Argent',
-            'or' => 'Or',
-            'platine' => 'Platine',
-            'diamant' => 'Diamant',
-            'legende' => 'Légende',
+            'bronze'        => 'Bronze',
+            'argent'        => 'Argent',
+            'or'            => 'Or',
+            'platine'       => 'Platine',
+            'diamant'       => 'Diamant',
+            'legende'       => 'Légende',
+            'novice'        => 'Novice',
+            'intermediaire' => 'Intermédiaire',
+            'expert'        => 'Expert',
         ];
 
-        return $divisions[$this->division] ?? 'Bronze';
+        return $divisions[$this->division] ?? ucfirst($this->division ?? 'Novice');
     }
 
     public function addPoints(int $points): void
@@ -51,6 +54,11 @@ class PlayerDivision extends Model
 
     public function calculateDivision(int $totalPoints): string
     {
+        if ($this->mode === 'duo') {
+            if ($totalPoints < 100) return 'novice';
+            if ($totalPoints < 200) return 'intermediaire';
+            return 'expert';
+        }
         if ($totalPoints < 100) return 'bronze';
         if ($totalPoints < 200) return 'argent';
         if ($totalPoints < 300) return 'or';

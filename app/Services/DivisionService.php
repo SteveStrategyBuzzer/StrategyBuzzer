@@ -21,6 +21,22 @@ class DivisionService
         'legende' => ['min' => 500, 'max' => PHP_INT_MAX, 'name' => 'Légende', 'coins' => 630],
     ];
 
+    const DIVISIONS_DUO = [
+        'novice'        => ['min' => 0,   'max' => 99,           'name' => 'Novice',        'coins' => 10],
+        'intermediaire' => ['min' => 100, 'max' => 199,          'name' => 'Intermédiaire', 'coins' => 30],
+        'expert'        => ['min' => 200, 'max' => PHP_INT_MAX,  'name' => 'Expert',        'coins' => 70],
+    ];
+
+    private function getDivisionsForMode(string $mode): array
+    {
+        return $mode === 'duo' ? self::DIVISIONS_DUO : self::DIVISIONS;
+    }
+
+    private function allDivisionsMap(): array
+    {
+        return self::DIVISIONS + self::DIVISIONS_DUO;
+    }
+
     const TEMP_ACCESS_MULTIPLIER = 2;
     const TEMP_ACCESS_DURATION_HOURS = 6;
     const EFFICIENCY_THRESHOLD_PERCENT = 15;
@@ -38,7 +54,7 @@ class DivisionService
         return PlayerDivision::create([
             'user_id' => $user->id,
             'mode' => $mode,
-            'division' => 'bronze',
+            'division' => array_key_first($this->getDivisionsForMode($mode)),
             'points' => 0,
             'level' => 1,
             'initial_efficiency' => $initialEfficiency ?? 0,
@@ -68,13 +84,14 @@ class DivisionService
         string $opponentDivision,
         float $myEfficiency,
         float $opponentEfficiency,
-        bool $isTemporaryAccess = false
+        bool $isTemporaryAccess = false,
+        string $mode = 'ligue'
     ): string {
         if ($isTemporaryAccess) {
             return 'stronger';
         }
 
-        $divisionOrder = array_keys(self::DIVISIONS);
+        $divisionOrder = array_keys($this->getDivisionsForMode($mode));
         $myIndex = array_search($myDivision, $divisionOrder);
         $oppIndex = array_search($opponentDivision, $divisionOrder);
 
@@ -106,25 +123,27 @@ class DivisionService
 
         $division->points = max(0, $division->points + $pointsEarned);
         $division->level = $newLevel;
-        $division->division = $this->calculateDivisionFromPoints($division->points);
+        $division->division = $this->calculateDivisionFromPoints($division->points, $mode);
         $division->save();
 
         return $division;
     }
 
-    public function calculateDivisionFromPoints(int $points): string
+    public function calculateDivisionFromPoints(int $points, string $mode = 'ligue'): string
     {
-        foreach (self::DIVISIONS as $key => $range) {
+        $divisions = $this->getDivisionsForMode($mode);
+        foreach ($divisions as $key => $range) {
             if ($points >= $range['min'] && $points <= $range['max']) {
                 return $key;
             }
         }
-        return 'bronze';
+        return array_key_first($divisions);
     }
 
     public function getDivisionName(string $division): string
     {
-        return self::DIVISIONS[$division]['name'] ?? 'Bronze';
+        $all = $this->allDivisionsMap();
+        return $all[$division]['name'] ?? ucfirst($division);
     }
 
     public function getRankingsForDivision(string $mode, string $division, int $limit = 100): array
@@ -170,12 +189,14 @@ class DivisionService
 
     public function getVictoryCoins(string $division): int
     {
-        return self::DIVISIONS[$division]['coins'] ?? 10;
+        $all = $this->allDivisionsMap();
+        return $all[$division]['coins'] ?? 10;
     }
 
     public function getTemporaryAccessCost(string $targetDivision): int
     {
-        $coins = self::DIVISIONS[$targetDivision]['coins'] ?? 10;
+        $all = $this->allDivisionsMap();
+        $coins = $all[$targetDivision]['coins'] ?? 10;
         return $coins * self::TEMP_ACCESS_MULTIPLIER;
     }
 
@@ -213,9 +234,9 @@ class DivisionService
         ];
     }
 
-    public function getNextDivision(string $currentDivision): ?string
+    public function getNextDivision(string $currentDivision, string $mode = 'ligue'): ?string
     {
-        $divisions = array_keys(self::DIVISIONS);
+        $divisions = array_keys($this->getDivisionsForMode($mode));
         $currentIndex = array_search($currentDivision, $divisions);
 
         if ($currentIndex === false || $currentIndex >= count($divisions) - 1) {
@@ -343,7 +364,8 @@ class DivisionService
 
     public function getMinPointsForDivision(string $division): int
     {
-        return self::DIVISIONS[$division]['min'] ?? 0;
+        $all = $this->allDivisionsMap();
+        return $all[$division]['min'] ?? 0;
     }
 
     public function updateDivisionPointsWithFloor(PlayerDivision $playerDivision, int $pointsChange): PlayerDivision
@@ -357,7 +379,7 @@ class DivisionService
             $playerDivision->points = max(0, $newPoints);
         }
 
-        $playerDivision->division = $this->calculateDivisionFromPoints($playerDivision->points);
+        $playerDivision->division = $this->calculateDivisionFromPoints($playerDivision->points, $playerDivision->mode ?? 'ligue');
         $playerDivision->save();
 
         return $playerDivision;
@@ -365,7 +387,8 @@ class DivisionService
 
     public function demotePlayer(PlayerDivision $playerDivision): PlayerDivision
     {
-        $divisionOrder = array_keys(self::DIVISIONS);
+        $divisionsConfig = $this->getDivisionsForMode($playerDivision->mode ?? 'ligue');
+        $divisionOrder = array_keys($divisionsConfig);
         $currentIndex = array_search($playerDivision->division, $divisionOrder);
 
         if ($currentIndex === false || $currentIndex <= 0) {
@@ -374,7 +397,7 @@ class DivisionService
 
         $newDivision = $divisionOrder[$currentIndex - 1];
         $playerDivision->division = $newDivision;
-        $playerDivision->points = self::DIVISIONS[$newDivision]['max'];
+        $playerDivision->points = $divisionsConfig[$newDivision]['max'];
         $playerDivision->save();
 
         return $playerDivision;

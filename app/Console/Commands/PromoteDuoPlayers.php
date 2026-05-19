@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Log;
 class PromoteDuoPlayers extends Command
 {
     protected $signature = 'duo:promote-weekly {--dry-run : Run without making changes}';
-    protected $description = 'Promote top 10 Bronze players to Silver based on weekly efficiency';
+    protected $description = 'Promote top 10 Novice players to Intermediaire based on weekly efficiency';
 
     public function handle()
     {
@@ -19,12 +19,12 @@ class PromoteDuoPlayers extends Command
         $this->info('Starting weekly Duo promotion...');
         
         $bronzePlayers = PlayerDivision::where('mode', 'duo')
-            ->where('division', 'bronze')
+            ->where('division', 'novice')
             ->with('user')
             ->get();
         
         if ($bronzePlayers->isEmpty()) {
-            $this->info('No Bronze players found.');
+            $this->info('No Novice players found.');
             return 0;
         }
         
@@ -54,7 +54,7 @@ class PromoteDuoPlayers extends Command
         
         $topPlayers = array_slice($playersWithEfficiency, 0, 10);
         
-        $this->info('Top 10 Bronze players by efficiency:');
+        $this->info('Top 10 Novice players by efficiency:');
         $this->table(
             ['Rank', 'Player', 'Efficiency', 'Matches'],
             array_map(function ($player, $index) {
@@ -74,10 +74,10 @@ class PromoteDuoPlayers extends Command
         
         $promoted = 0;
         foreach ($topPlayers as $player) {
-            $player['division']->division = 'argent';
+            $player['division']->division = 'intermediaire';
             $player['division']->save();
             
-            Log::info('Player promoted to Argent', [
+            Log::info('Player promoted to Intermediaire', [
                 'user_id' => $player['user']->id,
                 'efficiency' => $player['global_efficiency'],
             ]);
@@ -85,7 +85,7 @@ class PromoteDuoPlayers extends Command
             $promoted++;
         }
         
-        $this->info("Promoted {$promoted} players from Bronze to Argent.");
+        $this->info("Promoted {$promoted} players from Novice to Intermediaire.");
         
         return 0;
     }

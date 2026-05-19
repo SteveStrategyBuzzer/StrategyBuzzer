@@ -116,14 +116,14 @@ return [
     */
     'mode_mappings' => [
         'duo' => [
-            'novice'        => ['type' => 'solo_range', 'levels' => [31, 39]],
-            'intermediaire' => ['type' => 'solo_range', 'levels' => [51, 59]],
-            'expert'        => ['type' => 'solo_range', 'levels' => [71, 79]],
+            'novice'        => ['type' => 'solo_range', 'levels' => [1,  39], 'depth_range' => [3, 6]],
+            'intermediaire' => ['type' => 'solo_range', 'levels' => [21, 59], 'depth_range' => [5, 7]],
+            'expert'        => ['type' => 'solo_range', 'levels' => [40, 79], 'depth_range' => [6, 9]],
         ],
         'mj_auto' => [
-            'novice'        => ['type' => 'solo_range', 'levels' => [31, 39]],
-            'intermediaire' => ['type' => 'solo_range', 'levels' => [51, 59]],
-            'expert'        => ['type' => 'solo_range', 'levels' => [71, 79]],
+            'novice'        => ['type' => 'solo_range', 'levels' => [1,  39], 'depth_range' => [3, 6]],
+            'intermediaire' => ['type' => 'solo_range', 'levels' => [21, 59], 'depth_range' => [5, 7]],
+            'expert'        => ['type' => 'solo_range', 'levels' => [40, 79], 'depth_range' => [6, 9]],
         ],
         'ligue' => [
             'bronze'  => ['type' => 'boss', 'level' => 10],

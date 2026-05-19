@@ -2325,7 +2325,7 @@ class SoloController extends Controller
                 'max_deficit_recovered' => $maxDeficitRecovered,
                 'user_level'            => $user->level ?? 0,
                 'user_coins'            => $user->competence_coins ?? 0,
-                'division'              => 'bronze',
+                'division'              => 'novice',
             ];
 
             $questService->fireMatchEndQuests($user, 'solo', $questContext);
@@ -2608,7 +2608,7 @@ class SoloController extends Controller
                 'boss_defeated'   => false,
                 'user_level'      => $user->level ?? 0,
                 'user_coins'      => $user->competence_coins ?? 0,
-                'division'        => 'bronze',
+                'division'        => 'novice',
             ]);
         }
 

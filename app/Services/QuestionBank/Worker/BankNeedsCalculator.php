@@ -453,7 +453,9 @@ class BankNeedsCalculator
         foreach ($config['mode_mappings'] as $mode => $divisions) {
             foreach ($divisions as $division => $target) {
                 if ($target['type'] === 'solo_range') {
-                    $baseRange = $this->depthRangeForSoloRange($target['levels'], $config);
+                    $baseRange = isset($target['depth_range'])
+                        ? $target['depth_range']
+                        : $this->depthRangeForSoloRange($target['levels'], $config);
                     $cogMix    = $config['student_cognitive_mix'];
                     foreach (range($baseRange[0], $baseRange[1]) as $depth) {
                         yield [
