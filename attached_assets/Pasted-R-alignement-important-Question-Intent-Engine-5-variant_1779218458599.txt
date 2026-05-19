@@ -1,0 +1,137 @@
+Réalignement important — Question Intent Engine + 5 variantes
+
+Je veux corriger/compléter l’orientation précédente.
+
+On ne veut pas simplement générer 5 variantes indépendantes.
+
+On veut créer un noyau d’intention de question, puis exploiter ce noyau en variantes contrôlées.
+
+Structure logique :
+
+1. Créer un noyau EN
+   Le noyau doit contenir :
+
+* langue source EN
+* domaine
+* sous-domaine
+* depth
+* subject
+* angle_large
+* micro_angle
+* question_intent_key
+* réponse centrale / answer_target
+* piège potentiel si applicable
+* Saviez-vous / funFact lié au noyau
+
+2. Créer ensuite les variantes exploitables
+   À partir du même noyau, générer jusqu’à 5 variantes finales :
+
+QCM :
+
+1. qcm / recognition
+2. qcm / reasoning
+3. qcm / deceptive_trap
+
+Vrai/Faux :
+4. true_false / recognition
+5. true_false / reasoning léger naturel
+
+Important :
+ne PAS générer true_false / deceptive_trap officiel.
+
+Raison :
+le V/F peut faire du recognition et du reasoning léger naturel, mais un V/F deceptive_trap devient trop souvent :
+
+* formulation cheap
+* piège de wording
+* ambiguïté artificielle
+* question frustrante
+
+Donc :
+
+* QCM porte les vrais pièges cognitifs grâce aux distracteurs
+* V/F sert à recognition directe ou reasoning léger naturel
+
+3. Les variantes ne sont pas des doublons automatiques
+   Même question_intent_key + question_type différent = variante liée, pas doublon.
+
+Exemple :
+question_intent_key = canada_population_province_rank_2
+
+QCM :
+Quelle est la deuxième province la plus peuplée du Canada ?
+
+V/F :
+Le Québec est la deuxième province la plus peuplée du Canada.
+
+Ces deux blocs peuvent exister dans ready_bank, mais doivent être liés dans la cartographie.
+
+4. Cartographie ready_bank
+   ready_bank doit savoir que ces blocs sont liés par :
+
+* question_intent_key
+* linked_variant_group
+* subject
+* angle_large
+* micro_angle
+* question_type
+* cognitive_type
+
+Règle gameplay :
+
+* ne pas servir deux variantes liées dans le même match
+* éviter de resservir une variante liée trop proche au même joueur
+* mais autoriser ces variantes dans la banque mondiale
+
+5. Anti-doublon corrigé
+   Même question_intent_key + même question_type + même cognitive_type = doublon probable.
+
+Même question_intent_key + question_type différent = variante liée acceptable.
+
+Même subject + angle_large seulement = PAS suffisant pour bloquer.
+Il faut regarder :
+
+* micro_angle
+* question_intent_key
+* answer_target
+* expérience cognitive
+
+6. Structure de génération
+   On ne veut PAS :
+   5 créations totalement indépendantes.
+
+On veut :
+1 noyau cognitif cohérent
+→ variantes générées à partir du noyau
+→ chaque variante devient un bloc distinct avec son propre type question/cognitive_type
+→ toutes les variantes gardent le même question_intent_key / linked_variant_group
+
+7. Attention qualité
+   Les variantes doivent être de vraies variantes, pas des reformulations faibles.
+
+QCM recognition :
+question directe.
+
+QCM reasoning :
+demande réflexion/logique.
+
+QCM deceptive_trap :
+vrai piège avec distracteurs plausibles.
+
+V/F recognition :
+fait clair à reconnaître.
+
+V/F reasoning :
+énoncé qui demande une petite vérification logique ou une correction mentale propre.
+
+8. Mise à jour demandée
+   Réviser l’audit/proposition Question Bank avec cette logique :
+   Question Intent Engine
+   → noyau EN
+   → 5 variantes contrôlées
+   → cartographie des variantes liées
+   → ready_bank
+   → sélection gameplay qui évite répétition perçue
+
+Aucun patch maintenant.
+GREP → SLICE → ANALYSE seulement.

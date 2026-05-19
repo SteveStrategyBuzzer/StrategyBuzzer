@@ -1,0 +1,350 @@
+Correction architecture finale — ready_bank, langues, variantes et historique joué
+
+Important :
+réalignement architecture Question Bank avant codage.
+
+Aucun patch maintenant.
+GREP → SLICE → ANALYSE seulement.
+
+──────────────────────────────
+
+1. READY_BANK — RÔLE EXACT
+   ──────────────────────────────
+
+ready_bank ne réfléchit pas.
+ready_bank ne corrige pas.
+ready_bank ne valide pas.
+
+ready_bank = inventaire final jouable uniquement.
+
+Donc :
+
+* seulement les blocs finalisés
+* seulement les blocs validés
+* seulement les blocs officiellement jouables
+
+Tout ce qui est :
+
+* correction_needed
+* blocked_critical
+* duplicate_blocked
+* validation_in_progress
+* translation_pending
+
+reste dans le pipeline AVANT ready_bank.
+
+ready_bank ne contient PAS :
+
+* états temporaires
+* logique de correction
+* logique workflow
+* analytics runtime lourds
+
+──────────────────────────────
+2. STRUCTURE D’UN BLOC READY_BANK
+──────────────────────────────
+
+Chaque bloc ready_bank possède :
+
+* un ID unique
+* ses variantes gameplay
+* toutes ses langues
+* sa cartographie cognitive minimale
+
+Important :
+les langues ne créent PAS de nouveaux blocs.
+
+Exemple correct :
+
+Bloc :
+581244
+
+Contient :
+
+* EN
+* FR
+* ES
+* DE
+* IT
+* PT
+* etc.
+
+Le joueur voit simplement :
+la langue correspondant à son profil/session.
+
+Donc :
+
+* la traduction reste attachée au même bloc
+* même question_intent_key
+* même linked_variant_group
+* même concept_family
+* même gameplay identity
+
+──────────────────────────────
+3. READY_BANK — STRUCTURE SIMPLE ET RAPIDE
+──────────────────────────────
+
+ready_bank doit rester légère et facile à filtrer.
+
+Champs principaux recommandés :
+
+* id
+* language availability
+* domain
+* depth
+* question_type
+* cognitive_type
+* question_intent_key
+* linked_variant_group
+* concept_family
+* funFact_score
+
+Le texte détaillé peut rester dans :
+
+* question_translations
+  ou structure équivalente.
+
+Le noyau cognitif peut vivre dans :
+
+* question_intents
+  ou structure équivalente.
+
+But :
+ready_bank doit être rapide à lire, filtrer et sélectionner.
+
+──────────────────────────────
+4. VARIANTES GAMEPLAY
+──────────────────────────────
+
+Chaque variante gameplay possède son propre ID.
+
+Exemple :
+
+581244 = qcm / recognition
+581245 = qcm / reasoning
+581246 = qcm / deceptive_trap
+581247 = true_false / recognition
+581248 = true_false / reasoning
+
+Mais :
+
+* même question_intent_key
+* même linked_variant_group
+* même concept_family
+
+Important :
+ne jamais générer :
+true_false / deceptive_trap
+
+Structure finale voulue :
+5 variantes seulement :
+
+QCM :
+
+* recognition
+* reasoning
+* deceptive_trap
+
+Vrai/Faux :
+
+* recognition
+* reasoning léger naturel
+
+──────────────────────────────
+5. STRUCTURE COGNITIVE
+──────────────────────────────
+
+Les concepts suivants se complètent :
+
+A. concept_family
+Grande famille pédagogique.
+
+Exemple :
+canadian_population
+
+B. question_intent_key
+Intention précise de la question.
+
+Exemple :
+canada_population_province_rank_2
+
+C. linked_variant_group
+Relie les variantes gameplay d’une même intention.
+
+Exemple :
+
+* qcm recognition
+* qcm reasoning
+* vf reasoning
+
+Donc :
+
+concept_family
+→ contient plusieurs intents
+
+question_intent_key
+→ contient plusieurs variantes gameplay
+
+linked_variant_group
+→ relie les variantes d’un même intent
+
+──────────────────────────────
+6. SOUS-DOMAINE
+──────────────────────────────
+
+Le sous-domaine reste secondaire.
+
+Le gameplay choisit surtout :
+
+* domaine
+* depth
+* question_type
+* cognitive_type
+
+Le sous-domaine sert surtout :
+
+* rotation
+* diversité
+* anti-saturation
+
+──────────────────────────────
+7. FUNFACT_SCORE
+──────────────────────────────
+
+funFact_score doit être créé pendant la création du bloc.
+
+Pas séparément après.
+
+Score :
+1 = fade
+2 = correct
+3 = intéressant
+4 = mémorable
+
+Objectif :
+viser directement 3 ou 4 pendant création.
+
+──────────────────────────────
+8. QUESTION CODE LISIBLE
+──────────────────────────────
+
+En plus de l’ID DB interne, prévoir un code lisible d’audit.
+
+Exemple :
+HI-D03-Q-R-12B4C
+
+Lecture :
+HI = Histoire
+D03 = depth 3
+Q = QCM
+R = recognition
+12B4C = suffixe unique
+
+Autres codes :
+Q = QCM
+V = Vrai/Faux
+R = recognition
+N = reasoning
+T = deceptive_trap
+RS = reasoning léger V/F
+
+Objectif :
+
+* audit rapide
+* grep
+* logs
+* export CSV
+* debug visuel
+
+──────────────────────────────
+9. HISTORIQUE JOUÉ
+──────────────────────────────
+
+L’historique joué ne doit PAS vivre dans ready_bank.
+
+Il doit être séparé.
+
+Prévoir :
+A. match_question_history
+→ mémoire du match courant
+
+B. player_question_history
+→ mémoire individuelle joueur
+
+Objectif :
+éviter :
+
+* même question
+* même question_intent_key
+* même linked_variant_group
+* même expérience cognitive
+  trop rapprochés.
+
+──────────────────────────────
+10. SÉLECTION GAMEPLAY
+──────────────────────────────
+
+Quand gameplay demande une question :
+
+1.
+
+Filtrer :
+
+* domain
+* depth
+* question_type
+* cognitive_type
+* langue joueur
+
+2.
+
+Exclure :
+
+* même question dans le match
+* même question_intent_key récent
+* même linked_variant_group récent
+
+3.
+
+Déprioriser :
+
+* mêmes concepts récents joueur
+* mêmes micro-angles récents
+
+Important :
+objectif =
+diversité perçue joueur.
+
+Pas unicité mondiale absolue.
+
+──────────────────────────────
+11. CE QU’IL FAUT ANALYSER
+──────────────────────────────
+
+GREP → SLICE → ANALYSE.
+
+Vérifier :
+
+* question_groups
+* question_translations
+* historique existant
+* MatchQuestionPlanner
+* QuestionBankRepository
+* Question selection Solo/Duo/MJ/Ligue
+* structure actuelle traductions
+* structure actuelle ready_bank
+* où stocker linked_variant_group
+* où stocker question_intent_key
+* où stocker concept_family
+
+Retour attendu :
+
+* architecture proposée
+* champs exacts
+* tables exactes
+* ordre SAFE des patchs
+* impacts Solo/Duo/MJ/Ligue
+* migrations nécessaires
+* stratégie de migration de l’ancienne banque
+
+Aucun patch maintenant.
