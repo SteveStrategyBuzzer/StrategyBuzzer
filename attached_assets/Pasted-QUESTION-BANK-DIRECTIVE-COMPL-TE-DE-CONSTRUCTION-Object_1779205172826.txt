@@ -1,0 +1,508 @@
+QUESTION BANK — DIRECTIVE COMPLÈTE DE CONSTRUCTION
+
+Objectif :
+construire une structure Question Bank robuste pour StrategyBuzzer, sans laisser Replit interpréter librement.
+
+Règle centrale :
+Replit ne doit pas inventer la logique.
+Il doit suivre ce flow.
+
+──────────────────────────────
+0. PRINCIPE ABSOLU
+──────────────────────────────
+
+La création des blocs questions est neutre.
+
+Elle ne dépend pas :
+
+* du Boss
+* du comportement du bot
+* du stress
+* du buzz
+* des statistiques joueur
+* du runtime gameplay
+
+La création fabrique seulement des blocs selon :
+
+* langue source EN
+* domaine
+* sous-domaine
+* depth
+* type question
+* type cognitif
+* question
+* réponses
+* bonne réponse
+* correct_answer_key
+* Saviez-vous / funFact
+
+Tout le reste appartient à la sélection du quiz, au gameplay ou aux analytics futurs.
+
+──────────────────────────────
+
+1. ORDRE STRICT DE FABRICATION D’UN BLOC
+   ──────────────────────────────
+
+Un bloc doit naître complet en anglais.
+
+Ordre logique obligatoire :
+
+1. langue source EN
+2. domaine
+3. sous-domaine
+4. depth
+5. type question : QCM ou Vrai/Faux
+6. type cognitif : recognition / reasoning / deceptive_trap
+7. question
+8. réponses
+9. bonne réponse
+10. correct_answer_key
+11. Saviez-vous / funFact
+
+Chaque étape influence la suivante.
+
+Ne pas faire :
+
+* question seule
+* réponses générées plus tard
+* Saviez-vous ajouté séparément
+* bonne réponse recalculée après coup
+* remapping excessif funFact / explanation / saviez_vous
+
+Le Saviez-vous doit être généré avec la question et les réponses pour garder :
+
+* même contexte
+* même intention pédagogique
+* même couleur cognitive
+* même logique de réponse
+
+──────────────────────────────
+2. DOMAINES
+──────────────────────────────
+
+Général n’est jamais fabriqué.
+
+Les seuls domaines fabriqués sont :
+
+* Géographie
+* Histoire
+* Faune
+* Art
+* Sport
+* Cinéma
+* Cuisine
+* Science
+
+Général = sélection mixte dans ces 8 domaines.
+
+Interdit :
+domain = general dans les blocs fabriqués.
+
+──────────────────────────────
+3. TYPES COGNITIFS
+──────────────────────────────
+
+Le type cognitif est choisi avant génération.
+
+recognition :
+
+* question directe
+* connaissance claire
+* pas de piège artificiel
+
+reasoning :
+
+* réflexion/logique
+* nécessite compréhension
+* pas seulement mémoire brute
+
+deceptive_trap :
+
+* vrai piège cognitif
+* distracteurs plausibles
+* faux réflexe possible
+* pas simple reformulation de recognition
+
+──────────────────────────────
+4. ROTATION DE CRÉATION
+──────────────────────────────
+
+La création doit couvrir toutes les variantes :
+
+8 domaines réels
+× depths définis
+× QCM/Vrai-Faux
+× recognition/reasoning/deceptive_trap
+
+Rotation :
+
+* domaine après domaine
+* puis type question
+* puis type cognitif
+* puis depth suivant
+* puis recommencer
+
+Ne pas saturer un domaine.
+Ne pas créer Général.
+Ne pas créer au hasard.
+
+──────────────────────────────
+5. MAPPINGS DEPTH VALIDÉS
+──────────────────────────────
+
+Duo et MJ :
+
+* Novice : depth 3–6
+* Intermédiaire : depth 5–7
+* Expert : depth 6–9
+
+Boss :
+
+* Boss 10 : 4–6
+* Boss 20 : 5–7
+* Boss 30 : 5–7
+* Boss 40 : 6–8
+* Boss 50 : 6–8
+* Boss 60 : 6–8
+* Boss 70 : 7–9
+* Boss 90 : 7–9
+* Boss 100 : 8–10
+
+Ligue :
+
+* Bronze → Boss 10 → depth 4–6
+* Argent → Boss 30 → depth 5–7
+* Or → Boss 40 → depth 6–8
+* Platine → Boss 60 → depth 6–8
+* Diamant → Boss 70 → depth 7–9
+* Légende → Boss 90 → depth 7–9
+
+Important :
+ces mappings servent à choisir les blocs.
+Ils ne créent pas des blocs Boss spéciaux.
+
+──────────────────────────────
+6. FLOW PAR PHASES FERMÉES
+──────────────────────────────
+
+Une seule phase travaille à la fois.
+Aucune phase en parallèle.
+
+PHASE 1 — CRÉATION
+rotation variante
+→ création EN bloc complet
+→ validation structurelle
+→ Bank 1
+
+PHASE 2 — VALIDATION PROFONDE
+Bank 1
+→ validation cognitive
+→ validation factualité
+→ validation doublons
+→ validation gameplay
+→ validation Saviez-vous
+→ alarmes de dérive création
+→ correction / suppression logique
+→ Bank 2
+
+PHASE 3 — TRADUCTION
+Bank 2
+→ traduction
+→ revalidation multilingue
+→ correction traduction si nécessaire
+→ ready_bank
+
+PHASE 4 — REDÉMARRAGE CRÉATION
+La création redémarre seulement quand :
+
+* Bank 1 est vidée
+* Bank 2 est vidée
+* les blocs valides sont dans ready_bank
+* les blocs non utilisables sont marqués blocked_critical ou duplicate_blocked
+* ready_bank est prise en compte dans l’anti-doublon
+
+──────────────────────────────
+7. STATUTS
+──────────────────────────────
+
+Statuts nécessaires :
+
+* created
+* structure_validated
+* bank_1_structure_validated
+* deep_validation_in_progress
+* correction_needed
+* correction_in_progress
+* bank_2_deep_validated
+* translation_pending
+* translation_in_progress
+* multilingual_review_pending
+* ready_bank
+* blocked_critical
+* duplicate_blocked
+
+Même bloc = même ID.
+Ne pas dupliquer physiquement les blocs inutilement.
+
+──────────────────────────────
+8. CHANTIER A — NOUVELLE CRÉATION
+──────────────────────────────
+
+But :
+créer les nouveaux blocs selon le nouveau flow.
+
+Flow exact :
+rotation variante
+→ création EN bloc complet
+→ validation structurelle
+→ Bank 1
+→ validation profonde
+→ correction/suppression logique
+→ Bank 2
+→ traduction
+→ revalidation multilingue
+→ ready_bank
+→ nouvelle rotation
+
+──────────────────────────────
+9. CHANTIER B — BANQUE EXISTANTE
+──────────────────────────────
+
+But :
+prendre l’ancienne banque et la vider progressivement vers ready_bank.
+
+Flow exact :
+ancienne banque
+→ lecture
+→ reconstruction métadonnées manquantes
+→ validation structurelle
+→ validation cognitive
+→ validation factualité
+→ validation doublons
+→ validation gameplay
+→ validation Saviez-vous
+→ correction/suppression logique
+→ Bank 2
+→ traduction/revalidation si nécessaire
+→ ready_bank
+
+Ne pas supprimer brutalement.
+Ne pas dupliquer inutilement.
+
+──────────────────────────────
+10. READY_BANK
+──────────────────────────────
+
+ready_bank devient la banque gameplay.
+
+ready_bank doit être indexée par :
+
+* domaine
+* sous-domaine
+* depth
+* type question
+* type cognitif
+* langue
+* concept_id
+* concept_family
+* question_angle
+* funFact validé
+
+Le gameplay doit consommer ready_bank.
+
+Le switch gameplay vers ready_bank doit être prévu, mais sécurisé.
+
+──────────────────────────────
+11. ANTI-DOUBLON CENTRAL
+──────────────────────────────
+
+Avant création, le système doit connaître ce qui existe déjà dans :
+
+* ready_bank
+* Bank 1
+* Bank 2
+* ancienne banque
+* correction_needed
+* blocked_critical
+* duplicate_blocked
+
+Vérifications :
+
+* concept_id
+* concept_family
+* question_angle
+* bonne réponse
+* formulation
+* intention pédagogique
+* hash question normalisé
+* hash réponse normalisé
+* similarité question
+* similarité Saviez-vous
+
+Règle :
+même sujet permis.
+Même sujet + même angle = doublon.
+
+──────────────────────────────
+12. 5 CONCEPTS OBLIGATOIRES
+──────────────────────────────
+
+1. Empreinte conceptuelle
+   sujet + angle + réponse + piège
+
+2. Angle de question
+   même sujet + angle différent = acceptable
+   même sujet + même angle = doublon
+
+3. Score Saviez-vous
+   1 = fade
+   2 = correct
+   3 = intéressant
+   4 = mémorable
+
+Objectif ready_bank :
+viser 3 ou 4.
+
+4. Empreinte pédagogique
+   Le bloc doit savoir :
+
+* ce qu’il enseigne
+* ce qu’il teste
+* le piège utilisé
+* l’objectif pédagogique
+
+5. Budget de répétition
+   Limiter concept_family par :
+
+* domaine
+* depth
+* type cognitif
+* type question
+
+──────────────────────────────
+13. VALIDATIONS
+──────────────────────────────
+
+Validation structurelle :
+
+* champs présents
+* format correct
+* QCM = 4 réponses
+* Vrai/Faux = 2 réponses
+* correct_answer_key valide
+* longueurs compatibles
+
+Validation cognitive :
+
+* recognition reste direct
+* reasoning demande réflexion
+* deceptive_trap contient vrai piège
+
+Validation factualité :
+
+* bonne réponse vraie
+* Saviez-vous vrai
+* aucune contradiction
+
+Validation doublons :
+
+* concept_id
+* concept_family
+* question_angle
+* hash
+* similarité
+
+Validation gameplay :
+
+* question lisible en 8 secondes
+* réponses rapides à lire
+* pas trop lourd pour Duo
+* compatible Solo/MJ/Ligue si applicable
+
+Validation Saviez-vous :
+
+* pas fade
+* pas tautologique
+* cohérent avec la bonne réponse
+* ne confirme pas un distracteur
+* apporte une vraie valeur
+
+Traduction :
+
+* même logique
+* même bonne réponse
+* même piège
+* même difficulté
+* même Saviez-vous logique
+
+──────────────────────────────
+14. ALARMES DE DÉRIVE
+──────────────────────────────
+
+Alarmes par segment :
+
+* domaine
+* depth
+* type question
+* type cognitif
+* provider IA
+
+Déclencher alarme si :
+
+* Saviez-vous fades répétés
+* questions trop longues répétées
+* deceptive_trap devient recognition
+* reasoning trop direct
+* concept_family saturée
+* même bonne réponse trop fréquente
+* taux correction_needed élevé
+* taux duplicate_blocked élevé
+* taux blocked_critical élevé
+
+Actions possibles :
+
+* suspendre segment
+* recalibrer prompt
+* réduire volume
+* changer provider
+* modifier rotation
+* cooldown segment
+
+──────────────────────────────
+15. RÈGLE IA
+──────────────────────────────
+
+Les stations ne doivent pas toutes modifier le bloc.
+
+Création produit.
+Validation lit, score, alerte.
+Correction modifie seulement si nécessaire.
+Traduction transpose.
+Revalidation confirme.
+
+Interdit :
+réécrire le bloc à chaque station.
+
+──────────────────────────────
+16. PREMIÈRE ACTION DEMANDÉE
+──────────────────────────────
+
+Ne pas coder tout de suite.
+
+Commencer par :
+GREP → SLICE → ANALYSE.
+
+Retour attendu :
+
+1. fichiers à modifier
+2. migrations à créer
+3. champs exacts
+4. statuts exacts
+5. ordre SAFE des patchs
+6. validations par phase
+7. impact Solo
+8. impact Duo
+9. impact MJ
+10. impact Ligue
+
+Aucun patch sans validation.

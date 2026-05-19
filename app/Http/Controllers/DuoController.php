@@ -940,7 +940,9 @@ class DuoController extends Controller
             $division->division,
             $opponentDivision->division,
             $myEfficiency,
-            $oppEfficiency
+            $oppEfficiency,
+            false,
+            'duo'
         );
 
         $baseCoins = $this->divisionService->getVictoryCoins($division->division);
