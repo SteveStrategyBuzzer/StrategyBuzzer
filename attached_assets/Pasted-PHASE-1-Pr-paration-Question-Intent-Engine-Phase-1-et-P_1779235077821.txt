@@ -1,0 +1,88 @@
+PHASE 1 — Préparation Question Intent Engine
+
+Phase -1 et Phase 0 sont validées.
+
+Objectif maintenant :
+préparer la vraie nouvelle génération moderne, mais sans lancer de génération massive tout de suite.
+
+Aucun patch de génération avant audit.
+
+Méthode :
+GREP → SLICE → ANALYSE.
+
+Vérifie précisément :
+
+1. BankAIGenerator
+- comment il génère actuellement 1 bloc
+- où sont construits question / answers / correct_answer / explanation
+- comment il reçoit domain / depth / question_type / cognitive_type
+- où empêcher true_false/deceptive_trap
+
+2. Question Intent Engine
+Proposer comment créer :
+1 noyau EN
+→ 5 variantes contrôlées :
+- qcm / recognition
+- qcm / reasoning
+- qcm / deceptive_trap
+- true_false / recognition
+- true_false / reasoning léger naturel
+
+Important :
+chaque variante = son propre question_group_id.
+Mais elles partagent le même question_intent_key.
+
+3. Création stricte d’un bloc
+
+Ordre obligatoire :
+- language = EN
+- domain
+- sub_domain secondaire si utile
+- depth
+- question_type
+- cognitive_type
+- question
+- answers
+- correct_answer
+- correct_answer_key
+- Saviez-vous / funFact
+- funFact_score
+
+4. Anti-doublon Phase 1
+
+Avant création :
+la génération doit comparer contre ready_bank existante :
+- question_intent_key
+- concept_family
+- hash_question
+- hash_answer
+- readable_code
+- domain/depth/question_type/cognitive_type
+
+5. QualityGuards
+
+Vérifier comment ajouter :
+- blocage true_false/deceptive_trap
+- validation funFact_score
+- validation cognitive réelle
+- validation longueur question/réponses
+- validation correct_answer_key
+- validation duplicate_blocked
+
+6. BankNeedsCalculator
+
+Vérifier comment il va détecter les déficits :
+- true_false absent actuellement
+- variantes manquantes
+- domaines/depth/cognitive_type à remplir
+
+Retour attendu :
+- fichiers exacts
+- lignes exactes
+- patchs nécessaires
+- ordre SAFE
+- impact Solo/Duo/MJ/Ligue
+- premier patch minimal recommandé
+
+Aucun patch maintenant.
+Analyse seulement.
