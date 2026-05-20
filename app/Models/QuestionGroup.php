@@ -34,6 +34,7 @@ class QuestionGroup extends Model
         'micro_angle',
         'readable_code',
         'correction_notes',
+        'audited_at',
     ];
 
     protected $casts = [
@@ -44,6 +45,7 @@ class QuestionGroup extends Model
         'usage_count'        => 'integer',
         'last_used_at'       => 'datetime',
         'question_intent_id' => 'integer',
+        'audited_at'         => 'datetime',
     ];
 
     public function translations(): HasMany
