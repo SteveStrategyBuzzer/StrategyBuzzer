@@ -1727,3 +1727,9 @@ id = "aCBz0XuqUPybtamvevB4i"
 uri = "file://exports/dialyse_10_noyaux_completed.md"
 type = "text"
 title = "Dialyse complète — 10 noyaux (résultats réels)"
+
+[[outputs]]
+id = "HUXfgT7SMtQUlYPNz4eB5"
+uri = "file://exports/dialyse_10_noyaux_FINAL.md"
+type = "text"
+title = "Dialyse 10 noyaux — État final réel (toutes langues)"

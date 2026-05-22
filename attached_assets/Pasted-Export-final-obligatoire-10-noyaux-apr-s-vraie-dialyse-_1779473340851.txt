@@ -1,0 +1,98 @@
+Export final obligatoire — 10 noyaux après vraie dialyse complète
+
+On a vu :
+- les logs
+- les guards
+- les rejets
+- les corrections
+- les patchs proposés
+
+Mais je veux maintenant voir le vrai résultat final des noyaux après passage complet dans la dialyse.
+
+Objectif :
+valider la qualité réelle finale du système.
+
+Je veux un document Markdown complet :
+
+exports/dialyse_10_noyaux_FINAL.md
+
+Pour chacun des 10 noyaux :
+
+──────────────────────────────
+1. MÉTADONNÉES NOYAU
+──────────────────────────────
+
+- question_intent_id
+- intent_key
+- semantic_key
+- domain
+- sub_domain
+- difficulty_depth
+- subject
+- angle_large
+- micro_angle
+- answer_target
+- potential_trap
+- concept_family
+- dialysis_status
+
+──────────────────────────────
+2. ÉTAT FINAL
+──────────────────────────────
+
+- COMPLETE / INCOMPLETE / BLOCKED
+- variantes_present
+- variantes_missing
+- variantes_count
+- quality_flags déclenchés
+- corrections appliquées
+
+──────────────────────────────
+3. VARIANTES FINALES
+──────────────────────────────
+
+Pour chaque variante finale générée :
+
+- question_group_id
+- readable_code
+- question_type
+- cognitive_type
+
+Afficher les 10 langues complètes :
+EN, FR, ES, DE, IT, PT, RU, ZH, AR, EL
+
+Pour chaque langue :
+- question
+- réponses
+- correct_answer_key
+- Saviez-vous
+
+──────────────────────────────
+4. ANALYSE HUMAINE
+──────────────────────────────
+
+Pour chaque noyau :
+- cohérence cognitive réelle
+- cohérence gameplay réelle
+- qualité des V/F reasoning
+- qualité des QCM deceptive_trap
+- diversité réelle des variantes
+- qualité réelle des Saviez-vous
+- lisibilité mobile/gameplay
+- problèmes encore visibles
+- variantes faibles si applicable
+
+──────────────────────────────
+IMPORTANT
+──────────────────────────────
+
+Je veux voir :
+- le vrai rendu final des variantes
+- le vrai rendu final des traductions
+- la vraie cohérence des noyaux
+- le vrai résultat après patchs guards/prompts
+
+Pas seulement des logs techniques.
+
+Objectif :
+validation humaine réelle du moteur cognitif.
