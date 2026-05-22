@@ -1,0 +1,115 @@
+PHASE 0.5 — Dialyse ready_bank noyau par noyau
+
+Objectif :
+nettoyer et consolider la ready_bank actuelle AVANT toute génération massive Phase 1.
+
+Important :
+on ne veut pas simplement auditer des questions isolées.
+On veut travailler par noyau/question_intent_key.
+
+Un noyau doit devenir :
+- propre
+- cohérent
+- complet
+- prêt pour le futur système 5 variantes
+
+Méthode obligatoire :
+GREP → SLICE → ANALYSE avant patch.
+
+──────────────────────────────
+DIALYSE — ORDRE STRICT
+──────────────────────────────
+
+Pour chaque noyau :
+
+1. Sortir le noyau
+Afficher :
+- question_intent_key
+- concept_family
+- domain
+- depth
+- variantes existantes
+- traductions disponibles
+
+2. Auditer la qualité des variantes existantes
+Vérifier :
+- longueur question
+- longueur réponses
+- depth adapté
+- cognition correcte
+- Saviez-vous utile
+- traductions cohérentes
+- lisibilité gameplay
+
+3. Corriger les variantes existantes
+Corriger avant de créer du nouveau :
+- question trop longue
+- réponses trop longues
+- depth incohérent
+- cognitive_type mal classé
+- traductions faibles
+- Saviez-vous fade ou mal relié
+
+4. Identifier les variantes manquantes
+Variante cible finale :
+- qcm / recognition
+- qcm / reasoning
+- qcm / deceptive_trap
+- true_false / recognition
+- true_false / reasoning
+
+Interdit :
+- true_false / deceptive_trap
+
+5. Générer seulement les variantes manquantes
+Important :
+ne pas régénérer ce qui existe déjà et qui est corrigé.
+
+6. Valider l’ensemble complet
+Vérifier :
+- 5 variantes présentes
+- 10 traductions par variante
+- même question_intent_key
+- concept_family cohérente
+- depth cohérent
+- aucune variante trop proche inutilement
+- aucun doublon exact
+- gameplay lisible
+
+7. Marquer le noyau COMPLET
+Ajouter/proposer un statut ou champ de suivi léger :
+- dialysis_status = pending / in_progress / complete / blocked
+ou équivalent minimal.
+
+──────────────────────────────
+CE QUE LA DIALYSE DOIT PRODUIRE
+──────────────────────────────
+
+Pour chaque noyau :
+- rapport avant
+- corrections appliquées
+- variantes manquantes créées
+- validation finale
+- statut final
+
+──────────────────────────────
+IMPORTANT
+──────────────────────────────
+
+Ne pas créer de génération massive.
+Ne pas faire toute la banque en une passe aveugle.
+Ne pas créer de variantes avant correction des existantes.
+Ne pas toucher gameplay/Node/runtime.
+
+Demande maintenant :
+proposer la structure technique minimale pour cette dialyse :
+- tables/champs nécessaires
+- commande artisan possible
+- ordre SAFE des patchs
+- comment sortir un noyau à la fois
+- comment éviter de repasser deux fois sur le même noyau
+- comment marquer complete
+- risques Solo/Duo/MJ/Ligue
+
+Aucun patch maintenant.
+Analyse seulement.
