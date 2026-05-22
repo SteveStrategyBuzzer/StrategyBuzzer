@@ -1,0 +1,119 @@
+Test réel de la dialyse — 10 noyaux complets
+
+Maintenant on doit prouver que la dialyse fonctionne réellement de bout en bout.
+
+Prendre les 10 noyaux déjà exportés et les faire passer dans la vraie dialyse complète.
+
+Objectif :
+voir exactement :
+- ce qui se corrige bien
+- ce qui casse
+- ce qui dérive
+- ce qui manque
+- ce qui doit être amélioré dans le workflow
+
+IMPORTANT :
+ceci est un test contrôlé sur seulement 10 noyaux.
+Pas de génération massive.
+
+──────────────────────────────
+FLOW COMPLET À TESTER
+──────────────────────────────
+
+Pour chacun des 10 noyaux :
+
+1.
+Audit qualité complet
+- longueur question
+- longueur réponses
+- depth cohérent
+- cognitive_type cohérent
+- gameplay readability
+- Saviez-vous
+- traductions
+- metadata noyau
+
+2.
+Correction des variantes existantes
+- questions trop longues
+- réponses trop longues
+- depth incohérent
+- Saviez-vous tautologique
+- traductions faibles
+- metadata manquante
+
+3.
+Création des metadata noyau
+- semantic_key
+- subject
+- angle_large
+- micro_angle
+- answer_target
+- potential_trap si applicable
+- concept_family
+
+4.
+Identifier variantes manquantes
+
+5.
+Générer variantes manquantes
+Cibles :
+- qcm / recognition
+- qcm / reasoning
+- qcm / deceptive_trap
+- true_false / recognition
+- true_false / reasoning
+
+Interdit :
+- true_false / deceptive_trap
+
+6.
+Traduire les nouvelles variantes
+10 langues complètes :
+EN, FR, ES, DE, IT, PT, RU, ZH, AR, EL
+
+7.
+Validation finale COMPLETE
+Le noyau devient COMPLETE seulement si :
+- 5 variantes présentes
+- 10 langues présentes par variante
+- quality checks OK
+- gameplay readability OK
+- aucune variante inutilement redondante
+- Saviez-vous acceptable
+
+──────────────────────────────
+RETOUR ATTENDU
+──────────────────────────────
+
+Je veux un nouveau fichier export :
+exports/dialyse_10_noyaux_completed.md
+
+Pour chaque noyau :
+- AVANT
+- APRÈS
+- corrections effectuées
+- variantes générées
+- semantic_key finale
+- problèmes rencontrés
+- quality flags déclenchés
+- variantes refusées si applicable
+- résultat final COMPLETE ou BLOCKED
+
+IMPORTANT :
+je veux voir :
+- les nouvelles variantes réellement générées
+- leur qualité réelle
+- leur cohérence cognitive réelle
+- leur cohérence gameplay réelle
+
+C’est ce test qui va révéler :
+- si la dialyse fonctionne réellement
+- si les règles qualité sont suffisantes
+- si le moteur variantes dérive
+- si les semantic_key sont bonnes
+- si les V/F reasoning fonctionnent réellement
+
+Aucun patch gameplay.
+Aucun Node.
+Aucune génération massive hors des 10 noyaux.

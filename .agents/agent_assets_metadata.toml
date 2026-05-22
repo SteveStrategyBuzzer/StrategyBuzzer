@@ -1721,3 +1721,9 @@ id = "fETEg280ZR8ogXJJph4EH"
 uri = "file://exports/dialyse_10_noyaux_sample.md"
 type = "text"
 title = "Dialyse — 10 noyaux échantillon"
+
+[[outputs]]
+id = "aCBz0XuqUPybtamvevB4i"
+uri = "file://exports/dialyse_10_noyaux_completed.md"
+type = "text"
+title = "Dialyse complète — 10 noyaux (résultats réels)"
