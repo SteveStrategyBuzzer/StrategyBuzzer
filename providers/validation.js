@@ -59,7 +59,10 @@ function validateTranslations(translations, expectedKey, isQcm) {
     if (!tr || typeof tr !== 'object') {
       return `translations[${lang}] not an object`;
     }
-    const required = ['question_text', 'answer_a', 'answer_b', 'answer_c', 'correct_answer_key', 'explanation', 'saviez_vous'];
+    // true_false: answer_c is null/absent — do not require it.
+    const required = isQcm
+      ? ['question_text', 'answer_a', 'answer_b', 'answer_c', 'correct_answer_key', 'explanation', 'saviez_vous']
+      : ['question_text', 'answer_a', 'answer_b', 'correct_answer_key', 'explanation', 'saviez_vous'];
     for (const field of required) {
       if (!(field in tr)) {
         return `translations[${lang}].${field} missing`;
@@ -149,8 +152,16 @@ function validateRichContract(payload) {
     if (!isNonEmptyString(payload.answer_a) || !isNonEmptyString(payload.answer_b)) {
       return fail('true_false: answer_a and answer_b required');
     }
-    if (!('answer_d' in payload)) {
-      return fail('true_false: answer_d field required (nullable)');
+    // answer_c and answer_d must be null/absent for true_false.
+    if (isNonEmptyString(payload.answer_c)) {
+      return fail('true_false: answer_c must be null');
+    }
+    if (isNonEmptyString(payload.answer_d)) {
+      return fail('true_false: answer_d must be null');
+    }
+    // correct_answer_key must be A or B only for true_false.
+    if (!['A', 'B'].includes(correctKey)) {
+      return fail(`true_false: correct_answer_key=${correctKey} — must be A or B`);
     }
   }
 

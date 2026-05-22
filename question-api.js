@@ -1178,11 +1178,23 @@ app.post('/generate-bank-question', async (req, res) => {
   }
 
   const langList = Array.isArray(languages) && languages.length > 0 ? languages : ['fr'];
+
+  // isTF must be defined before langSchema so the schema pins the correct labels.
+  const isTF = question_type === 'true_false';
+
+  // For true_false: pin answer_a to the canonical "true" label and answer_b to
+  // "false" in each requested language. answer_c and answer_d must be null.
+  // This removes any ambiguity from the LLM about what to put in those fields.
   const langSchema = langList
-    .map(
-      (l) =>
-        `    "${l}": { "question_text": "...", "answer_a": "...", "answer_b": "...", "answer_c": "...", "answer_d": "...", "correct_answer_key": "A|B|C|D", "explanation": "...", "saviez_vous": "..." }`
-    )
+    .map((l) => {
+      const langDef = LANGUAGES[l] || LANGUAGES['fr'];
+      if (isTF) {
+        const trueLabel  = langDef.true  || 'Vrai';
+        const falseLabel = langDef.false || 'Faux';
+        return `    "${l}": { "question_text": "...", "answer_a": "${trueLabel}", "answer_b": "${falseLabel}", "answer_c": null, "answer_d": null, "correct_answer_key": "A|B", "explanation": "...", "saviez_vous": "..." }`;
+      }
+      return `    "${l}": { "question_text": "...", "answer_a": "...", "answer_b": "...", "answer_c": "...", "answer_d": "...", "correct_answer_key": "A|B|C|D", "explanation": "...", "saviez_vous": "..." }`;
+    })
     .join(',\n');
 
   const cognitiveExplain = {
@@ -1191,7 +1203,6 @@ app.post('/generate-bank-question', async (req, res) => {
     deceptive_trap: 'distracteurs très plausibles ; confusion classique ; bonne réponse contre-intuitive',
   }[cognitive_type];
 
-  const isTF = question_type === 'true_false';
   const answersHint = isTF
     ? '`answer_a` = libellé "Vrai" dans la langue principale, `answer_b` = libellé "Faux", `answer_c` et `answer_d` = null.'
     : 'Fournis exactement 4 réponses non-vides (answer_a/b/c/d), une seule correcte.';
@@ -1275,11 +1286,11 @@ ${forbiddenFamiliesBlock}${forbiddenBlock}
 Format JSON exact attendu:
 {
   "question_text": "...",
-  "answer_a": "...",
-  "answer_b": "...",
-  "answer_c": "...",
-  "answer_d": "${isTF ? 'null' : '...'}",
-  "correct_answer_key": "A|B|C|D",
+  "answer_a": "${isTF ? (LANGUAGES['fr'].true || 'Vrai') : '...'}",
+  "answer_b": "${isTF ? (LANGUAGES['fr'].false || 'Faux') : '...'}",
+  "answer_c": ${isTF ? 'null' : '"..."'},
+  "answer_d": ${isTF ? 'null' : '"..."'},
+  "correct_answer_key": "${isTF ? 'A|B' : 'A|B|C|D'}",
   "explanation": "...",
   "saviez_vous": "...",
   "domain": "${domain}",
@@ -1388,17 +1399,18 @@ app.post('/translate-bank-question', async (req, res) => {
   if (!Array.isArray(target_languages) || target_languages.length === 0) {
     return res.status(400).json({ ok: false, error: 'target_languages must be a non-empty array' });
   }
-  const REQUIRED_MASTER = [
-    'question_text', 'answer_a', 'answer_b', 'answer_c',
-    'correct_answer_key', 'explanation', 'saviez_vous',
-  ];
+  // isTF must be resolved before REQUIRED_MASTER so answer_c can be excluded
+  // from required fields for true_false (where it is null by contract).
+  const isTF = (master.question_type || 'qcm') === 'true_false';
+
+  const REQUIRED_MASTER = isTF
+    ? ['question_text', 'answer_a', 'answer_b', 'correct_answer_key', 'explanation', 'saviez_vous']
+    : ['question_text', 'answer_a', 'answer_b', 'answer_c', 'correct_answer_key', 'explanation', 'saviez_vous'];
   for (const f of REQUIRED_MASTER) {
     if (!master[f] || typeof master[f] !== 'string' || !master[f].trim()) {
       return res.status(400).json({ ok: false, error: `master.${f} missing or empty` });
     }
   }
-
-  const isTF = (master.question_type || 'qcm') === 'true_false';
   const correctKey = String(master.correct_answer_key || '').toUpperCase();
 
   // Count how many answers the master has (source of truth for validation).
@@ -1411,12 +1423,21 @@ app.post('/translate-bank-question', async (req, res) => {
     .map(l => `- ${l} (${(LANGUAGES[l] || {}).name || l})`)
     .join('\n');
 
-  const answersBlock = [
-    `  answer_a = "${master.answer_a}"`,
-    `  answer_b = "${master.answer_b}"`,
-    `  answer_c = "${master.answer_c}"`,
-    !isTF && master.answer_d ? `  answer_d = "${master.answer_d}"` : null,
-  ].filter(Boolean).join('\n');
+  // For true_false: answer_c/d are null by contract — show that explicitly
+  // so the LLM does not attempt to translate a null value as a string.
+  const answersBlock = isTF
+    ? [
+        `  answer_a = "${master.answer_a}"`,
+        `  answer_b = "${master.answer_b}"`,
+        `  answer_c = null`,
+        `  answer_d = null`,
+      ].join('\n')
+    : [
+        `  answer_a = "${master.answer_a}"`,
+        `  answer_b = "${master.answer_b}"`,
+        `  answer_c = "${master.answer_c}"`,
+        master.answer_d ? `  answer_d = "${master.answer_d}"` : null,
+      ].filter(Boolean).join('\n');
 
   const translationSchema = target_languages
     .map(l => {
@@ -1485,11 +1506,10 @@ ${translationSchema}
         return { ok: false, reason: `translations[${lang}] missing` };
       }
 
-      // Required fields present
-      const required = [
-        'question_text', 'answer_a', 'answer_b', 'answer_c',
-        'correct_answer_key', 'explanation', 'saviez_vous',
-      ];
+      // Required fields present — answer_c is null for true_false, exclude it.
+      const required = isTF
+        ? ['question_text', 'answer_a', 'answer_b', 'correct_answer_key', 'explanation', 'saviez_vous']
+        : ['question_text', 'answer_a', 'answer_b', 'answer_c', 'correct_answer_key', 'explanation', 'saviez_vous'];
       for (const f of required) {
         if (!(f in tr)) {
           return { ok: false, reason: `translations[${lang}].${f} missing` };
