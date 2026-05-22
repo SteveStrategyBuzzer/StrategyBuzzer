@@ -1715,3 +1715,9 @@ id = "GcKn-yyrrTCi5NJHeGebl"
 uri = "file://exports/ready_bank_20_noyaux.md"
 type = "text"
 title = "Export ready_bank — 20 noyaux complets"
+
+[[outputs]]
+id = "fETEg280ZR8ogXJJph4EH"
+uri = "file://exports/dialyse_10_noyaux_sample.md"
+type = "text"
+title = "Dialyse — 10 noyaux échantillon"
