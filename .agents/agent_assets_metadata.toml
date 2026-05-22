@@ -1739,3 +1739,9 @@ id = "fKkV5rOTB4usMUpFRuKfR"
 uri = "file://exports/dialyse_10_noyaux_CORRIGE_FINAL.md"
 type = "text"
 title = "Dialyse 10 noyaux — État corrigé final (P0→P5)"
+
+[[outputs]]
+id = "N5vZvGHv6bK3ZqWPQ5J_Y"
+uri = "file://docs/question-bank/cognitive_contract.md"
+type = "text"
+title = "Contrat Cognitif — StrategyBuzzer Question Engine v1.0"
