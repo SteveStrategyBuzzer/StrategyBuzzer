@@ -222,14 +222,22 @@ class QualityGuards
                 ]));
                 $overlap = $this->jaccardShingle($sv, $questionContext);
                 if ($overlap < 0.04 && mb_strlen($questionContext) > 20) {
-                    return [
-                        'ok'     => false,
-                        'code'   => 'saviez_vous_off_topic',
-                        'detail' => sprintf(
-                            'saviez_vous Jaccard overlap=%.3f with question context (< 0.04) — likely cross-contaminated',
-                            $overlap
-                        ),
-                    ];
+                    // Fallback: keyword overlap.
+                    // A good saviez_vous enriches the topic with new vocabulary
+                    // (e.g. "Folie de Seward" for an Alaska question). The 3-shingle
+                    // metric misses these because no 3-consecutive-token run matches.
+                    // If at least 1 significant word (>3 chars, normalised) is shared
+                    // between saviez_vous and question context, the SV is on-topic.
+                    if (!$this->hasKeywordOverlap($sv, $questionContext)) {
+                        return [
+                            'ok'     => false,
+                            'code'   => 'saviez_vous_off_topic',
+                            'detail' => sprintf(
+                                'saviez_vous Jaccard overlap=%.3f with question context (< 0.04) — likely cross-contaminated',
+                                $overlap
+                            ),
+                        ];
+                    }
                 }
             }
         }
@@ -446,5 +454,66 @@ class QualityGuards
             $out[] = implode(' ', array_slice($tokens, $i, $k));
         }
         return $out;
+    }
+
+    /**
+     * Keyword overlap fallback for saviez_vous topic relevance.
+     *
+     * Returns true if at least one significant word (>3 chars, normalised)
+     * appears in both texts. Used when the 3-shingle Jaccard score is below
+     * threshold but the saviez_vous may still be on-topic — e.g. "Folie de
+     * Seward" enriches an Alaska question without repeating "vendu en 1867".
+     *
+     * Two matching strategies (OR):
+     *   1. Exact token match (>3 chars)
+     *   2. Prefix match: if both tokens are ≥5 chars and one starts with the
+     *      other, count as a match. Handles French morphology (éruption /
+     *      éruptions, volcan / volcanique, glacial / glacier …) without a
+     *      full stemmer.
+     *
+     * Rules (per user spec):
+     *   - lowercase normalisation
+     *   - punctuation stripped
+     *   - only tokens with mb_strlen > 3 qualify as significant
+     *   - intersection ≥ 1 → on-topic
+     */
+    private function hasKeywordOverlap(string $sv, string $context): bool
+    {
+        $normalize = static function (string $text): array {
+            $norm   = preg_replace('/[^\p{L}\p{N}\s]+/u', ' ', mb_strtolower($text));
+            $tokens = preg_split('/\s+/u', trim((string) $norm)) ?: [];
+            return array_values(
+                array_filter($tokens, static fn (string $t) => mb_strlen($t) > 3)
+            );
+        };
+
+        $svTokens  = $normalize($sv);
+        $ctxTokens = $normalize($context);
+
+        // Strategy 1: exact match
+        $svKeys = array_flip($svTokens);
+        foreach ($ctxTokens as $ct) {
+            if (isset($svKeys[$ct])) {
+                return true;
+            }
+        }
+
+        // Strategy 2: prefix match (≥5 chars each side — avoids short noise)
+        foreach ($ctxTokens as $ct) {
+            if (mb_strlen($ct) < 5) {
+                continue;
+            }
+            foreach ($svTokens as $st) {
+                if (mb_strlen($st) < 5) {
+                    continue;
+                }
+                // One is a prefix of the other → same lexical root
+                if (str_starts_with($ct, $st) || str_starts_with($st, $ct)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 }

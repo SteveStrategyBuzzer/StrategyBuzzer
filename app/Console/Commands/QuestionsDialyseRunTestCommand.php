@@ -31,7 +31,8 @@ class QuestionsDialyseRunTestCommand extends Command
 {
     protected $signature = 'questions:bank:dialyse:run-test
                             {--dry-run : Simulate only — no DB writes, no AI calls}
-                            {--ids=4,7,34,46,64,67,85,100,121,139 : Comma-separated intent IDs}';
+                            {--ids=4,7,34,46,64,67,85,100,121,139 : Comma-separated intent IDs}
+                            {--output-file= : Override default export path}';
 
     protected $description = 'Real end-to-end dialysis test on N noyaux — generates missing variants, validates, exports report';
 
@@ -553,7 +554,9 @@ class QuestionsDialyseRunTestCommand extends Command
 
     private function exportMarkdown(array $globalStats, float $elapsed): void
     {
-        $outPath = base_path('exports/dialyse_10_noyaux_completed.md');
+        $outPath = $this->option('output-file')
+            ? base_path($this->option('output-file'))
+            : base_path('exports/dialyse_10_noyaux_completed.md');
         if (!is_dir(dirname($outPath))) {
             mkdir(dirname($outPath), 0755, true);
         }
@@ -662,7 +665,7 @@ class QuestionsDialyseRunTestCommand extends Command
                 $lines[] = "*Aucune variante générée*";
             } else {
                 foreach ($r['generated_variants'] as $gv) {
-                    if ($gv['status'] === 'dry_run') {
+                    if (($gv['status'] ?? null) === 'dry_run') {
                         $lines[] = "**{$gv['vtag']}** — `[dry-run]`";
                         continue;
                     }
