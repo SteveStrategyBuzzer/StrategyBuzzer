@@ -117,6 +117,13 @@ class BankAIGenerator
             // told to invent a concept_family absent from this list so the
             // worker diversifies instead of deepening dominant families.
             'forbidden_families' => $segment['forbidden_families'] ?? [],
+            // P4 — noyau lock: forward the concept_hint built by the dialyse
+            // command (subject + angle + micro-angle + answer target +
+            // semantic_key) so the AI stays within the exact noyau and does
+            // not drift to adjacent topics within the same broad domain.
+            // Empty string is the safe default (prompt falls back to the
+            // generic "Choisis un fait précis et vérifiable" instruction).
+            'concept_hint'       => (string) ($segment['concept_hint'] ?? ''),
             // Readability caps — sent to the LLM BEFORE generation so it
             // produces compliant text at source rather than being rejected by
             // guards 11/12 after the fact. Values mirror the guard thresholds

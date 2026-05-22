@@ -1,0 +1,84 @@
+Réalignement qualité — résultat dialyse 10 noyaux
+
+Le document final confirme une chose importante :
+
+L’architecture de dialyse fonctionne, mais la qualité générationnelle n’est pas encore acceptable pour génération massive.
+
+Ne pas lancer de génération massive.
+
+Problèmes réels confirmés :
+
+1. Reasoning fake
+Plusieurs questions marquées reasoning n’ont pas de vraie logique de raisonnement.
+Elles sont encore trop proches de recognition.
+
+2. Dérive sémantique noyau
+L’IA reste parfois dans le bon domaine, mais sort du noyau précis.
+Exemples :
+- tennis-grand-slam → marathon / volleyball
+- african-geography → Yangtsé / Inde / France-Brésil
+
+3. Saviez-vous faibles
+Beaucoup de Saviez-vous sont informatifs mais pas assez “wow”.
+Certains sont tautologiques ou trop Wikipédia-lite.
+
+4. Longueurs encore problématiques
+Questions et Saviez-vous trop longs, surtout :
+- arabe
+- allemand
+- russe
+- grec
+- parfois FR/EN
+
+5. Noyaux incomplets
+Après dialyse, plusieurs noyaux restent à 2/5, 3/5 ou 4/5 variantes.
+
+Décision :
+On ne corrige pas en baissant les guards.
+Les guards font leur travail.
+
+Priorité maintenant :
+améliorer le guidage IA AVANT nouvelle génération.
+
+Ordre obligatoire :
+
+P4 — Verrouiller le noyau
+Injecter semantic_key / subject / angle_large / micro_angle / answer_target / concept_family dans concept_hint.
+Objectif :
+les variantes doivent rester dans le même noyau, pas seulement dans le même domaine.
+
+P3 — Forcer les longueurs
+Aligner les prompts avec les vrais guards.
+Ajouter contraintes de longueur dans generate + translate.
+Prévoir marge de sécurité AR/ZH.
+
+P2 — Diversifier les réponses
+Injecter forbidden_answers pour éviter :
+- Indonésie
+- 3
+- Pablo Picasso
+et autres réponses surutilisées.
+
+P5 — Améliorer cognition
+Ajouter règles explicites :
+- recognition = rappel direct
+- reasoning = cause/conséquence/comparaison/déduction
+- deceptive_trap = distracteurs plausibles + piège net
+- true_false reasoning = affirmation subtile, pas simple fait direct
+
+P6 — Améliorer Saviez-vous
+Ajouter règles :
+- pas tautologique
+- pas Wikipédia-lite
+- doit apporter une information nouvelle
+- idéalement surprenante, mémorable ou contextuelle
+- ne doit pas seulement répéter la bonne réponse
+
+Méthode :
+GREP → SLICE → PATCH → VALIDATION.
+
+Commencer par P4 seulement.
+Pas de patch multiple.
+Pas de génération massive.
+Après P4 :
+rerun sur les 10 noyaux et exporter un nouveau document de comparaison.

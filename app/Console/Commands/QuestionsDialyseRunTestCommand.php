@@ -284,7 +284,11 @@ class QuestionsDialyseRunTestCommand extends Command
                 'levels' => [$level, $level],
             ],
             'forbidden_concepts' => $this->forbiddenConcepts($intent->id),
-            'forbidden_families' => [],
+            'forbidden_families' => $this->forbiddenFamilies($intent, $variant, $level),
+            // P4 — noyau lock: steer the AI toward the exact noyau
+            // (subject + angle + micro-angle + answer target) so it does
+            // not drift to adjacent topics within the same broad domain.
+            'concept_hint'       => $this->buildConceptHint($intent),
         ];
 
         // Generate via AI
@@ -546,6 +550,96 @@ class QuestionsDialyseRunTestCommand extends Command
             ->filter()
             ->values()
             ->toArray();
+    }
+
+    /**
+     * P5 — concept_family_share pre-guard.
+     *
+     * Mirrors QualityGuards::evaluate() segment query to detect which
+     * concept_family values are already dominant in the segment.  Any family
+     * whose (count+1)/(total+1) would exceed the 0.40 cap is returned as
+     * forbidden, so the AI generates a question in a different family
+     * instead of producing a variant that will be immediately rejected.
+     *
+     * Segment key: domain × sub_domain × cognitive_type × difficulty_level
+     * (identical to the guard's own filter).
+     */
+    private function forbiddenFamilies(QuestionIntent $intent, array $variant, int $level): array
+    {
+        $domain      = $intent->domain;
+        $subDomain   = $intent->sub_domain ?: $intent->domain;
+        $cogType     = $variant['cognitive_type'];
+        $cap         = 0.40;
+
+        $segmentBase = QuestionGroup::query()
+            ->where('domain', $domain)
+            ->where('sub_domain', $subDomain)
+            ->where('cognitive_type', $cogType)
+            ->where('difficulty_level', $level);
+
+        $total = (clone $segmentBase)->count();
+
+        if ($total === 0) {
+            return [];
+        }
+
+        $families = (clone $segmentBase)
+            ->whereNotNull('concept_family')
+            ->groupBy('concept_family')
+            ->selectRaw('concept_family, COUNT(*) as cnt')
+            ->pluck('cnt', 'concept_family')
+            ->toArray();
+
+        $forbidden = [];
+        foreach ($families as $family => $count) {
+            $share = ($count + 1) / ($total + 1);
+            if ($share > $cap) {
+                $forbidden[] = $family;
+            }
+        }
+
+        return $forbidden;
+    }
+
+    /**
+     * P4 — Noyau lock: build a focused topic hint from the intent's metadata.
+     *
+     * Injected as `concept_hint` in the generate-bank-question body.
+     * The Node endpoint renders it as:
+     *   "Indice concept: <hint>"
+     * which steers the AI toward the exact noyau (subject + angle +
+     * micro-angle + answer target) rather than the broader domain.
+     *
+     * Without this, the AI may produce topically correct but semantically
+     * drifted questions (e.g. volleyball/marathon for a tennis-grand-slam
+     * noyau, or Asian/European geography for an african-geography noyau).
+     *
+     * Returns '' when no useful metadata is available (fail-open: the
+     * existing generic prompt "Choisis un fait précis" is used instead).
+     */
+    private function buildConceptHint(QuestionIntent $intent): string
+    {
+        $parts = array_filter([
+            $intent->subject       ? 'Sujet: '       . trim($intent->subject)       : null,
+            $intent->angle_large   ? 'Angle: '       . trim($intent->angle_large)   : null,
+            $intent->micro_angle   ? 'Micro-angle: ' . trim($intent->micro_angle)   : null,
+            $intent->answer_target ? 'Cible: '       . trim($intent->answer_target) : null,
+        ]);
+
+        if (empty($parts)) {
+            return '';
+        }
+
+        $hint = implode('. ', $parts) . '.';
+
+        // Append the semantic_key as a hard constraint so the AI cannot ignore
+        // the noyau boundary even when the hint is loosely worded.
+        $sk = trim((string) ($intent->semantic_key ?? $intent->intent_key ?? ''));
+        if ($sk !== '') {
+            $hint .= " Reste STRICTEMENT dans ce noyau ({$sk}) — toute dérive vers un autre sous-thème est interdite.";
+        }
+
+        return $hint;
     }
 
     // =========================================================================

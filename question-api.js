@@ -1277,9 +1277,9 @@ CONTRAINTES:
 - Distracteurs (réponses incorrectes) : chacun doit être plausible pour quelqu'un qui confond un fait proche, mais UNIVOQUEMENT FAUX. Interdit : distractor évident ("Je ne sais pas"), reformulation de la bonne réponse, contradiction logique, ou réponse qui pourrait être partiellement correcte.
 - concept_family : EN ANGLAIS, kebab-case, 1-4 mots, taxonomie stable (ex: "basketball-rules", "australian-geography", "medieval-history")
 - LONGUEUR STRICTE (limites absolues, dépassement = rejet automatique) :
-    · question_text : ≤ 120 caractères (FR/EN/…), ≤ 70 caractères (ZH/AR)
-    · chaque réponse (answer_a/b/c/d) : ≤ 70 caractères (FR/EN/…), ≤ 35 caractères (ZH/AR)
-    · saviez_vous : ≤ 200 caractères (FR/EN/…), ≤ 90 caractères (ZH/AR)
+    · question_text : ≤ 105 caractères (FR/EN/DE/ES/IT/PT/RU/EL), ≤ 70 caractères (AR), ≤ 55 caractères (ZH)
+    · chaque réponse (answer_a/b/c/d) : ≤ 55 caractères (FR/EN/DE/ES/IT/PT/RU/EL), ≤ 35 caractères (AR), ≤ 25 caractères (ZH)
+    · saviez_vous : ≤ 215 caractères (FR/EN/DE/ES/IT/PT/RU/EL), ≤ 135 caractères (AR), ≤ 95 caractères (ZH)
 - FORMULATION INTERDITE : ne jamais formuler la question en négatif. Interdit : "n'est pas", "ne sont pas", "sauf", "excepté", "hormis", "aucun de ces", "lequel ne", "jamais". Formule toujours la question de façon POSITIVE et directe.
 - Bonne réponse : doit être univoque, précise, et clairement distincte des distracteurs. Évite les réponses trop vagues ("Oui", "Non", "Les deux", "Aucune de ces réponses").
 ${forbiddenFamiliesBlock}${forbiddenBlock}
@@ -1466,6 +1466,11 @@ RÈGLES ABSOLUES — AUCUNE EXCEPTION :
 7. explanation et saviez_vous : traduis fidèlement dans CHAQUE langue cible. Ces deux champs sont OBLIGATOIRES et non-vides dans TOUTES les langues — une valeur vide ou absente invalide la réponse entière.
 8. Si une réponse est un nom propre, un nombre, une date, un acronyme ou un terme technique : conserve-le TEL QUEL sans traduction.
 9. COMPLÉTUDE : le JSON de sortie doit contenir EXACTEMENT ${target_languages.length} entrées (une par langue cible). Aucune langue ne peut être omise ou tronquée.
+10. LONGUEUR STRICTE par langue cible (dépassement = rejet automatique) :
+    · question_text : ≤ 105 caractères (FR/EN/DE/ES/IT/PT/RU/EL), ≤ 70 caractères (AR), ≤ 55 caractères (ZH)
+    · chaque réponse (answer_a/b/c/d) : ≤ 55 caractères (FR/EN/DE/ES/IT/PT/RU/EL), ≤ 35 caractères (AR), ≤ 25 caractères (ZH)
+    · saviez_vous : ≤ 215 caractères (FR/EN/DE/ES/IT/PT/RU/EL), ≤ 135 caractères (AR), ≤ 95 caractères (ZH)
+    Si une traduction dépasse la limite, raccourcis-la sans altérer le sens fondamental.
 
 QUESTION SOURCE (${source_language.toUpperCase()}) :
   question_text = "${master.question_text}"
