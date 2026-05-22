@@ -13,7 +13,7 @@ use Illuminate\Console\Command;
  */
 class QuestionsDialyseFinalExportCommand extends Command
 {
-    protected $signature   = 'questions:dialyse:final-export';
+    protected $signature   = 'questions:dialyse:final-export {--output-file= : Override output path}';
     protected $description = 'Export état final réel des 10 noyaux de dialyse → exports/dialyse_10_noyaux_FINAL.md';
 
     private const NOYAU_IDS = [4, 7, 34, 46, 64, 67, 85, 100, 121, 139];
@@ -71,7 +71,7 @@ class QuestionsDialyseFinalExportCommand extends Command
         $lines[] = '';
         $lines[] = '**Date :** ' . now()->format('Y-m-d H:i:s');
         $lines[] = '**Noyaux :** ' . implode(', ', self::NOYAU_IDS);
-        $lines[] = '**Fixes appliqués :** P0 true_false contract · P1 Jaccard saviez_vous_off_topic';
+        $lines[] = '**Fixes appliqués :** P0 true_false contract · P1 Jaccard saviez_vous_off_topic · P4 concept_hint (dérive sémantique) · P3 longueurs prompt alignées sur guards · P5 forbidden_families pre-guard';
         $lines[] = '';
 
         // ── Global summary table ────────────────────────────────────────────
@@ -268,11 +268,12 @@ class QuestionsDialyseFinalExportCommand extends Command
         $lines[] = '';
         $lines[] = '*Généré par `questions:dialyse:final-export` le ' . now()->format('Y-m-d H:i:s') . '*';
 
-        $md   = implode("\n", $lines);
-        $path = base_path('exports/dialyse_10_noyaux_FINAL.md');
+        $md       = implode("\n", $lines);
+        $outFile  = $this->option('output-file') ?: 'exports/dialyse_10_noyaux_FINAL.md';
+        $path     = str_starts_with($outFile, '/') ? $outFile : base_path($outFile);
         file_put_contents($path, $md);
 
-        $this->info("✅ Export → exports/dialyse_10_noyaux_FINAL.md (" . round(strlen($md) / 1024) . " KB, " . count($lines) . " lignes)");
+        $this->info("✅ Export → {$outFile} (" . round(strlen($md) / 1024) . " KB, " . count($lines) . " lignes)");
 
         return self::SUCCESS;
     }

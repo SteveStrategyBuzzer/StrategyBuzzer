@@ -1733,3 +1733,9 @@ id = "HUXfgT7SMtQUlYPNz4eB5"
 uri = "file://exports/dialyse_10_noyaux_FINAL.md"
 type = "text"
 title = "Dialyse 10 noyaux — État final réel (toutes langues)"
+
+[[outputs]]
+id = "fKkV5rOTB4usMUpFRuKfR"
+uri = "file://exports/dialyse_10_noyaux_CORRIGE_FINAL.md"
+type = "text"
+title = "Dialyse 10 noyaux — État corrigé final (P0→P5)"
