@@ -1,0 +1,162 @@
+GO — LOT P1-C uniquement.
+
+Objectif :
+Créer le validator structurel de PHASE 1 — Étape 2.
+
+Contexte validé :
+P1-A terminé : colonnes frame_en/frame_status/frame_validated_at créées.
+P1-B terminé : KernelFrameBuilder crée un squelette avec :
+- kernel_core
+- translation_constraints
+- 5 variants
+- 45 translation_slots
+- frame_status = draft
+
+P1-C doit valider la STRUCTURE seulement.
+Aucun contenu EN.
+Aucune traduction.
+Aucun ready_bank.
+Aucun gameplay.
+
+Créer un service dédié :
+app/Services/QuestionBank/KernelFrameValidator.php
+
+Rôle :
+validateStructure(array $frame): array
+
+Retour attendu :
+[
+  'ok' => true|false,
+  'errors' => [],
+  'warnings' => [],
+  'summary' => [
+    'variant_count' => 5,
+    'translation_slot_count' => 45
+  ]
+]
+
+Checks obligatoires :
+
+1. kernel_core
+Vérifier 11 champs présents et non null :
+- domain
+- sub_domain
+- difficulty_depth
+- concept_family
+- semantic_key
+- subject
+- angle_large
+- micro_angle
+- answer_target
+- potential_trap
+- pedagogical_intent
+
+2. translation_constraints
+Vérifier 9 langues :
+- fr, es, de, it, pt, ru, zh, ar, el
+
+Chaque langue doit avoir :
+- question_max_length
+- answer_max_length
+- funFact_max_length
+- funFact_min_length
+
+3. variants
+Vérifier exactement 5 clés, aucune autre :
+- qcm_recognition
+- qcm_reasoning
+- qcm_deceptive_trap
+- true_false_recognition
+- true_false_reasoning
+
+4. Cohérence variant
+Chaque variante doit avoir :
+- question_type correct
+- cognitive_type correct
+- gameplay_constraints correct
+- cognitive_contract correct
+
+Couples obligatoires :
+- qcm_recognition → qcm / recognition / answer_count 4 / keys A,B,C,D
+- qcm_reasoning → qcm / reasoning / answer_count 4 / keys A,B,C,D
+- qcm_deceptive_trap → qcm / deceptive_trap / answer_count 4 / keys A,B,C,D
+- true_false_recognition → true_false / recognition / answer_count 2 / keys A,B
+- true_false_reasoning → true_false / reasoning / answer_count 2 / keys A,B
+
+5. qcm_deceptive_trap
+Son cognitive_contract doit contenir :
+- requires_inference
+- has_deceptive_distractor
+- trap_description
+- trap_type
+- intuitive_wrong_answer
+- intuitive_answer_presence
+- recadrage_expected
+- fairness_reason
+- alignment_with_kernel_core
+
+En structure draft, les champs texte du piège peuvent être null.
+Mais les clés doivent exister.
+
+6. 45 translation_slots
+Chaque variante doit avoir 9 langues :
+- fr, es, de, it, pt, ru, zh, ar, el
+
+Total attendu :
+5 × 9 = 45 slots.
+
+Chaque slot doit contenir exactement :
+- status = pending
+- correct_answer_key = null
+- question_text = null
+- answer_a = null
+- answer_b = null
+- answer_c = null
+- answer_d = null
+- explanation = null
+- saviez_vous = null
+
+7. Contenu EN encore vide
+Dans chaque variante, vérifier :
+- question_text = null
+- answer_a = null
+- answer_b = null
+- answer_c = null
+- answer_d = null
+- correct_answer_key = null
+- explanation = null
+- saviez_vous = null
+
+Créer une commande artisan :
+questions:kernel:validate-structure {intent_id}
+
+Rôle :
+- lire question_intents.frame_en
+- exécuter KernelFrameValidator
+- si OK : frame_status = awaiting_content
+- si FAIL : frame_status reste draft
+- afficher erreurs détaillées
+
+Interdit :
+- ne pas générer contenu EN
+- ne pas traduire
+- ne pas toucher question_groups
+- ne pas toucher ready_bank
+- ne pas toucher worker
+- ne pas toucher gameplay
+
+Méthode :
+GREP → SLICE → SQL PROOF → PATCH → VALIDATION
+
+Validation obligatoire :
+1. php -l sur fichiers créés
+2. php artisan list | grep kernel
+3. exécuter sur intent #4 créé en P1-B
+4. SQL proof :
+   - frame_status passe de draft à awaiting_content si OK
+   - frame_en reste non null
+   - variant_count = 5
+   - translation_slot_count = 45
+5. confirmer aucun question_group modifié
+6. confirmer ready_bank total inchangé
+7. STOP après P1-C
