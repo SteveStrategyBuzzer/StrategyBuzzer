@@ -1,0 +1,81 @@
+Clarification cognitive importante pour Phase 2 — deceptive_trap.
+
+Ne pas définir deceptive_trap comme :
+“QCM plus difficile avec distracteurs plausibles”.
+
+Définition officielle StrategyBuzzer :
+
+deceptive_trap =
+une question qui déclenche une intuition automatique trompeuse,
+puis force le joueur à recadrer mentalement avant de répondre.
+
+Le piège peut être porté par :
+1. la question elle-même
+2. les choix de réponses
+3. l’absence de la réponse intuitive dans les choix
+4. une catégorie implicite
+5. un biais culturel ou populaire
+6. une confusion fréquente
+
+Exemple 1 — réponse intuitive présente :
+Question :
+Quelle ville est la plus grande capitale francophone ?
+
+A. Paris
+B. Kinshasa
+C. Bruxelles
+D. Dakar
+
+Piège :
+Le joueur pense Paris parce que Paris est la capitale francophone la plus célèbre.
+Mais la bonne réponse est Kinshasa.
+
+Exemple 2 — réponse intuitive absente :
+Question :
+Quelle ville est la plus grande capitale francophone ?
+
+A. Kinshasa
+B. Bruxelles
+C. Dakar
+D. Québec
+
+Piège :
+Le joueur pense Paris avant de lire les choix.
+Mais Paris est absent, donc il doit recadrer son raisonnement.
+La bonne réponse reste Kinshasa.
+
+Exemple 3 — recadrage par catégorie :
+Question :
+Quel animal terrestre est le plus gros ?
+
+A. Chat — Maine Coon
+B. Rongeur — Capybara
+C. Lézard — Dragon de Komodo
+D. Poisson — Thon
+
+Piège :
+Le joueur pense automatiquement “éléphant”.
+Mais les choix forcent un recadrage :
+il faut comprendre la logique des catégories proposées.
+Le Thon est un leurre car ce n’est pas terrestre.
+
+Donc le Validator/VariantAlignmentChecker doit vérifier :
+
+- le deceptive_trap déclenche-t-il une intuition initiale crédible ?
+- cette intuition est-elle trompeuse ?
+- le joueur peut-il corriger son raisonnement avec les indices disponibles ?
+- le piège reste-t-il juste et pédagogique ?
+- le piège reste-t-il aligné avec kernel_core ?
+- la question ne devient-elle pas ambiguë ou injuste ?
+- la variante ne change-t-elle pas complètement de concept ?
+
+Interdit :
+- simple QCM recognition avec mauvais choix ordinaires
+- difficulté artificielle
+- question obscure
+- piège injuste
+- changement de sujet
+- distracteurs absurdes
+
+Résumé :
+deceptive_trap = faux réflexe cognitif naturel + recadrage possible.
