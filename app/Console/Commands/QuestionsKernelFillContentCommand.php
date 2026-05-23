@@ -12,18 +12,15 @@ use App\Services\QuestionBank\KernelContentBuilder;
  *
  * PHASE 1 — Étape 3 : fills English content for all 5 variants of frame_en.
  *
- * Ce que cette commande fait :
- *   1. Lit frame_en (frame_status doit être 'awaiting_content')
- *   2. Appelle KernelContentBuilder::buildEnglishContent()
- *   3. Sauvegarde frame_en mis à jour
- *   4. frame_status = 'content_ready'
+ * Flow master-first (3 étapes internes) :
+ *   3-A. Génère la question maître EN (qcm_recognition) via /generate-kernel-master
+ *   3-B. Valide la question maître (cohérence kernel_core, lisibilité, distracteurs)
+ *   3-C. Génère les 4 variantes dérivées via /generate-kernel-derived-variants
  *
  * Ce que cette commande NE fait PAS :
  *   - Ne traduit pas (les translation_slots restent status=pending)
- *   - Ne touche pas question_groups
- *   - Ne touche pas ready_bank
- *   - Ne touche pas le worker
- *   - Ne touche pas le gameplay
+ *   - Ne touche pas question_groups ni ready_bank
+ *   - Ne touche pas le worker ni le gameplay
  *   - Ne valide pas la qualité cognitive (Phase 2)
  */
 class QuestionsKernelFillContentCommand extends Command
@@ -32,7 +29,7 @@ class QuestionsKernelFillContentCommand extends Command
         {intent_id : ID du QuestionIntent à remplir}
         {--force   : Autoriser si frame_status != awaiting_content}';
 
-    protected $description = 'PHASE 1 Étape 3 — Remplit le contenu EN des 5 variantes et passe frame_status à content_ready.';
+    protected $description = 'PHASE 1 Étape 3 — Master-first : génère question maître EN puis 4 variantes dérivées.';
 
     public function handle(KernelContentBuilder $builder): int
     {
@@ -41,7 +38,7 @@ class QuestionsKernelFillContentCommand extends Command
 
         $this->line('');
         $this->line('╔══════════════════════════════════════════════════════════════════╗');
-        $this->line('║   PHASE 1 — Étape 3 : Remplissage contenu EN                   ║');
+        $this->line('║   PHASE 1 — Étape 3 : Remplissage contenu EN (master-first)    ║');
         $this->line('╚══════════════════════════════════════════════════════════════════╝');
         $this->line('');
 
@@ -84,32 +81,39 @@ class QuestionsKernelFillContentCommand extends Command
             return self::FAILURE;
         }
 
-        // ── 4. Appel KernelContentBuilder ─────────────────────────────────────
+        // ── 4. Afficher kernel_core ───────────────────────────────────────────
         $kc = $frame['kernel_core'] ?? [];
-        $this->line("  Génération EN pour :");
-        $this->line("    subject      : " . ($kc['subject'] ?? '?'));
-        $this->line("    answer_target: " . ($kc['answer_target'] ?? '?'));
+        $this->line("  Kernel core :");
+        $this->line("    subject       : " . ($kc['subject'] ?? '?'));
+        $this->line("    answer_target : " . ($kc['answer_target'] ?? '?'));
         $this->line("    potential_trap: " . ($kc['potential_trap'] ?? 'none'));
         $this->line('');
-        $this->line('  Appel Question API → /generate-kernel-variants …');
+
+        // ── 5. Appel KernelContentBuilder (3-A + 3-B + 3-C) ──────────────────
+        $this->line('  <fg=cyan>Étape 3-A :</> Génération question maître EN → /generate-kernel-master …');
+        $this->line('  <fg=cyan>Étape 3-B :</> Validation maître (PHP-side)');
+        $this->line('  <fg=cyan>Étape 3-C :</> Génération 4 variantes dérivées → /generate-kernel-derived-variants …');
         $this->line('');
 
         $result = $builder->buildEnglishContent($frame);
 
         if (! $result['ok']) {
-            $this->error("Échec génération : " . ($result['error'] ?? 'unknown'));
+            $step  = $result['step'] ?? '?';
+            $error = $result['error'] ?? 'unknown';
+            $this->error("Échec étape {$step} : {$error}");
             return self::FAILURE;
         }
 
         $updatedFrame = $result['frame'];
-        $source       = $result['source'] ?? 'unknown';
-        $latencyMs    = $result['latency_ms'] ?? 0;
+        $master       = $result['master'];
+        $sources      = $result['sources'] ?? [];
+        $latencyMs    = $result['latency_total_ms'] ?? 0;
 
-        $this->line("  Source AI  : {$source}");
-        $this->line("  Latence    : {$latencyMs}ms");
+        $this->line("  Sources AI : master={$sources['master']}, derived={$sources['derived']}");
+        $this->line("  Latence    : {$latencyMs}ms (total)");
         $this->line('');
 
-        // ── 5. Sauvegarder frame_en ───────────────────────────────────────────
+        // ── 6. Sauvegarder frame_en ───────────────────────────────────────────
         DB::table('question_intents')
             ->where('id', $intent->id)
             ->update([
@@ -121,55 +125,66 @@ class QuestionsKernelFillContentCommand extends Command
         $this->info("✅  frame_en mis à jour — frame_status = content_ready");
         $this->line('');
 
-        // ── 6. Résumé des 5 variants ──────────────────────────────────────────
-        $this->line('  <fg=cyan;options=bold>Résumé des 5 variantes EN :</>');
+        // ── 7. Résumé question maître ─────────────────────────────────────────
+        $this->line('  <fg=cyan;options=bold>Question maître (qcm_recognition) :</>');
+        $masterCk    = strtoupper($master['correct_answer_key'] ?? '?');
+        $masterField = 'answer_' . strtolower($masterCk);
+        $this->line("    Q  : " . mb_substr($master['question_text'] ?? '—', 0, 80));
+        $this->line("    ✅  [{$masterCk}] " . ($master[$masterField] ?? '?'));
+        $this->line("    💡  " . mb_substr($master['saviez_vous'] ?? '—', 0, 80));
         $this->line('');
 
-        $variantOrder = [
-            'qcm_recognition'        => 'QCM Recognition',
+        // ── 8. Résumé des 4 variantes dérivées ───────────────────────────────
+        $this->line('  <fg=cyan;options=bold>Variantes dérivées :</>');
+        $this->line('');
+
+        $derivedOrder = [
             'qcm_reasoning'          => 'QCM Reasoning',
             'qcm_deceptive_trap'     => 'QCM Deceptive Trap',
             'true_false_recognition' => 'V/F Recognition',
             'true_false_reasoning'   => 'V/F Reasoning',
         ];
 
-        foreach ($variantOrder as $key => $label) {
-            $v = $updatedFrame['variants'][$key] ?? [];
-            $q = mb_substr($v['question_text'] ?? '—', 0, 80);
-            $ck = $v['correct_answer_key'] ?? '?';
-            $ans = $v["answer_{$this->keyToField($ck)}"] ?? '?';
+        foreach ($derivedOrder as $key => $label) {
+            $v  = $updatedFrame['variants'][$key] ?? [];
+            $q  = mb_substr($v['question_text'] ?? '—', 0, 80);
+            $ck = strtoupper($v['correct_answer_key'] ?? '?');
+            $ansField = 'answer_' . strtolower($ck);
+            $ans = $v[$ansField] ?? '?';
+
             $this->line("  <fg=green>{$label}</>");
-            $this->line("    Q : {$q}");
-            $this->line("    ✅ [{$ck}] {$ans}");
+            $this->line("    Q  : {$q}");
+            $this->line("    ✅  [{$ck}] {$ans}");
 
             if ($key === 'qcm_deceptive_trap') {
                 $cc = $v['cognitive_contract'] ?? [];
-                $this->line("    🪤 trap_type  : " . ($cc['trap_type'] ?? '?'));
-                $this->line("    🪤 intuition  : " . mb_substr($cc['intuitive_wrong_answer'] ?? '?', 0, 60));
-                $this->line("    🪤 presence   : " . ($cc['intuitive_answer_presence'] ?? '?'));
+                $this->line("    🪤  trap_type : " . ($cc['trap_type'] ?? '?'));
+                $this->line("    🪤  intuition : " . mb_substr($cc['intuitive_wrong_answer'] ?? '?', 0, 60));
+                $this->line("    🪤  presence  : " . ($cc['intuitive_answer_presence'] ?? '?'));
             }
             $this->line('');
         }
 
-        // ── 7. Vérification answer_target cohérent ────────────────────────────
-        $this->line('  <fg=cyan>Vérification answer_target :</>');
-        $answerTarget = $kc['answer_target'] ?? '';
-        $this->line("    kernel_core.answer_target : {$answerTarget}");
-        $this->line("    (Vérification sémantique manuelle ou Phase 2 DT-3)");
+        // ── 9. Vérification answer_target ─────────────────────────────────────
+        $this->line('  <fg=cyan>Ancrage kernel_core :</>');
+        $this->line("    answer_target  : " . ($kc['answer_target'] ?? '?'));
+        $this->line("    concept_family : " . ($kc['concept_family'] ?? '?'));
+        $this->line("    kernel_core    : intact (inchangé)");
         $this->line('');
 
-        // ── 8. Translation slots — comptage dans les variants ────────────────
+        // ── 10. Translation slots ─────────────────────────────────────────────
         $totalSlots = 0;
         foreach ($updatedFrame['variants'] ?? [] as $vSlot) {
             $totalSlots += count($vSlot['translation_slots'] ?? []);
         }
-        $this->line("  Translation slots (9 langs × 5 variants) : {$totalSlots}");
+        $slotsOk = $totalSlots === 45 ? '<fg=green>✅</>' : '<fg=yellow>⚠</>';
+        $this->line("  Translation slots (9 langs × 5 variants) : {$totalSlots} {$slotsOk}");
         if ($totalSlots !== 45) {
-            $this->warn("  ⚠ Attendu 45 slots — got {$totalSlots}");
+            $this->warn("  Attendu 45 slots — got {$totalSlots}");
         }
         $this->line('');
 
-        // ── 9. Confirmation aucun question_group touché ───────────────────────
+        // ── 11. Confirmation aucun question_group touché ──────────────────────
         $groupsCount = DB::table('question_groups')
             ->where('question_intent_id', $intent->id)
             ->count();
@@ -183,16 +198,5 @@ class QuestionsKernelFillContentCommand extends Command
         $this->line('');
 
         return self::SUCCESS;
-    }
-
-    private function keyToField(string $key): string
-    {
-        return match (strtoupper($key)) {
-            'A' => 'a',
-            'B' => 'b',
-            'C' => 'c',
-            'D' => 'd',
-            default => 'a',
-        };
     }
 }

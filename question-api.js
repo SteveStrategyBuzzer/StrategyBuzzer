@@ -1603,18 +1603,13 @@ ${translationSchema}
 });
 
 // =============================================================================
-// POST /generate-kernel-variants
+// POST /generate-kernel-variants  [EXPERIMENTAL — superseded by the master-first
+// flow: /generate-kernel-master + /generate-kernel-derived-variants]
 //
-// PHASE 1 — Étape 3 : generates English content for all 5 variant types of
-// one kernel (qcm_recognition / qcm_reasoning / qcm_deceptive_trap /
-// true_false_recognition / true_false_reasoning) in a single AI call.
-//
-// The caller supplies kernel_core fields; the endpoint enforces that every
-// variant stays anchored to the same answer_target / subject / concept_family.
-//
-// For qcm_deceptive_trap the response also includes a filled cognitive_contract
-// (trap_type, intuitive_wrong_answer, intuitive_answer_presence,
-//  recadrage_expected, fairness_reason, alignment_with_kernel_core).
+// Kept for reference only. Do NOT use in production Phase 1 pipeline.
+// Generates all 5 variants in a single call without a master anchor.
+// This violates the master-first contract: derived variants (reasoning,
+// deceptive_trap, true_false) must be anchored to a validated master question.
 //
 // Request body:
 //   kernel_core: { domain, sub_domain, difficulty_depth, subject, angle_large,
@@ -1864,6 +1859,410 @@ Return EXACTLY this JSON structure:
       userPrompt,
       temperature: 0.82,
       maxOutputTokens: 3500,
+      responseMimeType: 'application/json',
+      validate,
+    });
+  } catch (err) {
+    if (err.name === 'NoProvidersConfiguredError') {
+      return res.status(503).json({ ok: false, error: 'no_providers_configured', detail: err.message });
+    }
+    if (err.name === 'AllProvidersExhaustedError') {
+      return res.status(503).json({ ok: false, error: 'all_providers_exhausted', detail: err.message });
+    }
+    return res.status(502).json({ ok: false, error: 'router_error', detail: err.message || String(err) });
+  }
+
+  return res.json({
+    ok: true,
+    variants: routed.validated,
+    source: routed.provider,
+    latency_ms: routed.latencyMs,
+  });
+});
+
+// =============================================================================
+// POST /generate-kernel-master
+//
+// PHASE 1 — Étape 3-A : generates the master question (qcm_recognition) for
+// one kernel. The master is the coherence anchor: all derived variants will
+// be generated FROM this question, sharing the same correct answer.
+//
+// Request body:
+//   kernel_core: { domain, sub_domain, difficulty_depth, subject, angle_large,
+//                  micro_angle, answer_target, potential_trap, concept_family }
+//
+// Response: { ok: true, master: { question_text, answer_a/b/c/d,
+//             correct_answer_key, explanation, saviez_vous } }
+// =============================================================================
+app.post('/generate-kernel-master', async (req, res) => {
+  const { kernel_core } = req.body || {};
+
+  if (!kernel_core || typeof kernel_core !== 'object') {
+    return res.status(400).json({ ok: false, error: 'kernel_core object required' });
+  }
+
+  const {
+    domain,
+    sub_domain,
+    difficulty_depth,
+    subject,
+    angle_large,
+    micro_angle,
+    answer_target,
+    potential_trap = '',
+    concept_family = '',
+  } = kernel_core;
+
+  if (!domain || !sub_domain || !difficulty_depth || !subject || !answer_target) {
+    return res.status(400).json({
+      ok: false,
+      error: 'kernel_core must include: domain, sub_domain, difficulty_depth, subject, answer_target',
+    });
+  }
+
+  const depth = parseInt(difficulty_depth, 10) || 5;
+
+  const systemPrompt =
+    'You are a quiz content generator for StrategyBuzzer. You respond ONLY with valid JSON (no markdown, no prose).';
+
+  const userPrompt = `Generate ONE English qcm_recognition quiz question. This is the MASTER question — it will be used as the anchor for 4 derived variants.
+
+KERNEL CORE (strict anchor — do NOT change subject or correct answer):
+- Domain: ${domain} / ${sub_domain}
+- Difficulty depth: ${depth}/10
+- Subject: ${subject}
+- Angle: ${angle_large || 'general'}
+- Micro-angle: ${micro_angle || 'general'}
+- Answer target: ${answer_target}
+- Known trap / confusion: ${potential_trap || 'none specified'}
+- Concept family: ${concept_family || 'to be determined'}
+
+COGNITIVE TYPE: qcm_recognition — direct factual recall. The player recognizes a known fact. No deduction required.
+
+RULES:
+- Language: English only
+- 4 answers (answer_a/b/c/d), all non-null, one correct
+- question_text ≤ 110 chars
+- each answer ≤ 60 chars
+- saviez_vous ≥ 30 chars, ≤ 220 chars — surprising memorable fact NOT found in the question or answers
+- No negative framing ("is not", "except", "none of the following")
+- Distractors must be plausible but unambiguously wrong
+- Correct answer must clearly match answer_target
+
+Return EXACTLY this JSON:
+{
+  "question_text": "...",
+  "answer_a": "...",
+  "answer_b": "...",
+  "answer_c": "...",
+  "answer_d": "...",
+  "correct_answer_key": "A|B|C|D",
+  "explanation": "...",
+  "saviez_vous": "..."
+}`;
+
+  const validate = (text) => {
+    let raw = (text || '').trim();
+    if (raw.startsWith('```json')) raw = raw.slice(7);
+    if (raw.startsWith('```')) raw = raw.slice(3);
+    if (raw.endsWith('```')) raw = raw.slice(0, -3);
+    raw = raw.trim();
+
+    let parsed;
+    try { parsed = JSON.parse(raw); } catch (e) {
+      return { ok: false, reason: `invalid JSON: ${e.message}` };
+    }
+
+    const required = ['question_text','answer_a','answer_b','answer_c','answer_d','correct_answer_key','explanation','saviez_vous'];
+    for (const f of required) {
+      if (!parsed[f] && parsed[f] !== 0) return { ok: false, reason: `missing field: ${f}` };
+    }
+    if (!['A','B','C','D'].includes(String(parsed.correct_answer_key).toUpperCase())) {
+      return { ok: false, reason: `correct_answer_key must be A|B|C|D` };
+    }
+    if (parsed.question_text.length > 115) {
+      return { ok: false, reason: `question_text too long (${parsed.question_text.length})` };
+    }
+    if (parsed.saviez_vous.length < 20) {
+      return { ok: false, reason: `saviez_vous too short (${parsed.saviez_vous.length})` };
+    }
+
+    parsed.correct_answer_key = String(parsed.correct_answer_key).toUpperCase();
+    return { ok: true, value: parsed };
+  };
+
+  let routed;
+  try {
+    routed = await aiRouter.generate({
+      systemPrompt,
+      userPrompt,
+      temperature: 0.80,
+      maxOutputTokens: 700,
+      responseMimeType: 'application/json',
+      validate,
+    });
+  } catch (err) {
+    if (err.name === 'NoProvidersConfiguredError') {
+      return res.status(503).json({ ok: false, error: 'no_providers_configured', detail: err.message });
+    }
+    if (err.name === 'AllProvidersExhaustedError') {
+      return res.status(503).json({ ok: false, error: 'all_providers_exhausted', detail: err.message });
+    }
+    return res.status(502).json({ ok: false, error: 'router_error', detail: err.message || String(err) });
+  }
+
+  return res.json({
+    ok: true,
+    master: routed.validated,
+    source: routed.provider,
+    latency_ms: routed.latencyMs,
+  });
+});
+
+// =============================================================================
+// POST /generate-kernel-derived-variants
+//
+// PHASE 1 — Étape 3-C : generates 4 variants DERIVED FROM the master question.
+// The master (qcm_recognition) is the coherence anchor: all derived variants
+// must share the same correct answer and be cognitively consistent with it.
+//
+// Derived variants:
+//   - qcm_reasoning          : same answer, requires light inference
+//   - qcm_deceptive_trap     : same answer, triggers wrong intuition first
+//   - true_false_recognition : same fact, direct V/F statement
+//   - true_false_reasoning   : same fact, V/F requiring small deduction
+//
+// Request body:
+//   kernel_core: { ... }
+//   master: { question_text, answer_a/b/c/d, correct_answer_key,
+//             explanation, saviez_vous }
+//
+// Response: { ok: true, variants: { qcm_reasoning: {...},
+//             qcm_deceptive_trap: {...}, true_false_recognition: {...},
+//             true_false_reasoning: {...} } }
+// =============================================================================
+app.post('/generate-kernel-derived-variants', async (req, res) => {
+  const { kernel_core, master } = req.body || {};
+
+  if (!kernel_core || typeof kernel_core !== 'object') {
+    return res.status(400).json({ ok: false, error: 'kernel_core object required' });
+  }
+  if (!master || typeof master !== 'object') {
+    return res.status(400).json({ ok: false, error: 'master question object required' });
+  }
+
+  const {
+    domain,
+    sub_domain,
+    difficulty_depth,
+    subject,
+    angle_large,
+    micro_angle,
+    answer_target,
+    potential_trap = '',
+    concept_family = '',
+  } = kernel_core;
+
+  if (!domain || !sub_domain || !difficulty_depth || !subject || !answer_target) {
+    return res.status(400).json({
+      ok: false,
+      error: 'kernel_core must include: domain, sub_domain, difficulty_depth, subject, answer_target',
+    });
+  }
+
+  // Identify the correct answer text from the master
+  const ckLower = String(master.correct_answer_key || 'a').toLowerCase();
+  const masterCorrectText = master[`answer_${ckLower}`] || answer_target;
+  const depth = parseInt(difficulty_depth, 10) || 5;
+
+  const systemPrompt =
+    'You are a quiz content generator for StrategyBuzzer. You respond ONLY with valid JSON (no markdown, no prose).';
+
+  const userPrompt = `You are given a MASTER question (qcm_recognition). Generate 4 DERIVED variants. All variants must share the same correct answer as the master.
+
+MASTER QUESTION (anchor — do NOT change the correct answer):
+- question_text: "${master.question_text || ''}"
+- correct answer [${master.correct_answer_key || 'A'}]: "${masterCorrectText}"
+- explanation: "${master.explanation || ''}"
+
+KERNEL CORE:
+- Domain: ${domain} / ${sub_domain}
+- Difficulty depth: ${depth}/10
+- Subject: ${subject}
+- Angle: ${angle_large || 'general'}
+- Micro-angle: ${micro_angle || 'general'}
+- Answer target: ${answer_target}
+- Known trap / confusion: ${potential_trap || 'none specified'}
+- Concept family: ${concept_family || 'to be determined'}
+
+GLOBAL RULES FOR ALL DERIVED VARIANTS:
+- Language: English only
+- Correct answer must match the master's correct answer (same fact: "${masterCorrectText}")
+- Different wording and angle than the master question — no copy-paste
+- question_text ≤ 110 chars
+- each answer ≤ 60 chars
+- saviez_vous ≥ 30 chars, ≤ 220 chars — new surprising fact NOT a repeat of the master's saviez_vous
+- No negative framing ("is not", "except", "none of the following")
+
+VARIANT-SPECIFIC RULES:
+
+qcm_reasoning: Requires light deduction or comparison. The player must infer or reason, not just recall.
+  4 answers (answer_a/b/c/d non-null), one correct.
+
+qcm_deceptive_trap: Triggers a natural wrong automatic intuition BEFORE mental reframing.
+  4 answers (answer_a/b/c/d non-null), one correct.
+  The trap must feel natural (not a cheap trick). The correct answer must be reachable by careful reasoning.
+  Fill cognitive_contract:
+    - trap_type: one of [popularity_bias, cultural_bias, frequent_confusion, implicit_category, absent_intuition, false_mental_frame]
+    - intuitive_wrong_answer: what the player instinctively thinks BEFORE reading choices (must be a plausible wrong answer)
+    - intuitive_answer_presence: "present" (intuitive answer is a choice) | "absent" (not in choices) | "implicit" (implied by framing)
+    - recadrage_expected: how the player corrects their thinking to reach the right answer
+    - fairness_reason: why the trap is fair and solvable (no unfair trick, clues available)
+    - alignment_with_kernel_core: confirm the correct answer matches "${answer_target}"
+
+true_false_recognition: A direct V/F statement about the kernel fact. answer_a="True", answer_b="False", answer_c=null, answer_d=null.
+  correct_answer_key = A (the statement is TRUE) or B (the statement is FALSE).
+
+true_false_reasoning: A V/F statement requiring a small deduction or contextual knowledge. answer_a="True", answer_b="False", answer_c=null, answer_d=null.
+  Different angle than true_false_recognition. correct_answer_key = A or B.
+
+Return EXACTLY this JSON:
+{
+  "qcm_reasoning": {
+    "question_text": "...",
+    "answer_a": "...",
+    "answer_b": "...",
+    "answer_c": "...",
+    "answer_d": "...",
+    "correct_answer_key": "A|B|C|D",
+    "explanation": "...",
+    "saviez_vous": "..."
+  },
+  "qcm_deceptive_trap": {
+    "question_text": "...",
+    "answer_a": "...",
+    "answer_b": "...",
+    "answer_c": "...",
+    "answer_d": "...",
+    "correct_answer_key": "A|B|C|D",
+    "explanation": "...",
+    "saviez_vous": "...",
+    "cognitive_contract": {
+      "trap_type": "...",
+      "intuitive_wrong_answer": "...",
+      "intuitive_answer_presence": "present|absent|implicit",
+      "recadrage_expected": "...",
+      "fairness_reason": "...",
+      "alignment_with_kernel_core": "..."
+    }
+  },
+  "true_false_recognition": {
+    "question_text": "...",
+    "answer_a": "True",
+    "answer_b": "False",
+    "answer_c": null,
+    "answer_d": null,
+    "correct_answer_key": "A|B",
+    "explanation": "...",
+    "saviez_vous": "..."
+  },
+  "true_false_reasoning": {
+    "question_text": "...",
+    "answer_a": "True",
+    "answer_b": "False",
+    "answer_c": null,
+    "answer_d": null,
+    "correct_answer_key": "A|B",
+    "explanation": "...",
+    "saviez_vous": "..."
+  }
+}`;
+
+  const DERIVED_KEYS = ['qcm_reasoning', 'qcm_deceptive_trap', 'true_false_recognition', 'true_false_reasoning'];
+  const DECEPTIVE_CC_KEYS = ['trap_type','intuitive_wrong_answer','intuitive_answer_presence','recadrage_expected','fairness_reason','alignment_with_kernel_core'];
+  const VALID_TRAP_TYPES  = ['popularity_bias','cultural_bias','frequent_confusion','implicit_category','absent_intuition','false_mental_frame'];
+
+  const validate = (text) => {
+    let raw = (text || '').trim();
+    if (raw.startsWith('```json')) raw = raw.slice(7);
+    if (raw.startsWith('```')) raw = raw.slice(3);
+    if (raw.endsWith('```')) raw = raw.slice(0, -3);
+    raw = raw.trim();
+
+    let parsed;
+    try { parsed = JSON.parse(raw); } catch (e) {
+      return { ok: false, reason: `invalid JSON: ${e.message}` };
+    }
+
+    for (const key of DERIVED_KEYS) {
+      if (!parsed[key] || typeof parsed[key] !== 'object') {
+        return { ok: false, reason: `missing derived variant: ${key}` };
+      }
+      const v = parsed[key];
+      const isTF = key.startsWith('true_false');
+
+      if (!v.question_text || v.question_text.length < 5) {
+        return { ok: false, reason: `${key}.question_text missing or too short` };
+      }
+      if (v.question_text.length > 115) {
+        return { ok: false, reason: `${key}.question_text too long (${v.question_text.length})` };
+      }
+      if (!v.answer_a || !v.answer_b) {
+        return { ok: false, reason: `${key}: answer_a and answer_b required` };
+      }
+      if (!isTF && (!v.answer_c || !v.answer_d)) {
+        return { ok: false, reason: `${key}: answer_c and answer_d required for qcm` };
+      }
+      if (isTF && (v.answer_c !== null || v.answer_d !== null)) {
+        return { ok: false, reason: `${key}: answer_c/d must be null for true_false` };
+      }
+      if (!v.correct_answer_key) {
+        return { ok: false, reason: `${key}.correct_answer_key missing` };
+      }
+      const ck = String(v.correct_answer_key).toUpperCase();
+      if (!['A','B','C','D'].includes(ck)) {
+        return { ok: false, reason: `${key}.correct_answer_key must be A|B|C|D` };
+      }
+      if (isTF && !['A','B'].includes(ck)) {
+        return { ok: false, reason: `${key}.correct_answer_key must be A|B for true_false` };
+      }
+      v.correct_answer_key = ck;
+      if (!v.explanation || v.explanation.length < 5) {
+        return { ok: false, reason: `${key}.explanation missing or too short` };
+      }
+      if (!v.saviez_vous || v.saviez_vous.length < 20) {
+        return { ok: false, reason: `${key}.saviez_vous missing or too short` };
+      }
+
+      if (key === 'qcm_deceptive_trap') {
+        const cc = v.cognitive_contract;
+        if (!cc || typeof cc !== 'object') {
+          return { ok: false, reason: 'qcm_deceptive_trap.cognitive_contract missing' };
+        }
+        for (const ck2 of DECEPTIVE_CC_KEYS) {
+          if (!cc[ck2] || typeof cc[ck2] !== 'string' || cc[ck2].trim().length === 0) {
+            return { ok: false, reason: `qcm_deceptive_trap.cognitive_contract.${ck2} missing` };
+          }
+        }
+        if (!VALID_TRAP_TYPES.includes(cc.trap_type)) {
+          return { ok: false, reason: `invalid trap_type: ${cc.trap_type}` };
+        }
+        if (!['present','absent','implicit'].includes(cc.intuitive_answer_presence)) {
+          return { ok: false, reason: `intuitive_answer_presence must be present|absent|implicit` };
+        }
+      }
+    }
+
+    return { ok: true, value: parsed };
+  };
+
+  let routed;
+  try {
+    routed = await aiRouter.generate({
+      systemPrompt,
+      userPrompt,
+      temperature: 0.82,
+      maxOutputTokens: 2800,
       responseMimeType: 'application/json',
       validate,
     });
