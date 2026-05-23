@@ -3,6 +3,7 @@
 namespace App\Services\QuestionBank\Worker;
 
 use App\Services\QuestionBank\QuestionBankRepository;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Redis;
 
@@ -113,6 +114,12 @@ class BankWorker
                 foreach ($deficits as $candidate) {
                     if (!$this->isSegmentCoolingDown($candidate)) {
                         $segment = $candidate;
+                        // P4 — worker-safe noyau lock.
+                        // Enrich the segment with a concept_hint when a QuestionIntent
+                        // with noyau metadata (subject + angle_large) exists for this
+                        // sub_domain. Fail-open: returns '' when no enriched intent is
+                        // found so the worker behaves exactly as before for unlocked slots.
+                        $segment['concept_hint'] = $this->resolveConceptHint($segment);
                         break;
                     }
                     Log::info('[BankWorker] segment skipped — cooldown active', [
@@ -372,6 +379,93 @@ class BankWorker
             Log::warning('[BankWorker] recordSegmentReject failed (non-fatal)', [
                 'error' => $e->getMessage(),
             ]);
+        }
+    }
+
+    /**
+     * P4 — Worker-safe noyau lock.
+     *
+     * Attempts to find a QuestionIntent with full noyau metadata
+     * (subject + angle_large at minimum) matching this segment's sub_domain,
+     * and builds the same concept_hint string that the dialyse command would
+     * produce. Injected into the segment before it reaches BankAIGenerator so
+     * the AI is steered toward a specific semantic nucleus rather than being
+     * free to pick any fact in the broad sub_domain.
+     *
+     * Selection strategy:
+     *   1. Must match sub_domain and have subject + angle_large populated.
+     *   2. Prefer intents whose difficulty_depth matches the segment's depth
+     *      (depth_range[1]); fall back to any matching intent if none is found.
+     *   3. Pick randomly among candidates so the worker rotates across noyaux
+     *      rather than hammering the same one every cycle.
+     *
+     * Fail-open: returns '' on any exception or when no enriched intent exists.
+     * A '' concept_hint leaves the prompt identical to the pre-P4 behaviour
+     * ("Choisis un fait précis et vérifiable") — no cycle is ever blocked.
+     *
+     * Coverage today: ~10 intents carry noyau data (the 10 dialyse noyaux).
+     * As the question_intents table is enriched with subject/angle metadata for
+     * more noyaux, the worker automatically benefits without further code changes.
+     */
+    private function resolveConceptHint(array $segment): string
+    {
+        try {
+            $subDomain = (string) ($segment['sub_domain'] ?? '');
+            $depth     = (int)   ($segment['depth_range'][1] ?? 0);
+
+            if ($subDomain === '') {
+                return '';
+            }
+
+            // Try depth-matched intent first, then any enriched intent.
+            $base = DB::table('question_intents')
+                ->where('sub_domain', $subDomain)
+                ->whereNotNull('subject')
+                ->where('subject', '!=', '')
+                ->whereNotNull('angle_large')
+                ->where('angle_large', '!=', '');
+
+            $intent = (clone $base)
+                ->where('difficulty_depth', $depth)
+                ->inRandomOrder()
+                ->first(['subject', 'angle_large', 'micro_angle', 'answer_target', 'semantic_key']);
+
+            if ($intent === null) {
+                $intent = $base
+                    ->inRandomOrder()
+                    ->first(['subject', 'angle_large', 'micro_angle', 'answer_target', 'semantic_key']);
+            }
+
+            if ($intent === null) {
+                return '';
+            }
+
+            $parts = array_filter([
+                $intent->subject       !== '' ? 'Sujet: '       . trim((string) $intent->subject)       : null,
+                $intent->angle_large   !== '' ? 'Angle: '       . trim((string) $intent->angle_large)   : null,
+                ($intent->micro_angle  ?? '') !== '' ? 'Micro-angle: ' . trim((string) $intent->micro_angle)   : null,
+                ($intent->answer_target ?? '') !== '' ? 'Cible: '       . trim((string) $intent->answer_target) : null,
+            ]);
+
+            if (empty($parts)) {
+                return '';
+            }
+
+            $hint = implode('. ', $parts) . '.';
+
+            $sk = trim((string) ($intent->semantic_key ?? ''));
+            if ($sk !== '') {
+                $hint .= " Reste STRICTEMENT dans ce noyau ({$sk}) — toute dérive vers un autre sous-thème est interdite.";
+            }
+
+            return $hint;
+
+        } catch (\Throwable $e) {
+            Log::warning('[BankWorker] resolveConceptHint failed (non-fatal)', [
+                'sub_domain' => $segment['sub_domain'] ?? null,
+                'error'      => $e->getMessage(),
+            ]);
+            return '';
         }
     }
 

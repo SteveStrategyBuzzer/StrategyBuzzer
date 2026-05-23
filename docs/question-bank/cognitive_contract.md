@@ -1005,6 +1005,7 @@ stable et en kebab-case anglais, 1–4 mots.
 | P3    | `question-api.js`       | Limites prompt > guards réels → rejet systématique | +6 noyaux (8/10)         |
 | P5    | `QuestionsDialyseRunTestCommand.php` | `concept_family_share` rejet en production | +2 noyaux (10/10) |
 | **LOT1** | `QualityGuards.php` + `config/question_bank_profiles.php` + migration | Guard `correct_answer_overused` remplacé par Entropy Engine (E1/E2/E3) | 16 faux positifs éliminés ; 4 cas manqués (Barry Lyndon, David, Hopper) couverts |
+| **LOT2** | `BankWorker.php` | P4 worker-safe : `resolveConceptHint()` + appel au cycle — le vrai worker reçoit maintenant concept_hint des intents enrichis | Dérive sémantique bloquée pour les 8 sub_domains avec noyaux renseignés |
 
 ---
 
@@ -1012,7 +1013,7 @@ stable et en kebab-case anglais, 1–4 mots.
 
 | Évolution | Problème ciblé                               | Composant cible                    | Statut   |
 |-----------|----------------------------------------------|------------------------------------|----------|
-| LOT2 — concept_hint worker-safe | Dérive sémantique dans le vrai worker (P4 uniquement en dialyse) | `BankAIGenerator.php` | Planifié |
+| LOT2 — concept_hint worker-safe | Dérive sémantique dans le vrai worker (P4 uniquement en dialyse) | `BankWorker.php` | **APPLIQUÉ — 2026-05-23** |
 | LOT3 — forbidden_families worker-safe | Porte P5 dans le bank worker production | `BankNeedsCalculator.php` ou segment builder | Planifié |
 | LOT4 — Cognitive Guards | Fake reasoning, fake deceptive_trap, VF sans raisonnement, noyau forcé | `QualityGuards.php` | Planifié |
 | LOT5 — Saviez-vous renforcé | Non tautologique, non Wikipédia-lite, budget langue | `QualityGuards.php` + `question-api.js` | Planifié |
