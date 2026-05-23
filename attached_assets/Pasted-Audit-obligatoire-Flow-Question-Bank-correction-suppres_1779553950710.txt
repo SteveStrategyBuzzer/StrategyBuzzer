@@ -1,0 +1,93 @@
+Audit obligatoire — Flow Question Bank + correction/suppression
+
+Objectif :
+vérifier si le flow actuel est réellement configuré comme voulu.
+
+Aucun patch pour commencer.
+Analyse seulement.
+
+FLOW VOULU À VÉRIFIER
+
+PHASE 1 — Frame EN
+1. Créer le frame du noyau EN complet :
+- en déjà rempli comme langue source
+- QCM recognition original
+- question
+- réponses
+- bonne réponse
+- correct_answer_key
+- Saviez-vous / funFact
+- contraintes cognitives
+- contraintes gameplay
+- métadonnées pédagogiques
+- translation_slots fr/es/de/it/pt/ru/zh/ar/el avec :
+  question_max_length
+  answer_max_length
+  funFact_max_length
+  status = pending
+
+2. Valider que le frame EN est complet.
+
+3. Créer/valider l’original + les 4 variantes EN :
+- QCM recognition
+- QCM reasoning
+- QCM deceptive_trap
+- V/F recognition
+- V/F reasoning
+
+STOP PHASE 1.
+
+PHASE 2 — Validation EN + correction/suppression
+Vérifier :
+- validation cognitive
+- validation factualité
+- validation doublons
+- validation gameplay
+- validation Saviez-vous
+- alarme si bifurcation du noyau
+
+Puis expliquer comment fonctionne correction/suppression :
+- correction locale question ?
+- correction locale réponses ?
+- correction locale Saviez-vous ?
+- régénération d’une variante seulement ?
+- suppression d’une variante ?
+- suppression du noyau complet ?
+- quels statuts DB ?
+- quels logs ?
+- comment le système évite de changer l’intention du noyau ?
+
+STOP PHASE 2.
+
+PHASE 3 — Traductions
+- remplir les slots déjà prévus
+- préserver même logique
+- même bonne réponse
+- même piège
+- même difficulté
+- même Saviez-vous logique
+- revalidation multilingue
+
+PHASE 4 — ready_bank + dialyse certification
+- ready_bank reçoit seulement les noyaux certifiés
+- champ DB officiel requis :
+  dialysis_certified
+  dialysed_at
+  dialysis_version
+- le gameplay doit piger seulement dans ready_bank certifiée
+
+RETOUR ATTENDU
+
+1. fichiers exacts impliqués
+2. lignes exactes
+3. ce qui est déjà configuré
+4. ce qui manque
+5. comment correction/suppression fonctionne actuellement
+6. si correction/suppression n’existe pas encore : proposer le design minimal
+7. statuts DB actuels utilisés
+8. patchs nécessaires, mais ne pas les appliquer
+
+Méthode :
+GREP → SLICE → SQL PROOF → ANALYSE.
+
+Aucun patch avant validation.
