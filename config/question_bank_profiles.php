@@ -250,11 +250,32 @@ return [
             // share of a single segment (capped before insertion).
             'concept_family_segment_max_share' => 0.40,
 
-            // Reject when the same correct-answer TEXT already appears as the
-            // correct answer for this many questions in the same sub_domain.
-            // Prevents "Chine" (23x), "Indonésie" (22x) style answer clustering
-            // that lets players pattern-match the right answer without knowing.
-            'correct_answer_text_max_freq' => 12,
+            // ── Entropy guards (E1 / E2 / E3) ───────────────────────────────
+            // Replaces the old flat correct_answer_text_max_freq=12 cap that
+            // produced ~16 false positives per 1 true positive (Chine, Indonésie,
+            // numbers blocked; Barry Lyndon ×7, David ×4/path, Hopper ×5 missed).
+            //
+            // E1 — path-level cap (answer × concept_family × cognitive_type).
+            //      Same fact asked the same way ≥ N times = cognitive redundancy.
+            //      Applies to all QCM incl. generic answers (numbers, short strings).
+            //      Calibration: 95.7% of bank paths have count=1 → virtually no
+            //      interference; only 1.1% of paths (32/2999) are pathological.
+            'correct_answer_path_max_freq'    => 2,
+            //
+            // E2 — family concentration ratio.
+            //      If total ≥ min_count AND (distinct_families / total) < ratio → reject.
+            //      Catches Manet (2/14=14%), Edward Hopper (1/6=17%).
+            //      Skipped for pure numbers (regex ^\d+$) and answers ≤ 3 chars:
+            //      their family distribution is structurally artificial (each sport
+            //      rule = its own family) and does not reflect cognitive clustering.
+            'correct_answer_family_min_ratio' => 0.25,
+            'correct_answer_family_min_count' => 6,
+            //
+            // E3 — soft global alert (non-blocking, monitoring / human review only).
+            //      Logs a Laravel warning when total ≥ threshold.
+            //      Calibration: only Chine (37) and Indonésie (30) trigger today —
+            //      both legitimately diverse (65% and 57% family coverage).
+            'correct_answer_soft_alert_freq'  => 30,
         ],
 
         // Redis keys (single source of truth so health endpoint can read them).

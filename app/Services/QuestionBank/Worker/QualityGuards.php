@@ -162,15 +162,26 @@ class QualityGuards
             return ['ok' => false, 'code' => 'depth_incoherent', 'detail' => "depth={$depth} text too short"];
         }
 
-        // 9. Correct-answer text frequency cap.
+        // 9. Correct-answer entropy guards (E1 / E2 / E3).
         //
-        // When the same text ("Chine", "Picasso", "Australie"…) is already the
-        // correct answer for too many questions in the same sub_domain, adding
-        // one more makes the correct answer predictable by pattern-matching.
-        // We count existing FR rows where the keyed answer column matches.
+        // Replaces the old flat correct_answer_text_max_freq=12 cap.
+        // Rationale and calibration data in config/question_bank_profiles.php.
         //
-        // The check is skipped for true/false questions (Vrai/Faux are always
-        // the only two options and frequency is irrelevant).
+        // E1 — path-level cap (answer × concept_family × cognitive_type ≥ N).
+        //      Catches: Barry Lyndon ×7, Manet ×4/path, David ×4/path,
+        //               "2"×tennis-scoring×recognition ×5, Hopper ×5.
+        //      Applies to ALL QCM including generic answers.
+        //
+        // E2 — family concentration ratio.
+        //      total ≥ min_count AND distinct_families/total < 0.25 → reject.
+        //      Catches: Manet (2/14=14%), Hopper (1/6=17%).
+        //      Skipped for pure-number answers and answers ≤ 3 chars.
+        //
+        // E3 — soft global alert (non-blocking, Log::warning only).
+        //      Triggers for Chine (37) and Indonésie (30) — both legitimately
+        //      diverse (65% and 57% family coverage respectively).
+        //
+        // Skipped entirely for true/false (Vrai/Faux frequency is irrelevant).
         if (($payload['question_type'] ?? 'qcm') === 'qcm') {
             $frTr       = $translations['fr'] ?? $translations[array_key_first($translations)];
             $correctKey = strtoupper((string) ($frTr['correct_answer_key'] ?? 'A'));
@@ -179,22 +190,83 @@ class QualityGuards
             $answerText = $answerCol ? trim((string) ($frTr[$answerCol] ?? '')) : '';
 
             if ($answerText !== '' && $answerCol !== null) {
-                $maxFreq = (int) ($guards['correct_answer_text_max_freq'] ?? 12);
+                $pathMax     = (int)   ($guards['correct_answer_path_max_freq']    ?? 2);
+                $familyRatio = (float) ($guards['correct_answer_family_min_ratio'] ?? 0.25);
+                $familyMin   = (int)   ($guards['correct_answer_family_min_count'] ?? 6);
+                $softAlert   = (int)   ($guards['correct_answer_soft_alert_freq']  ?? 30);
+                $subDomain   = (string) ($payload['sub_domain']     ?? '');
+                $conceptFam  = (string) ($payload['concept_family'] ?? '');
+                $cogType     = (string) ($payload['cognitive_type'] ?? '');
 
-                $freq = DB::table('question_translations as qt')
+                // ── E1 — Path-level cap ───────────────────────────────────────
+                // Count existing questions with the exact same cognitive path.
+                // Requires concept_family and cognitive_type to be present in
+                // the payload (always true for bank-worker generated questions).
+                if ($conceptFam !== '' && $cogType !== '') {
+                    $pathFreq = DB::table('question_translations as qt')
+                        ->join('question_groups as qg', 'qg.id', '=', 'qt.question_group_id')
+                        ->where('qg.sub_domain',     $subDomain)
+                        ->where('qg.concept_family', $conceptFam)
+                        ->where('qg.cognitive_type', $cogType)
+                        ->where('qt.language',           'fr')
+                        ->where('qt.correct_answer_key', $correctKey)
+                        ->where("qt.{$answerCol}",       $answerText)
+                        ->count();
+
+                    if ($pathFreq >= $pathMax) {
+                        return [
+                            'ok'     => false,
+                            'code'   => 'correct_answer_overused',
+                            'detail' => "path '{$answerText}×{$conceptFam}×{$cogType}' already has {$pathFreq} questions (max {$pathMax})",
+                        ];
+                    }
+                }
+
+                // ── E2 + E3 — require global count ───────────────────────────
+                $totalFreq = DB::table('question_translations as qt')
                     ->join('question_groups as qg', 'qg.id', '=', 'qt.question_group_id')
-                    ->where('qg.sub_domain', $payload['sub_domain'])
-                    ->where('qt.language', 'fr')
+                    ->where('qg.sub_domain',         $subDomain)
+                    ->where('qt.language',           'fr')
                     ->where('qt.correct_answer_key', $correctKey)
-                    ->where("qt.{$answerCol}", $answerText)
+                    ->where("qt.{$answerCol}",       $answerText)
                     ->count();
 
-                if ($freq >= $maxFreq) {
-                    return [
-                        'ok'     => false,
-                        'code'   => 'correct_answer_overused',
-                        'detail' => "correct answer '{$answerText}' already appears {$freq}× in sub_domain '{$payload['sub_domain']}' (max {$maxFreq})",
-                    ];
+                // ── E2 — Family concentration ratio ──────────────────────────
+                // Generic answers: pure numbers (^\d+$) or very short (≤3 chars).
+                // Their family distribution is structurally high by nature (each
+                // sport has its own family) and does not reflect clustering.
+                $isGeneric = (bool) preg_match('/^\d+$/u', $answerText)
+                          || mb_strlen($answerText) <= 3;
+
+                if (!$isGeneric && $totalFreq >= $familyMin) {
+                    $distinctFam = DB::table('question_translations as qt')
+                        ->join('question_groups as qg', 'qg.id', '=', 'qt.question_group_id')
+                        ->where('qg.sub_domain',         $subDomain)
+                        ->where('qt.language',           'fr')
+                        ->where('qt.correct_answer_key', $correctKey)
+                        ->where("qt.{$answerCol}",       $answerText)
+                        ->distinct()
+                        ->count('qg.concept_family');
+
+                    $ratio = $totalFreq > 0 ? ($distinctFam / $totalFreq) : 1.0;
+
+                    if ($ratio < $familyRatio) {
+                        return [
+                            'ok'     => false,
+                            'code'   => 'correct_answer_overused',
+                            'detail' => "answer '{$answerText}' in '{$subDomain}': family_ratio=" . round($ratio * 100) . "% ({$distinctFam}/{$totalFreq}) < min=" . ($familyRatio * 100) . "%",
+                        ];
+                    }
+                }
+
+                // ── E3 — Soft global alert (non-blocking) ────────────────────
+                if ($totalFreq >= $softAlert) {
+                    \Log::warning('qb.guard.answer_soft_alert', [
+                        'answer'     => $answerText,
+                        'sub_domain' => $subDomain,
+                        'total'      => $totalFreq,
+                        'threshold'  => $softAlert,
+                    ]);
                 }
             }
         }

@@ -1004,6 +1004,7 @@ stable et en kebab-case anglais, 1–4 mots.
 | P4    | `QuestionsDialyseRunTestCommand.php` + `BankAIGenerator.php` | Dérive sémantique (tennis→marathon, africa→Asie) | +1 noyau complet (2/10)  |
 | P3    | `question-api.js`       | Limites prompt > guards réels → rejet systématique | +6 noyaux (8/10)         |
 | P5    | `QuestionsDialyseRunTestCommand.php` | `concept_family_share` rejet en production | +2 noyaux (10/10) |
+| **LOT1** | `QualityGuards.php` + `config/question_bank_profiles.php` + migration | Guard `correct_answer_overused` remplacé par Entropy Engine (E1/E2/E3) | 16 faux positifs éliminés ; 4 cas manqués (Barry Lyndon, David, Hopper) couverts |
 
 ---
 
@@ -1011,12 +1012,75 @@ stable et en kebab-case anglais, 1–4 mots.
 
 | Évolution | Problème ciblé                               | Composant cible                    | Statut   |
 |-----------|----------------------------------------------|------------------------------------|----------|
-| E1 — Path-level cap | Remplace `correct_answer_text_max_freq` | `QualityGuards.php`   | Planifié |
-| E2 — Family concentration ratio | Détection Manet-style (14 occ, 2 familles) | `QualityGuards.php` | Planifié |
-| E3 — forbidden_families en worker | Porte P5 dans le bank worker production | `BankNeedsCalculator.php` ou segment builder | Planifié |
-| E4 — Soft global alert | Alerte (non blocage) pour outliers extrêmes | health endpoint | Planifié |
+| LOT2 — concept_hint worker-safe | Dérive sémantique dans le vrai worker (P4 uniquement en dialyse) | `BankAIGenerator.php` | Planifié |
+| LOT3 — forbidden_families worker-safe | Porte P5 dans le bank worker production | `BankNeedsCalculator.php` ou segment builder | Planifié |
+| LOT4 — Cognitive Guards | Fake reasoning, fake deceptive_trap, VF sans raisonnement, noyau forcé | `QualityGuards.php` | Planifié |
+| LOT5 — Saviez-vous renforcé | Non tautologique, non Wikipédia-lite, budget langue | `QualityGuards.php` + `question-api.js` | Planifié |
+| LOT6 — Duo Buzzability | Score/guard buzzabilité, longueur Duo cible | `QualityGuards.php` | Planifié |
+| E5 — Prefix collision guard | Fragmentation artificielle concept_family (seismic vs seismic-activity) | `QualityGuards.php` | Planifié (post LOT6) |
 
 ---
 
-*Document officiel StrategyBuzzer — Question Engine Cognitive Contract v1.0*
+## Appendice D — Entropy Engine LOT1 (2026-05-22)
+
+### Seuils actifs
+
+| Paramètre config | Valeur | Rôle |
+|---|---|---|
+| `correct_answer_path_max_freq` | **2** | E1 — cap par cognitive path |
+| `correct_answer_family_min_ratio` | **0.25** | E2 — ratio minimum familles/total |
+| `correct_answer_family_min_count` | **6** | E2 — minimum total avant activation |
+| `correct_answer_soft_alert_freq` | **30** | E3 — seuil alerte non-bloquant |
+
+### Comportement guard `correct_answer_overused` (nouveau)
+
+```
+1. E1 — Si concept_family et cognitive_type sont présents :
+         COUNT(answer × concept_family × cognitive_type) ≥ 2 → rejet
+         Code : correct_answer_overused
+         Detail : "path 'X×Y×Z' already has N questions (max 2)"
+
+2. E2 — Si total ≥ 6 ET réponse non-générique (non-numérique, len > 3) :
+         distinct_families / total < 0.25 → rejet
+         Code : correct_answer_overused
+         Detail : "answer 'X' in 'Y': family_ratio=N% (D/T) < min=25%"
+
+3. E3 — Si total ≥ 30 :
+         Log::warning('qb.guard.answer_soft_alert', [...])
+         NON-BLOQUANT — alerte humaine seulement
+```
+
+### Validation sur la banque actuelle (2026-05-22)
+
+| Métrique | Valeur |
+|---|---|
+| Paths cognitifs totaux | 3 001 |
+| Paths sains (count=1) | 2 872 (95,7 %) |
+| Paths à la limite (count=2) | 97 (3,2 %) |
+| Paths pathologiques bloqués par E1 (count≥3) | 32 (1,1 %) |
+| Réponses bloquées par E2 | Manet (14%), Hopper (17%) |
+| Alertes E3 actives | Chine (37), Indonésie (30) |
+| Faux positifs éliminés vs ancien guard | 16/17 → 0/17 |
+
+### Risque documenté : fragmentation artificielle (E5 futur)
+
+L'IA peut contourner E1 en micro-fragmentant les concept_families :
+`world-geography-seismic` vs `world-geography-seismic-activity` pour Indonésie,
+`baseball-rules-inning` vs `baseball-rules-outs` vs `baseball-rules-regulation` pour `3`.
+
+Ces micro-fragments passent E1 (chaque path a count=1) mais sont cognitivement
+redondants. Guard E5 (prefix-collision check sur 3 tokens) est prévu post-LOT6.
+Instruction prompt ajoutée dans question-api.js (LOT5).
+
+### Index DB ajouté
+
+```sql
+CREATE INDEX qg_entropy_e1_idx
+    ON question_groups (sub_domain, concept_family, cognitive_type);
+-- Migration : 2026_05_22_200000_add_entropy_guard_index_to_question_groups
+```
+
+---
+
+*Document officiel StrategyBuzzer — Question Engine Cognitive Contract v1.1*
 *Ne pas modifier sans validation humaine et test de dialyse.*
