@@ -1,0 +1,87 @@
+On passe maintenant à l’audit PHASE 2 uniquement.
+
+Contexte verrouillé :
+PHASE 1 définit le noyau complet :
+- kernel_core
+- translation_constraints
+- 5 variantes fixes
+- 45 translation_slots
+- validation structurelle Étape 2
+- contenu EN créé/validé en Étape 3
+
+Maintenant on audite PHASE 2.
+
+PHASE 2 — Validation EN + correction/suppression
+
+Étape 1 — Validation EN :
+- validation cognitive
+- validation factualité
+- validation doublons
+- validation gameplay
+- validation Saviez-vous
+- alarme si une variante bifurque trop du noyau
+
+Étape 2 — Correction / suppression :
+- correction si possible
+- suppression d’une variante si irrécupérable
+- suppression du noyau complet si le noyau est irrécupérable
+- sortie : Bank 2
+- STOP PHASE 2
+
+Méthode obligatoire :
+GREP → SLICE → SQL PROOF → ANALYSE
+
+Audit demandé, sans patch :
+
+1. Identifier les fichiers existants qui font déjà :
+- validation cognitive
+- validation factualité
+- validation doublons
+- validation gameplay
+- validation Saviez-vous
+- correction
+- suppression / blocage
+
+2. Pour chaque validation, dire :
+- ce qui existe déjà
+- ce qui manque pour valider un frame_en complet
+- si ça valide un question_group ou un noyau complet
+- si c’est réutilisable pour Phase 2
+
+3. Vérifier si le système peut déjà détecter :
+- variante qui change de bonne réponse
+- variante qui change d’intention pédagogique
+- variante qui change de concept principal
+- variante qui change trop le piège
+- Saviez-vous faible, faux ou trop répétitif
+- doublon concept_id / concept_family / angle / bonne réponse
+
+4. Vérifier les mécanismes actuels de correction :
+- correction locale
+- revalidation
+- suppression variante
+- suppression noyau complet
+- historique correction
+- rollback
+
+5. Définir précisément ce que veut dire “Bank 2” dans le schéma actuel :
+- champ status ?
+- table ?
+- valeur frame_status ?
+- colonne phase ?
+- recommandé sans patch
+
+Interdit :
+- aucun patch
+- aucune migration
+- aucune génération
+- aucune traduction
+- aucun ready_bank
+- aucun gameplay
+
+Livrer :
+- fichiers exacts
+- lignes exactes
+- preuves SQL utiles
+- gaps Phase 2
+- recommandation architecture Phase 2
