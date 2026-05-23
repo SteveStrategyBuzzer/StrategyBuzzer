@@ -1,0 +1,134 @@
+GO — LOT P1-D uniquement.
+
+Objectif :
+PHASE 1 — Étape 3
+Créer le remplissage EN de l’original + des 4 variantes.
+
+Contexte validé :
+P1-A → DB prête
+P1-B → squelette frame_en créé
+P1-C → validation structurelle OK
+frame_status actuel = awaiting_content
+
+Maintenant :
+le système doit remplir le contenu EN,
+sans traduction,
+sans ready_bank,
+sans gameplay,
+sans worker massif.
+
+Important :
+P1-D ne valide PAS encore la qualité cognitive finale.
+P1-D crée seulement le contenu EN cohérent avec kernel_core.
+
+Créer un service dédié :
+app/Services/QuestionBank/KernelContentBuilder.php
+
+Rôle :
+buildEnglishContent(array $frame): array
+
+Le service reçoit :
+- frame_en validé structurellement
+- kernel_core
+- translation_constraints
+- variants
+
+Le service doit remplir :
+- qcm_recognition
+- qcm_reasoning
+- qcm_deceptive_trap
+- true_false_recognition
+- true_false_reasoning
+
+Chaque variante doit remplir :
+- question_text
+- answer_a-d
+- correct_answer_key
+- explanation
+- saviez_vous
+
+Important :
+Les 5 variantes doivent garder :
+- même answer_target
+- même subject
+- même concept_family
+- même intention pédagogique
+- même kernel_core
+
+Mais :
+- angle cognitif différent
+- wording différent
+- piège différent si deceptive_trap
+
+Règles cognitives obligatoires :
+
+recognition
+→ retrouver directement une réponse connue
+
+reasoning
+→ nécessiter déduction/logique légère
+
+deceptive_trap
+→ créer une intuition initiale trompeuse
+→ permettre un recadrage juste
+→ respecter cognitive_contract
+
+true_false_recognition
+→ version directe V/F
+
+true_false_reasoning
+→ version raisonnement V/F
+
+Important deceptive_trap :
+Le service doit remplir :
+- trap_description
+- trap_type
+- intuitive_wrong_answer
+- intuitive_answer_presence
+- recadrage_expected
+- fairness_reason
+- alignment_with_kernel_core
+
+Interdictions :
+- pas de traduction
+- pas de ready_bank
+- pas de Phase 2
+- pas de validation finale
+- pas de génération massive
+- pas de worker
+- pas de gameplay
+
+Créer une commande artisan :
+questions:kernel:fill-content {intent_id}
+
+Rôle :
+- lire frame_en
+- remplir contenu EN
+- sauvegarder frame_en
+- frame_status = content_ready
+- aucun autre système touché
+
+Méthode obligatoire :
+GREP → SLICE → SQL PROOF → PATCH → VALIDATION
+
+Validation obligatoire :
+1. php -l
+2. php artisan list | grep kernel
+3. exécuter sur intent #4
+4. SQL proof :
+   - frame_status = content_ready
+   - variants = 5
+   - 45 translation_slots toujours présents
+5. afficher résumé :
+   - recognition
+   - reasoning
+   - deceptive_trap
+   - V/F recognition
+   - V/F reasoning
+6. confirmer :
+   - même answer_target sur les 5 variantes
+   - même kernel_core
+   - aucun question_group modifié
+   - aucun ready_bank modifié
+
+STOP après P1-D.
