@@ -1,0 +1,128 @@
+Validation architecture acceptée.
+
+Important :
+Nous refusons Option B.
+
+Aucune table question_translation_slots.
+
+Nous validons officiellement :
+
+question_intents
+  ├── frame_en jsonb
+  ├── translation_slots jsonb
+  ├── frame_status
+  └── frame_validated_at
+
+Raison :
+Le noyau doit rester atomique et contenir :
+- original
+“ qcm / recognition”
+- 4 variantes
+Variantes :
+a. qcm / reasoning
+b. qcm / deceptive_trap
+c. true_false / recognition
+d. true_false / reasoning
+
+Précision obligatoire.
+Les 4 variantes ne sont pas libres.
+Replit ne doit pas inventer d’autres variantes.
+
+Le noyau contient exactement 5 blocs EN :
+
+1. ORIGINAL
+   question_type = qcm
+   cognitive_type = recognition
+
+2. VARIANTE 1
+   question_type = qcm
+   cognitive_type = reasoning
+
+3. VARIANTE 2
+   question_type = qcm
+   cognitive_type = deceptive_trap
+
+4. VARIANTE 3
+   question_type = true_false
+   cognitive_type = recognition
+
+5. VARIANTE 4
+ - question_type = true_false
+ - cognitive_type = reasoning
+
+Interdit :
+- pas de true_false / deceptive_trap
+- pas de open_answer
+- pas de image_question
+- pas de mixed
+- pas de variante bonus
+- pas de changement de nom
+- pas de cognitive_type inventé
+
+Chaque bloc doit avoir :
+- question
+- bonne réponse
+- mauvaises réponses adaptées au type
+- correct_answer_key
+- Saviez-vous / funFact
+- contraintes gameplay
+- contraintes cognitives
+- translation_slots fr/es/de/it/pt/ru/zh/ar/el
+
+Les 5 blocs doivent partager :
+- même domaine
+- même sous-domaine
+- même depth
+- même concept principal
+- même intention pédagogique
+- même concept_family
+- même semantic_key parent
+
+Ils peuvent varier seulement par :
+- angle cognitif
+- formulation
+- type QCM/VF
+- piège ou logique demandée
+
+
+- slots traduction
+- contraintes gameplay
+- contraintes cognitives
+- métadonnées pédagogiques
+
+dans un seul objet cohérent.
+
+Le flow officiel reste :
+
+PHASE 1
+Étape 1 → créer structure complète du noyau
+Étape 2 → valider structure
+Étape 3 → remplir/valider original + 4 variantes EN
+
+PHASE 2
+validation cognitive/factualité/gameplay/doublons/SV
+correction/suppression
+
+PHASE 3
+remplissage traductions
+revalidation multilingue
+
+PHASE 4
+ready_bank + dialyse certification
+
+Important :
+Le noyau doit exister AVANT le contenu.
+Les slots doivent exister AVANT les traductions.
+Les variantes doivent exister AVANT le remplissage.
+
+Maintenant :
+je veux uniquement la proposition exacte du JSON :
+- frame_en
+- translation_slots
+- variantes
+- contraintes gameplay
+- contraintes cognitives
+- métadonnées pédagogiques
+
+sans patch encore.
+
