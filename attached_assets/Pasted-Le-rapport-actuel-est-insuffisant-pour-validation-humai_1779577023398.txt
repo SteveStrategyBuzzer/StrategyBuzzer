@@ -1,0 +1,110 @@
+Le rapport actuel est insuffisant pour validation humaine réelle.
+
+Je dois voir les noyaux COMPLETS.
+Pas des extraits.
+Pas des résumés.
+
+Je veux maintenant un dump complet lisible des 5 noyaux.
+
+Pour CHAQUE noyau afficher :
+
+━━━━━━━━━━━━━━━━━━
+KERNEL_CORE COMPLET
+━━━━━━━━━━━━━━━━━━
+
+- domain
+- sub_domain
+- difficulty_depth
+- concept_family
+- semantic_key
+- subject
+- angle_large
+- micro_angle
+- answer_target
+- potential_trap
+- pedagogical_intent
+
+━━━━━━━━━━━━━━━━━━
+TRANSLATION_CONSTRAINTS
+━━━━━━━━━━━━━━━━━━
+
+Résumé compact des 9 langues :
+- question_max_length
+- answer_max_length
+- funFact_max_length
+- funFact_min_length
+
+━━━━━━━━━━━━━━━━━━
+MASTER QUESTION COMPLET
+(qcm_recognition)
+━━━━━━━━━━━━━━━━━━
+
+- question_text
+- answer_a
+- answer_b
+- answer_c
+- answer_d
+- correct_answer_key
+- explanation COMPLET
+- saviez_vous COMPLET
+- gameplay_constraints COMPLET
+- cognitive_contract COMPLET
+
+━━━━━━━━━━━━━━━━━━
+QCM_REASONING COMPLET
+━━━━━━━━━━━━━━━━━━
+
+Même format complet.
+
+━━━━━━━━━━━━━━━━━━
+QCM_DECEPTIVE_TRAP COMPLET
+━━━━━━━━━━━━━━━━━━
+
+Même format complet +
+TOUT le cognitive_contract :
+- trap_type
+- intuitive_wrong_answer
+- intuitive_answer_presence
+- recadrage_expected
+- fairness_reason
+- alignment_with_kernel_core
+
+━━━━━━━━━━━━━━━━━━
+TRUE_FALSE_RECOGNITION COMPLET
+━━━━━━━━━━━━━━━━━━
+
+Même format complet.
+
+━━━━━━━━━━━━━━━━━━
+TRUE_FALSE_REASONING COMPLET
+━━━━━━━━━━━━━━━━━━
+
+Même format complet.
+
+━━━━━━━━━━━━━━━━━━
+STRUCTURE SUMMARY
+━━━━━━━━━━━━━━━━━━
+
+- frame_status
+- variants_count
+- translation_slots_count
+- question_groups_unchanged
+- ready_bank_unchanged
+
+Important :
+Je veux voir les vrais contenus complets pour pouvoir juger :
+- la qualité réelle des SV
+- les explanations
+- les répétitions
+- les dérives
+- les patterns IA
+- les faux reasoning
+- les faux deceptive_trap
+- les contradictions
+- les formulations artificielles
+- les problèmes gameplay/mobile
+- les biais cognitifs
+
+Pas de résumé.
+Pas d’abréviation.
+Pas d’extraits.
