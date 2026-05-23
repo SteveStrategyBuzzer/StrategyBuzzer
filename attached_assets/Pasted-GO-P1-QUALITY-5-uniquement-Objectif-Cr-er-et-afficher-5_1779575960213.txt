@@ -1,0 +1,119 @@
+GO — P1-QUALITY-5 uniquement.
+
+Objectif :
+Créer et afficher 5 noyaux Phase 1 complets pour jugement humain de la qualité cognitive.
+
+Important :
+On ne construit PAS encore Phase 2.
+On veut d’abord observer la qualité réelle de sortie de Phase 1.
+
+Bank 1 = noyaux :
+- frame_status = content_ready
+- EN seulement
+- non validés cognitivement
+- non traduits
+- non ready_bank
+
+À faire :
+1. Sélectionner 5 question_intents variés :
+- histoire
+- science
+- géographie
+- culture générale
+- faune ou autre domaine
+
+2. Pour chacun :
+- questions:kernel:skeleton
+- questions:kernel:validate-structure
+- questions:kernel:fill-content
+
+3. Produire un rapport HUMAIN lisible et compact pour chaque noyau.
+
+Format demandé :
+
+━━━━━━━━━━━━━━━━━━
+NOYAU #X
+━━━━━━━━━━━━━━━━━━
+
+intent_id:
+domain:
+sub_domain:
+difficulty_depth:
+subject:
+answer_target:
+potential_trap:
+
+MASTER QUESTION (qcm_recognition)
+Question:
+A:
+B:
+C:
+D:
+Correct:
+Explanation:
+Saviez-vous:
+
+QCM REASONING
+Question:
+A:
+B:
+C:
+D:
+Correct:
+
+QCM DECEPTIVE_TRAP
+Question:
+A:
+B:
+C:
+D:
+Correct:
+
+trap_type:
+intuitive_wrong_answer:
+intuitive_answer_presence:
+recadrage_expected:
+fairness_reason:
+
+TRUE_FALSE_RECOGNITION
+Question:
+True/False:
+Correct:
+
+TRUE_FALSE_REASONING
+Question:
+True/False:
+Correct:
+
+━━━━━━━━━━━━━━━━━━
+
+Validation obligatoire :
+- confirmer 5 variantes présentes par noyau
+- confirmer 45 translation_slots présents
+- confirmer frame_status = content_ready
+- confirmer même answer_target sur les 5 variantes
+- confirmer ready_bank inchangé
+- confirmer aucun question_group modifié
+
+Interdit :
+- aucun patch gameplay
+- aucune traduction
+- aucune validation Phase 2
+- aucune correction auto
+- aucun batch massif
+- aucun worker
+
+Objectif humain :
+Nous voulons juger :
+- qualité recognition
+- qualité reasoning
+- qualité deceptive_trap
+- qualité V/F
+- alignement kernel_core
+- profondeur cognitive réelle
+- qualité des pièges
+- dérives éventuelles
+- répétitions éventuelles
+- cohérence pédagogique
+
+STOP après les 5 noyaux.
