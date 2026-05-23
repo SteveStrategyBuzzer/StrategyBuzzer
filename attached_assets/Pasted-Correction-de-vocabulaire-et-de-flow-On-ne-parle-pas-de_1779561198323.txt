@@ -1,0 +1,110 @@
+Correction de vocabulaire et de flow.
+
+On ne parle pas de 4 phases internes.
+On parle des ÉTAPES DE LA PHASE 1, puis Phase 2, Phase 3, Phase 4.
+
+FLOW OFFICIEL QUESTION KERNEL
+
+PHASE 1 — Création du noyau EN complet
+
+Étape 1 — Créer le frame complet du noyau EN
+Avant de générer le contenu, créer la structure complète :
+- original QCM recognition
+- QCM reasoning
+- QCM deceptive_trap
+- V/F recognition
+- V/F reasoning
+- contraintes gameplay
+- contraintes cognitives
+- métadonnées pédagogiques
+- translation_slots pour la question principale
+- translation_slots pour chaque variante
+- contraintes longueur par langue :
+  - question_max_length
+  - answer_max_length
+  - funFact_max_length
+  - status: pending
+
+Important :
+Les translation_slots sont préparés en Phase 1, mais les traductions ne sont PAS remplies en Phase 1.
+
+Étape 2 — Valider le frame EN
+Vérifier que le frame du noyau EN est complet structurellement :
+- tous les emplacements existent
+- toutes les variantes attendues existent comme slots
+- tous les slots traduction existent
+- les contraintes longueur sont présentes
+- les métadonnées noyau sont présentes
+
+Étape 3 — Créer/valider l’original et les 4 variantes EN
+Remplir et valider :
+- original QCM recognition
+- QCM reasoning
+- QCM deceptive_trap
+- V/F recognition
+- V/F reasoning
+
+STOP PHASE 1.
+On ne passe pas à la Phase 2 tant que Phase 1 n’est pas validée.
+
+PHASE 2 — Validation EN + correction/suppression
+
+Étape 1 — Valider le contenu EN :
+- validation cognitive
+- validation factualité
+- validation doublons
+- validation gameplay
+- validation Saviez-vous
+- alarme si une variante bifurque trop du noyau
+
+Étape 2 — Correction / suppression :
+- corriger si possible
+- supprimer une variante si irrécupérable
+- supprimer le noyau si le noyau complet est irrécupérable
+- ne jamais changer l’intention pédagogique ni le concept principal pendant une correction
+
+Sortie : Bank 2.
+STOP PHASE 2.
+
+PHASE 3 — Traductions
+
+Étape 1 — Remplir les traductions dans les slots déjà créés en Phase 1 :
+- fr
+- es
+- de
+- it
+- pt
+- ru
+- zh
+- ar
+- el
+
+Toutes les langues doivent garder :
+- même logique
+- même bonne réponse
+- même piège
+- même difficulté
+- même Saviez-vous logique
+
+Étape 2 — Revalidation multilingue :
+- longueur
+- gameplay
+- piège
+- bonne réponse
+- difficulté
+- cohérence
+
+STOP PHASE 3.
+
+PHASE 4 — ready_bank + dialyse certification
+
+- ready_bank reçoit seulement les noyaux certifiés
+- la dialyse certification est greffée à ready_bank
+- elle nettoie si nécessaire les nouveaux noyaux
+- gameplay pige uniquement dans ready_bank certifiée
+
+Règle absolue :
+Ne jamais mélanger les phases.
+Ne jamais remplir les traductions en Phase 1.
+Ne jamais envoyer au ready_bank avant Phase 4.
+Ne jamais créer les slots traduction après coup.
