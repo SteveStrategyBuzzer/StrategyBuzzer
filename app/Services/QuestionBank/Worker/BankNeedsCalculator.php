@@ -345,15 +345,10 @@ class BankNeedsCalculator
             ->groupBy('qg.difficulty_level', 'qg.boss_level', 'qg.difficulty_depth', 'qg.sub_domain', 'qg.cognitive_type', 'qt.language');
 
         if ($validatedOnly) {
-            // Phase 0+ : prefer post_review_status='ready_bank'.
-            // Fallback to validated=true for blocks not yet backfilled (NULL status).
-            $query->where(function ($q) {
-                $q->where('qg.post_review_status', 'ready_bank')
-                  ->orWhere(function ($q2) {
-                      $q2->whereNull('qg.post_review_status')
-                         ->where('qg.validated', true);
-                  });
-            });
+            // LOT 3-A : seuls les groupes ready_bank certifiés comptent
+            // dans le calcul des besoins. Les groupes non certifiés
+            // (post_review_status IS NULL) ne sont pas comptabilisés.
+            $query->where('qg.post_review_status', 'ready_bank');
         }
 
         $rows = $query->get();

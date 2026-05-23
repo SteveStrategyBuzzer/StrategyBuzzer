@@ -260,15 +260,10 @@ class QuestionBankRepository
 
         $requireValidated = $filters['require_validated'] ?? true;
         if ($requireValidated) {
-            // Phase 0+ : prefer post_review_status='ready_bank'.
-            // Fallback to validated=true for blocks not yet backfilled (NULL status).
-            $query->where(function ($q) {
-                $q->where('post_review_status', 'ready_bank')
-                  ->orWhere(function ($q2) {
-                      $q2->whereNull('post_review_status')
-                         ->where('validated', true);
-                  });
-            });
+            // LOT 3-A : gameplay pioche uniquement dans ready_bank certifié.
+            // Le fallback validated=true (NULL status) est supprimé —
+            // les groupes non certifiés ne sont pas jouables.
+            $query->where('post_review_status', 'ready_bank');
         }
 
         if ($withTranslationJoin && !empty($filters['language'])) {
