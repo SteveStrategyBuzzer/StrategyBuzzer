@@ -1,0 +1,147 @@
+GO — LOT P1-B uniquement.
+
+Objectif :
+Créer le générateur du squelette complet du noyau dans question_intents.frame_en.
+
+Contexte validé :
+LOT P1-A terminé.
+Colonnes disponibles :
+- frame_en jsonb nullable
+- frame_status varchar nullable
+- frame_validated_at timestamp nullable
+
+PHASE 1 — Étape 1 seulement :
+Créer la structure complète du noyau, sans contenu EN.
+
+Le squelette doit créer dans frame_en :
+
+1. kernel_core
+avec :
+- domain
+- sub_domain
+- difficulty_depth
+- concept_family
+- semantic_key
+- subject
+- angle_large
+- micro_angle
+- answer_target
+- potential_trap
+- pedagogical_intent
+
+2. translation_constraints
+pour :
+- fr, es, de, it, pt, ru, zh, ar, el
+
+avec :
+- question_max_length
+- answer_max_length
+- funFact_max_length
+- funFact_min_length
+
+3. variants
+exactement :
+- qcm_recognition
+- qcm_reasoning
+- qcm_deceptive_trap
+- true_false_recognition
+- true_false_reasoning
+
+Chaque variante doit contenir :
+- question_type
+- cognitive_type
+- question_text = null
+- answer_a = null
+- answer_b = null
+- answer_c = null
+- answer_d = null
+- correct_answer_key = null
+- explanation = null
+- saviez_vous = null
+- cognitive_contract
+- gameplay_constraints
+- translation_slots
+
+4. translation_slots
+Chaque variante doit avoir 9 langues :
+- fr, es, de, it, pt, ru, zh, ar, el
+
+Total obligatoire :
+5 variantes × 9 langues = 45 translation_slots
+
+Chaque slot doit contenir :
+- status = pending
+- correct_answer_key = null
+- question_text = null
+- answer_a = null
+- answer_b = null
+- answer_c = null
+- answer_d = null
+- explanation = null
+- saviez_vous = null
+
+Important qcm_deceptive_trap :
+Son cognitive_contract doit déjà préparer :
+- requires_inference = true
+- has_deceptive_distractor = true
+- trap_description = null
+- trap_type = null
+- intuitive_wrong_answer = null
+- intuitive_answer_presence = null
+- recadrage_expected = null
+- fairness_reason = null
+- alignment_with_kernel_core = null
+
+Pour les autres variantes, cognitive_contract minimal :
+- requires_inference
+- has_deceptive_distractor
+- trap_description
+
+Méthode obligatoire :
+GREP → SLICE → SQL PROOF → PATCH → VALIDATION
+
+Avant patch :
+1. Lire le modèle QuestionIntent
+2. Lire les helpers existants liés à targetVariants()
+3. Lire config/question_bank_profiles.php pour les longueurs
+4. Confirmer qu’aucun service de frame skeleton n’existe déjà
+
+Patch attendu :
+Créer un service dédié, par exemple :
+app/Services/QuestionBank/KernelFrameBuilder.php
+
+Rôle :
+- buildSkeleton(QuestionIntent $intent): array
+- aucune écriture DB dans le service
+- seulement retourner le tableau frame_en
+
+Créer aussi une commande artisan test limitée, par exemple :
+questions:kernel:skeleton {intent_id}
+
+Rôle :
+- prendre 1 intent
+- construire frame_en via KernelFrameBuilder
+- écrire frame_en
+- frame_status = draft
+- ne jamais toucher question_groups
+- ne jamais toucher ready_bank
+- ne jamais générer de contenu
+- ne jamais traduire
+
+Validation obligatoire :
+1. php -l sur les fichiers créés
+2. php artisan list | grep kernel
+3. exécuter sur 1 seul intent enrichi existant
+4. SQL proof :
+   - frame_status = draft
+   - frame_en non null
+   - jsonb contient kernel_core
+   - jsonb contient translation_constraints
+   - jsonb contient exactement 5 variants
+   - jsonb contient exactement 45 translation_slots
+5. afficher le JSON compact ou résumé
+6. confirmer aucun question_group modifié
+7. confirmer aucun ready_bank modifié
+
+STOP après P1-B.
+Ne pas commencer P1-C.
