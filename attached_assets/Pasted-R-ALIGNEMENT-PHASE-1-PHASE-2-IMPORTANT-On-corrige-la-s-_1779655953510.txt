@@ -1,0 +1,95 @@
+RÉALIGNEMENT PHASE 1 / PHASE 2 — IMPORTANT.
+
+On corrige la séparation des responsabilités.
+
+PHASE 1 = création finale du noyau.
+PHASE 2 = safe layer / garde-fou qualité.
+
+PHASE 2 ne doit PAS devenir un moteur de réécriture créative.
+
+Problème observé :
+Sur le noyau Histoire, la qcm_reasoning était trop proche de la question maître.
+
+Recognition :
+In which year was the American Declaration of Independence adopted?
+
+Reasoning actuel :
+If the Declaration of Independence was signed shortly after its adoption, in which year did this signing most likely occur?
+
+Problème :
+ce n’est pas un vrai reasoning.
+C’est une reformulation de recognition.
+
+Mais la correction proposée par Phase 2 :
+Because the Declaration of Independence formally ended colonial rule...
+était trop longue, trop IA, trop corrective, et pas vraiment meilleure gameplay.
+
+Conclusion :
+Le vrai correctif doit être en Phase 1.
+Phase 1 doit mieux générer qcm_reasoning dès le départ.
+
+Règle Phase 1 qcm_reasoning :
+- ne pas seulement reformuler la question maître
+- garder le même noyau
+- garder la même réponse cible logique
+- mais changer l’angle cognitif
+- créer une vraie inférence cause / conséquence / contexte / comparaison
+- ne pas allonger inutilement
+- ne pas ajouter du “because/given that” artificiel
+- rester gameplay-friendly
+
+Exemple directionnel :
+Recognition :
+In which year was the American Declaration of Independence adopted?
+
+Reasoning attendu :
+What caused the United States to declare independence from Great Britain?
+
+Important :
+Ce n’est pas forcément la même réponse texte que recognition.
+Le reasoning peut viser une relation causale ou contextuelle du même noyau,
+tant qu’il reste aligné avec kernel_core et answer_target logique.
+
+PHASE 2 doit faire ceci :
+1. détecter si qcm_reasoning est trop proche de qcm_recognition
+2. avertir Phase 1 / générateur :
+   - faux reasoning
+   - reformulation trop proche
+   - absence de vraie inférence
+3. corriger seulement les problèmes évidents et légers :
+   - meta labels comme “Why this answer?”
+   - typo
+   - champ manquant
+   - answer_key cassée
+   - contradiction claire
+4. NE PAS réécrire agressivement une question juste parce qu’elle est moyenne
+5. NE PAS remplacer automatiquement une question naturelle par une phrase plus longue/IA
+6. envoyer en human_review si la décision est subtile
+
+Nouvelle règle :
+Phase 2 = protecteur.
+Phase 1 = auteur.
+
+À faire maintenant :
+Audit + plan uniquement.
+
+GREP → SLICE → PLAN.
+
+Chercher dans :
+- question-api.js
+- prompt qcm_reasoning
+- /generate-kernel-derived-variants
+- futur plan Phase 2 repair
+- tout endroit où Phase 2 prévoit de régénérer qcm_reasoning automatiquement
+
+Livrer :
+1. où Phase 1 force actuellement un faux reasoning
+2. comment modifier le prompt Phase 1 qcm_reasoning
+3. comment Phase 2 doit seulement flagger/warn si reasoning trop proche
+4. quelles corrections Phase 2 restent auto-fixables
+5. quelles corrections doivent passer en human_review
+6. quels endpoints repair doivent être limités ou reclassés
+7. plan exact de patch
+
+Aucun patch maintenant.
+STOP après le plan.
