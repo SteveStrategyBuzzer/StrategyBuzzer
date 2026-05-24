@@ -1,0 +1,715 @@
+{
+    "variants": {
+        "qcm_reasoning": {
+            "answer_a": "18-21",
+            "answer_b": "22-23",
+            "answer_c": "24-26",
+            "answer_d": "27-30",
+            "explanation": "Novak Djokovic had 24 Grand Slam men's singles titles as of September 2023, falling in the 24-26 range.",
+            "saviez_vous": "Djokovic is the only male player to have won all four Grand Slam titles (Australian Open, French Open, Wimbledon, US Open) at least three times.",
+            "question_text": "Which range includes Novak Djokovic's Grand Slam men's singles titles as of September 2023?",
+            "question_type": "qcm",
+            "cognitive_type": "reasoning",
+            "translation_slots": {
+                "ar": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "de": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "el": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "es": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "fr": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "it": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "pt": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "ru": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "zh": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                }
+            },
+            "cognitive_contract": {
+                "trap_description": null,
+                "requires_inference": true,
+                "has_deceptive_distractor": false
+            },
+            "correct_answer_key": "C",
+            "gameplay_constraints": {
+                "answer_count": 4,
+                "question_type": "qcm",
+                "answer_keys_allowed": [
+                    "A",
+                    "B",
+                    "C",
+                    "D"
+                ]
+            }
+        },
+        "qcm_recognition": {
+            "answer_a": "24",
+            "answer_b": "20",
+            "answer_c": "22",
+            "answer_d": "28",
+            "explanation": "As of September 2023, Novak Djokovic has won 24 Grand Slam men's singles titles, making him the all-time leader.",
+            "saviez_vous": "Novak Djokovic is the only man in the Open Era to have won all four Grand Slam tournaments at least three times. He completed his third Career Grand Slam at the 2023 French Open.",
+            "question_text": "How many Grand Slam men's singles titles has Novak Djokovic won as of September 2023?",
+            "question_type": "qcm",
+            "cognitive_type": "recognition",
+            "translation_slots": {
+                "ar": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "de": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "el": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "es": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "fr": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "it": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "pt": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "ru": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "zh": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                }
+            },
+            "cognitive_contract": {
+                "trap_description": null,
+                "requires_inference": false,
+                "has_deceptive_distractor": false
+            },
+            "correct_answer_key": "A",
+            "gameplay_constraints": {
+                "answer_count": 4,
+                "question_type": "qcm",
+                "answer_keys_allowed": [
+                    "A",
+                    "B",
+                    "C",
+                    "D"
+                ]
+            }
+        },
+        "qcm_deceptive_trap": {
+            "answer_a": "Roger Federer",
+            "answer_b": "Rafael Nadal",
+            "answer_c": "Pete Sampras",
+            "answer_d": "Bjorn Borg",
+            "explanation": "While Djokovic now holds the record with 24, Roger Federer previously held it. The question asks who *held* the record *before* Djokovic.",
+            "saviez_vous": "Margaret Court holds the all-time record for Grand Slam singles titles, with 24 won before the Open Era began in 1968 and 0 after that.",
+            "question_text": "Who held the record for most Grand Slam men's singles titles before Djokovic?",
+            "question_type": "qcm",
+            "cognitive_type": "deceptive_trap",
+            "translation_slots": {
+                "ar": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "de": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "el": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "es": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "fr": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "it": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "pt": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "ru": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "zh": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                }
+            },
+            "cognitive_contract": {
+                "trap_type": "popularity_bias",
+                "fairness_reason": "The question explicitly asks about the record holder *before* Djokovic, providing a clear temporal context. The question includes the qualifier 'before Djokovic'.",
+                "trap_description": null,
+                "recadrage_expected": "Consider who held the record *before* Djokovic surpassed them. Read carefully.",
+                "requires_inference": true,
+                "intuitive_wrong_answer": "Rafael Nadal",
+                "has_deceptive_distractor": true,
+                "intuitive_answer_presence": "present",
+                "alignment_with_kernel_core": "The correct answer ultimately identifies the number of Grand Slam titles held by Federer before Djokovic."
+            },
+            "correct_answer_key": "A",
+            "gameplay_constraints": {
+                "answer_count": 4,
+                "question_type": "qcm",
+                "answer_keys_allowed": [
+                    "A",
+                    "B",
+                    "C",
+                    "D"
+                ]
+            }
+        },
+        "true_false_reasoning": {
+            "answer_a": "True",
+            "answer_b": "False",
+            "answer_c": null,
+            "answer_d": null,
+            "explanation": "Sampras won 14 Grand Slams. Twice that is 28. Djokovic currently has 24. Winning one more brings his total to 25, not 28.",
+            "saviez_vous": "Djokovic is the only player in the Open Era to have won all four Grand Slam tournaments consecutively (non-calendar year), a feat he achieved in 2015-2016.",
+            "question_text": "If Djokovic wins one more Grand Slam, he'll have exactly twice as many as Sampras.",
+            "question_type": "true_false",
+            "cognitive_type": "reasoning",
+            "translation_slots": {
+                "ar": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "de": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "el": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "es": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "fr": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "it": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "pt": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "ru": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "zh": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                }
+            },
+            "cognitive_contract": {
+                "trap_description": null,
+                "requires_inference": true,
+                "has_deceptive_distractor": false
+            },
+            "correct_answer_key": "B",
+            "gameplay_constraints": {
+                "answer_count": 2,
+                "question_type": "true_false",
+                "answer_keys_allowed": [
+                    "A",
+                    "B"
+                ]
+            }
+        },
+        "true_false_recognition": {
+            "answer_a": "True",
+            "answer_b": "False",
+            "answer_c": null,
+            "answer_d": null,
+            "explanation": "As of September 2023, Novak Djokovic had 24 Grand Slam men's singles titles, which is more than 20.",
+            "saviez_vous": "Djokovic completed a Career Grand Slam (winning all four majors at least once) for the first time in 2016, and has since completed it twice more.",
+            "question_text": "Novak Djokovic had more than 20 Grand Slam men's singles titles as of September 2023.",
+            "question_type": "true_false",
+            "cognitive_type": "recognition",
+            "translation_slots": {
+                "ar": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "de": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "el": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "es": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "fr": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "it": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "pt": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "ru": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "zh": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                }
+            },
+            "cognitive_contract": {
+                "trap_description": null,
+                "requires_inference": false,
+                "has_deceptive_distractor": false
+            },
+            "correct_answer_key": "A",
+            "gameplay_constraints": {
+                "answer_count": 2,
+                "question_type": "true_false",
+                "answer_keys_allowed": [
+                    "A",
+                    "B"
+                ]
+            }
+        }
+    },
+    "kernel_core": {
+        "domain": "Sport",
+        "subject": "Records du Grand Chelem (tennis)",
+        "sub_domain": "Sport",
+        "angle_large": "Records et statistiques sportives",
+        "micro_angle": "Titres en simple masculin",
+        "semantic_key": "sport-tennis-grand-slam-records",
+        "answer_target": "Nombre de titres Grand Chelem",
+        "concept_family": "tennis-grand-slam-records",
+        "potential_trap": "Confusion Federer/Djokovic/Nadal selon l'année",
+        "difficulty_depth": 4,
+        "pedagogical_intent": null
+    },
+    "translation_constraints": {
+        "ar": {
+            "answer_max_length": 40,
+            "funFact_max_length": 140,
+            "funFact_min_length": 30,
+            "question_max_length": 75
+        },
+        "de": {
+            "answer_max_length": 60,
+            "funFact_max_length": 220,
+            "funFact_min_length": 30,
+            "question_max_length": 110
+        },
+        "el": {
+            "answer_max_length": 60,
+            "funFact_max_length": 220,
+            "funFact_min_length": 30,
+            "question_max_length": 110
+        },
+        "es": {
+            "answer_max_length": 60,
+            "funFact_max_length": 220,
+            "funFact_min_length": 30,
+            "question_max_length": 110
+        },
+        "fr": {
+            "answer_max_length": 60,
+            "funFact_max_length": 220,
+            "funFact_min_length": 30,
+            "question_max_length": 110
+        },
+        "it": {
+            "answer_max_length": 60,
+            "funFact_max_length": 220,
+            "funFact_min_length": 30,
+            "question_max_length": 110
+        },
+        "pt": {
+            "answer_max_length": 60,
+            "funFact_max_length": 220,
+            "funFact_min_length": 30,
+            "question_max_length": 110
+        },
+        "ru": {
+            "answer_max_length": 60,
+            "funFact_max_length": 220,
+            "funFact_min_length": 30,
+            "question_max_length": 110
+        },
+        "zh": {
+            "answer_max_length": 30,
+            "funFact_max_length": 100,
+            "funFact_min_length": 30,
+            "question_max_length": 60
+        }
+    }
+}

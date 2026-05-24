@@ -1,0 +1,715 @@
+{
+    "variants": {
+        "qcm_reasoning": {
+            "answer_a": "Before 1780",
+            "answer_b": "Between 1785-1790",
+            "answer_c": "Exactly at 1783",
+            "answer_d": "After 1784",
+            "explanation": "Since the Revolution ended in 1783, the declaration had to precede it.",
+            "saviez_vous": "John Adams initially opposed the Declaration, believing reconciliation with Britain was possible. He later became a key advocate.",
+            "question_text": "If the American Revolution ended in 1783, when did the Declaration occur?",
+            "question_type": "qcm",
+            "cognitive_type": "reasoning",
+            "translation_slots": {
+                "ar": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "de": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "el": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "es": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "fr": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "it": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "pt": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "ru": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "zh": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                }
+            },
+            "cognitive_contract": {
+                "trap_description": null,
+                "requires_inference": true,
+                "has_deceptive_distractor": false
+            },
+            "correct_answer_key": "A",
+            "gameplay_constraints": {
+                "answer_count": 4,
+                "question_type": "qcm",
+                "answer_keys_allowed": [
+                    "A",
+                    "B",
+                    "C",
+                    "D"
+                ]
+            }
+        },
+        "qcm_recognition": {
+            "answer_a": "1776",
+            "answer_b": "1783",
+            "answer_c": "1789",
+            "answer_d": "1774",
+            "explanation": "The Declaration of Independence was adopted on July 4, 1776, marking the formal separation of the thirteen American colonies from Great Britain.",
+            "saviez_vous": "John Adams and Thomas Jefferson, who both signed the Declaration of Independence, died on the same day: July 4, 1826, the 50th anniversary of the Declaration.",
+            "question_text": "In which year was the Declaration of Independence of the United States signed?",
+            "question_type": "qcm",
+            "cognitive_type": "recognition",
+            "translation_slots": {
+                "ar": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "de": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "el": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "es": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "fr": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "it": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "pt": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "ru": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "zh": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                }
+            },
+            "cognitive_contract": {
+                "trap_description": null,
+                "requires_inference": false,
+                "has_deceptive_distractor": false
+            },
+            "correct_answer_key": "A",
+            "gameplay_constraints": {
+                "answer_count": 4,
+                "question_type": "qcm",
+                "answer_keys_allowed": [
+                    "A",
+                    "B",
+                    "C",
+                    "D"
+                ]
+            }
+        },
+        "qcm_deceptive_trap": {
+            "answer_a": "1788",
+            "answer_b": "1783",
+            "answer_c": "1789",
+            "answer_d": "1776",
+            "explanation": "The Declaration of Independence was signed in 1776, signaling the start of the revolution.",
+            "saviez_vous": "The oldest signer of the Declaration was Benjamin Franklin, age 70. The youngest was Edward Rutledge, age 26.",
+            "question_text": "The US Constitution was ratified in 1788. When was independence declared?",
+            "question_type": "qcm",
+            "cognitive_type": "deceptive_trap",
+            "translation_slots": {
+                "ar": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "de": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "el": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "es": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "fr": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "it": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "pt": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "ru": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "zh": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                }
+            },
+            "cognitive_contract": {
+                "trap_type": "frequent_confusion",
+                "fairness_reason": "The question specifically asks about the 'declaration', not the end of the war or another related event.",
+                "trap_description": null,
+                "recadrage_expected": "Distinguish the *declaration* from the *end* of the war.",
+                "requires_inference": true,
+                "intuitive_wrong_answer": "1783",
+                "has_deceptive_distractor": true,
+                "intuitive_answer_presence": "present",
+                "alignment_with_kernel_core": "Année de la Déclaration d'Indépendance is indeed 1776."
+            },
+            "correct_answer_key": "D",
+            "gameplay_constraints": {
+                "answer_count": 4,
+                "question_type": "qcm",
+                "answer_keys_allowed": [
+                    "A",
+                    "B",
+                    "C",
+                    "D"
+                ]
+            }
+        },
+        "true_false_reasoning": {
+            "answer_a": "True",
+            "answer_b": "False",
+            "answer_c": null,
+            "answer_d": null,
+            "explanation": "The Declaration was in 1776. The Constitution was ratified in 1788.",
+            "saviez_vous": "Several drafts of the Declaration exist, showing edits and debates among the Founding Fathers.",
+            "question_text": "The Declaration of Independence predates the US Constitution.",
+            "question_type": "true_false",
+            "cognitive_type": "reasoning",
+            "translation_slots": {
+                "ar": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "de": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "el": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "es": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "fr": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "it": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "pt": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "ru": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "zh": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                }
+            },
+            "cognitive_contract": {
+                "trap_description": null,
+                "requires_inference": true,
+                "has_deceptive_distractor": false
+            },
+            "correct_answer_key": "A",
+            "gameplay_constraints": {
+                "answer_count": 2,
+                "question_type": "true_false",
+                "answer_keys_allowed": [
+                    "A",
+                    "B"
+                ]
+            }
+        },
+        "true_false_recognition": {
+            "answer_a": "True",
+            "answer_b": "False",
+            "answer_c": null,
+            "answer_d": null,
+            "explanation": "The Declaration of Independence was adopted on July 4, 1776.",
+            "saviez_vous": "The original Declaration of Independence is displayed at the National Archives in Washington, D.C.",
+            "question_text": "The Declaration of Independence was signed in 1776.",
+            "question_type": "true_false",
+            "cognitive_type": "recognition",
+            "translation_slots": {
+                "ar": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "de": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "el": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "es": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "fr": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "it": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "pt": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "ru": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "zh": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                }
+            },
+            "cognitive_contract": {
+                "trap_description": null,
+                "requires_inference": false,
+                "has_deceptive_distractor": false
+            },
+            "correct_answer_key": "A",
+            "gameplay_constraints": {
+                "answer_count": 2,
+                "question_type": "true_false",
+                "answer_keys_allowed": [
+                    "A",
+                    "B"
+                ]
+            }
+        }
+    },
+    "kernel_core": {
+        "domain": "Histoire",
+        "subject": "Guerre d'Indépendance américaine",
+        "sub_domain": "Histoire",
+        "angle_large": "Conflits historiques",
+        "micro_angle": "Chronologie et dates clés",
+        "semantic_key": "histoire-guerre-independance-americaine",
+        "answer_target": "Année de la Déclaration d'Indépendance",
+        "concept_family": "guerre-independance-americaine",
+        "potential_trap": "Confusion 1776 vs 1783 (traité de Paris)",
+        "difficulty_depth": 4,
+        "pedagogical_intent": null
+    },
+    "translation_constraints": {
+        "ar": {
+            "answer_max_length": 40,
+            "funFact_max_length": 140,
+            "funFact_min_length": 30,
+            "question_max_length": 75
+        },
+        "de": {
+            "answer_max_length": 60,
+            "funFact_max_length": 220,
+            "funFact_min_length": 30,
+            "question_max_length": 110
+        },
+        "el": {
+            "answer_max_length": 60,
+            "funFact_max_length": 220,
+            "funFact_min_length": 30,
+            "question_max_length": 110
+        },
+        "es": {
+            "answer_max_length": 60,
+            "funFact_max_length": 220,
+            "funFact_min_length": 30,
+            "question_max_length": 110
+        },
+        "fr": {
+            "answer_max_length": 60,
+            "funFact_max_length": 220,
+            "funFact_min_length": 30,
+            "question_max_length": 110
+        },
+        "it": {
+            "answer_max_length": 60,
+            "funFact_max_length": 220,
+            "funFact_min_length": 30,
+            "question_max_length": 110
+        },
+        "pt": {
+            "answer_max_length": 60,
+            "funFact_max_length": 220,
+            "funFact_min_length": 30,
+            "question_max_length": 110
+        },
+        "ru": {
+            "answer_max_length": 60,
+            "funFact_max_length": 220,
+            "funFact_min_length": 30,
+            "question_max_length": 110
+        },
+        "zh": {
+            "answer_max_length": 30,
+            "funFact_max_length": 100,
+            "funFact_min_length": 30,
+            "question_max_length": 60
+        }
+    }
+}

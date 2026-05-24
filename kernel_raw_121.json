@@ -1,0 +1,715 @@
+{
+    "variants": {
+        "qcm_reasoning": {
+            "answer_a": "Pneumatized bones",
+            "answer_b": "High bone density",
+            "answer_c": "Cartilaginous structure",
+            "answer_d": "Fused vertebrae",
+            "explanation": "Pneumatized bones are hollow and air-filled, greatly reducing a bird's skeletal weight.",
+            "saviez_vous": "Some dinosaurs also had pneumatized bones, suggesting this feature evolved before birds!",
+            "question_text": "If a bird's skeleton is unusually light, which is MOST likely the cause?",
+            "question_type": "qcm",
+            "cognitive_type": "reasoning",
+            "translation_slots": {
+                "ar": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "de": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "el": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "es": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "fr": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "it": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "pt": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "ru": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "zh": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                }
+            },
+            "cognitive_contract": {
+                "trap_description": null,
+                "requires_inference": true,
+                "has_deceptive_distractor": false
+            },
+            "correct_answer_key": "A",
+            "gameplay_constraints": {
+                "answer_count": 4,
+                "question_type": "qcm",
+                "answer_keys_allowed": [
+                    "A",
+                    "B",
+                    "C",
+                    "D"
+                ]
+            }
+        },
+        "qcm_recognition": {
+            "answer_a": "Pneumatized bones",
+            "answer_b": "Muscular gizzard",
+            "answer_c": "Crop for food storage",
+            "answer_d": "Four-chamber heart",
+            "explanation": "Pneumatized bones are hollow, air-filled bones, reducing skeletal weight while maintaining strength.",
+            "saviez_vous": "Some birds have pneumatized bones connected to their respiratory system, allowing for more efficient oxygen intake during flight!",
+            "question_text": "Which avian adaptation reduces weight for flight?",
+            "question_type": "qcm",
+            "cognitive_type": "recognition",
+            "translation_slots": {
+                "ar": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "de": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "el": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "es": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "fr": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "it": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "pt": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "ru": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "zh": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                }
+            },
+            "cognitive_contract": {
+                "trap_description": null,
+                "requires_inference": false,
+                "has_deceptive_distractor": false
+            },
+            "correct_answer_key": "A",
+            "gameplay_constraints": {
+                "answer_count": 4,
+                "question_type": "qcm",
+                "answer_keys_allowed": [
+                    "A",
+                    "B",
+                    "C",
+                    "D"
+                ]
+            }
+        },
+        "qcm_deceptive_trap": {
+            "answer_a": "Feather shafts",
+            "answer_b": "Reduced skull size",
+            "answer_c": "Pneumatized bones",
+            "answer_d": "Flexible ribs",
+            "explanation": "Pneumatized bones contain air sacs, significantly reducing the bird's bone density.",
+            "saviez_vous": "The humerus and femur are among the most pneumatized bones in birds.",
+            "question_text": "What skeletal feature primarily aids in reducing a bird's overall density?",
+            "question_type": "qcm",
+            "cognitive_type": "deceptive_trap",
+            "translation_slots": {
+                "ar": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "de": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "el": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "es": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "fr": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "it": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "pt": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "ru": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "zh": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                }
+            },
+            "cognitive_contract": {
+                "trap_type": "frequent_confusion",
+                "fairness_reason": "The question specifically asks about skeletal features and density. The other options are external or not directly related to density.",
+                "trap_description": null,
+                "recadrage_expected": "Focus on skeletal features, not external ones. Density is related to bone structure.",
+                "requires_inference": true,
+                "intuitive_wrong_answer": "Feather shafts",
+                "has_deceptive_distractor": true,
+                "intuitive_answer_presence": "present",
+                "alignment_with_kernel_core": "Structure anatomique ou adaptation"
+            },
+            "correct_answer_key": "C",
+            "gameplay_constraints": {
+                "answer_count": 4,
+                "question_type": "qcm",
+                "answer_keys_allowed": [
+                    "A",
+                    "B",
+                    "C",
+                    "D"
+                ]
+            }
+        },
+        "true_false_reasoning": {
+            "answer_a": "False",
+            "answer_b": "True",
+            "answer_c": null,
+            "answer_d": null,
+            "explanation": "Soaring relies on lightweight construction. Denser bones would hinder soaring ability.",
+            "saviez_vous": "Birds that dive underwater for food tend to have less pneumatization in their bones than soaring birds.",
+            "question_text": "A bird with denser bones would likely be more efficient at soaring.",
+            "question_type": "true_false",
+            "cognitive_type": "reasoning",
+            "translation_slots": {
+                "ar": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "de": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "el": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "es": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "fr": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "it": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "pt": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "ru": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "zh": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                }
+            },
+            "cognitive_contract": {
+                "trap_description": null,
+                "requires_inference": true,
+                "has_deceptive_distractor": false
+            },
+            "correct_answer_key": "A",
+            "gameplay_constraints": {
+                "answer_count": 2,
+                "question_type": "true_false",
+                "answer_keys_allowed": [
+                    "A",
+                    "B"
+                ]
+            }
+        },
+        "true_false_recognition": {
+            "answer_a": "False",
+            "answer_b": "True",
+            "answer_c": null,
+            "answer_d": null,
+            "explanation": "Pneumatized bones are filled with air sacs connected to the respiratory system, unlike mammal bones filled with marrow.",
+            "saviez_vous": "The degree of pneumatization can vary among different bird species, influenced by flight style and size.",
+            "question_text": "Pneumatized bones are filled with marrow, similar to mammal bones.",
+            "question_type": "true_false",
+            "cognitive_type": "recognition",
+            "translation_slots": {
+                "ar": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "de": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "el": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "es": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "fr": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "it": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "pt": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "ru": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "zh": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                }
+            },
+            "cognitive_contract": {
+                "trap_description": null,
+                "requires_inference": false,
+                "has_deceptive_distractor": false
+            },
+            "correct_answer_key": "A",
+            "gameplay_constraints": {
+                "answer_count": 2,
+                "question_type": "true_false",
+                "answer_keys_allowed": [
+                    "A",
+                    "B"
+                ]
+            }
+        }
+    },
+    "kernel_core": {
+        "domain": "Faune",
+        "subject": "Anatomie et adaptations aviaires",
+        "sub_domain": "Faune",
+        "angle_large": "Biologie des oiseaux",
+        "micro_angle": "Structures physiques et vol",
+        "semantic_key": "faune-avian-anatomy-adaptation",
+        "answer_target": "Structure anatomique ou adaptation",
+        "concept_family": "avian-anatomy-adaptation",
+        "potential_trap": "Adaptation partagée avec reptiles (évolution)",
+        "difficulty_depth": 8,
+        "pedagogical_intent": null
+    },
+    "translation_constraints": {
+        "ar": {
+            "answer_max_length": 40,
+            "funFact_max_length": 140,
+            "funFact_min_length": 30,
+            "question_max_length": 75
+        },
+        "de": {
+            "answer_max_length": 60,
+            "funFact_max_length": 220,
+            "funFact_min_length": 30,
+            "question_max_length": 110
+        },
+        "el": {
+            "answer_max_length": 60,
+            "funFact_max_length": 220,
+            "funFact_min_length": 30,
+            "question_max_length": 110
+        },
+        "es": {
+            "answer_max_length": 60,
+            "funFact_max_length": 220,
+            "funFact_min_length": 30,
+            "question_max_length": 110
+        },
+        "fr": {
+            "answer_max_length": 60,
+            "funFact_max_length": 220,
+            "funFact_min_length": 30,
+            "question_max_length": 110
+        },
+        "it": {
+            "answer_max_length": 60,
+            "funFact_max_length": 220,
+            "funFact_min_length": 30,
+            "question_max_length": 110
+        },
+        "pt": {
+            "answer_max_length": 60,
+            "funFact_max_length": 220,
+            "funFact_min_length": 30,
+            "question_max_length": 110
+        },
+        "ru": {
+            "answer_max_length": 60,
+            "funFact_max_length": 220,
+            "funFact_min_length": 30,
+            "question_max_length": 110
+        },
+        "zh": {
+            "answer_max_length": 30,
+            "funFact_max_length": 100,
+            "funFact_min_length": 30,
+            "question_max_length": 60
+        }
+    }
+}

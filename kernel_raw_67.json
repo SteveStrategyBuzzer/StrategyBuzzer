@@ -1,0 +1,715 @@
+{
+    "variants": {
+        "qcm_reasoning": {
+            "answer_a": "Zooxanthellae",
+            "answer_b": "Sponges",
+            "answer_c": "Anemones",
+            "answer_d": "Barnacles",
+            "explanation": "Zooxanthellae are symbiotic algae that live within coral tissues and provide them with nutrients through photosynthesis.",
+            "saviez_vous": "Coral bleaching occurs when corals expel zooxanthellae due to stress, leading to the coral turning white and potentially dying if the algae don't return.",
+            "question_text": "Which organism provides corals with most of their nutrients?",
+            "question_type": "qcm",
+            "cognitive_type": "reasoning",
+            "translation_slots": {
+                "ar": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "de": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "el": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "es": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "fr": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "it": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "pt": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "ru": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "zh": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                }
+            },
+            "cognitive_contract": {
+                "trap_description": null,
+                "requires_inference": true,
+                "has_deceptive_distractor": false
+            },
+            "correct_answer_key": "A",
+            "gameplay_constraints": {
+                "answer_count": 4,
+                "question_type": "qcm",
+                "answer_keys_allowed": [
+                    "A",
+                    "B",
+                    "C",
+                    "D"
+                ]
+            }
+        },
+        "qcm_recognition": {
+            "answer_a": "Zooxanthellae",
+            "answer_b": "Kelp",
+            "answer_c": "Phytoplankton",
+            "answer_d": "Seaweed",
+            "explanation": "Zooxanthellae are symbiotic algae that live inside coral tissues, providing the coral with nutrients via photosynthesis.",
+            "saviez_vous": "Coral reefs cover less than 1% of the ocean floor but support 25% of all marine life. They are often called the 'rainforests of the sea' due to their biodiversity.",
+            "question_text": "What symbiotic algae lives within coral tissues in coral reef ecosystems?",
+            "question_type": "qcm",
+            "cognitive_type": "recognition",
+            "translation_slots": {
+                "ar": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "de": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "el": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "es": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "fr": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "it": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "pt": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "ru": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "zh": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                }
+            },
+            "cognitive_contract": {
+                "trap_description": null,
+                "requires_inference": false,
+                "has_deceptive_distractor": false
+            },
+            "correct_answer_key": "A",
+            "gameplay_constraints": {
+                "answer_count": 4,
+                "question_type": "qcm",
+                "answer_keys_allowed": [
+                    "A",
+                    "B",
+                    "C",
+                    "D"
+                ]
+            }
+        },
+        "qcm_deceptive_trap": {
+            "answer_a": "Coral skeletons",
+            "answer_b": "Zooxanthellae",
+            "answer_c": "Seaweed",
+            "answer_d": "Colorful fish",
+            "explanation": "The vibrant colors of many corals come from the photosynthetic pigments within the zooxanthellae living in their tissues.",
+            "saviez_vous": "Certain corals can change color to protect themselves from ultraviolet radiation; it's like they're putting on sunscreen!",
+            "question_text": "What gives coral reefs their vibrant colors?",
+            "question_type": "qcm",
+            "cognitive_type": "deceptive_trap",
+            "translation_slots": {
+                "ar": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "de": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "el": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "es": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "fr": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "it": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "pt": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "ru": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "zh": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                }
+            },
+            "cognitive_contract": {
+                "trap_type": "popularity_bias",
+                "fairness_reason": "The question asks about what gives the coral *its* color, not just what colorful things exist on the reef.",
+                "trap_description": null,
+                "recadrage_expected": "Think about the organisms living INSIDE the coral tissue, not just around the coral reef.",
+                "requires_inference": true,
+                "intuitive_wrong_answer": "Colorful fish",
+                "has_deceptive_distractor": true,
+                "intuitive_answer_presence": "present",
+                "alignment_with_kernel_core": "Organisme ou relation écologique"
+            },
+            "correct_answer_key": "B",
+            "gameplay_constraints": {
+                "answer_count": 4,
+                "question_type": "qcm",
+                "answer_keys_allowed": [
+                    "A",
+                    "B",
+                    "C",
+                    "D"
+                ]
+            }
+        },
+        "true_false_reasoning": {
+            "answer_a": "True",
+            "answer_b": "False",
+            "answer_c": null,
+            "answer_d": null,
+            "explanation": "Zooxanthellae are crucial for the survival of coral reefs, providing them with essential nutrients.",
+            "saviez_vous": "The relationship between coral and zooxanthellae is so vital that scientists are studying how to make corals more resilient to climate change to protect this symbiosis.",
+            "question_text": "Without zooxanthellae, coral reefs would be able to thrive.",
+            "question_type": "true_false",
+            "cognitive_type": "reasoning",
+            "translation_slots": {
+                "ar": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "de": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "el": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "es": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "fr": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "it": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "pt": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "ru": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "zh": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                }
+            },
+            "cognitive_contract": {
+                "trap_description": null,
+                "requires_inference": true,
+                "has_deceptive_distractor": false
+            },
+            "correct_answer_key": "B",
+            "gameplay_constraints": {
+                "answer_count": 2,
+                "question_type": "true_false",
+                "answer_keys_allowed": [
+                    "A",
+                    "B"
+                ]
+            }
+        },
+        "true_false_recognition": {
+            "answer_a": "True",
+            "answer_b": "False",
+            "answer_c": null,
+            "answer_d": null,
+            "explanation": "Zooxanthellae are algae, not bacteria. They live symbiotically within coral tissues.",
+            "saviez_vous": "Some species of jellyfish also host zooxanthellae, receiving nutrients from them in a similar symbiotic relationship to corals.",
+            "question_text": "Zooxanthellae are bacteria living within coral tissues.",
+            "question_type": "true_false",
+            "cognitive_type": "recognition",
+            "translation_slots": {
+                "ar": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "de": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "el": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "es": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "fr": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "it": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "pt": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "ru": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                },
+                "zh": {
+                    "status": "pending",
+                    "answer_a": null,
+                    "answer_b": null,
+                    "answer_c": null,
+                    "answer_d": null,
+                    "explanation": null,
+                    "saviez_vous": null,
+                    "question_text": null,
+                    "correct_answer_key": null
+                }
+            },
+            "cognitive_contract": {
+                "trap_description": null,
+                "requires_inference": false,
+                "has_deceptive_distractor": false
+            },
+            "correct_answer_key": "B",
+            "gameplay_constraints": {
+                "answer_count": 2,
+                "question_type": "true_false",
+                "answer_keys_allowed": [
+                    "A",
+                    "B"
+                ]
+            }
+        }
+    },
+    "kernel_core": {
+        "domain": "Science",
+        "subject": "Écosystème des récifs coralliens",
+        "sub_domain": "Science",
+        "angle_large": "Écosystèmes marins",
+        "micro_angle": "Symbioses et organismes clés",
+        "semantic_key": "science-coral-reef-ecosystem",
+        "answer_target": "Organisme ou relation écologique",
+        "concept_family": "coral-reef-ecosystem",
+        "potential_trap": "Confusion corail / anémone / zooxanthelles",
+        "difficulty_depth": 6,
+        "pedagogical_intent": null
+    },
+    "translation_constraints": {
+        "ar": {
+            "answer_max_length": 40,
+            "funFact_max_length": 140,
+            "funFact_min_length": 30,
+            "question_max_length": 75
+        },
+        "de": {
+            "answer_max_length": 60,
+            "funFact_max_length": 220,
+            "funFact_min_length": 30,
+            "question_max_length": 110
+        },
+        "el": {
+            "answer_max_length": 60,
+            "funFact_max_length": 220,
+            "funFact_min_length": 30,
+            "question_max_length": 110
+        },
+        "es": {
+            "answer_max_length": 60,
+            "funFact_max_length": 220,
+            "funFact_min_length": 30,
+            "question_max_length": 110
+        },
+        "fr": {
+            "answer_max_length": 60,
+            "funFact_max_length": 220,
+            "funFact_min_length": 30,
+            "question_max_length": 110
+        },
+        "it": {
+            "answer_max_length": 60,
+            "funFact_max_length": 220,
+            "funFact_min_length": 30,
+            "question_max_length": 110
+        },
+        "pt": {
+            "answer_max_length": 60,
+            "funFact_max_length": 220,
+            "funFact_min_length": 30,
+            "question_max_length": 110
+        },
+        "ru": {
+            "answer_max_length": 60,
+            "funFact_max_length": 220,
+            "funFact_min_length": 30,
+            "question_max_length": 110
+        },
+        "zh": {
+            "answer_max_length": 30,
+            "funFact_max_length": 100,
+            "funFact_min_length": 30,
+            "question_max_length": 60
+        }
+    }
+}

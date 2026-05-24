@@ -1745,3 +1745,33 @@ id = "N5vZvGHv6bK3ZqWPQ5J_Y"
 uri = "file://docs/question-bank/cognitive_contract.md"
 type = "text"
 title = "Contrat Cognitif — StrategyBuzzer Question Engine v1.0"
+
+[[outputs]]
+id = "iDEtdjAZ7cAFPjrVXrVbI"
+uri = "file://kernel_raw_4.json"
+type = "unspecified"
+title = "kernel_raw_4.json — Histoire / Déclaration Indépendance (depth 4)"
+
+[[outputs]]
+id = "utIdU2OSg5VMiIi-nQ4Zq"
+uri = "file://kernel_raw_7.json"
+type = "unspecified"
+title = "kernel_raw_7.json — Sport / Grand Chelem Djokovic (depth 4)"
+
+[[outputs]]
+id = "GcDPyicUygkcHKER-61Mu"
+uri = "file://kernel_raw_34.json"
+type = "unspecified"
+title = "kernel_raw_34.json — Géographie / Burkina Faso (depth 5)"
+
+[[outputs]]
+id = "jXMrqbGodXQhoqehK_Qu1"
+uri = "file://kernel_raw_67.json"
+type = "unspecified"
+title = "kernel_raw_67.json — Science / Récifs coralliens (depth 6)"
+
+[[outputs]]
+id = "iJX3JPV_-cE-rLC4-a_Pp"
+uri = "file://kernel_raw_121.json"
+type = "unspecified"
+title = "kernel_raw_121.json — Faune / Anatomie aviaire (depth 8)"
