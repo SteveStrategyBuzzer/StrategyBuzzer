@@ -1,0 +1,130 @@
+Réalignement important : longueur question ≠ temps de lecture.
+
+On ne veut plus calibrer uniquement avec MAX_CHARS.
+
+StrategyBuzzer doit calibrer les questions avec 2 axes séparés :
+
+1. difficulty_depth
+→ profondeur cognitive
+→ difficulté du concept, raisonnement, piège, connaissance
+
+2. reading_band
+→ vitesse/charge de lecture
+→ temps estimé pour lire et comprendre la question
+
+Règle officielle :
+- minimum depth = 3
+- maximum depth = 9
+- pas de depth 1-2
+- pas de depth 10 pour l’instant
+
+Ajouter au modèle de génération/validation un concept logique :
+
+reading_band:
+- slow_reader_safe
+- normal_reader
+- fast_reader_dense
+
+Ce ne sont PAS des limites fixes.
+Ce sont des objectifs souples à viser.
+
+Objectifs moyens proposés :
+
+slow_reader_safe
+- cible lecture : 3 à 5 secondes
+- cible caractères question : environ 50 à 100 caractères
+- tolérance : dépasser si la clarté l’exige
+- priorité : simplicité, clarté, phrase directe
+
+normal_reader
+- cible lecture : 4 à 6.5 secondes
+- cible caractères question : environ 70 à 135 caractères
+- tolérance : dépasser si nécessaire
+- priorité : bon équilibre clarté / précision / rythme
+
+fast_reader_dense
+- cible lecture : 6 à 9 secondes
+- cible caractères question : environ 100 à 160 caractères
+- tolérance : possible si depth élevé
+- priorité : densité cognitive, précision, contexte complet
+
+Important :
+Ces valeurs sont des cibles moyennes, pas des murs stricts.
+Le validator ne doit pas rejeter automatiquement une question juste parce qu’elle dépasse légèrement.
+Il doit plutôt produire :
+- OK
+- WARNING
+- REVIEW_NEEDED
+selon l’écart.
+
+Exemple même noyau :
+Réponse = Ouagadougou
+
+slow_reader_safe :
+Which African country has Ouagadougou as its capital city?
+
+fast_reader_dense :
+Which West African nation uses Ouagadougou as its political and administrative capital?
+
+Même réponse.
+Même noyau.
+Même concept.
+Mais charge de lecture différente.
+
+Objectif :
+Remplacer progressivement les seuils naïfs de caractères par :
+- estimated_reading_time
+- word_count
+- visual_density
+- mobile_line_estimate
+- cognitive_density
+- reading_band
+
+À faire maintenant :
+Audit uniquement.
+
+GREP → SLICE → ANALYSE.
+
+1. Trouver où les limites question_text sont définies :
+- 110 chars
+- 115 chars
+- 125 chars
+- question_max_length
+- Q_MAX
+- validator question_text length
+
+2. Identifier :
+- ce qui relève du gameplay/UI
+- ce qui relève de la traduction
+- ce qui relève de la génération IA
+- ce qui relève du validator
+
+3. Proposer comment introduire reading_band sans casser :
+- translation_constraints
+- mobile readability
+- Phase 1
+- Phase 2 future
+- Solo/MJ/Duo/Ligue
+
+4. Proposer une logique souple :
+- target_chars
+- soft_max_chars
+- hard_max_chars
+- estimated_reading_seconds
+- warning_threshold
+- review_threshold
+- reject seulement si illisible ou hors gameplay
+
+5. Aucun patch encore.
+
+Livrer :
+- fichiers exacts
+- lignes exactes
+- règles actuelles
+- proposition architecture reading_band
+- impacts sur Phase 1
+- impacts sur validators
+- impacts sur futures traductions
+- impacts gameplay/UI
+
+STOP après audit.
