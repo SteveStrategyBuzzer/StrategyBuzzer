@@ -1,0 +1,258 @@
+RÉALIGNEMENT STRUCTURE NOYAU — VERSION CORRIGÉE OFFICIELLE
+
+On corrige une ambiguïté importante dans la structure cognitive.
+
+Le système ne doit PAS raisonner en :
+- “même réponse exacte”
+ET
+ne doit PAS raisonner en :
+- “réponse libre tant que ça ressemble au thème”.
+
+La vraie colonne vertébrale est maintenant :
+
+SUJET TOUCHÉ.
+
+──────────────────────────────
+HIÉRARCHIE OFFICIELLE
+──────────────────────────────
+
+STABLE :
+1. domaine
+2. sous-domaine
+3. sujet principal
+4. sujet touché
+
+VARIABLE :
+- angle cognitif
+- framing
+- type d’inférence
+- gameplay wording
+- cognitive_type
+
+MAIS :
+toujours autour du même sujet touché.
+
+──────────────────────────────
+RÈGLE CENTRALE
+──────────────────────────────
+
+TOUS les cognitifs doivent :
+- rester dans le même sujet touché
+- partager la même colonne vertébrale cognitive
+- éviter la dérive vers un autre sujet historique
+- éviter les sujets trop larges
+- éviter les reformulations simples
+
+Les cognitifs peuvent :
+- changer l’angle mental
+- changer le type d’inférence
+- changer le framing
+- changer le style gameplay
+- changer la réponse exacte
+
+MAIS :
+uniquement si la nouvelle réponse reste directement liée au même sujet touché.
+
+──────────────────────────────
+EXEMPLE OFFICIEL
+──────────────────────────────
+
+Domaine :
+Histoire
+
+Sous-domaine :
+Révolution américaine
+
+Sujet principal :
+Déclaration de l’indépendance américaine
+
+Sujet touché :
+tout ce qui touche directement :
+- la Déclaration de l’indépendance américaine
+- son adoption
+- sa fonction
+- ses causes directes
+- ses conséquences directes
+- son contexte immédiat
+- ses confusions fréquentes
+- sa signification
+
+──────────────────────────────
+EXEMPLES CORRECTS
+──────────────────────────────
+
+qcm_recognition :
+“In which year was the American Declaration of Independence adopted?”
+→ 1776
+
+Pourquoi :
+- recall direct
+- sujet touché stable
+
+qcm_reasoning :
+“What caused the United States to declare independence from Great Britain?”
+→ Taxes imposed by the British
+
+Pourquoi :
+- même sujet touché
+- angle causal
+- vraie inférence
+- cognition différente
+
+qcm_deceptive_trap :
+“Which famous American founding document adopted in 1776 is commonly confused with the Constitution?”
+→ Declaration of Independence
+
+Pourquoi :
+- même sujet touché
+- confusion cognitive plausible
+- même colonne vertébrale
+
+tf_recognition_true :
+“The Declaration of Independence was adopted in 1776.”
+→ True
+
+tf_recognition_false :
+“The Declaration of Independence was adopted after the U.S. Constitution.”
+→ False
+
+tf_reasoning_true :
+“The Declaration of Independence was adopted while the colonies were still in conflict with Great Britain.”
+→ True
+
+tf_reasoning_false :
+“The Declaration of Independence officially created the U.S. Constitution.”
+→ False
+
+Important :
+Tous ces cognitifs :
+- gardent le même sujet touché
+- mais créent des perspectives cognitives différentes
+
+──────────────────────────────
+EXEMPLES INCORRECTS
+──────────────────────────────
+
+❌ Mauvais :
+“Who was the first President of the United States?”
+→ dérive vers autre sujet historique
+
+❌ Mauvais :
+“What economic problems existed in the colonies?”
+→ sujet trop large
+
+❌ Mauvais :
+“Which war weakened British control in North America?”
+→ dérive historique trop éloignée
+
+❌ Mauvais :
+“Which historic document formally declared the colonies independent?”
+→ recognition déguisée
+
+──────────────────────────────
+STRUCTURE COGNITIVE OFFICIELLE
+──────────────────────────────
+
+Phase 1 doit maintenant générer :
+
+1. qcm_recognition
+2. qcm_reasoning
+3. qcm_deceptive_trap
+4. tf_recognition_true
+5. tf_recognition_false
+6. tf_reasoning_true
+7. tf_reasoning_false
+
+Objectifs :
+- diversité cognitive réelle
+- équilibre True / False
+- faux plausibles
+- gameplay varié
+- réduction biais LLM
+- cohérence du sujet touché
+
+──────────────────────────────
+PHASE 1 — CE QUI DOIT CHANGER
+──────────────────────────────
+
+Phase 1 doit :
+- générer les 7 cognitifs
+- garder le même sujet touché
+- varier les angles cognitifs
+- empêcher les reformulations simples
+- empêcher les faux reasoning
+- empêcher les faux deceptive_trap
+- empêcher les dérives historiques
+- empêcher les sujets trop larges
+- générer des False plausibles
+- éviter les False absurdes
+- prévoir les slots traduction des 7 cognitifs
+
+──────────────────────────────
+PHASE 2 — CE QUI DOIT VÉRIFIER
+──────────────────────────────
+
+Phase 2 doit vérifier :
+- présence des 7 cognitifs
+- polarité correcte True / False
+- même sujet touché
+- stabilité domaine/sous-domaine/sujet principal
+- dérive excessive du sujet
+- qcm_reasoning réellement reasoning
+- tf_reasoning réellement reasoning
+- deceptive_trap réellement deceptive
+- faux plausible réellement plausible
+- absence de reformulation simple
+- absence de recognition déguisée
+- absence de dérive historique
+- absence de sujet trop large
+- absence de méta IA visible joueur
+- aucun “Why this answer?” visible
+
+Phase 2 doit rester :
+- un safe layer
+- un protecteur
+- un validateur
+
+PAS :
+- un auteur créatif
+- un moteur de réécriture agressive
+
+Phase 2 :
+- flag
+- avertit
+- protège
+- demande retry Phase 1 si nécessaire
+- corrige seulement les micro-problèmes évidents
+
+──────────────────────────────
+À FAIRE MAINTENANT
+──────────────────────────────
+
+Audit + plan uniquement.
+
+GREP → SLICE → PLAN.
+
+Chercher :
+1. où le système raisonne encore en “same answer”
+2. où le système ne connaît pas “same subject touched”
+3. où les prompts poussent vers reformulation simple
+4. où les validators ne détectent pas recognition déguisée
+5. où deceptive_trap peut dériver hors sujet
+6. où TF peuvent devenir triviaux
+7. où les False ne sont pas contrôlés
+8. où Phase 2 prévoit de réécrire agressivement
+
+Livrer :
+1. nouvelle représentation technique “sujet touché”
+2. impacts prompts Phase 1
+3. impacts validators Phase 2
+4. impacts sur génération TF
+5. impacts sur deceptive_trap
+6. impacts sur translations
+7. impacts sur Bank1/Bank2 comparison
+8. risques
+9. ordre exact des patchs
+
+Aucun patch maintenant.
+STOP après le plan.
