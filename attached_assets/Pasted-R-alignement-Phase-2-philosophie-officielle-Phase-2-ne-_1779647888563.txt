@@ -1,0 +1,91 @@
+Réalignement Phase 2 — philosophie officielle.
+
+Phase 2 ne doit PAS être un système punitif qui rejette trop vite.
+
+Phase 2 doit être un système de stabilisation cognitive du noyau.
+
+Objectif réel :
+1. vérifier le contenu du noyau
+2. détecter les problèmes
+3. comprendre la cause
+4. corriger si la correction est raisonnable
+5. revalider
+6. envoyer en human_review si ambigu
+7. rejeter seulement si le noyau est trop loin ou structurellement cassé
+
+Règle centrale :
+REJECTED doit être rare.
+CORRECTION_NEEDED doit être normal.
+HUMAN_REVIEW_NEEDED doit servir quand la décision demande un jugement humain.
+
+Ordre logique Phase 2 :
+
+Étape 1 — Analyse
+- VariantAlignmentChecker
+- SaviezVousQualityChecker
+- DeceptiveTrapQualityChecker
+- FactualityChecker minimal
+- DuplicateChecker minimal
+
+Étape 2 — Classification
+Chaque problème doit être classé :
+- fixable_auto
+- fixable_ai_targeted
+- human_review
+- reject
+
+Étape 3 — Correction ciblée
+Corriger seulement le champ fautif :
+- faux reasoning → régénérer uniquement cette variante
+- SV générique/meta → régénérer uniquement ce SV
+- deceptive_trap faible → renforcer uniquement cette variante
+- wording trop dense → reformuler uniquement la question
+- trap contract incomplet → compléter le cognitive_contract
+- factualité douteuse → human_review, pas correction aveugle
+
+Étape 4 — Revalidation
+Après correction :
+- relancer les checks sur le champ corrigé
+- puis relancer KernelQualityValidator complet
+- ne jamais passer content_validated sans revalidation complète
+
+Étape 5 — Statut final
+- content_validated : noyau cohérent
+- correction_needed : correction possible mais non faite ou échec partiel
+- human_review_needed : ambigu ou factuel sensible
+- rejected : cassé / contradiction grave / noyau irrécupérable
+
+Règles de rejet strictes :
+Rejeter seulement si :
+- bonne réponse impossible ou contradictoire
+- answer_target changé profondément
+- sujet changé profondément
+- deceptive_trap inversé : intuitive_wrong_answer = correct answer
+- factualité manifestement fausse et non réparable sans changer le noyau
+- correction ciblée échoue plusieurs fois
+- noyau trop éloigné du kernel_core
+
+Important :
+Phase 2 doit protéger les bonnes deceptive_trap.
+Ne pas supprimer une bonne question juste parce qu’elle est surprenante ou proche du recognition.
+Le validator doit comprendre l’intention cognitive avant de juger.
+
+À faire maintenant :
+Réviser le plan Phase 2-A avec cette philosophie.
+
+Livrer un plan clair :
+1. checks
+2. classification des issues
+3. corrections ciblées possibles
+4. règles human_review
+5. règles rejected
+6. ordre exact des patchs
+7. fichiers à créer
+8. prompts IA nécessaires pour correction ciblée
+9. validation sur les 5 noyaux tests
+
+Méthode :
+GREP → SLICE → PLAN.
+Aucun patch encore.
+
+STOP après le plan révisé.
