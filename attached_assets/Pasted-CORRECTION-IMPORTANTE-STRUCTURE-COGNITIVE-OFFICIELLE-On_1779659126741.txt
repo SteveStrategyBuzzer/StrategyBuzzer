@@ -1,0 +1,188 @@
+CORRECTION IMPORTANTE — STRUCTURE COGNITIVE OFFICIELLE
+
+On corrige une mauvaise interprétation du système.
+
+Ce n’est PAS seulement qcm_reasoning.
+
+TOUS les cognitifs doivent respecter la même règle :
+
+Ils doivent rester dans le même SUJET TOUCHÉ.
+Pas plus.
+Pas moins.
+
+La variation doit se faire sur :
+- l’angle
+- le framing
+- l’inférence
+- le gameplay wording
+- le type cognitif
+
+MAIS :
+sans sortir du sujet touché.
+
+Hiérarchie officielle :
+
+1. domaine
+2. sous-domaine
+3. sujet principal
+4. sujet touché
+5. cognitifs variables autour du sujet touché
+
+Exemple officiel :
+
+Domaine :
+Histoire
+
+Sous-domaine :
+Révolution américaine
+
+Sujet principal :
+Déclaration de l’indépendance américaine
+
+Sujet touché :
+tout ce qui touche directement :
+- la Déclaration de l’indépendance américaine
+- son adoption
+- sa fonction
+- sa signification
+- ses causes directes
+- ses conséquences directes
+- ses confusions fréquentes
+- son contexte immédiat
+
+RÈGLE OFFICIELLE :
+
+Recognition, reasoning, deceptive_trap, TF_recognition et TF_reasoning
+doivent TOUS :
+- rester dans le même sujet touché
+- garder la même colonne vertébrale cognitive
+- éviter la dérive vers un autre sujet historique
+- éviter les dérives trop larges
+
+MAIS :
+ils doivent être cognitivement différents.
+
+──────────────────────────────
+EXEMPLES
+──────────────────────────────
+
+Recognition :
+“In which year was the American Declaration of Independence adopted?”
+→ réponse : 1776
+
+Reasoning :
+“What caused the United States to declare independence from Great Britain?”
+→ réponse : Taxes imposed by the British
+
+Pourquoi c’est BON :
+- même sujet touché
+- angle causal
+- vraie inférence
+- cognition différente
+
+Deceptive trap :
+“Which famous American founding document adopted in 1776 is commonly confused with the Constitution?”
+→ réponse : Declaration of Independence
+
+Pourquoi c’est BON :
+- même sujet touché
+- piège cognitif
+- confusion fréquente réelle
+- même colonne vertébrale
+
+TF_reasoning :
+“The Declaration of Independence was adopted during the American Revolutionary period.”
+→ réponse : True
+
+Pourquoi c’est BON :
+- même sujet touché
+- validation logique/contextuelle
+- pas simple recall direct
+
+──────────────────────────────
+EXEMPLES MAUVAIS
+──────────────────────────────
+
+❌ Mauvais :
+“Who was the first President of the United States?”
+→ dérive vers autre sujet historique
+
+❌ Mauvais :
+“What economic problems existed in the colonies?”
+→ sujet trop large
+
+❌ Mauvais :
+“Which war weakened British control in North America?”
+→ dérive contexte historique trop éloigné
+
+❌ Mauvais :
+“Which historic document formally declared the colonies independent?”
+→ recognition déguisée
+
+──────────────────────────────
+RÈGLE PHASE 1
+──────────────────────────────
+
+Phase 1 doit :
+- générer des cognitifs différents
+- MAIS autour du même sujet touché
+- créer de vraies différences cognitives
+- éviter les reformulations simples
+- éviter les dérives historiques
+- éviter les sujets trop larges
+
+──────────────────────────────
+RÈGLE PHASE 2
+──────────────────────────────
+
+Phase 2 doit vérifier :
+- stabilité du domaine
+- stabilité du sous-domaine
+- stabilité du sujet principal
+- stabilité du sujet touché
+- dérive excessive du sujet
+- faux reasoning
+- faux deceptive_trap
+- recognition déguisée
+- cognitifs trop proches
+
+MAIS :
+Phase 2 ne doit PAS :
+- réinventer les cognitifs
+- réécrire agressivement
+- changer le sujet
+- imposer un style IA
+
+Phase 2 doit :
+- protéger
+- stabiliser
+- flagger
+- demander retry Phase 1 si nécessaire
+
+──────────────────────────────
+À FAIRE MAINTENANT
+──────────────────────────────
+
+Audit + plan uniquement.
+
+GREP → SLICE → PLAN.
+
+Chercher :
+1. où les prompts ne parlent pas du “sujet touché”
+2. où les cognitifs peuvent dériver du sujet
+3. où les validators raisonnent encore en “same answer”
+4. où il manque la notion de “same subject touched”
+5. où deceptive_trap peut dériver hors sujet
+6. où TF peut dériver vers simple recognition
+
+Livrer :
+1. nouvelle définition technique “sujet touché”
+2. impact sur prompts Phase 1
+3. impact sur validators Phase 2
+4. impact sur deceptive_trap
+5. impact sur TF_reasoning
+6. impact sur future translations
+7. plan exact des patchs
+
+Aucun patch maintenant.
+STOP après le plan.
