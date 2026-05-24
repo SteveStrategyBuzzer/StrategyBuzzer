@@ -1,0 +1,108 @@
+AJUSTEMENT CRITIQUE — SUJET TOUCHÉ / FALSE PLAUSIBLES / PHASE 2 PROTECTEUR
+
+On précise 3 points avant patch.
+
+1. Le “keyword check” est insuffisant.
+Ne pas seulement vérifier si un mot du subject apparaît.
+Il faut vérifier une cohérence de SUJET TOUCHÉ plus riche :
+
+- subject_tokens
+- micro_angle_tokens
+- answer_target_tokens
+- potential_trap_tokens
+- concept_family_tokens
+
+Le validator doit produire un subject_touch_score, par exemple :
+- 0.00 à 0.30 = drift probable
+- 0.30 à 0.55 = warning
+- 0.55+ = acceptable
+
+Il doit aussi vérifier :
+- lien direct avec le sujet
+- pas seulement présence d’un mot
+- pas de dérive vers un contexte trop large
+
+2. False plausibles — distinction officielle
+
+tf_recognition_false :
+doit être un FAIT FAUX plausible sur le sujet touché.
+Exemple :
+“The Declaration of Independence was adopted after the U.S. Constitution.”
+→ Faux plausible, confusion de documents/dates.
+
+tf_reasoning_false :
+doit être une VALEUR / INFÉRENCE FAUSSE plausible sur le sujet touché.
+Exemple :
+“The Declaration of Independence officially ended the Revolutionary War.”
+→ Faux plausible, mauvaise conclusion logique.
+
+Donc :
+- recognition_false = faux fait plausible
+- reasoning_false = fausse conclusion plausible
+
+Interdit :
+- faux absurde
+- faux trop évident
+- faux hors sujet
+- faux qui change de sujet
+
+3. Phase 2 protecteur — règle de correction/suppression
+
+Phase 2 ne supprime PAS tout un noyau si un seul élément cloche.
+
+Elle agit par niveau :
+
+A. Micro-problème évident
+Exemples :
+- “Why this answer?”
+- typo
+- champ vide
+- mauvais prefix visible joueur
+→ correction locale du champ seulement.
+
+B. Variante problématique
+Exemples :
+- tf_reasoning_false absurde
+- qcm_reasoning recognition déguisée
+- deceptive_trap faible
+→ flag de la variante seulement.
+→ demander retry Phase 1 pour cette variante ou human_review.
+→ ne pas supprimer tout le noyau.
+
+C. Problème structurel grave
+Exemples :
+- sujet touché perdu dans plusieurs variantes
+- réponses contradictoires
+- bonne réponse impossible
+- deceptive_trap inversé
+→ human_review ou reject.
+
+D. Suppression/rejet complet du noyau
+Seulement si :
+- le sujet touché est perdu globalement
+- 3+ cognitifs sont cassés
+- la bonne réponse devient impossible
+- correction/retry échoue plusieurs fois
+- noyau irrécupérable
+
+Règle centrale :
+Phase 2 protège le noyau.
+Elle corrige localement.
+Elle flag par variante.
+Elle ne rejette tout le noyau qu’en dernier recours.
+
+À faire maintenant :
+Réviser le plan avec ces 3 corrections.
+
+GREP → SLICE → PLAN.
+Aucun patch.
+
+Livrer :
+1. meilleur subject_touch_score
+2. règles recognition_false vs reasoning_false
+3. politique correction locale / variante / noyau complet
+4. impacts Phase 1
+5. impacts Phase 2
+6. plan exact des patchs
+
+STOP après le plan.
