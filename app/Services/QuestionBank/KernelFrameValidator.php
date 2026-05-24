@@ -43,7 +43,7 @@ class KernelFrameValidator
     ];
 
     // ─── kernel_core : champs optionnels (warning si null) ───────────────────
-    private const KERNEL_OPTIONAL = ['potential_trap', 'pedagogical_intent'];
+    private const KERNEL_OPTIONAL = ['potential_trap', 'pedagogical_intent', 'default_reading_band'];
 
     // ─── cognitive_contract clés minimales (toutes variantes) ────────────────
     private const CC_MINIMAL_KEYS = ['requires_inference', 'has_deceptive_distractor', 'trap_description'];
@@ -135,11 +135,19 @@ class KernelFrameValidator
             }
         }
 
-        // difficulty_depth doit être entier 1-10
+        // difficulty_depth doit être entier 3-9
         if (array_key_exists('difficulty_depth', $kc) && $kc['difficulty_depth'] !== null) {
             $d = (int) $kc['difficulty_depth'];
-            if ($d < 1 || $d > 10) {
-                $errors[] = "kernel_core.difficulty_depth hors plage : {$d} (attendu 1-10)";
+            if ($d < 3 || $d > 9) {
+                $errors[] = "kernel_core.difficulty_depth hors plage : {$d} (attendu 3-9)";
+            }
+        }
+
+        // default_reading_band — valider la valeur si présente
+        if (array_key_exists('default_reading_band', $kc) && $kc['default_reading_band'] !== null) {
+            $validBands = ['slow_reader_safe', 'normal_reader', 'fast_reader_dense'];
+            if (!in_array($kc['default_reading_band'], $validBands, true)) {
+                $errors[] = "kernel_core.default_reading_band valeur inconnue: {$kc['default_reading_band']} (attendu: " . implode('|', $validBands) . ')';
             }
         }
     }

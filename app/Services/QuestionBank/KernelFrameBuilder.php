@@ -2,6 +2,8 @@
 
 namespace App\Services\QuestionBank;
 
+use App\Services\QuestionBank\ReadingBandConfig;
+
 use App\Models\QuestionIntent;
 
 /**
@@ -27,10 +29,7 @@ class KernelFrameBuilder
     // ─── Translation languages (no 'en' — EN is the source) ─────────────────
     private const TRANSLATION_LANGS = ['fr', 'es', 'de', 'it', 'pt', 'ru', 'zh', 'ar', 'el'];
 
-    // ─── Gameplay length caps (authoritative — mirrors QuestionsAuditCommand) ─
-    private const Q_MAX     = 110;
-    private const Q_MAX_ZH  = 60;
-    private const Q_MAX_AR  = 75;
+    // ─── Answer / saviez-vous caps (unchanged) ──────────────────────────────
     private const A_MAX     = 60;
     private const A_MAX_ZH  = 30;
     private const A_MAX_AR  = 40;
@@ -38,6 +37,7 @@ class KernelFrameBuilder
     private const SV_MAX_ZH = 100;
     private const SV_MAX_AR = 140;
     private const SV_MIN    = 30;
+    // question_max_length is now band-aware — see qMax() / ReadingBandConfig
 
     // ─── 5 variant definitions: [question_type, cognitive_type] ─────────────
     private const VARIANTS = [
@@ -55,9 +55,11 @@ class KernelFrameBuilder
      */
     public function buildSkeleton(QuestionIntent $intent): array
     {
+        $band = ReadingBandConfig::defaultBandForDepth((int) $intent->difficulty_depth);
+
         return [
-            'kernel_core'             => $this->buildKernelCore($intent),
-            'translation_constraints' => $this->buildTranslationConstraints(),
+            'kernel_core'             => $this->buildKernelCore($intent, $band),
+            'translation_constraints' => $this->buildTranslationConstraints($band),
             'variants'                => $this->buildVariants(),
         ];
     }
@@ -66,20 +68,21 @@ class KernelFrameBuilder
     // kernel_core
     // ─────────────────────────────────────────────────────────────────────────
 
-    private function buildKernelCore(QuestionIntent $intent): array
+    private function buildKernelCore(QuestionIntent $intent, string $band): array
     {
         return [
-            'domain'             => $intent->domain,
-            'sub_domain'         => $intent->sub_domain,
-            'difficulty_depth'   => (int) $intent->difficulty_depth,
-            'concept_family'     => $intent->concept_family,
-            'semantic_key'       => $intent->semantic_key,
-            'subject'            => $intent->subject,
-            'angle_large'        => $intent->angle_large,
-            'micro_angle'        => $intent->micro_angle,
-            'answer_target'      => $intent->answer_target,
-            'potential_trap'     => $intent->potential_trap,
-            'pedagogical_intent' => null,
+            'domain'               => $intent->domain,
+            'sub_domain'           => $intent->sub_domain,
+            'difficulty_depth'     => (int) $intent->difficulty_depth,
+            'default_reading_band' => $band,
+            'concept_family'       => $intent->concept_family,
+            'semantic_key'         => $intent->semantic_key,
+            'subject'              => $intent->subject,
+            'angle_large'          => $intent->angle_large,
+            'micro_angle'          => $intent->micro_angle,
+            'answer_target'        => $intent->answer_target,
+            'potential_trap'       => $intent->potential_trap,
+            'pedagogical_intent'   => null,
         ];
     }
 
@@ -87,13 +90,13 @@ class KernelFrameBuilder
     // translation_constraints — per language length caps
     // ─────────────────────────────────────────────────────────────────────────
 
-    private function buildTranslationConstraints(): array
+    private function buildTranslationConstraints(string $band): array
     {
         $constraints = [];
 
         foreach (self::TRANSLATION_LANGS as $lang) {
             $constraints[$lang] = [
-                'question_max_length' => $this->qMax($lang),
+                'question_max_length' => $this->qMax($lang, $band),
                 'answer_max_length'   => $this->aMax($lang),
                 'funFact_max_length'  => $this->svMax($lang),
                 'funFact_min_length'  => self::SV_MIN,
@@ -103,13 +106,13 @@ class KernelFrameBuilder
         return $constraints;
     }
 
-    private function qMax(string $lang): int
+    /**
+     * question_max_length = soft_max_chars for the kernel's default_reading_band.
+     * Per-script adjustments: zh ≈ 55 %, ar ≈ 65 % of EN soft limit.
+     */
+    private function qMax(string $lang, string $band): int
     {
-        return match ($lang) {
-            'zh'    => self::Q_MAX_ZH,
-            'ar'    => self::Q_MAX_AR,
-            default => self::Q_MAX,
-        };
+        return ReadingBandConfig::resolveForLang($band, $lang)['soft'];
     }
 
     private function aMax(string $lang): int
@@ -148,9 +151,10 @@ class KernelFrameBuilder
     private function buildVariant(string $variantKey, string $questionType, string $cognitiveType): array
     {
         return [
-            'question_type'       => $questionType,
-            'cognitive_type'      => $cognitiveType,
-            'question_text'       => null,
+            'question_type'        => $questionType,
+            'cognitive_type'       => $cognitiveType,
+            'reading_band_override'=> ReadingBandConfig::defaultForVariant($variantKey),
+            'question_text'        => null,
             'answer_a'            => null,
             'answer_b'            => null,
             'answer_c'            => null,

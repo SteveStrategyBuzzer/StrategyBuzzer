@@ -2,6 +2,7 @@
 
 namespace App\Services\QuestionBank;
 
+use App\Services\QuestionBank\ReadingBandConfig;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -200,14 +201,18 @@ class KernelContentBuilder
             return ['ok' => false, 'error' => "3-B: master.correct_answer_key invalid: {$master['correct_answer_key']}"];
         }
 
-        // question_text length
-        $qLen = mb_strlen($master['question_text']);
-        if ($qLen > 115) {
-            return ['ok' => false, 'error' => "3-B: master.question_text too long ({$qLen} > 115)"];
-        }
+        // question_text length — band-aware tri-state (OK / WARNING / REVIEW_NEEDED)
+        $qLen  = mb_strlen($master['question_text']);
+        $band  = $kernelCore['default_reading_band'] ?? ReadingBandConfig::DEFAULT_BAND;
+
         if ($qLen < 10) {
             return ['ok' => false, 'error' => "3-B: master.question_text too short ({$qLen})"];
         }
+        $readingAssess = ReadingBandConfig::assess($qLen, $band, 'en');
+        if ($readingAssess['status'] === 'REVIEW_NEEDED') {
+            return ['ok' => false, 'error' => "3-B: master.question_text REVIEW_NEEDED ({$readingAssess['detail']})"];
+        }
+        // WARNING is logged but not rejected
 
         // saviez_vous length
         $svLen = mb_strlen($master['saviez_vous']);

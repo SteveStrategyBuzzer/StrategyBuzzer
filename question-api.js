@@ -1603,6 +1603,33 @@ ${translationSchema}
 });
 
 // =============================================================================
+// READING_BAND definitions (mirrors app/Services/QuestionBank/ReadingBandConfig.php)
+//
+// Two axes are SEPARATE:
+//   difficulty_depth  — cognitive depth (3-9)
+//   reading_band      — reading load / estimated reading time
+//
+// Validator tri-state: OK (≤ soft) / WARNING (soft < x ≤ hard) / reject (> hard)
+// =============================================================================
+const READING_BANDS = {
+  slow_reader_safe:  { en: { soft: 110, hard: 135 }, zh: { soft:  60, hard:  75 }, ar: { soft:  75, hard:  90 } },
+  normal_reader:     { en: { soft: 145, hard: 170 }, zh: { soft:  75, hard:  90 }, ar: { soft:  95, hard: 115 } },
+  fast_reader_dense: { en: { soft: 175, hard: 210 }, zh: { soft:  90, hard: 110 }, ar: { soft: 115, hard: 140 } },
+};
+const VARIANT_BAND_DEFAULTS = {
+  qcm_recognition:        'slow_reader_safe',
+  true_false_recognition: 'slow_reader_safe',
+  qcm_reasoning:          'normal_reader',
+  true_false_reasoning:   'normal_reader',
+  qcm_deceptive_trap:     'fast_reader_dense',
+};
+// Returns { soft, hard } for a variant key (EN script)
+const bandLimitsForVariant = (variantKey) => {
+  const band = VARIANT_BAND_DEFAULTS[variantKey] || 'normal_reader';
+  return READING_BANDS[band].en;
+};
+
+// =============================================================================
 // POST /generate-kernel-variants  [EXPERIMENTAL — superseded by the master-first
 // flow: /generate-kernel-master + /generate-kernel-derived-variants]
 //
@@ -1665,7 +1692,12 @@ RULES FOR ALL VARIANTS:
 - Language: English only
 - All 5 variants MUST have the SAME factual correct answer (aligned with answer_target)
 - Positions A/B/C/D can differ between variants
-- question_text ≤ 110 chars
+- question_text length targets by variant (reading_band — soft target, hard max in parentheses):
+  qcm_recognition:        ≤ 110 chars / hard 135 (slow_reader_safe — direct recall, short phrasing)
+  qcm_reasoning:          ≤ 145 chars / hard 170 (normal_reader — context for deduction allowed)
+  qcm_deceptive_trap:     ≤ 175 chars / hard 210 (fast_reader_dense — rich context for the trap)
+  true_false_recognition: ≤ 110 chars / hard 135 (slow_reader_safe — simple V/F statement)
+  true_false_reasoning:   ≤ 145 chars / hard 170 (normal_reader — contextual V/F statement)
 - each answer ≤ 60 chars
 - saviez_vous ≥ 30 chars, ≤ 220 chars — a cognitive memory anchor, NOT a generic encyclopedia fact.
   Choose ONE angle: why_it_matters | why_this_answer | why_people_confuse_it | surprising_scale |
@@ -1850,8 +1882,9 @@ Return EXACTLY this JSON structure:
       if (!v.question_text || typeof v.question_text !== 'string' || v.question_text.trim().length < 5) {
         return { ok: false, reason: `${key}.question_text missing or too short` };
       }
-      if (v.question_text.length > 125) {
-        return { ok: false, reason: `${key}.question_text too long (${v.question_text.length} > 125)` };
+      const _vLimits1 = bandLimitsForVariant(key);
+      if (v.question_text.length > _vLimits1.hard) {
+        return { ok: false, reason: `${key}.question_text too long (${v.question_text.length} > hard_max=${_vLimits1.hard}, band=${VARIANT_BAND_DEFAULTS[key]})` };
       }
       if (!v.answer_a || !v.answer_b) {
         return { ok: false, reason: `${key}: answer_a and answer_b required` };
@@ -1998,7 +2031,7 @@ COGNITIVE TYPE: qcm_recognition — direct factual recall. The player recognizes
 RULES:
 - Language: English only
 - 4 answers (answer_a/b/c/d), all non-null, one correct
-- question_text ≤ 110 chars
+- question_text ≤ 110 chars (slow_reader_safe — direct recall, short phrasing; hard max: 135)
 - each answer ≤ 60 chars
 - saviez_vous ≥ 30 chars, ≤ 220 chars — a cognitive memory anchor, NOT a generic encyclopedia fact.
   Choose ONE angle from this list (pick the most powerful for this kernel):
@@ -2050,8 +2083,8 @@ Return EXACTLY this JSON:
     if (!['A','B','C','D'].includes(String(parsed.correct_answer_key).toUpperCase())) {
       return { ok: false, reason: `correct_answer_key must be A|B|C|D` };
     }
-    if (parsed.question_text.length > 125) {
-      return { ok: false, reason: `question_text too long (${parsed.question_text.length})` };
+    if (parsed.question_text.length > 135) {
+      return { ok: false, reason: `question_text too long (${parsed.question_text.length} > hard_max=135, band=slow_reader_safe)` };
     }
     if (parsed.saviez_vous.length < 20) {
       return { ok: false, reason: `saviez_vous too short (${parsed.saviez_vous.length})` };
@@ -2169,7 +2202,11 @@ GLOBAL RULES FOR ALL DERIVED VARIANTS:
 - Language: English only
 - Correct answer must match the master's correct answer (same fact: "${masterCorrectText}")
 - Different wording and angle than the master question — no copy-paste
-- question_text ≤ 110 chars
+- question_text length targets by variant (reading_band — soft target, hard max in parentheses):
+  qcm_reasoning:          ≤ 145 chars / hard 170 (normal_reader — context for deduction allowed)
+  qcm_deceptive_trap:     ≤ 175 chars / hard 210 (fast_reader_dense — rich context for the trap)
+  true_false_recognition: ≤ 110 chars / hard 135 (slow_reader_safe — simple V/F statement)
+  true_false_reasoning:   ≤ 145 chars / hard 170 (normal_reader — contextual V/F statement)
 - each answer ≤ 60 chars
 - saviez_vous ≥ 30 chars, ≤ 220 chars — a cognitive memory anchor, NOT a generic encyclopedia fact.
   Each variant's saviez_vous must use a DIFFERENT angle than the master's saviez_vous.
@@ -2327,8 +2364,9 @@ Return EXACTLY this JSON:
       if (!v.question_text || v.question_text.length < 5) {
         return { ok: false, reason: `${key}.question_text missing or too short` };
       }
-      if (v.question_text.length > 125) {
-        return { ok: false, reason: `${key}.question_text too long (${v.question_text.length})` };
+      const _vLimits2 = bandLimitsForVariant(key);
+      if (v.question_text.length > _vLimits2.hard) {
+        return { ok: false, reason: `${key}.question_text too long (${v.question_text.length} > hard_max=${_vLimits2.hard}, band=${VARIANT_BAND_DEFAULTS[key]})` };
       }
       if (!v.answer_a || !v.answer_b) {
         return { ok: false, reason: `${key}: answer_a and answer_b required` };
