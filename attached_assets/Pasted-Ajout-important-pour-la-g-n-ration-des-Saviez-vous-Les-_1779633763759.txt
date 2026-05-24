@@ -1,0 +1,75 @@
+Ajout important pour la génération des Saviez-vous.
+
+Les SV actuels sont acceptables, mais ils sortent parfois trop “encyclopédie IA”.
+
+Nouvelle règle :
+Le Saviez-vous ne doit pas seulement ajouter une anecdote.
+Il doit aider le joueur à mieux comprendre POURQUOI la réponse est importante, surprenante ou mémorable.
+
+Pour chaque SV, l’IA doit choisir un angle parmi :
+
+1. why_it_matters
+→ pourquoi cette réponse est importante
+
+2. why_this_answer
+→ pourquoi cette réponse est la bonne / pourquoi elle domine
+
+3. why_people_confuse_it
+→ pourquoi les joueurs peuvent se tromper
+
+4. surprising_scale
+→ chiffre ou proportion surprenante
+
+5. hidden_consequence
+→ conséquence concrète
+
+6. historical_connection
+→ lien historique utile
+
+7. evolution_connection
+→ lien scientifique/évolution
+
+8. human_story
+→ détail humain mémorable
+
+9. visual_memory
+→ image mentale forte
+
+Exemple :
+Question :
+Which city is located in Burkina Faso and serves as its most important urban center?
+
+Réponse :
+Ouagadougou
+
+SV faible :
+Ouagadougou is the economic, transport, and cultural centre of Burkina Faso. The city's growth has been rapid.
+
+SV meilleur :
+Ouagadougou est importante parce qu’elle concentre le pouvoir politique, les grandes routes commerciales et la vie culturelle du Burkina Faso.
+
+Règle :
+Le SV doit idéalement répondre à une question implicite :
+- Pourquoi cette réponse ?
+- Pourquoi c’est important ?
+- Pourquoi c’est surprenant ?
+- Pourquoi les gens se trompent ?
+- Qu’est-ce que ça change ?
+- Qu’est-ce que je vais retenir ?
+
+Interdit :
+- SV générique encyclopédique
+- phrase documentaire vague
+- simple répétition de la réponse
+- anecdote random non liée au noyau
+- SV qui ne renforce pas la mémoire
+
+À intégrer dans le prompt de génération Phase 1 :
+- generate-kernel-master
+- generate-kernel-derived-variants
+
+Audit d’abord :
+GREP → SLICE → ANALYSE
+Montre les sections actuelles du prompt qui demandent saviez_vous.
+Propose le patch minimal.
+Aucun patch avant validation.
