@@ -1679,17 +1679,54 @@ qcm_recognition: Direct factual recall. The player recognizes a known fact.
 qcm_reasoning: Requires light deduction or comparison. Not a pure memory fact.
   4 answers (answer_a/b/c/d non-null), one correct. The question must require inference.
 
-qcm_deceptive_trap: Triggers a natural wrong automatic intuition, then forces mental reframing.
+qcm_deceptive_trap: A NORMAL factual question where DISTRACTOR SELECTION creates the trap.
   4 answers (answer_a/b/c/d non-null), one correct.
-  The trap can use: popularity bias, cultural bias, frequent confusion, implicit category, absent intuition, false mental frame.
-  The correct answer MUST be reachable by reasoning — no unfair trap.
-  Also fill cognitive_contract with:
+
+  KERNEL_CORE_LOCK — ABSOLUTE CONSTRAINTS (never violate):
+    The deceptive_trap MUST test the SAME concept as qcm_recognition (master).
+    FORBIDDEN: changing the main subject, the answer_target, the cognitive object, or the pedagogical intent.
+    The correct answer MUST be the same fact as qcm_recognition.
+    ALLOWED: activating a false reflex, modifying distractors, shifting cognitive framing slightly.
+    FORBIDDEN EXAMPLE — master: "How many titles did Djokovic win?" → trap: "Who held the record before him?"
+      → different subject, different answer_target → FORBIDDEN.
+    CORRECT EXAMPLE — master: "How many titles did Djokovic win?" → trap: "Which total is Djokovic's Grand Slam count?"
+      → same subject, same answer, trap lives in the distractors → OK.
+
+  MANDATORY 3-STEP PROCESS (reason through these before writing):
+
+  STEP 1 — HUMAN_REFLEX_PROFILE:
+    • What does a player INSTINCTIVELY answer about this subject before thinking carefully?
+    • Why do they get it wrong? (what false assumption do they hold?)
+    • Which bias_family applies? (e.g. availability heuristic, recency bias, salience bias, authority bias)
+    • Define false_assumption: the specific wrong belief the player holds as true.
+
+  STEP 2 — QUESTION CONSTRUCTION:
+    • Write a NORMAL, complete, self-sufficient factual question.
+    • The question MUST include the full subject/context — answerable without reading the choices.
+    • The trap lives in the CHOICE SELECTION, never in the question wording.
+    FORBIDDEN question patterns:
+      ✗ "Which sounds like / seems like / looks like / appears to be"
+      ✗ "Which gives the impression of"
+      ✗ Any question about subjective appearance or impression
+      ✗ Any question whose answer changes depending on which choices are listed
+      ✗ Any question that changes the subject, answer_target, or concept from the master
+
+  STEP 3 — DISTRACTOR_ENGINE:
+    • Place the intuitive wrong answer as a prominent choice (answer_a or answer_b preferred).
+    • The other 2 distractors must be plausible but clearly different from the intuitive one.
+    • No absurd distractors. The correct answer must always be present.
+    • Define distractor_strategy: how choices were built to exploit the human reflex.
+
+  Fill cognitive_contract with ALL fields:
     - trap_type: one of [popularity_bias, cultural_bias, frequent_confusion, implicit_category, absent_intuition, false_mental_frame]
-    - intuitive_wrong_answer: what the player instinctively thinks BEFORE reading choices
-    - intuitive_answer_presence: "present" (intuitive answer is one of the choices) | "absent" (not in choices) | "implicit" (implied by question framing)
-    - recadrage_expected: how the player can correct their thinking to reach the right answer
-    - fairness_reason: why the trap is fair and solvable (all clues available)
-    - alignment_with_kernel_core: confirm the correct answer matches answer_target
+    - bias_family: the cognitive bias family (e.g. "availability heuristic", "recency bias", "salience bias")
+    - false_assumption: the exact false belief the player holds before reading carefully
+    - intuitive_wrong_answer: what the player instinctively answers BEFORE reading choices
+    - intuitive_answer_presence: "present" | "absent" | "implicit"
+    - recadrage_expected: how the player corrects their thinking to find the right answer
+    - fairness_reason: why the trap is fair (question is complete, correct answer is reachable)
+    - alignment_with_kernel_core: confirm correct answer matches answer_target — state explicitly
+    - distractor_strategy: how the choices were built to exploit the identified reflex
 
 true_false_recognition: Direct V/F statement about the kernel fact. answer_a="True", answer_b="False", answer_c=null, answer_d=null.
 
@@ -1728,11 +1765,14 @@ Return EXACTLY this JSON structure:
     "saviez_vous": "...",
     "cognitive_contract": {
       "trap_type": "...",
+      "bias_family": "...",
+      "false_assumption": "...",
       "intuitive_wrong_answer": "...",
       "intuitive_answer_presence": "present|absent|implicit",
       "recadrage_expected": "...",
       "fairness_reason": "...",
-      "alignment_with_kernel_core": "..."
+      "alignment_with_kernel_core": "...",
+      "distractor_strategy": "..."
     }
   },
   "true_false_recognition": {
@@ -1766,8 +1806,10 @@ Return EXACTLY this JSON structure:
   ];
 
   const DECEPTIVE_CONTRACT_KEYS = [
-    'trap_type', 'intuitive_wrong_answer', 'intuitive_answer_presence',
-    'recadrage_expected', 'fairness_reason', 'alignment_with_kernel_core',
+    'trap_type', 'bias_family', 'false_assumption',
+    'intuitive_wrong_answer', 'intuitive_answer_presence',
+    'recadrage_expected', 'fairness_reason',
+    'alignment_with_kernel_core', 'distractor_strategy',
   ];
 
   const VALID_TRAP_TYPES = [
@@ -1845,6 +1887,16 @@ Return EXACTLY this JSON structure:
         }
         if (!['present', 'absent', 'implicit'].includes(cc.intuitive_answer_presence)) {
           return { ok: false, reason: `qcm_deceptive_trap.cognitive_contract.intuitive_answer_presence must be present|absent|implicit` };
+        }
+        // KERNEL_CORE_LOCK_VALIDATION: deceptive_trap must share correct answer with qcm_recognition
+        if (parsed.qcm_recognition) {
+          const masterKey = String(parsed.qcm_recognition.correct_answer_key || '').toLowerCase();
+          const masterText = String(parsed.qcm_recognition[`answer_${masterKey}`] || '').trim().toLowerCase();
+          const dtKey = String(v.correct_answer_key || '').toLowerCase();
+          const dtText = String(v[`answer_${dtKey}`] || '').trim().toLowerCase();
+          if (masterText && dtText && dtText !== masterText) {
+            return { ok: false, reason: `KERNEL_CORE_LOCK: deceptive_trap correct answer "${dtText}" does not match master "${masterText}"` };
+          }
         }
       }
     }
@@ -2109,16 +2161,54 @@ VARIANT-SPECIFIC RULES:
 qcm_reasoning: Requires light deduction or comparison. The player must infer or reason, not just recall.
   4 answers (answer_a/b/c/d non-null), one correct.
 
-qcm_deceptive_trap: Triggers a natural wrong automatic intuition BEFORE mental reframing.
+qcm_deceptive_trap: A NORMAL factual question where DISTRACTOR SELECTION creates the trap.
   4 answers (answer_a/b/c/d non-null), one correct.
-  The trap must feel natural (not a cheap trick). The correct answer must be reachable by careful reasoning.
-  Fill cognitive_contract:
+
+  KERNEL_CORE_LOCK — ABSOLUTE CONSTRAINTS (never violate):
+    The deceptive_trap MUST test the SAME concept as the master question.
+    FORBIDDEN: changing the main subject, the answer_target, the cognitive object, or the pedagogical intent.
+    The correct answer MUST be the same fact as the master: "${masterCorrectText}"
+    ALLOWED: activating a false reflex, modifying distractors, shifting cognitive framing slightly.
+    FORBIDDEN EXAMPLE — master: "How many titles did Djokovic win?" → trap: "Who held the record before him?"
+      → different subject, different answer_target → FORBIDDEN.
+    CORRECT EXAMPLE — master: "How many titles did Djokovic win?" → trap: "Which total is Djokovic's Grand Slam count?"
+      → same subject, same answer, trap lives in the distractors → OK.
+
+  MANDATORY 3-STEP PROCESS (reason through these before writing):
+
+  STEP 1 — HUMAN_REFLEX_PROFILE:
+    • What does a player INSTINCTIVELY answer about this subject before thinking carefully?
+    • Why do they get it wrong? (what false assumption do they hold?)
+    • Which bias_family applies? (e.g. availability heuristic, recency bias, salience bias, authority bias)
+    • Define false_assumption: the specific wrong belief the player holds as true.
+
+  STEP 2 — QUESTION CONSTRUCTION:
+    • Write a NORMAL, complete, self-sufficient factual question.
+    • The question MUST include the full subject/context — answerable without reading the choices.
+    • The trap lives in the CHOICE SELECTION, never in the question wording.
+    FORBIDDEN question patterns:
+      ✗ "Which sounds like / seems like / looks like / appears to be"
+      ✗ "Which gives the impression of"
+      ✗ Any question about subjective appearance or impression
+      ✗ Any question whose answer changes depending on which choices are listed
+      ✗ Any question that changes the subject, answer_target, or concept from the master
+
+  STEP 3 — DISTRACTOR_ENGINE:
+    • Place the intuitive wrong answer as a prominent choice (answer_a or answer_b preferred).
+    • The other 2 distractors must be plausible but clearly different from the intuitive one.
+    • No absurd distractors. The correct answer must always be present.
+    • Define distractor_strategy: how choices were built to exploit the human reflex.
+
+  Fill cognitive_contract with ALL fields:
     - trap_type: one of [popularity_bias, cultural_bias, frequent_confusion, implicit_category, absent_intuition, false_mental_frame]
-    - intuitive_wrong_answer: what the player instinctively thinks BEFORE reading choices (must be a plausible wrong answer)
-    - intuitive_answer_presence: "present" (intuitive answer is a choice) | "absent" (not in choices) | "implicit" (implied by framing)
-    - recadrage_expected: how the player corrects their thinking to reach the right answer
-    - fairness_reason: why the trap is fair and solvable (no unfair trick, clues available)
-    - alignment_with_kernel_core: confirm the correct answer matches "${answer_target}"
+    - bias_family: the cognitive bias family (e.g. "availability heuristic", "recency bias", "salience bias")
+    - false_assumption: the exact false belief the player holds before reading carefully
+    - intuitive_wrong_answer: what the player instinctively answers BEFORE reading choices
+    - intuitive_answer_presence: "present" | "absent" | "implicit"
+    - recadrage_expected: how the player corrects their thinking to find the right answer
+    - fairness_reason: why the trap is fair (question is complete, correct answer is reachable)
+    - alignment_with_kernel_core: confirm correct answer matches "${answer_target}" — state explicitly
+    - distractor_strategy: how the choices were built to exploit the identified reflex
 
 true_false_recognition: A direct V/F statement about the kernel fact. answer_a="True", answer_b="False", answer_c=null, answer_d=null.
   correct_answer_key = A (the statement is TRUE) or B (the statement is FALSE).
@@ -2149,11 +2239,14 @@ Return EXACTLY this JSON:
     "saviez_vous": "...",
     "cognitive_contract": {
       "trap_type": "...",
+      "bias_family": "...",
+      "false_assumption": "...",
       "intuitive_wrong_answer": "...",
       "intuitive_answer_presence": "present|absent|implicit",
       "recadrage_expected": "...",
       "fairness_reason": "...",
-      "alignment_with_kernel_core": "..."
+      "alignment_with_kernel_core": "...",
+      "distractor_strategy": "..."
     }
   },
   "true_false_recognition": {
@@ -2179,7 +2272,12 @@ Return EXACTLY this JSON:
 }`;
 
   const DERIVED_KEYS = ['qcm_reasoning', 'qcm_deceptive_trap', 'true_false_recognition', 'true_false_reasoning'];
-  const DECEPTIVE_CC_KEYS = ['trap_type','intuitive_wrong_answer','intuitive_answer_presence','recadrage_expected','fairness_reason','alignment_with_kernel_core'];
+  const DECEPTIVE_CC_KEYS = [
+    'trap_type', 'bias_family', 'false_assumption',
+    'intuitive_wrong_answer', 'intuitive_answer_presence',
+    'recadrage_expected', 'fairness_reason',
+    'alignment_with_kernel_core', 'distractor_strategy',
+  ];
   const VALID_TRAP_TYPES  = ['popularity_bias','cultural_bias','frequent_confusion','implicit_category','absent_intuition','false_mental_frame'];
 
   const validate = (text) => {
@@ -2249,6 +2347,13 @@ Return EXACTLY this JSON:
         }
         if (!['present','absent','implicit'].includes(cc.intuitive_answer_presence)) {
           return { ok: false, reason: `intuitive_answer_presence must be present|absent|implicit` };
+        }
+        // KERNEL_CORE_LOCK_VALIDATION: correct answer must match master
+        const dtKey = String(v.correct_answer_key || '').toLowerCase();
+        const dtCorrectText = String(v[`answer_${dtKey}`] || '').trim().toLowerCase();
+        const masterLower = masterCorrectText.trim().toLowerCase();
+        if (dtCorrectText && masterLower && dtCorrectText !== masterLower) {
+          return { ok: false, reason: `KERNEL_CORE_LOCK: deceptive_trap correct answer "${dtCorrectText}" does not match master "${masterLower}"` };
         }
       }
     }
