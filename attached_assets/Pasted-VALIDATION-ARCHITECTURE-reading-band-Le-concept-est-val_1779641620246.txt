@@ -1,0 +1,109 @@
+VALIDATION ARCHITECTURE reading_band.
+
+Le concept est validé.
+
+Direction officielle :
+StrategyBuzzer ne doit plus raisonner principalement en :
+- max_chars fixes
+
+Mais en :
+- temps de lecture réel
+- densité de lecture
+- densité cognitive
+- gameplay readability
+
+Règle officielle :
+difficulty_depth
+≠
+reading_band
+
+Le moteur doit traiter ces 2 axes séparément.
+
+VALIDÉ :
+- minimum depth = 3
+- maximum depth = 9
+- pas de depth 1-2
+- pas de depth 10
+
+VALIDÉ :
+reading_band:
+- slow_reader_safe
+- normal_reader
+- fast_reader_dense
+
+VALIDÉ :
+- target_chars
+- soft_max_chars
+- hard_max_chars
+- OK / WARNING / REVIEW_NEEDED
+
+Très important :
+Le système ne doit plus faire de hard reject agressif juste pour quelques caractères de dépassement.
+
+Le gameplay réel est prioritaire.
+Pas une limite arbitraire.
+
+Ajout architecturel validé :
+reading_band peut varier PAR VARIANTE.
+
+Donc :
+- kernel_core.default_reading_band
++
+- variant.reading_band_override
+
+Exemple :
+qcm_recognition
+→ slow_reader_safe
+
+qcm_reasoning
+→ normal_reader
+
+qcm_deceptive_trap
+→ fast_reader_dense
+
+Pourquoi :
+un même noyau peut avoir :
+- une reconnaissance simple
+- un reasoning plus dense
+- un piège nécessitant plus de contexte
+
+Le système doit permettre cette granularité.
+
+Direction future validée :
+- estimated_reading_seconds
+- visual_density
+- mobile_line_estimate
+- cognitive_density
+- pacing_score
+
+MAIS :
+pas maintenant.
+
+PRIORITÉ ACTUELLE :
+Phase 1-A uniquement.
+
+À faire maintenant :
+Proposer le vrai plan d’implémentation Phase 1-A.
+
+Je veux :
+
+1. ordre exact des patchs
+2. fichiers exacts
+3. dépendances exactes
+4. risques exacts
+5. impacts Solo/Duo/MJ/Ligue
+6. migration strategy
+7. fallback compatibility
+8. comment éviter de casser :
+   - translation_constraints
+   - validators existants
+   - worker Phase 2
+   - exports dialyse
+   - frame_en existants
+
+Méthode :
+GREP → SLICE → PLAN.
+
+Aucun patch encore.
+
+STOP après le plan.
