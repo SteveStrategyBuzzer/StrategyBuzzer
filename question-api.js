@@ -1667,7 +1667,11 @@ RULES FOR ALL VARIANTS:
 - Positions A/B/C/D can differ between variants
 - question_text ≤ 110 chars
 - each answer ≤ 60 chars
-- saviez_vous ≥ 30 chars, ≤ 220 chars — surprising memorable fact, NOT a restatement of the correct answer
+- saviez_vous ≥ 30 chars, ≤ 220 chars — a cognitive memory anchor, NOT a generic encyclopedia fact.
+  Choose ONE angle: why_it_matters | why_this_answer | why_people_confuse_it | surprising_scale |
+  hidden_consequence | historical_connection | evolution_connection | human_story | visual_memory
+  MUST answer one of: "Why this answer?" / "Why surprising?" / "Why do people get it wrong?" / "What will I remember?"
+  FORBIDDEN: vague documentary sentences, restating the correct answer, phrases like "X is known for its..."
 - No negative framing ("is not", "except", "none of the following")
 - saviez_vous MUST bring new information absent from the question and answers
 
@@ -1996,7 +2000,21 @@ RULES:
 - 4 answers (answer_a/b/c/d), all non-null, one correct
 - question_text ≤ 110 chars
 - each answer ≤ 60 chars
-- saviez_vous ≥ 30 chars, ≤ 220 chars — surprising memorable fact NOT found in the question or answers
+- saviez_vous ≥ 30 chars, ≤ 220 chars — a cognitive memory anchor, NOT a generic encyclopedia fact.
+  Choose ONE angle from this list (pick the most powerful for this kernel):
+    why_it_matters        → why this answer is important in context
+    why_this_answer       → why this answer dominates / beats the alternatives
+    why_people_confuse_it → why players get this wrong
+    surprising_scale      → a striking number, proportion, or size comparison
+    hidden_consequence    → a concrete real-world consequence
+    historical_connection → a useful historical link or origin
+    evolution_connection  → a scientific / evolutionary link
+    human_story           → a memorable human detail about this fact
+    visual_memory         → a strong mental image that locks in the answer
+  The saviez_vous MUST implicitly answer one of: "Why this answer?", "Why does it matter?",
+  "Why is it surprising?", "Why do people get it wrong?", "What does it change?", "What will I remember?"
+  FORBIDDEN: vague documentary sentences, generic descriptions, restating the correct answer,
+  random unrelated anecdotes, phrases like "X is known for its..." or "X has been growing rapidly."
 - No negative framing ("is not", "except", "none of the following")
 - Distractors must be plausible but unambiguously wrong
 - Correct answer must clearly match answer_target
@@ -2153,7 +2171,14 @@ GLOBAL RULES FOR ALL DERIVED VARIANTS:
 - Different wording and angle than the master question — no copy-paste
 - question_text ≤ 110 chars
 - each answer ≤ 60 chars
-- saviez_vous ≥ 30 chars, ≤ 220 chars — new surprising fact NOT a repeat of the master's saviez_vous
+- saviez_vous ≥ 30 chars, ≤ 220 chars — a cognitive memory anchor, NOT a generic encyclopedia fact.
+  Each variant's saviez_vous must use a DIFFERENT angle than the master's saviez_vous.
+  Choose ONE angle from: why_it_matters | why_this_answer | why_people_confuse_it |
+  surprising_scale | hidden_consequence | historical_connection | evolution_connection |
+  human_story | visual_memory
+  The saviez_vous MUST implicitly answer one of: "Why this answer?", "Why does it matter?",
+  "Why is it surprising?", "Why do people get it wrong?", "What does it change?", "What will I remember?"
+  FORBIDDEN: vague documentary sentences, restating the correct answer, phrases like "X is known for its..."
 - No negative framing ("is not", "except", "none of the following")
 
 VARIANT-SPECIFIC RULES:
