@@ -35,6 +35,7 @@ class QuestionsKernelFillContentCommand extends Command
     {
         $intentId = (int) $this->argument('intent_id');
         $force    = (bool) $this->option('force');
+        $cmdStart = (int) round(microtime(true) * 1000);
 
         $this->line('');
         $this->line('╔══════════════════════════════════════════════════════════════════╗');
@@ -104,16 +105,16 @@ class QuestionsKernelFillContentCommand extends Command
             return self::FAILURE;
         }
 
-        $updatedFrame = $result['frame'];
-        $master       = $result['master'];
-        $sources      = $result['sources'] ?? [];
-        $latencyMs    = $result['latency_total_ms'] ?? 0;
-
-        $this->line("  Sources AI : master={$sources['master']}, derived={$sources['derived']}");
-        $this->line("  Latence    : {$latencyMs}ms (total)");
-        $this->line('');
+        $updatedFrame        = $result['frame'];
+        $master              = $result['master'];
+        $sources             = $result['sources'] ?? [];
+        $latencyMasterMs     = $result['latency_master_ms'] ?? 0;
+        $latencyValidationMs = $result['latency_validation_ms'] ?? 0;
+        $latencyDerivedMs    = $result['latency_derived_ms'] ?? 0;
+        $latencyTotalAiMs    = $result['latency_total_ms'] ?? 0;
 
         // ── 6. Sauvegarder frame_en ───────────────────────────────────────────
+        $persistStart = (int) round(microtime(true) * 1000);
         DB::table('question_intents')
             ->where('id', $intent->id)
             ->update([
@@ -121,8 +122,28 @@ class QuestionsKernelFillContentCommand extends Command
                 'frame_status' => 'content_ready',
                 'updated_at'   => now(),
             ]);
+        $persistMs = (int) round(microtime(true) * 1000) - $persistStart;
+        $totalMs   = (int) round(microtime(true) * 1000) - $cmdStart;
 
         $this->info("✅  frame_en mis à jour — frame_status = content_ready");
+        $this->line('');
+
+        // ── 6b. Timing détaillé ───────────────────────────────────────────────
+        $this->line('  <fg=cyan;options=bold>⏱  Timing Phase 1 — Étape 3 :</>');
+        $this->line('');
+        $this->line(sprintf("  %-42s %6d ms", 'skeleton_ms (étape 1 — commande séparée)', 0));
+        $this->line(sprintf("  %-42s %6s   ", '', '<fg=yellow>→ questions:kernel:skeleton (non mesuré ici)</>'));
+        $this->line(sprintf("  %-42s %6d ms", 'structure_validation_ms (étape 2 — séparée)', 0));
+        $this->line(sprintf("  %-42s %6s   ", '', '<fg=yellow>→ questions:kernel:validate-structure (non mesuré ici)</>'));
+        $this->line(sprintf("  %-42s %6d ms", '3-A master_generation_ms', $latencyMasterMs));
+        $this->line(sprintf("  %-42s %6d ms", '3-B master_quick_validation_ms', $latencyValidationMs));
+        $this->line(sprintf("  %-42s %6d ms", '3-C derived_variants_generation_ms', $latencyDerivedMs));
+        $this->line(sprintf("  %-42s %6d ms", 'persistence_ms (DB write)', $persistMs));
+        $this->line('  ' . str_repeat('─', 52));
+        $this->line(sprintf("  %-42s %6d ms", 'total_phase1_ms (3-A + 3-B + 3-C + DB)', $totalMs));
+        $this->line('');
+        $this->line(sprintf("  %-24s %s", 'provider_master :', $sources['master'] ?? '—'));
+        $this->line(sprintf("  %-24s %s", 'provider_variants :', $sources['derived'] ?? '—'));
         $this->line('');
 
         // ── 7. Résumé question maître ─────────────────────────────────────────

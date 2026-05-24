@@ -71,25 +71,31 @@ class KernelContentBuilder
         $sources  = [];
 
         // ── 3-A : generate master question (qcm_recognition) ─────────────────
+        $aStart       = (int) round(microtime(true) * 1000);
         $masterResult = $this->generateMaster($kernelCore);
         if (! $masterResult['ok']) {
             return ['ok' => false, 'error' => $masterResult['error'], 'step' => '3-A'];
         }
-        $master = $masterResult['master'];
+        $latencyMasterMs   = (int) round(microtime(true) * 1000) - $aStart;
+        $master            = $masterResult['master'];
         $sources['master'] = $masterResult['source'] ?? 'unknown';
 
         // ── 3-B : validate master ──────────────────────────────────────────────
+        $bStart           = (int) round(microtime(true) * 1000);
         $validationResult = $this->validateMaster($master, $kernelCore);
+        $latencyValidationMs = (int) round(microtime(true) * 1000) - $bStart;
         if (! $validationResult['ok']) {
             return ['ok' => false, 'error' => $validationResult['error'], 'step' => '3-B'];
         }
 
         // ── 3-C : generate derived variants from master ────────────────────────
+        $cStart        = (int) round(microtime(true) * 1000);
         $derivedResult = $this->generateDerivedVariants($kernelCore, $master);
         if (! $derivedResult['ok']) {
             return ['ok' => false, 'error' => $derivedResult['error'], 'step' => '3-C'];
         }
-        $derived = $derivedResult['variants'];
+        $latencyDerivedMs   = (int) round(microtime(true) * 1000) - $cStart;
+        $derived            = $derivedResult['variants'];
         $sources['derived'] = $derivedResult['source'] ?? 'unknown';
 
         // ── Merge all into frame ───────────────────────────────────────────────
@@ -126,11 +132,14 @@ class KernelContentBuilder
         $latencyTotal = $endMs - $startMs;
 
         return [
-            'ok'               => true,
-            'frame'            => $updatedFrame,
-            'master'           => $master,
-            'sources'          => $sources,
-            'latency_total_ms' => $latencyTotal,
+            'ok'                       => true,
+            'frame'                    => $updatedFrame,
+            'master'                   => $master,
+            'sources'                  => $sources,
+            'latency_total_ms'         => $latencyTotal,
+            'latency_master_ms'        => $latencyMasterMs,
+            'latency_validation_ms'    => $latencyValidationMs,
+            'latency_derived_ms'       => $latencyDerivedMs,
         ];
     }
 

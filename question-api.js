@@ -1850,8 +1850,8 @@ Return EXACTLY this JSON structure:
       if (!v.question_text || typeof v.question_text !== 'string' || v.question_text.trim().length < 5) {
         return { ok: false, reason: `${key}.question_text missing or too short` };
       }
-      if (v.question_text.length > 115) {
-        return { ok: false, reason: `${key}.question_text too long (${v.question_text.length} > 115)` };
+      if (v.question_text.length > 125) {
+        return { ok: false, reason: `${key}.question_text too long (${v.question_text.length} > 125)` };
       }
       if (!v.answer_a || !v.answer_b) {
         return { ok: false, reason: `${key}: answer_a and answer_b required` };
@@ -2050,7 +2050,7 @@ Return EXACTLY this JSON:
     if (!['A','B','C','D'].includes(String(parsed.correct_answer_key).toUpperCase())) {
       return { ok: false, reason: `correct_answer_key must be A|B|C|D` };
     }
-    if (parsed.question_text.length > 115) {
+    if (parsed.question_text.length > 125) {
       return { ok: false, reason: `question_text too long (${parsed.question_text.length})` };
     }
     if (parsed.saviez_vous.length < 20) {
@@ -2327,7 +2327,7 @@ Return EXACTLY this JSON:
       if (!v.question_text || v.question_text.length < 5) {
         return { ok: false, reason: `${key}.question_text missing or too short` };
       }
-      if (v.question_text.length > 115) {
+      if (v.question_text.length > 125) {
         return { ok: false, reason: `${key}.question_text too long (${v.question_text.length})` };
       }
       if (!v.answer_a || !v.answer_b) {
