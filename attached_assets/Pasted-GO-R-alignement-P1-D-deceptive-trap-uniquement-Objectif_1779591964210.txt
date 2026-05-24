@@ -1,0 +1,87 @@
+GO — Réalignement P1-D deceptive_trap uniquement.
+
+Objectif :
+Corriger la stratégie de génération qcm_deceptive_trap.
+
+Problème observé :
+Le système essaie de transformer la question en piège.
+Ça produit des questions artificielles comme :
+“Which sounds like it should be the capital?”
+
+C’est interdit.
+
+Nouvelle règle officielle :
+Le deceptive_trap ne doit pas être généré à partir de :
+- la question seulement
+- la réponse seulement
+- une reformulation bizarre
+
+Il doit être généré à partir du faux réflexe humain probable.
+
+Flow obligatoire :
+
+1. MASTER QUESTION
+Créer une question normale, claire, auto-suffisante.
+
+2. HUMAN_REFLEX_PROFILE
+Prévoir :
+- intuitive_wrong_answer
+- pourquoi un joueur répondrait ça trop vite
+- bias_family
+- false_assumption
+- recadrage_expected
+- fairness_reason
+
+3. DISTRACTOR_ENGINE
+Construire les choix autour du faux réflexe :
+- un leurre intuitif fort
+- une bonne réponse claire
+- deux distracteurs plausibles
+- aucun distracteur absurde
+- question toujours normale
+
+4. FAIRNESS_CHECK
+Vérifier :
+- la question reste auto-suffisante
+- le pays/sujet/contexte est mentionné
+- le piège n’est pas annoncé
+- le joueur peut recadrer
+- le answer_target reste le même
+- le concept ne change pas
+
+Interdictions strictes :
+- pas de “which sounds like”
+- pas de “which seems like”
+- pas de “which looks like”
+- pas de question sur une impression subjective
+- pas de question qui dépend uniquement des choix
+- pas de question sans contexte complet
+- pas de changement de sujet
+- pas de deceptive_trap qui change answer_target
+
+À faire :
+Audit d’abord, sans patch.
+
+1. Lire le endpoint /generate-kernel-derived-variants
+2. Lire le prompt deceptive_trap actuel
+3. Identifier exactement où il force l’IA à transformer la question
+4. Proposer la modification minimale du prompt pour ajouter :
+   - HUMAN_REFLEX_PROFILE
+   - DISTRACTOR_ENGINE
+   - FAIRNESS_CHECK
+5. Dire comment le JSON de cognitive_contract doit être ajusté :
+   - trap_type
+   - intuitive_wrong_answer
+   - intuitive_answer_presence
+   - recadrage_expected
+   - fairness_reason
+   - alignment_with_kernel_core
+   - bias_family
+   - false_assumption
+   - distractor_strategy
+
+Méthode obligatoire :
+GREP → SLICE → ANALYSE.
+Aucun patch encore.
+
+STOP après l’audit.
