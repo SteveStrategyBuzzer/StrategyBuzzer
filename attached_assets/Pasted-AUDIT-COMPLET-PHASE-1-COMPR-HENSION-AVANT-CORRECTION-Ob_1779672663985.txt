@@ -1,0 +1,107 @@
+AUDIT COMPLET PHASE 1 — COMPRÉHENSION AVANT CORRECTION
+
+Objectif :
+Comprendre à 100% le fonctionnement actuel de la Phase 1 après les derniers patchs 7 cognitifs / sujet touché / polarity / subjectTouchScore.
+
+AUCUN PATCH.
+AUCUNE CORRECTION.
+Audit seulement.
+
+Méthode obligatoire :
+GREP → SLICE → ANALYSE.
+
+Je veux comprendre exactement :
+
+1. Flow complet Phase 1
+- sélection du noyau
+- skeleton
+- master question
+- derived variants
+- validation structure
+- validation contenu
+- persistence DB
+- snapshots
+- retries
+- failovers provider
+
+2. Fichiers impliqués exacts
+- question-api.js
+- KernelFrameBuilder.php
+- KernelContentBuilder.php
+- KernelFrameValidator.php
+- ReadingBandConfig.php
+- KernelTextHelpers.php
+- QualityGuards.php
+- QuestionsKernelFillContentCommand.php
+- QuestionsKernelValidateStructureCommand.php
+- toute commande artisan liée à kernel/fill/snapshot/validate
+
+3. Vérifier les changements récents
+- 5 variants → 7 variants
+- true_false_* → tf_recognition_true/false + tf_reasoning_true/false
+- 45 slots → 63 slots
+- polarity column
+- polarity locks
+- subject_touch_score
+- en_anchor_terms
+- partial_review
+- Phase 2 inline non-bloquante
+
+4. Chercher les erreurs possibles de codage
+- anciens noms true_false_* restants
+- variants_count encore à 5
+- translation_slots encore à 45
+- DERIVED_KEYS incomplets
+- JSON template incomplet
+- validator qui attend encore 5 variants
+- DB persistence qui oublie polarity
+- snapshot qui n’exporte pas les 7 variants
+- fill-content qui écrase mal les frames
+- validate-structure incohérent
+- Phase 2 appelée trop tôt ou trop tard
+- retry qui relance trop large
+- failover qui cache les erreurs
+
+5. Vérifier les garde-fous semantic_key
+Très important :
+Je veux savoir si Phase 1 génère vraiment de nouveaux noyaux ou régénère les mêmes semantic_key.
+
+Audit :
+- où semantic_key est créée
+- où elle est vérifiée
+- si elle est unique DB
+- si elle bloque avant génération
+- si elle bloque après génération
+- si le worker peut reprendre une semantic_key existante
+- si DuplicateChecker utilise semantic_key exacte
+- si DuplicateChecker compare aussi subject / micro_angle / answer_target / question_text
+
+6. Vérifier la séparation Phase 1 / Phase 2
+Phase 1 doit créer.
+Phase 2 doit protéger.
+
+Audit :
+- est-ce que Phase 2 réécrit encore agressivement ?
+- est-ce que Phase 2 corrige seulement micro-problèmes ?
+- est-ce que Phase 2 avertit Phase 1 ?
+- où sont stockés les warnings envoyés à Phase 1 ?
+- est-ce que Phase 1 utilise ces warnings pour se recadrer ?
+
+7. Sortie attendue
+Je veux un rapport clair :
+
+A. Flow réel actuel Phase 1 étape par étape
+B. Fichiers exacts + lignes exactes
+C. Ce qui est correct
+D. Ce qui est suspect
+E. Ce qui est cassé
+F. Ce qui manque
+G. Risques après les patchs récents
+H. Liste priorisée des corrections nécessaires
+
+IMPORTANT :
+Ne pas patcher.
+Ne pas générer de nouveaux noyaux.
+Ne pas traduire.
+Ne pas relancer worker.
+STOP après audit.
