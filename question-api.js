@@ -1617,11 +1617,13 @@ const READING_BANDS = {
   fast_reader_dense: { en: { soft: 175, hard: 210 }, zh: { soft:  90, hard: 110 }, ar: { soft: 115, hard: 140 } },
 };
 const VARIANT_BAND_DEFAULTS = {
-  qcm_recognition:        'slow_reader_safe',
-  true_false_recognition: 'slow_reader_safe',
-  qcm_reasoning:          'normal_reader',
-  true_false_reasoning:   'normal_reader',
-  qcm_deceptive_trap:     'fast_reader_dense',
+  qcm_recognition:       'slow_reader_safe',
+  tf_recognition_true:   'slow_reader_safe',
+  tf_recognition_false:  'slow_reader_safe',
+  qcm_reasoning:         'normal_reader',
+  tf_reasoning_true:     'normal_reader',
+  tf_reasoning_false:    'normal_reader',
+  qcm_deceptive_trap:    'fast_reader_dense',
 };
 // Returns { soft, hard } for a variant key (EN script)
 const bandLimitsForVariant = (variantKey) => {
@@ -1696,8 +1698,8 @@ RULES FOR ALL VARIANTS:
   qcm_recognition:        ≤ 110 chars / hard 135 (slow_reader_safe — direct recall, short phrasing)
   qcm_reasoning:          ≤ 145 chars / hard 170 (normal_reader — context for deduction allowed)
   qcm_deceptive_trap:     ≤ 175 chars / hard 210 (fast_reader_dense — rich context for the trap)
-  true_false_recognition: ≤ 110 chars / hard 135 (slow_reader_safe — simple V/F statement)
-  true_false_reasoning:   ≤ 145 chars / hard 170 (normal_reader — contextual V/F statement)
+  tf_recognition_true/false:  ≤ 110 chars / hard 135 (slow_reader_safe — simple V/F statement)
+  tf_reasoning_true/false:    ≤ 145 chars / hard 170 (normal_reader — contextual V/F statement)
 - each answer ≤ 60 chars
 - saviez_vous ≥ 30 chars, ≤ 220 chars — a cognitive memory anchor, NOT a generic encyclopedia fact.
   Choose ONE angle: why_it_matters | why_this_answer | why_people_confuse_it | surprising_scale |
@@ -1764,9 +1766,17 @@ qcm_deceptive_trap: A NORMAL factual question where DISTRACTOR SELECTION creates
     - alignment_with_kernel_core: confirm correct answer matches answer_target — state explicitly
     - distractor_strategy: how the choices were built to exploit the identified reflex
 
-true_false_recognition: Direct V/F statement about the kernel fact. answer_a="True", answer_b="False", answer_c=null, answer_d=null.
+tf_recognition_true:  A direct V/F statement about the kernel fact where the statement is TRUE.
+  answer_a="True", answer_b="False", answer_c=null, answer_d=null. correct_answer_key="A".
 
-true_false_reasoning: V/F statement requiring a small deduction or contextual knowledge. answer_a="True", answer_b="False", answer_c=null, answer_d=null.
+tf_recognition_false: A direct V/F statement about the kernel fact where the statement is FALSE.
+  answer_a="True", answer_b="False", answer_c=null, answer_d=null. correct_answer_key="B".
+
+tf_reasoning_true:  A V/F statement requiring a small deduction where the statement is TRUE.
+  Different angle than tf_recognition_true. answer_a="True", answer_b="False", answer_c=null, answer_d=null. correct_answer_key="A".
+
+tf_reasoning_false: A V/F statement requiring a small deduction where the statement is FALSE.
+  Different angle than tf_recognition_false. answer_a="True", answer_b="False", answer_c=null, answer_d=null. correct_answer_key="B".
 
 Return EXACTLY this JSON structure:
 {
@@ -1811,23 +1821,43 @@ Return EXACTLY this JSON structure:
       "distractor_strategy": "..."
     }
   },
-  "true_false_recognition": {
+  "tf_recognition_true": {
     "question_text": "...",
     "answer_a": "True",
     "answer_b": "False",
     "answer_c": null,
     "answer_d": null,
-    "correct_answer_key": "A|B",
+    "correct_answer_key": "A",
     "explanation": "...",
     "saviez_vous": "..."
   },
-  "true_false_reasoning": {
+  "tf_recognition_false": {
     "question_text": "...",
     "answer_a": "True",
     "answer_b": "False",
     "answer_c": null,
     "answer_d": null,
-    "correct_answer_key": "A|B",
+    "correct_answer_key": "B",
+    "explanation": "...",
+    "saviez_vous": "..."
+  },
+  "tf_reasoning_true": {
+    "question_text": "...",
+    "answer_a": "True",
+    "answer_b": "False",
+    "answer_c": null,
+    "answer_d": null,
+    "correct_answer_key": "A",
+    "explanation": "...",
+    "saviez_vous": "..."
+  },
+  "tf_reasoning_false": {
+    "question_text": "...",
+    "answer_a": "True",
+    "answer_b": "False",
+    "answer_c": null,
+    "answer_d": null,
+    "correct_answer_key": "B",
     "explanation": "...",
     "saviez_vous": "..."
   }
@@ -1837,8 +1867,10 @@ Return EXACTLY this JSON structure:
     'qcm_recognition',
     'qcm_reasoning',
     'qcm_deceptive_trap',
-    'true_false_recognition',
-    'true_false_reasoning',
+    'tf_recognition_true',
+    'tf_recognition_false',
+    'tf_reasoning_true',
+    'tf_reasoning_false',
   ];
 
   const DECEPTIVE_CONTRACT_KEYS = [
@@ -2014,7 +2046,7 @@ app.post('/generate-kernel-master', async (req, res) => {
   const systemPrompt =
     'You are a quiz content generator for StrategyBuzzer. You respond ONLY with valid JSON (no markdown, no prose).';
 
-  const userPrompt = `Generate ONE English qcm_recognition quiz question. This is the MASTER question — it will be used as the anchor for 4 derived variants.
+  const userPrompt = `Generate ONE English qcm_recognition quiz question. This is the MASTER question — it will be used as the anchor for 6 derived variants.
 
 KERNEL CORE (strict anchor — do NOT change subject or correct answer):
 - Domain: ${domain} / ${sub_domain}
@@ -2125,15 +2157,17 @@ Return EXACTLY this JSON:
 // =============================================================================
 // POST /generate-kernel-derived-variants
 //
-// PHASE 1 — Étape 3-C : generates 4 variants DERIVED FROM the master question.
+// PHASE 1 — Étape 3-C : generates 6 variants DERIVED FROM the master question.
 // The master (qcm_recognition) is the coherence anchor: all derived variants
-// must share the same correct answer and be cognitively consistent with it.
+// must share the same SUJET TOUCHÉ and be cognitively consistent with it.
 //
-// Derived variants:
-//   - qcm_reasoning          : same answer, requires light inference
-//   - qcm_deceptive_trap     : same answer, triggers wrong intuition first
-//   - true_false_recognition : same fact, direct V/F statement
-//   - true_false_reasoning   : same fact, V/F requiring small deduction
+// Derived variants (7-variant kernel system):
+//   - qcm_reasoning          : same sujet touché, requires light inference
+//   - qcm_deceptive_trap     : KERNEL_CORE_LOCK, triggers wrong intuition first
+//   - tf_recognition_true    : same fact, direct V/F statement — statement TRUE  (key=A)
+//   - tf_recognition_false   : same fact, direct V/F statement — statement FALSE (key=B)
+//   - tf_reasoning_true      : same fact, V/F with deduction   — statement TRUE  (key=A)
+//   - tf_reasoning_false     : same fact, V/F with deduction   — statement FALSE (key=B)
 //
 // Request body:
 //   kernel_core: { ... }
@@ -2141,8 +2175,9 @@ Return EXACTLY this JSON:
 //             explanation, saviez_vous }
 //
 // Response: { ok: true, variants: { qcm_reasoning: {...},
-//             qcm_deceptive_trap: {...}, true_false_recognition: {...},
-//             true_false_reasoning: {...} } }
+//             qcm_deceptive_trap: {...}, tf_recognition_true: {...},
+//             tf_recognition_false: {...}, tf_reasoning_true: {...},
+//             tf_reasoning_false: {...} } }
 // =============================================================================
 app.post('/generate-kernel-derived-variants', async (req, res) => {
   const { kernel_core, master } = req.body || {};
@@ -2181,7 +2216,7 @@ app.post('/generate-kernel-derived-variants', async (req, res) => {
   const systemPrompt =
     'You are a quiz content generator for StrategyBuzzer. You respond ONLY with valid JSON (no markdown, no prose).';
 
-  const userPrompt = `You are given a MASTER question (qcm_recognition). Generate 4 DERIVED variants. All variants must share the same correct answer as the master.
+  const userPrompt = `You are given a MASTER question (qcm_recognition). Generate 6 DERIVED variants. All variants must share the same SUJET TOUCHÉ (subject anchor) as the master. For TF variants the statement polarity is fixed — the correct answer key is pre-determined by the variant name.
 
 MASTER QUESTION (anchor — do NOT change the correct answer):
 - question_text: "${master.question_text || ''}"
@@ -2203,10 +2238,12 @@ GLOBAL RULES FOR ALL DERIVED VARIANTS:
 - Correct answer must match the master's correct answer (same fact: "${masterCorrectText}")
 - Different wording and angle than the master question — no copy-paste
 - question_text length targets by variant (reading_band — soft target, hard max in parentheses):
-  qcm_reasoning:          ≤ 145 chars / hard 170 (normal_reader — context for deduction allowed)
-  qcm_deceptive_trap:     ≤ 175 chars / hard 210 (fast_reader_dense — rich context for the trap)
-  true_false_recognition: ≤ 110 chars / hard 135 (slow_reader_safe — simple V/F statement)
-  true_false_reasoning:   ≤ 145 chars / hard 170 (normal_reader — contextual V/F statement)
+  qcm_reasoning:         ≤ 145 chars / hard 170 (normal_reader — context for deduction allowed)
+  qcm_deceptive_trap:    ≤ 175 chars / hard 210 (fast_reader_dense — rich context for the trap)
+  tf_recognition_true:   ≤ 110 chars / hard 135 (slow_reader_safe — simple TRUE V/F statement)
+  tf_recognition_false:  ≤ 110 chars / hard 135 (slow_reader_safe — simple FALSE V/F statement)
+  tf_reasoning_true:     ≤ 145 chars / hard 170 (normal_reader — contextual TRUE V/F statement)
+  tf_reasoning_false:    ≤ 145 chars / hard 170 (normal_reader — contextual FALSE V/F statement)
 - each answer ≤ 60 chars
 - saviez_vous ≥ 30 chars, ≤ 220 chars — a cognitive memory anchor, NOT a generic encyclopedia fact.
   Each variant's saviez_vous must use a DIFFERENT angle than the master's saviez_vous.
@@ -2272,11 +2309,25 @@ qcm_deceptive_trap: A NORMAL factual question where DISTRACTOR SELECTION creates
     - alignment_with_kernel_core: confirm correct answer matches "${answer_target}" — state explicitly
     - distractor_strategy: how the choices were built to exploit the identified reflex
 
-true_false_recognition: A direct V/F statement about the kernel fact. answer_a="True", answer_b="False", answer_c=null, answer_d=null.
-  correct_answer_key = A (the statement is TRUE) or B (the statement is FALSE).
+tf_recognition_true:  A direct V/F statement about the kernel fact — the statement MUST BE TRUE.
+  answer_a="True", answer_b="False", answer_c=null, answer_d=null. correct_answer_key MUST be "A".
+  POLARITY LOCK: Do not generate a false statement here — write a statement that is factually TRUE.
 
-true_false_reasoning: A V/F statement requiring a small deduction or contextual knowledge. answer_a="True", answer_b="False", answer_c=null, answer_d=null.
-  Different angle than true_false_recognition. correct_answer_key = A or B.
+tf_recognition_false: A direct V/F statement about the kernel fact — the statement MUST BE FALSE.
+  answer_a="True", answer_b="False", answer_c=null, answer_d=null. correct_answer_key MUST be "B".
+  POLARITY LOCK: Do not generate a true statement here — write a statement that is plausibly but FACTUALLY FALSE.
+  The false statement must be about the same subject (sujet touché), not a random false claim.
+
+tf_reasoning_true:  A V/F statement requiring a small deduction — the statement MUST BE TRUE.
+  Different angle than tf_recognition_true. answer_a="True", answer_b="False", answer_c=null, answer_d=null. correct_answer_key MUST be "A".
+
+tf_reasoning_false: A V/F statement requiring a small deduction — the statement MUST BE FALSE.
+  Different angle than tf_recognition_false. answer_a="True", answer_b="False", answer_c=null, answer_d=null. correct_answer_key MUST be "B".
+
+SUJET TOUCHÉ RULE (all 6 derived variants):
+  Every variant must be ANCHORED to the same cognitive object as the master: subject="${subject}", answer_target="${answer_target}".
+  qcm_reasoning correct answer MAY differ from the master IF the causal/contextual angle requires it, but must stay within the same sujet touché.
+  qcm_deceptive_trap and all TF variants share the KERNEL_CORE_LOCK — same sujet touché, polarity is mandatory.
 
 Return EXACTLY this JSON:
 {
@@ -2311,29 +2362,56 @@ Return EXACTLY this JSON:
       "distractor_strategy": "..."
     }
   },
-  "true_false_recognition": {
+  "tf_recognition_true": {
     "question_text": "...",
     "answer_a": "True",
     "answer_b": "False",
     "answer_c": null,
     "answer_d": null,
-    "correct_answer_key": "A|B",
+    "correct_answer_key": "A",
     "explanation": "...",
     "saviez_vous": "..."
   },
-  "true_false_reasoning": {
+  "tf_recognition_false": {
     "question_text": "...",
     "answer_a": "True",
     "answer_b": "False",
     "answer_c": null,
     "answer_d": null,
-    "correct_answer_key": "A|B",
+    "correct_answer_key": "B",
+    "explanation": "...",
+    "saviez_vous": "..."
+  },
+  "tf_reasoning_true": {
+    "question_text": "...",
+    "answer_a": "True",
+    "answer_b": "False",
+    "answer_c": null,
+    "answer_d": null,
+    "correct_answer_key": "A",
+    "explanation": "...",
+    "saviez_vous": "..."
+  },
+  "tf_reasoning_false": {
+    "question_text": "...",
+    "answer_a": "True",
+    "answer_b": "False",
+    "answer_c": null,
+    "answer_d": null,
+    "correct_answer_key": "B",
     "explanation": "...",
     "saviez_vous": "..."
   }
 }`;
 
-  const DERIVED_KEYS = ['qcm_reasoning', 'qcm_deceptive_trap', 'true_false_recognition', 'true_false_reasoning'];
+  const DERIVED_KEYS = [
+    'qcm_reasoning',
+    'qcm_deceptive_trap',
+    'tf_recognition_true',
+    'tf_recognition_false',
+    'tf_reasoning_true',
+    'tf_reasoning_false',
+  ];
   const DECEPTIVE_CC_KEYS = [
     'trap_type', 'bias_family', 'false_assumption',
     'intuitive_wrong_answer', 'intuitive_answer_presence',
@@ -2359,7 +2437,9 @@ Return EXACTLY this JSON:
         return { ok: false, reason: `missing derived variant: ${key}` };
       }
       const v = parsed[key];
-      const isTF = key.startsWith('true_false');
+      const isTF = key.startsWith('tf_');
+      // Polarity lock: tf_*_true → key must be A, tf_*_false → key must be B
+      const expectedPolarityKey = key.endsWith('_true') ? 'A' : key.endsWith('_false') ? 'B' : null;
 
       if (!v.question_text || v.question_text.length < 5) {
         return { ok: false, reason: `${key}.question_text missing or too short` };
@@ -2375,7 +2455,7 @@ Return EXACTLY this JSON:
         return { ok: false, reason: `${key}: answer_c and answer_d required for qcm` };
       }
       if (isTF && (v.answer_c !== null || v.answer_d !== null)) {
-        return { ok: false, reason: `${key}: answer_c/d must be null for true_false` };
+        return { ok: false, reason: `${key}: answer_c/d must be null for tf variants` };
       }
       if (!v.correct_answer_key) {
         return { ok: false, reason: `${key}.correct_answer_key missing` };
@@ -2385,7 +2465,11 @@ Return EXACTLY this JSON:
         return { ok: false, reason: `${key}.correct_answer_key must be A|B|C|D` };
       }
       if (isTF && !['A','B'].includes(ck)) {
-        return { ok: false, reason: `${key}.correct_answer_key must be A|B for true_false` };
+        return { ok: false, reason: `${key}.correct_answer_key must be A|B for tf variants` };
+      }
+      // Polarity lock enforcement
+      if (expectedPolarityKey !== null && ck !== expectedPolarityKey) {
+        return { ok: false, reason: `POLARITY_LOCK: ${key}.correct_answer_key must be "${expectedPolarityKey}" (got "${ck}")` };
       }
       v.correct_answer_key = ck;
       if (!v.explanation || v.explanation.length < 5) {

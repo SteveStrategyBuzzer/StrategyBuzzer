@@ -2,14 +2,16 @@
 
 namespace App\Services\QuestionBank;
 
+use App\Services\QuestionBank\KernelTextHelpers;
 use App\Services\QuestionBank\ReadingBandConfig;
+use App\Services\QuestionBank\VariantAlignmentChecker;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 /**
  * KernelContentBuilder
  *
- * PHASE 1 — Étape 3 : fills English content into the 5 variants of frame_en.
+ * PHASE 1 — Étape 3 : fills English content into the 7 variants of frame_en.
  *
  * Implements the master-first flow (3 steps):
  *
@@ -20,11 +22,14 @@ use Illuminate\Support\Facades\Log;
  *        Coherence with kernel_core.answer_target, readability, distractors.
  *
  *   3-C. Generate derived variants → POST /generate-kernel-derived-variants
- *        qcm_reasoning / qcm_deceptive_trap / true_false_recognition /
- *        true_false_reasoning — all derived FROM the master, never free-form.
+ *        qcm_reasoning / qcm_deceptive_trap /
+ *        tf_recognition_true / tf_recognition_false /
+ *        tf_reasoning_true   / tf_reasoning_false
+ *        — all derived FROM the master, anchored to the same sujet touché.
  *
  * The master question is the coherence anchor of the kernel.
- * Derived variants share the same correct answer as the master.
+ * All variants share the same SUJET TOUCHÉ — correct answer may differ for
+ * reasoning variants if the cognitive angle is causal/contextual.
  *
  * Never writes to the database.
  */
@@ -40,8 +45,10 @@ class KernelContentBuilder
     private const DERIVED_VARIANT_KEYS = [
         'qcm_reasoning',
         'qcm_deceptive_trap',
-        'true_false_recognition',
-        'true_false_reasoning',
+        'tf_recognition_true',
+        'tf_recognition_false',
+        'tf_reasoning_true',
+        'tf_reasoning_false',
     ];
 
     private const DECEPTIVE_CONTRACT_FILL_KEYS = [
@@ -107,6 +114,23 @@ class KernelContentBuilder
             $updatedFrame['variants']['qcm_recognition'][$field] = $master[$field] ?? null;
         }
 
+        // ── Extract EN anchor terms from master for Phase 2 scoring ───────────
+        // Significant English tokens from question + correct answer + explanation + saviez_vous.
+        // Stored in kernel_core.en_anchor_terms so VariantAlignmentChecker can score
+        // all 7 variants in English without needing French-to-English token matching.
+        $masterCkField = 'answer_' . strtolower((string) ($master['correct_answer_key'] ?? 'a'));
+        $masterHaystack = implode(' ', array_filter([
+            $master['question_text'] ?? '',
+            $master[$masterCkField]  ?? '',
+            $master['explanation']   ?? '',
+            $master['saviez_vous']   ?? '',
+        ]));
+        $masterTokens = KernelTextHelpers::significantTokens($masterHaystack);
+        $updatedFrame['kernel_core']['en_anchor_terms'] = array_slice(
+            array_values(array_unique($masterTokens)),
+            0, 12
+        );
+
         // Derived variants → 4 remaining keys
         foreach (self::DERIVED_VARIANT_KEYS as $variantKey) {
             if (! isset($derived[$variantKey]) || ! is_array($derived[$variantKey])) {
@@ -129,6 +153,16 @@ class KernelContentBuilder
             }
         }
 
+        // ── Phase 2 : subject-touch alignment check (non-blocking) ───────────
+        $phase2Alignment = null;
+        try {
+            $phase2Alignment = (new VariantAlignmentChecker())->check($updatedFrame);
+        } catch (\Throwable $e) {
+            Log::warning('[KernelContentBuilder] Phase 2 alignment check failed (non-blocking)', [
+                'error' => $e->getMessage(),
+            ]);
+        }
+
         $endMs        = (int) round(microtime(true) * 1000);
         $latencyTotal = $endMs - $startMs;
 
@@ -141,6 +175,7 @@ class KernelContentBuilder
             'latency_master_ms'        => $latencyMasterMs,
             'latency_validation_ms'    => $latencyValidationMs,
             'latency_derived_ms'       => $latencyDerivedMs,
+            'phase2_alignment'         => $phase2Alignment,
         ];
     }
 

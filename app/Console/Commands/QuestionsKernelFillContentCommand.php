@@ -10,12 +10,12 @@ use App\Services\QuestionBank\KernelContentBuilder;
 /**
  * questions:kernel:fill-content {intent_id}
  *
- * PHASE 1 — Étape 3 : fills English content for all 5 variants of frame_en.
+ * PHASE 1 — Étape 3 : fills English content for all 7 variants of frame_en.
  *
  * Flow master-first (3 étapes internes) :
  *   3-A. Génère la question maître EN (qcm_recognition) via /generate-kernel-master
  *   3-B. Valide la question maître (cohérence kernel_core, lisibilité, distracteurs)
- *   3-C. Génère les 4 variantes dérivées via /generate-kernel-derived-variants
+ *   3-C. Génère les 6 variantes dérivées via /generate-kernel-derived-variants
  *
  * Ce que cette commande NE fait PAS :
  *   - Ne traduit pas (les translation_slots restent status=pending)
@@ -29,7 +29,7 @@ class QuestionsKernelFillContentCommand extends Command
         {intent_id : ID du QuestionIntent à remplir}
         {--force   : Autoriser si frame_status != awaiting_content}';
 
-    protected $description = 'PHASE 1 Étape 3 — Master-first : génère question maître EN puis 4 variantes dérivées.';
+    protected $description = 'PHASE 1 Étape 3 — Master-first : génère question maître EN puis 6 variantes dérivées (7-variant system).';
 
     public function handle(KernelContentBuilder $builder): int
     {
@@ -93,7 +93,7 @@ class QuestionsKernelFillContentCommand extends Command
         // ── 5. Appel KernelContentBuilder (3-A + 3-B + 3-C) ──────────────────
         $this->line('  <fg=cyan>Étape 3-A :</> Génération question maître EN → /generate-kernel-master …');
         $this->line('  <fg=cyan>Étape 3-B :</> Validation maître (PHP-side)');
-        $this->line('  <fg=cyan>Étape 3-C :</> Génération 4 variantes dérivées → /generate-kernel-derived-variants …');
+        $this->line('  <fg=cyan>Étape 3-C :</> Génération 6 variantes dérivées → /generate-kernel-derived-variants …');
         $this->line('');
 
         $result = $builder->buildEnglishContent($frame);
@@ -160,10 +160,12 @@ class QuestionsKernelFillContentCommand extends Command
         $this->line('');
 
         $derivedOrder = [
-            'qcm_reasoning'          => 'QCM Reasoning',
-            'qcm_deceptive_trap'     => 'QCM Deceptive Trap',
-            'true_false_recognition' => 'V/F Recognition',
-            'true_false_reasoning'   => 'V/F Reasoning',
+            'qcm_reasoning'        => 'QCM Reasoning',
+            'qcm_deceptive_trap'   => 'QCM Deceptive Trap',
+            'tf_recognition_true'  => 'V/F Recognition (TRUE)',
+            'tf_recognition_false' => 'V/F Recognition (FALSE)',
+            'tf_reasoning_true'    => 'V/F Reasoning (TRUE)',
+            'tf_reasoning_false'   => 'V/F Reasoning (FALSE)',
         ];
 
         foreach ($derivedOrder as $key => $label) {
@@ -198,14 +200,45 @@ class QuestionsKernelFillContentCommand extends Command
         foreach ($updatedFrame['variants'] ?? [] as $vSlot) {
             $totalSlots += count($vSlot['translation_slots'] ?? []);
         }
-        $slotsOk = $totalSlots === 45 ? '<fg=green>✅</>' : '<fg=yellow>⚠</>';
-        $this->line("  Translation slots (9 langs × 5 variants) : {$totalSlots} {$slotsOk}");
-        if ($totalSlots !== 45) {
-            $this->warn("  Attendu 45 slots — got {$totalSlots}");
+        $slotsOk = $totalSlots === 63 ? '<fg=green>✅</>' : '<fg=yellow>⚠</>';
+        $this->line("  Translation slots (9 langs × 7 variants) : {$totalSlots} {$slotsOk}");
+        if ($totalSlots !== 63) {
+            $this->warn("  Attendu 63 slots — got {$totalSlots}");
         }
         $this->line('');
 
-        // ── 11. Confirmation aucun question_group touché ──────────────────────
+        // ── 11. Phase 2 — subject-touch alignment scores ─────────────────────
+        $phase2 = $result['phase2_alignment'] ?? null;
+        if (is_array($phase2)) {
+            $this->line('  <fg=cyan;options=bold>Phase 2 — Ancrage sujet touché :</>');
+            $this->line('');
+
+            $gradeColors = ['A' => 'green', 'B' => 'yellow', 'C' => 'cyan', 'D' => 'red'];
+            $gradeMarkers = ['A' => '✅', 'B' => '⚠ ', 'C' => '🔶', 'D' => '❌'];
+
+            foreach ($phase2['variant_scores'] as $vKey => $vs) {
+                $grade  = $vs['grade'];
+                $score  = number_format($vs['score'], 3);
+                $color  = $gradeColors[$grade]  ?? 'white';
+                $marker = $gradeMarkers[$grade] ?? '  ';
+                $this->line(sprintf(
+                    "  %s <fg=%s>%-7s</> %-22s  score=%s",
+                    $marker, $color, $grade, $vKey, $score
+                ));
+            }
+
+            $s = $phase2['summary'];
+            $p = $phase2['policy'];
+            $pColor = $gradeColors[$p] ?? 'white';
+            $this->line('');
+            $this->line("  Policy=<fg={$pColor};options=bold>{$p}</>  OK={$s['ok_count']} WARN={$s['warn_count']} PARTIAL={$s['partial_count']} REVIEW={$s['review_count']}");
+            if (! $phase2['ok']) {
+                $this->line("  <fg=yellow>→ {$phase2['recommendation']}</>");
+            }
+            $this->line('');
+        }
+
+        // ── 12. Confirmation aucun question_group touché ──────────────────────
         $groupsCount = DB::table('question_groups')
             ->where('question_intent_id', $intent->id)
             ->count();

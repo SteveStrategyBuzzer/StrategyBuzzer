@@ -50,9 +50,11 @@ final class ReadingBandConfig
      */
     public const VARIANT_DEFAULT_BANDS = [
         'qcm_recognition'        => 'slow_reader_safe',
-        'true_false_recognition' => 'slow_reader_safe',
+        'tf_recognition_true'    => 'slow_reader_safe',
+        'tf_recognition_false'   => 'slow_reader_safe',
         'qcm_reasoning'          => 'normal_reader',
-        'true_false_reasoning'   => 'normal_reader',
+        'tf_reasoning_true'      => 'normal_reader',
+        'tf_reasoning_false'     => 'normal_reader',
         'qcm_deceptive_trap'     => 'fast_reader_dense',
     ];
 

@@ -113,8 +113,8 @@ class QuestionsKernelValidateStructureCommand extends Command
 
             $this->info("✅  Structure valide — frame_status = awaiting_content");
             $this->line('');
-            $this->line("  variants              : {$variantCount} / 5  ✅");
-            $this->line("  translation_slots     : {$slotCount} / 45 ✅");
+            $this->line("  variants              : {$variantCount} / 7  ✅");
+            $this->line("  translation_slots     : {$slotCount} / 63 ✅");
 
             if (! empty($result['warnings'])) {
                 $this->line("  warnings              : " . count($result['warnings']) . " (non bloquants)");

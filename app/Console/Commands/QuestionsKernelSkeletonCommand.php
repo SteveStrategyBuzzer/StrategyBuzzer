@@ -79,17 +79,17 @@ class QuestionsKernelSkeletonCommand extends Command
             $slotCount += count($v['translation_slots'] ?? []);
         }
 
-        $this->line("  Variantes générées  : {$variantCount} / 5 attendues");
-        $this->line("  Translation slots   : {$slotCount} / 45 attendus");
+        $this->line("  Variantes générées  : {$variantCount} / 7 attendues");
+        $this->line("  Translation slots   : {$slotCount} / 63 attendus");
         $this->line('');
 
-        if ($variantCount !== 5) {
-            $this->error("ERREUR : {$variantCount} variantes au lieu de 5. Abandon.");
+        if ($variantCount !== 7) {
+            $this->error("ERREUR : {$variantCount} variantes au lieu de 7. Abandon.");
             return self::FAILURE;
         }
 
-        if ($slotCount !== 45) {
-            $this->error("ERREUR : {$slotCount} slots au lieu de 45. Abandon.");
+        if ($slotCount !== 63) {
+            $this->error("ERREUR : {$slotCount} slots au lieu de 63. Abandon.");
             return self::FAILURE;
         }
 
@@ -151,7 +151,7 @@ class QuestionsKernelSkeletonCommand extends Command
             . ' sv_min=' . ($sample['funFact_min_length'] ?? '?'));
 
         $this->line('');
-        $this->line('  <fg=cyan>variants :</> 5 variantes');
+        $this->line('  <fg=cyan>variants :</> 7 variantes');
 
         foreach ($skeleton['variants'] as $key => $v) {
             $slotCount = count($v['translation_slots'] ?? []);

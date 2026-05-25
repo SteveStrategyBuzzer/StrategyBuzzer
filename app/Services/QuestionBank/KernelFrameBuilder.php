@@ -16,13 +16,13 @@ use App\Models\QuestionIntent;
  * Structure produced:
  *   frame_en.kernel_core           (11 fields from the intent row)
  *   frame_en.translation_constraints  (9 langs × 4 length constants)
- *   frame_en.variants              (5 fixed keys)
+ *   frame_en.variants              (7 fixed keys)
  *     └─ each variant:
  *          question_type / cognitive_type
  *          question_text / answer_a/b/c/d / correct_answer_key / explanation / saviez_vous  (all null)
  *          cognitive_contract  (full for deceptive_trap, minimal for others)
  *          gameplay_constraints
- *          translation_slots   (9 langs × 9 fields each → 45 total slots)
+ *          translation_slots   (9 langs × 9 fields each → 63 total slots)
  */
 class KernelFrameBuilder
 {
@@ -39,13 +39,16 @@ class KernelFrameBuilder
     private const SV_MIN    = 30;
     // question_max_length is now band-aware — see qMax() / ReadingBandConfig
 
-    // ─── 5 variant definitions: [question_type, cognitive_type] ─────────────
+    // ─── 7 variant definitions: [question_type, cognitive_type] ─────────────
+    // TF variants encode polarity in the key name (_true → key=A, _false → key=B).
     private const VARIANTS = [
-        'qcm_recognition'       => ['qcm',        'recognition'],
-        'qcm_reasoning'         => ['qcm',        'reasoning'],
-        'qcm_deceptive_trap'    => ['qcm',        'deceptive_trap'],
-        'true_false_recognition'=> ['true_false', 'recognition'],
-        'true_false_reasoning'  => ['true_false', 'reasoning'],
+        'qcm_recognition'      => ['qcm',        'recognition'],
+        'qcm_reasoning'        => ['qcm',        'reasoning'],
+        'qcm_deceptive_trap'   => ['qcm',        'deceptive_trap'],
+        'tf_recognition_true'  => ['true_false', 'recognition'],
+        'tf_recognition_false' => ['true_false', 'recognition'],
+        'tf_reasoning_true'    => ['true_false', 'reasoning'],
+        'tf_reasoning_false'   => ['true_false', 'reasoning'],
     ];
 
     /**
@@ -134,7 +137,7 @@ class KernelFrameBuilder
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // variants — 5 fixed keys
+    // variants — 7 fixed keys
     // ─────────────────────────────────────────────────────────────────────────
 
     private function buildVariants(): array
@@ -217,7 +220,7 @@ class KernelFrameBuilder
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // translation_slots — 9 langs per variant (45 total across 5 variants)
+    // translation_slots — 9 langs per variant (63 total across 7 variants)
     // ─────────────────────────────────────────────────────────────────────────
 
     private function buildTranslationSlots(): array

@@ -27,13 +27,16 @@ class KernelFrameValidator
     // ─── Langues de traduction (9 — sans 'en') ───────────────────────────────
     private const TRANSLATION_LANGS = ['fr', 'es', 'de', 'it', 'pt', 'ru', 'zh', 'ar', 'el'];
 
-    // ─── 5 variantes obligatoires → [question_type, cognitive_type] ──────────
+    // ─── 7 variantes obligatoires → [question_type, cognitive_type, polarity, answer_count, valid_keys]
+    // polarity: null = QCM, 'true' = TF correct=True (key A), 'false' = TF correct=False (key B)
     private const VARIANT_META = [
-        'qcm_recognition'        => ['qcm',        'recognition',   4, ['A','B','C','D']],
-        'qcm_reasoning'          => ['qcm',        'reasoning',     4, ['A','B','C','D']],
-        'qcm_deceptive_trap'     => ['qcm',        'deceptive_trap',4, ['A','B','C','D']],
-        'true_false_recognition' => ['true_false', 'recognition',   2, ['A','B']],
-        'true_false_reasoning'   => ['true_false', 'reasoning',     2, ['A','B']],
+        'qcm_recognition'      => ['qcm',        'recognition',    null,    4, ['A','B','C','D']],
+        'qcm_reasoning'        => ['qcm',        'reasoning',      null,    4, ['A','B','C','D']],
+        'qcm_deceptive_trap'   => ['qcm',        'deceptive_trap', null,    4, ['A','B','C','D']],
+        'tf_recognition_true'  => ['true_false', 'recognition',    'true',  2, ['A','B']],
+        'tf_recognition_false' => ['true_false', 'recognition',    'false', 2, ['A','B']],
+        'tf_reasoning_true'    => ['true_false', 'reasoning',      'true',  2, ['A','B']],
+        'tf_reasoning_false'   => ['true_false', 'reasoning',      'false', 2, ['A','B']],
     ];
 
     // ─── kernel_core : champs obligatoires non-null (identité noyau) ─────────
@@ -210,24 +213,25 @@ class KernelFrameValidator
         }
 
         // Check 4-7 — chaque variante individuellement
-        foreach (self::VARIANT_META as $variantKey => [$qType, $cogType, $ansCount, $ansKeys]) {
+        foreach (self::VARIANT_META as $variantKey => [$qType, $cogType, $polarity, $ansCount, $ansKeys]) {
             if (! isset($variants[$variantKey])) {
                 continue; // déjà signalé ci-dessus
             }
             $v = $variants[$variantKey];
-            $this->checkVariant($variantKey, $v, $qType, $cogType, $ansCount, $ansKeys, $errors, $warnings);
+            $this->checkVariant($variantKey, $v, $qType, $cogType, $polarity, $ansCount, $ansKeys, $errors, $warnings);
         }
     }
 
     private function checkVariant(
-        string $variantKey,
-        array  $v,
-        string $expectedQType,
-        string $expectedCogType,
-        int    $expectedAnsCount,
-        array  $expectedAnsKeys,
-        array  &$errors,
-        array  &$warnings
+        string  $variantKey,
+        array   $v,
+        string  $expectedQType,
+        string  $expectedCogType,
+        ?string $expectedPolarity,
+        int     $expectedAnsCount,
+        array   $expectedAnsKeys,
+        array   &$errors,
+        array   &$warnings
     ): void {
         $pfx = "variants.{$variantKey}";
 
@@ -237,6 +241,17 @@ class KernelFrameValidator
         }
         if (($v['cognitive_type'] ?? null) !== $expectedCogType) {
             $errors[] = "{$pfx}.cognitive_type invalide : '{$v['cognitive_type']}' (attendu '{$expectedCogType}')";
+        }
+
+        // Check 4b — polarity for TF variants (enforced only after content is filled)
+        // Phase 1 Étape 1 skeleton: correct_answer_key is null → skip polarity check.
+        // Phase 1 Étape 3 content: validate polarity matches correct_answer_key.
+        if ($expectedPolarity !== null && ($v['correct_answer_key'] ?? null) !== null) {
+            $expectedKey = $expectedPolarity === 'true' ? 'A' : 'B';
+            $actualKey   = strtoupper((string) ($v['correct_answer_key'] ?? ''));
+            if ($actualKey !== $expectedKey) {
+                $errors[] = "{$pfx}.correct_answer_key doit être '{$expectedKey}' (polarity={$expectedPolarity}) — valeur actuelle : '{$actualKey}'";
+            }
         }
 
         // Check 4 — gameplay_constraints
