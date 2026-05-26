@@ -163,6 +163,11 @@ class KernelContentBuilder
             ]);
         }
 
+        // Persist Phase 2 result inside frame_en so the DB write below
+        // captures it and future commands (fill-content --force, validate-content)
+        // can read the last known alignment scores without re-running Phase 2.
+        $updatedFrame['phase2_result'] = $phase2Alignment;
+
         $endMs        = (int) round(microtime(true) * 1000);
         $latencyTotal = $endMs - $startMs;
 
