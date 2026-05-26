@@ -1,0 +1,225 @@
+AUDIT CRITIQUE — ALIGNEMENT PHASE 1 / PHASE 2 / ROTATION / REGEN
+
+Objectif :
+Auditer pour Valider l’architecture mentale complète du pipeline.
+
+IMPORTANT :
+Phase 1 = créateur.
+Phase 2 = protecteur.
+
+Phase 2 ne doit PAS devenir auteur principal.
+
+Méthode :
+GREP → SLICE → PLAN.
+AUCUN PATCH IMMÉDIAT.
+
+──────────────────────────────
+POINT CRITIQUE #1
+PHASE 2 → PHASE 1 FEEDBACK LOOP
+──────────────────────────────
+
+Objectif :
+S’assurer que Phase 2 parle réellement à Phase 1 pour le réaligner.
+
+Problème actuel suspecté :
+Phase 2 détecte des dérives,
+mais Phase 1 ne semble pas apprendre/corriger ses futures générations.
+
+Audit demandé :
+
+1. Où sont stockés :
+- warnings
+- drift reports
+- partial_review
+- reject reasons
+- retry reasons
+
+2. Où ces informations sont-elles renvoyées à Phase 1 ?
+
+3. Vérifier si :
+- Phase 1 reçoit réellement les erreurs Phase 2
+- Phase 1 adapte ses prompts après un drift
+- Phase 1 adapte ses framing après un reject
+- Phase 1 adapte ses cognitive directions après un fail
+
+4. Vérifier si :
+- les retries utilisent encore le même prompt cassé
+- les retries changent réellement le comportement IA
+- les retries changent réellement les directions cognitives
+
+5. Vérifier si :
+- reject_reason est détaillé
+ou juste :
+“validation failed”.
+
+6. Vérifier si Phase 2 peut produire :
+- drift_type
+- forbidden_direction
+- weak_reasoning
+- broad_topic
+- reformulation_only
+- kernel_collapse
+- subject_escape
+- cognitive_similarity_too_high
+
+Objectif final :
+Phase 2 doit réaligner Phase 1,
+pas juste rejeter silencieusement.
+
+──────────────────────────────
+POINT CRITIQUE #2
+ROTATION / DIVERSITÉ / ANTI-DUPLICATAS
+──────────────────────────────
+
+Objectif :
+Empêcher :
+- les mêmes sujets répétés
+- les mêmes angles
+- les mêmes reasoning
+- les mêmes questions réécrites
+- les mêmes pièges cognitifs
+- les mêmes réponses déguisées
+
+IMPORTANT :
+semantic_key seule semble insuffisante.
+
+Audit demandé :
+
+1. Vérifier comment semantic_key est construite.
+
+2. Vérifier si semantic_key protège seulement :
+- unicité DB
+ou aussi :
+- diversité cognitive réelle.
+
+3. Vérifier si le système compare :
+- sujet touché
+- réponse exacte
+- angle mental
+- type d’inférence
+- framing cognitif
+- piège cognitif
+- gameplay wording
+- similarité texte
+- answer_target
+- micro-angle
+
+4. Vérifier si :
+- un même sujet peut être regénéré trop souvent
+- les mêmes réponses reviennent trop souvent
+- les mêmes structures reasoning reviennent trop souvent
+
+5. Vérifier si :
+les retries créent parfois :
+- une simple reformulation
+au lieu :
+- d’une vraie nouvelle direction cognitive.
+
+6. Vérifier si un système de rotation existe déjà :
+- sujets récents
+- angles récents
+- pièges récents
+- réponses récentes
+- cognitifs récents
+
+7. Vérifier si :
+la diversité est mesurée seulement textuellement
+ou cognitivement.
+
+Objectif final :
+Créer une vraie rotation cognitive,
+pas juste des réécritures IA.
+
+──────────────────────────────
+POINT CRITIQUE #3
+PHASE 2 — CORRECTION vs REGEN
+──────────────────────────────
+
+Objectif :
+Empêcher Phase 2 de réécrire massivement des noyaux cassés.
+
+Règle officielle :
+
+Phase 1 crée.
+Phase 2 protège.
+
+Donc :
+si un noyau est complètement hors sujet,
+Phase 2 doit :
+- REJETER
+- SUPPRIMER
+- DEMANDER REGEN
+
+et NON :
+- réécrire agressivement
+- recréer silencieusement le noyau
+- devenir auteur principal.
+
+Audit demandé :
+
+1. Vérifier si Phase 2 :
+- modifie massivement les questions
+- modifie massivement les réponses
+- remplace des cognitifs entiers
+- change les answer_target
+- change les sujets touchés
+
+2. Vérifier si :
+Phase 2 fait parfois :
+- du rewriting complet
+au lieu :
+- d’un micro-fix.
+
+3. Vérifier si :
+un noyau cognitivement cassé
+peut survivre après trop de corrections.
+
+4. Vérifier où se trouve la limite entre :
+- micro-fix acceptable
+- regen obligatoire.
+
+5. Vérifier si ces cas déclenchent un reject complet :
+- perte du sujet touché
+- plusieurs cognitifs hors sujet
+- kernel collapse
+- dérive historique majeure
+- réponse impossible
+- faux reasoning massif
+- deceptive_trap hors territoire mental
+
+6. Vérifier si :
+Phase 2 efface correctement le contenu invalide avant regen.
+
+Objectif final :
+Phase 2 doit corriger légèrement.
+Pas réécrire un nouveau noyau entier.
+
+──────────────────────────────
+SORTIE ATTENDUE
+──────────────────────────────
+
+Je veux un rapport clair :
+
+A. Ce qui existe déjà
+B. Ce qui manque
+C. Ce qui est dangereux
+D. Ce qui est trop agressif
+E. Ce qui est trop permissif
+F. Où sont les vrais risques
+G. Quels fichiers/lignes contrôlent :
+- feedback Phase2→Phase1
+- retries
+- semantic_key
+- duplicate logic
+- regen logic
+- reject logic
+- cleanup logic
+
+Puis :
+- plan de correction priorisé
+- patchs nécessaires dans l’ordre
+- validation nécessaire après chaque patch
+
+AUCUN PATCH IMMÉDIAT.
+STOP après rapport.
+
