@@ -1,0 +1,255 @@
+RÉALIGNEMENT FINAL — PHASE 1 / PHASE 2 / NOYAU COGNITIF
+
+Objectif :
+Mettre en place la version finale validée du noyau cognitif sans sur-spécifier l’IA ni créer de dérive artificielle.
+
+AUCUN PATCH IMMÉDIAT.
+D’abord :
+GREP → SLICE → PLAN.
+
+──────────────────────────────
+STABLE
+──────────────────────────────
+
+1. domaine
+2. sous-domaine
+3. sujet principal
+4. sujet touché
+
+IMPORTANT :
+Le sujet touché doit être :
+- précis
+- central
+- compact
+- non interprétatif
+- non explicatif
+
+Exemple correct :
+- Déclaration d’indépendance américaine
+- Record de 24 Grand Slams de Djokovic
+- Zooxanthellae dans les récifs coralliens
+
+Exemple dangereux :
+- rupture des colonies avec la Grande-Bretagne
+- indépendance américaine de 1776
+- adaptation des oiseaux au vol
+
+Pourquoi dangereux :
+ça pousse l’IA vers :
+- du framing implicite
+- de la causalité
+- des sujets voisins
+- de la dérive thématique
+
+──────────────────────────────
+VARIABLE
+──────────────────────────────
+
+Les cognitifs peuvent varier :
+
+- angle mental
+- framing cognitif
+- type d’inférence
+- gameplay wording
+- cognitive_type
+- mécanisme mental utilisé
+- type d’erreur humaine exploitée
+- type de piège cognitif
+- difficulté mentale
+- réponse exacte selon le cognitif
+
+MAIS :
+la réponse exacte peut changer seulement si elle reste directement liée au même sujet touché.
+
+──────────────────────────────
+RÈGLE CENTRALE
+──────────────────────────────
+
+TOUS les cognitifs doivent :
+- rester dans le même sujet touché
+- respecter les directions cognitives du sujet touché
+- éviter la dérive vers un autre sujet
+- éviter les sujets trop larges
+- éviter les reformulations simples
+- éviter les variations grammaticales superficielles
+
+IMPORTANT :
+Le sujet touché fixe le territoire mental.
+
+Les cognitifs peuvent explorer :
+- des angles différents
+- des inférences différentes
+- des pièges différents
+- des réponses différentes
+
+MAIS :
+toujours à l’intérieur du même territoire mental.
+
+──────────────────────────────
+STRUCTURE OFFICIELLE — 7 COGNITIFS
+──────────────────────────────
+
+Phase 1 doit générer exactement :
+
+1. qcm_recognition
+2. qcm_reasoning
+3. qcm_deceptive_trap
+4. tf_recognition_true
+5. tf_recognition_false
+6. tf_reasoning_true
+7. tf_reasoning_false
+
+──────────────────────────────
+POLARITY LOCK
+──────────────────────────────
+
+Obligatoire :
+
+- tf_*_true  → correct_answer_key = A
+- tf_*_false → correct_answer_key = B
+
+La polarité ne doit jamais être laissée à l’IA.
+
+Chaque cognitif V/F doit avoir sa paire :
+
+- tf_recognition_true + tf_recognition_false
+- tf_reasoning_true + tf_reasoning_false
+
+──────────────────────────────
+FALSE PLAUSIBLES
+──────────────────────────────
+
+tf_recognition_false :
+- faux fait plausible
+- confusion réaliste
+- erreur humaine crédible
+- erreur de mémoire factuelle
+
+tf_reasoning_false :
+- fausse conclusion plausible
+- mauvaise inférence réaliste
+- erreur logique crédible
+
+Interdit :
+- faux absurdes
+- faux triviaux
+- faux hors sujet
+- faux aléatoires
+
+──────────────────────────────
+PHASE 1
+──────────────────────────────
+
+Phase 1 crée.
+
+Elle doit :
+- générer les 7 cognitifs
+- garder le même sujet touché
+- respecter les directions cognitives du sujet touché
+- varier les angles mentaux
+- varier les mécanismes cognitifs
+- éviter les reformulations simples
+- éviter les faux reasoning
+- éviter les faux deceptive_trap
+- éviter les dérives historiques/thématiques
+- éviter les sujets trop larges
+- générer des False plausibles
+- respecter polarity lock
+
+──────────────────────────────
+PHASE 2
+──────────────────────────────
+
+Phase 2 protège.
+
+Elle ne doit PAS devenir auteur créatif.
+
+Elle doit :
+- vérifier la cohérence du sujet touché
+- vérifier les directions cognitives
+- vérifier la polarité
+- vérifier les faux plausibles
+- vérifier la divergence cognitive
+- détecter les reformulations faibles
+- détecter les dérives
+- corriger seulement les micro-problèmes évidents
+
+Escalade :
+A. micro-fix local
+B. retry variante
+C. partial_review
+D. reject noyau complet
+
+Reject complet seulement si :
+- perte du sujet touché
+- dérive cognitive majeure
+- noyau cognitivement cassé
+- contradictions majeures
+- plusieurs cognitifs dérivent
+- réponse impossible
+- noyau irrécupérable
+
+──────────────────────────────
+POINTS À AUDITER
+──────────────────────────────
+
+Vérifier dans le code :
+
+1. Où sont définis :
+- domaine
+- sous-domaine
+- sujet principal
+- sujet touché
+
+2. Où les prompts utilisent encore :
+- same answer
+- same correct answer
+- broad topic
+- framing implicite
+- sujets trop larges
+
+3. Où les prompts doivent recevoir :
+- sujet touché
+- directions cognitives
+- forbidden drift
+- no simple reformulation
+
+4. Où les validators Phase 2 vérifient :
+- subjectTouchScore
+- polarity
+- False plausible
+- drift
+- reformulation
+- divergence cognitive
+
+5. Vérifier que /generate-kernel-variants est bien désactivé HTTP 410.
+
+6. Vérifier que le pipeline actif est seulement :
+/generate-kernel-master
+↓
+/generate-kernel-derived-variants
+
+7. Vérifier semantic_key :
+- protège-t-elle seulement l’unicité DB ?
+- empêche-t-elle les vrais doublons cognitifs ?
+- faut-il intégrer sujet_touché dans l’anti-doublon ?
+
+──────────────────────────────
+SORTIE ATTENDUE
+──────────────────────────────
+
+Livrer un plan clair :
+
+1. fichiers exacts à modifier
+2. lignes exactes
+3. ce qui est déjà conforme
+4. ce qui manque
+5. ce qui est dangereux
+6. patchs nécessaires dans l’ordre
+7. validation après chaque patch
+8. impact sur Phase 1
+9. impact sur Phase 2
+10. impact sur semantic_key / anti-doublon
+
+Aucun patch encore.
+STOP après le plan.
