@@ -114,18 +114,27 @@ class QuestionsKernelFillContentCommand extends Command
         $latencyTotalAiMs    = $result['latency_total_ms'] ?? 0;
 
         // ── 6. Sauvegarder frame_en ───────────────────────────────────────────
+        // Phase 2 policy D → frame_status bloqué à partial_review (jamais content_ready).
+        // Policy A / B / C / null → content_ready (warnings persistés dans phase2_result).
+        $phase2Policy   = $result['phase2_alignment']['policy'] ?? null;
+        $newFrameStatus = ($phase2Policy === 'D') ? 'partial_review' : 'content_ready';
+
         $persistStart = (int) round(microtime(true) * 1000);
         DB::table('question_intents')
             ->where('id', $intent->id)
             ->update([
                 'frame_en'     => json_encode($updatedFrame, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
-                'frame_status' => 'content_ready',
+                'frame_status' => $newFrameStatus,
                 'updated_at'   => now(),
             ]);
         $persistMs = (int) round(microtime(true) * 1000) - $persistStart;
         $totalMs   = (int) round(microtime(true) * 1000) - $cmdStart;
 
-        $this->info("✅  frame_en mis à jour — frame_status = content_ready");
+        if ($newFrameStatus === 'partial_review') {
+            $this->warn("⚠  frame_en mis à jour — frame_status = partial_review (Phase 2 policy D — regen requis)");
+        } else {
+            $this->info("✅  frame_en mis à jour — frame_status = content_ready");
+        }
         $this->line('');
 
         // ── 6b. Timing détaillé ───────────────────────────────────────────────
