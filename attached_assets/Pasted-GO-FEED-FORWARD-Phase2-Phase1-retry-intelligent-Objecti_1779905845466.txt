@@ -1,0 +1,198 @@
+GO — FEED-FORWARD Phase2 → Phase1 (retry intelligent)
+
+Objectif :
+Faire en sorte que Phase 1 lise réellement les diagnostics structurés de Phase 2 lors des retries, sans fusionner les phases.
+
+Règle absolue :
+- Phase 1 reste le créateur
+- Phase 2 reste le protecteur
+- Phase 2 ne génère pas
+- Phase 2 ne réécrit pas
+- Phase 2 ne devient jamais auteur principal
+
+Le but :
+permettre à Phase 1 de se réaligner intelligemment au retry
+au lieu de répéter le même pattern cassé.
+
+Méthode obligatoire :
+GREP → SLICE → PLAN.
+AUCUN PATCH IMMÉDIAT.
+
+──────────────────────────────
+OBJECTIF PRINCIPAL
+──────────────────────────────
+
+Actuellement :
+- Phase2_result est persisté
+- structured_issues existent
+- drift_type existe
+- action_required existe
+
+MAIS :
+Phase 1 ne relit pas encore ces informations
+pour adapter ses futures générations.
+
+Il faut maintenant :
+- brancher un vrai feedback loop
+- sans casser la séparation des phases.
+
+──────────────────────────────
+CE QUE PHASE 1 DOIT RECEVOIR
+──────────────────────────────
+
+Au retry uniquement,
+Phase 1 doit recevoir un résumé compact de :
+
+- policy précédente
+- variants faibles
+- drift_type
+- action_required
+- patterns à éviter
+
+Exemple :
+
+FAILED_VARIANTS:
+- qcm_reasoning → weak_reasoning
+- tf_recognition_false → false_not_plausible
+
+AVOID:
+- simple reformulation
+- broad topic drift
+- weak inference
+- implausible false statement
+
+RETRY_GOAL:
+- stronger reasoning separation
+- more plausible false memory trap
+- tighter subject_touch alignment
+
+IMPORTANT :
+Pas de dump JSON complet dans le prompt IA.
+Pas de surcharge cognitive inutile.
+
+──────────────────────────────
+POINTS À AUDITER
+──────────────────────────────
+
+1. Où les retries sont déclenchés ?
+- retry_variant
+- partial_review
+- regen_required
+- reject_kernel
+
+2. Où les prompts Phase1 sont construits ?
+- generate-kernel-master
+- generate-kernel-derived-variants
+
+3. Où Phase1 pourrait lire :
+- phase2_result
+- structured_issues
+- drift_type
+- action_required
+
+4. Vérifier si :
+les retries actuels réutilisent simplement le même prompt.
+
+5. Vérifier si :
+Phase1 peut recevoir :
+- FAILED_VARIANTS
+- AVOID
+- RETRY_GOAL
+sans polluer le prompt principal.
+
+──────────────────────────────
+RÈGLES DU FEED-FORWARD
+──────────────────────────────
+
+Le feedback doit être :
+- compact
+- structuré
+- ciblé
+- non créatif
+- non interprétatif
+- non bavard
+
+Interdit :
+- envoyer tous les logs
+- envoyer tous les scores
+- envoyer tout le JSON
+- envoyer toute l’analyse Phase2 brute
+
+Le feedback doit seulement :
+- empêcher la répétition du même drift
+- empêcher les mêmes patterns faibles
+- réaligner les directions cognitives
+
+──────────────────────────────
+ANTI-BOUCLE OBLIGATOIRE
+──────────────────────────────
+
+Vérifier :
+- retry_count
+- repeated_drift_count
+- same_drift_repeat
+- max_retry_per_variant
+- max_kernel_retry
+
+Objectif :
+éviter :
+- retry infini
+- régénération identique
+- oscillation A↔B
+- corrections circulaires
+
+──────────────────────────────
+STRUCTURE ATTENDUE
+──────────────────────────────
+
+Exemple de structure future :
+
+PHASE1
+↓
+PHASE2
+↓
+structured_issues
+↓
+retry planner
+↓
+compact retry guidance
+↓
+PHASE1 retry
+↓
+PHASE2 re-check
+
+──────────────────────────────
+IMPORTANT
+──────────────────────────────
+
+Phase 2 ne doit JAMAIS :
+- réécrire le contenu
+- reformuler les questions
+- remplacer des réponses
+- améliorer pédagogiquement
+- changer les angles mentaux
+
+Elle doit seulement :
+- diagnostiquer
+- classifier
+- guider le retry.
+
+──────────────────────────────
+SORTIE ATTENDUE
+──────────────────────────────
+
+Je veux :
+
+1. architecture actuelle réelle
+2. où brancher le feed-forward
+3. risques de surcharge prompt
+4. risques de boucle infinie
+5. risques de contamination Phase1
+6. structure minimale recommandée
+7. fichiers exacts
+8. lignes exactes
+9. plan de patch dans l’ordre
+10. validations nécessaires
+
+AUCUN PATCH.
+STOP après plan.
