@@ -325,6 +325,16 @@ return [
 
         // Ops alert thresholds for bank-dry CRITICAL events. The alerter
         // is a no-op for any channel left unset; all three unset = disabled.
+        // Kernel loop / drift alert. Fires when a kernel enters a correction
+        // loop (repeated drift, kernel_collapse, reject_kernel, max attempts).
+        // Email is skipped when email_recipient is empty or MAIL_MAILER=log;
+        // Log::critical always fires as fallback.
+        'kernel_alert' => [
+            'email_recipient'   => env('QB_KERNEL_ALERT_EMAIL', ''),
+            'dedup_hours'       => 24,
+            'max_fill_attempts' => 3,
+        ],
+
         'dry_alert' => [
             'threshold' => (int) env('QB_DRY_ALERT_THRESHOLD', 5),
             'window_minutes' => (int) env('QB_DRY_ALERT_WINDOW_MINUTES', 10),

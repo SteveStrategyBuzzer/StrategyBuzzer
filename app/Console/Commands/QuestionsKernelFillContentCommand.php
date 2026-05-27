@@ -6,6 +6,7 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use App\Models\QuestionIntent;
 use App\Services\QuestionBank\KernelContentBuilder;
+use App\Services\QuestionBank\KernelLoopAlerter;
 
 /**
  * questions:kernel:fill-content {intent_id}
@@ -91,6 +92,14 @@ class QuestionsKernelFillContentCommand extends Command
         $this->line('');
 
         // ── 5. Appel KernelContentBuilder (3-A + 3-B + 3-C) ──────────────────
+
+        // Capture Phase 2 result from any previous run (used by alerter for drift comparison).
+        $previousPhase2 = $frame['phase2_result'] ?? null;
+
+        // Increment fill attempt counter (stored in frame_en, no migration needed).
+        $fillAttemptCount = (int) ($frame['_fill_attempt_count'] ?? 0) + 1;
+        $frame['_fill_attempt_count'] = $fillAttemptCount;
+
         $this->line('  <fg=cyan>Étape 3-A :</> Génération question maître EN → /generate-kernel-master …');
         $this->line('  <fg=cyan>Étape 3-B :</> Validation maître (PHP-side)');
         $this->line('  <fg=cyan>Étape 3-C :</> Génération 6 variantes dérivées → /generate-kernel-derived-variants …');
@@ -134,6 +143,37 @@ class QuestionsKernelFillContentCommand extends Command
             $this->warn("⚠  frame_en mis à jour — frame_status = partial_review (Phase 2 policy D — regen requis)");
         } else {
             $this->info("✅  frame_en mis à jour — frame_status = content_ready");
+        }
+
+        // ── 6b. Kernel loop alerter ───────────────────────────────────────────
+        // Evaluate all drift/loop triggers and fire alert (email + Log::critical).
+        // Blocking triggers override frame_status to human_review or rejected.
+        $alerter      = new KernelLoopAlerter();
+        $phase2Result = $updatedFrame['phase2_result'] ?? [];
+
+        $triggerReason = $alerter->evaluate($updatedFrame, $intent, $previousPhase2, $phase2Result);
+
+        if ($triggerReason !== null) {
+            if ($alerter->isBlocking($triggerReason)) {
+                $alertStatus = $alerter->resolveBlockingStatus($triggerReason);
+                DB::table('question_intents')
+                    ->where('id', $intent->id)
+                    ->update(['frame_status' => $alertStatus, 'updated_at' => now()]);
+                $this->warn("🚨  frame_status → {$alertStatus} (trigger: {$triggerReason})");
+            } else {
+                $this->warn("⚠  Alerte kernel non-bloquante déclenchée : {$triggerReason}");
+            }
+
+            // maybeAlert() handles dedup, writes _alert_sent_at + _alert_trigger into $updatedFrame
+            $alerter->maybeAlert($updatedFrame, $intent, $triggerReason, $phase2Result);
+
+            // Persist frame_en again with _alert_sent_at + _alert_trigger
+            DB::table('question_intents')
+                ->where('id', $intent->id)
+                ->update([
+                    'frame_en'   => json_encode($updatedFrame, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+                    'updated_at' => now(),
+                ]);
         }
         $this->line('');
 
