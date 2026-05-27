@@ -417,6 +417,7 @@ class GameServerService
             return [
                 'id' => $q['id'] ?? 'q_' . ($index + 1),
                 'type' => 'MCQ',
+                'noInitialShuffle' => ($q['type'] ?? 'multiple') === 'true_false',
                 'text' => $q['text'] ?? $q['question_text'] ?? '',
                 'choices' => $choices,
                 'correctIndex' => (int) ($q['correct_index'] ?? $q['correct_id'] ?? 0),

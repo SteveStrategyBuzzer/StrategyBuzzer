@@ -1,0 +1,63 @@
+GO — PATCH noInitialShuffle.
+
+Objectif :
+Corriger les Vrai/Faux du bank pour respecter la règle gameplay :
+
+- Par défaut : Vrai en haut, Faux en bas
+- Aucun shuffle initial sur TF
+- Seule l’attaque shuffle_answers peut inverser au second l’emplacement des Vrai/Faux
+- La vérité reste attachée au texte “Vrai/Faux”, pas à l’emplacement
+
+IMPORTANT :
+Ne pas casser la méthode shuffle skill.
+Le skill shuffle_answers doit continuer d’utiliser shuffleState, revision, history et resolveCorrectIndex.
+
+Méthode obligatoire :
+GREP → SLICE → PATCH → VALIDATION.
+
+Patch attendu :
+
+1. Dans app/Services/GameServerService.php
+Ajouter au payload Node :
+noInitialShuffle = true seulement si la question vient du bank avec type true_false.
+
+Ne pas changer type:'MCQ'.
+Le type reste MCQ pour garder le scoring existant.
+
+2. Dans apps/game-server/src/services/GameOrchestrator.ts
+Dans broadcastQuestion :
+- si question.noInitialShuffle === true :
+  - ne pas appeler shuffleOnce au broadcast initial
+  - garder choices dans l’ordre canonique
+  - garder correctIndex original
+  - créer quand même room.shuffleState revision=0
+  - écrire Redis init_shuffle avec l’ordre canonique
+
+- sinon :
+  - comportement MCQ normal inchangé avec shuffleOnce
+
+3. Ne pas modifier :
+- scoring
+- handlers
+- resolveCorrectIndex
+- startShuffleInterval
+- skill shuffle_answers
+- correct_answer_key
+- Phase 1
+- Phase 2
+
+Validation obligatoire :
+- php -l app/Services/GameServerService.php
+- cd apps/game-server && npx tsc --noEmit
+- grep noInitialShuffle app/Services/GameServerService.php apps/game-server/src/services/GameOrchestrator.ts
+- grep shuffleOnce apps/game-server/src/services/GameOrchestrator.ts
+- vérifier slice broadcastQuestion complet après patch
+
+Test logique attendu :
+- TF normal : choices = [Vrai, Faux], correctIndex inchangé, shuffleState existe
+- QCM normal : shuffleOnce fonctionne comme avant
+- skill shuffle_answers : peut encore déclencher shuffleOnce car shuffleState existe
+- après attaque : Vrai/Faux peuvent changer de place, correctIndex suit le texte
+
+STOP après patch + validations.
+Rapport avec slices avant/après.

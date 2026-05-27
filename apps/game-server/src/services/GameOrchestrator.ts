@@ -1010,31 +1010,57 @@ export class GameOrchestrator {
     let broadcastChoices = sanitizedChoices;
     if (question.type === "MCQ" && sanitizedChoices !== undefined && sanitizedChoices.length > 1) {
       const originalCorrectIndex = (question as Record<string, unknown>).correctIndex as number ?? 0;
+      const noInitialShuffle     = (question as Record<string, unknown>).noInitialShuffle === true;
 
-      // Fisher-Yates shuffle at rev=0 — Node-authoritative initial order.
-      const { choices: shuffledChoices, correctIndex: shuffledCorrectIndex } =
-        shuffleOnce(sanitizedChoices, originalCorrectIndex);
+      let finalChoices:      string[];
+      let finalCorrectIndex: number;
 
-      // Mutate question.correctIndex in-memory so revealAnswer() reads the correct
-      // post-shuffle value when building correctAnswer for the ANSWER_REVEALED event.
-      (question as Record<string, unknown>).correctIndex = shuffledCorrectIndex;
+      if (noInitialShuffle) {
+        // True/False from bank: preserve canonical order (Vrai on top, Faux on bottom).
+        // shuffleState is still created at rev=0 so the shuffle_answers skill can
+        // trigger shuffleOnce() later via startShuffleInterval() if activated.
+        // question.correctIndex is NOT mutated — canonical index is already correct.
+        finalChoices      = [...sanitizedChoices];
+        finalCorrectIndex = originalCorrectIndex;
+
+        console.log(
+          `[GameOrchestrator] MCQ shuffleState rev=0 CANONICAL (TF noInitialShuffle) q=${room.state.questionIndex} ` +
+          `correctIndex=${finalCorrectIndex} room=${roomId}`,
+        );
+      } else {
+        // QCM: Fisher-Yates shuffle at rev=0 — Node-authoritative initial order.
+        const { choices: shuffledChoices, correctIndex: shuffledCorrectIndex } =
+          shuffleOnce(sanitizedChoices, originalCorrectIndex);
+
+        // Mutate question.correctIndex in-memory so revealAnswer() reads the correct
+        // post-shuffle value when building correctAnswer for the ANSWER_REVEALED event.
+        (question as Record<string, unknown>).correctIndex = shuffledCorrectIndex;
+
+        finalChoices      = shuffledChoices;
+        finalCorrectIndex = shuffledCorrectIndex;
+
+        console.log(
+          `[GameOrchestrator] MCQ shuffleState rev=0 SHUFFLED q=${room.state.questionIndex} ` +
+          `correctIndex=${finalCorrectIndex} (was ${originalCorrectIndex}) room=${roomId}`,
+        );
+      }
 
       room.shuffleState = {
         questionIndex:   room.state.questionIndex,
         revision:        0,
-        choices:         shuffledChoices,
-        correctIndex:    shuffledCorrectIndex,
+        choices:         finalChoices,
+        correctIndex:    finalCorrectIndex,
         history:         [],
         intervalId:      undefined,
         targetPlayerIds: undefined,
       };
 
-      // Write shuffled order to Redis so PHP can render the same order on page load.
+      // Write canonical/shuffled order to Redis so PHP can render the same order on page load.
       // Fire-and-forget: failure is logged but must not block the synchronous game flow.
       const initKey = `room:${roomId}:q${room.state.questionIndex}:init_shuffle`;
       redisClient.set(initKey, JSON.stringify({
-        choices:      shuffledChoices,
-        correctIndex: shuffledCorrectIndex,
+        choices:      finalChoices,
+        correctIndex: finalCorrectIndex,
         revision:     0,
       }), "EX", 300).catch((err: unknown) => {
         console.warn(
@@ -1043,12 +1069,7 @@ export class GameOrchestrator {
         );
       });
 
-      broadcastChoices = shuffledChoices;
-
-      console.log(
-        `[GameOrchestrator] MCQ shuffleState rev=0 SHUFFLED q=${room.state.questionIndex} ` +
-        `correctIndex=${shuffledCorrectIndex} (was ${originalCorrectIndex}) room=${roomId}`,
-      );
+      broadcastChoices = finalChoices;
     } else {
       // Non-MCQ (TRUE_FALSE, TEXT) or single-choice: no shuffle state.
       room.shuffleState = undefined;
