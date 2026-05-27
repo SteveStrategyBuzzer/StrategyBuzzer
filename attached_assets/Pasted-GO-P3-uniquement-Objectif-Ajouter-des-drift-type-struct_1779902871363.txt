@@ -1,0 +1,92 @@
+GO — P3 uniquement.
+
+Objectif :
+Ajouter des drift_type structurés dans Phase 2 pour que Phase 1 sache exactement quoi corriger au prochain retry.
+
+Contexte actuel :
+P1 terminé → phase2_result est persisté dans frame_en.
+P2 terminé → Policy D ne peut plus rester content_ready.
+Maintenant il faut rendre les issues Phase 2 exploitables par Phase 1.
+
+IMPORTANT :
+Phase 2 ne corrige pas.
+Phase 2 ne réécrit pas.
+Phase 2 ne régénère pas.
+Phase 2 diagnostique seulement.
+
+Méthode obligatoire :
+GREP → SLICE → PATCH → VALIDATION.
+
+Fichier ciblé principal :
+app/Services/QuestionBank/VariantAlignmentChecker.php
+
+Objectif technique :
+Remplacer ou enrichir les issues texte simples par des issues structurées.
+
+Chaque issue doit contenir au minimum :
+- variant_key
+- policy
+- grade
+- score
+- drift_type
+- action_required
+- message_humain
+
+drift_type possibles au minimum :
+- subject_touch_low
+- subject_escape
+- broad_topic
+- reformulation_suspected
+- weak_reasoning
+- weak_deceptive_trap
+- false_not_plausible
+- polarity_incoherent
+- kernel_collapse
+
+Actions possibles :
+- none
+- monitor
+- retry_variant
+- partial_review
+- regen_required
+- reject_kernel
+
+Règles :
+- Grade A → aucune issue
+- Grade B → monitor
+- Grade C → retry_variant ou partial_review
+- Grade D → regen_required
+- Si 3+ variants grade D → kernel_collapse + reject_kernel/regen_required
+
+IMPORTANT :
+Ne pas encore ajouter jaccard/reformulation si ça demande un gros patch.
+Pour P3, commencer par structurer les issues existantes basées sur subjectTouchScore et policy.
+Les drift_type plus avancés pourront être branchés ensuite.
+
+À faire :
+1. Lire la méthode check() complète.
+2. Lire derivePolicy().
+3. Lire où issues est construit.
+4. Patch minimal pour produire structured_issues en plus de issues.
+5. Conserver issues texte si nécessaire pour compatibilité.
+6. Ajouter structured_issues dans phase2_result persisté.
+7. Ne pas modifier les seuils.
+8. Ne pas modifier les prompts.
+9. Ne pas modifier Phase 1.
+10. Ne pas toucher génération.
+
+Validation obligatoire :
+- php -l app/Services/QuestionBank/VariantAlignmentChecker.php
+- php artisan questions:kernel:validate-content 4
+- php artisan questions:kernel:fill-content 4 --force
+- psql "$DATABASE_URL" -c "SELECT frame_en->'phase2_result'->'structured_issues' FROM question_intents WHERE id=4;"
+- vérifier que phase2_result contient :
+  - policy
+  - variant_scores
+  - summary
+  - issues
+  - structured_issues
+  - recommendation
+
+STOP après P3.
+Rapport avec slices avant/après.
