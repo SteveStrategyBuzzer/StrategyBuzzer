@@ -56,6 +56,9 @@ class KernelContentBuilder
         'recadrage_expected', 'fairness_reason', 'alignment_with_kernel_core',
     ];
 
+    // Mirrors KernelLoopAlerter::MAX_FILL_ATTEMPTS — kept in sync manually.
+    public const MAX_FILL_ATTEMPTS = 3;
+
     // =========================================================================
     // Public entry point
     // =========================================================================
@@ -67,7 +70,7 @@ class KernelContentBuilder
      * @return array{ok:bool, frame?:array, error?:string, step?:string,
      *              master?:array, sources?:array, latency_total_ms?:int}
      */
-    public function buildEnglishContent(array $frame): array
+    public function buildEnglishContent(array $frame, ?array $retryGuidance = null): array
     {
         $kernelCore = $frame['kernel_core'] ?? [];
 
@@ -80,7 +83,7 @@ class KernelContentBuilder
 
         // ── 3-A : generate master question (qcm_recognition) ─────────────────
         $aStart       = (int) round(microtime(true) * 1000);
-        $masterResult = $this->generateMaster($kernelCore);
+        $masterResult = $this->generateMaster($kernelCore, $retryGuidance);
         if (! $masterResult['ok']) {
             return ['ok' => false, 'error' => $masterResult['error'], 'step' => '3-A'];
         }
@@ -98,7 +101,7 @@ class KernelContentBuilder
 
         // ── 3-C : generate derived variants from master ────────────────────────
         $cStart        = (int) round(microtime(true) * 1000);
-        $derivedResult = $this->generateDerivedVariants($kernelCore, $master);
+        $derivedResult = $this->generateDerivedVariants($kernelCore, $master, $retryGuidance);
         if (! $derivedResult['ok']) {
             return ['ok' => false, 'error' => $derivedResult['error'], 'step' => '3-C'];
         }
@@ -191,14 +194,17 @@ class KernelContentBuilder
     /**
      * @return array{ok:bool, master?:array, source?:string, error?:string}
      */
-    private function generateMaster(array $kernelCore): array
+    private function generateMaster(array $kernelCore, ?array $retryGuidance = null): array
     {
         $endpoint = $this->apiUrl('/generate-kernel-master');
 
+        $body = ['kernel_core' => $kernelCore];
+        if ($retryGuidance !== null) {
+            $body['retry_guidance'] = $retryGuidance;
+        }
+
         try {
-            $response = Http::timeout(self::REQUEST_TIMEOUT)->post($endpoint, [
-                'kernel_core' => $kernelCore,
-            ]);
+            $response = Http::timeout(self::REQUEST_TIMEOUT)->post($endpoint, $body);
         } catch (\Throwable $e) {
             Log::error('[KernelContentBuilder] 3-A transport error', ['error' => $e->getMessage()]);
             return ['ok' => false, 'error' => '3-A transport: ' . $e->getMessage()];
@@ -294,15 +300,17 @@ class KernelContentBuilder
     /**
      * @return array{ok:bool, variants?:array, source?:string, error?:string}
      */
-    private function generateDerivedVariants(array $kernelCore, array $master): array
+    private function generateDerivedVariants(array $kernelCore, array $master, ?array $retryGuidance = null): array
     {
         $endpoint = $this->apiUrl('/generate-kernel-derived-variants');
 
+        $body = ['kernel_core' => $kernelCore, 'master' => $master];
+        if ($retryGuidance !== null) {
+            $body['retry_guidance'] = $retryGuidance;
+        }
+
         try {
-            $response = Http::timeout(self::REQUEST_TIMEOUT)->post($endpoint, [
-                'kernel_core' => $kernelCore,
-                'master'      => $master,
-            ]);
+            $response = Http::timeout(self::REQUEST_TIMEOUT)->post($endpoint, $body);
         } catch (\Throwable $e) {
             Log::error('[KernelContentBuilder] 3-C transport error', ['error' => $e->getMessage()]);
             return ['ok' => false, 'error' => '3-C transport: ' . $e->getMessage()];
@@ -325,6 +333,121 @@ class KernelContentBuilder
     // =========================================================================
     // Helpers
     // =========================================================================
+
+    // =========================================================================
+    // Feed-forward : Phase 2 → Phase 1 retry guidance
+    // =========================================================================
+
+    /**
+     * Build a compact diagnostic retry guidance array from the previous
+     * phase2_result. Returns null when no guidance is needed (first run,
+     * or previous policy was A — all variants aligned).
+     *
+     * Output contains ONLY structural direction — no question_text,
+     * no answer content, no creative reformulations.
+     *
+     * @param  array|null  $phase2Result  frame_en['phase2_result'] from previous run.
+     * @return array|null
+     */
+    public function buildRetryGuidance(?array $phase2Result): ?array
+    {
+        if ($phase2Result === null) {
+            return null;
+        }
+
+        $policy = $phase2Result['policy'] ?? 'A';
+        if ($policy === 'A') {
+            return null;
+        }
+
+        $issues = $phase2Result['structured_issues'] ?? [];
+        if (empty($issues)) {
+            return null;
+        }
+
+        $failedVariants = [];
+        $avoidSet       = [];
+        $retryGoals     = [];
+
+        foreach ($issues as $si) {
+            $variantKey = $si['variant_key'] ?? null;
+            $driftType  = $si['drift_type']  ?? null;
+            $action     = $si['action_required'] ?? 'none';
+
+            if ($variantKey && $driftType && $action !== 'none') {
+                $failedVariants[$variantKey] = $driftType;
+
+                foreach ($this->avoidItemsForDrift($driftType) as $item) {
+                    $avoidSet[$item] = true;
+                }
+
+                $goal = $this->retryGoalForDrift($driftType);
+                if ($goal !== '' && !in_array($goal, $retryGoals, true)) {
+                    $retryGoals[] = $goal;
+                }
+            }
+        }
+
+        if (empty($failedVariants)) {
+            return null;
+        }
+
+        return [
+            'policy'          => $policy,
+            'failed_variants' => $failedVariants,
+            'avoid'           => array_keys($avoidSet),
+            'retry_goal'      => $retryGoals,
+        ];
+    }
+
+    /**
+     * Detect whether the same drift_type(s) appear in both the previous
+     * and the current phase2_result structured_issues.
+     * Returns true if repeated drift detected.
+     */
+    public function detectRepeatedDrift(?array $previousPhase2, array $currentPhase2): bool
+    {
+        if ($previousPhase2 === null) {
+            return false;
+        }
+        $prevDrifts    = array_column($previousPhase2['structured_issues'] ?? [], 'drift_type');
+        $currentDrifts = array_column($currentPhase2['structured_issues']  ?? [], 'drift_type');
+        $shared = array_intersect(array_filter($prevDrifts), array_filter($currentDrifts));
+        return !empty($shared);
+    }
+
+    /**
+     * Map drift_type → list of avoid patterns.
+     * Closed vocabulary — no creative content, no question text.
+     */
+    private function avoidItemsForDrift(string $driftType): array
+    {
+        return match ($driftType) {
+            'subject_touch_low'   => ['broad topic drift', 'tangential subject reference'],
+            'weak_reasoning'      => ['simple reformulation', 'weak inference chain'],
+            'weak_deceptive_trap' => ['generic distractors not tied to answer_target'],
+            'false_not_plausible' => ['implausible false statement', 'false claim unrelated to subject'],
+            'subject_escape'      => ['question about a different subject than answer_target'],
+            'kernel_collapse'     => [],
+            default               => ['broad topic drift'],
+        };
+    }
+
+    /**
+     * Map drift_type → structural retry goal (direction only, no content).
+     */
+    private function retryGoalForDrift(string $driftType): string
+    {
+        return match ($driftType) {
+            'subject_touch_low'   => 'tighter subject_touch alignment with answer_target',
+            'weak_reasoning'      => 'stronger causal or comparative reasoning chain',
+            'weak_deceptive_trap' => 'distractor strategy anchored to answer_target confusion',
+            'false_not_plausible' => 'plausible false claim directly about the subject',
+            'subject_escape'      => 'keep question anchored to the exact answer_target',
+            'kernel_collapse'     => 'regenerate variant from kernel_core',
+            default               => 'tighter subject_touch alignment',
+        };
+    }
 
     private function apiUrl(string $path): string
     {

@@ -1632,6 +1632,38 @@ const bandLimitsForVariant = (variantKey) => {
 };
 
 // =============================================================================
+// =============================================================================
+// buildRetryBlock — Feed-forward diagnostic block (Phase 2 → Phase 1).
+//
+// Converts structured Phase 2 diagnostic guidance into a compact plain-text
+// block injected into Phase 1 prompts on retry runs only.
+//
+// Rules:
+//   - Diagnostic only — no question_text, no answers, no creative content.
+//   - Max ~400 chars to avoid prompt bloat.
+//   - Absent when retryGuidance is null (first run / policy A).
+// =============================================================================
+function buildRetryBlock(guidance) {
+  if (!guidance || !guidance.failed_variants || Object.keys(guidance.failed_variants).length === 0) {
+    return '';
+  }
+  const failed = Object.entries(guidance.failed_variants)
+    .map(([k, dt]) => `- ${k} → ${dt}`)
+    .join('\n');
+  const avoid = (guidance.avoid || []).map(a => `- ${a}`).join('\n');
+  const goals = (guidance.retry_goal || []).map(g => `- ${g}`).join('\n');
+  return `
+--- RETRY CONTEXT (previous generation rejected — policy ${guidance.policy || '?'}) ---
+FAILED_VARIANTS:
+${failed}
+AVOID in this retry:
+${avoid || '- (none specified)'}
+RETRY_GOAL:
+${goals || '- tighter subject_touch alignment'}
+---
+`;
+}
+
 // POST /generate-kernel-variants  — DEPRECATED (HTTP 410 Gone)
 //
 // This endpoint has been permanently removed. It generated all variants in a
@@ -1673,6 +1705,7 @@ app.post('/generate-kernel-variants', (req, res) => {
 // =============================================================================
 app.post('/generate-kernel-master', async (req, res) => {
   const { kernel_core } = req.body || {};
+  const retryGuidance = (req.body || {}).retry_guidance || null;
 
   if (!kernel_core || typeof kernel_core !== 'object') {
     return res.status(400).json({ ok: false, error: 'kernel_core object required' });
@@ -1713,7 +1746,7 @@ KERNEL CORE (strict anchor — do NOT change subject or correct answer):
 - Answer target: ${answer_target}
 - Known trap / confusion: ${potential_trap || 'none specified'}
 - Concept family: ${concept_family || 'to be determined'}
-
+${retryGuidance ? buildRetryBlock(retryGuidance) : ''}
 COGNITIVE TYPE: qcm_recognition — direct factual recall. The player recognizes a known fact. No deduction required.
 
 RULES:
@@ -1837,6 +1870,7 @@ Return EXACTLY this JSON:
 // =============================================================================
 app.post('/generate-kernel-derived-variants', async (req, res) => {
   const { kernel_core, master } = req.body || {};
+  const retryGuidance = (req.body || {}).retry_guidance || null;
 
   if (!kernel_core || typeof kernel_core !== 'object') {
     return res.status(400).json({ ok: false, error: 'kernel_core object required' });
@@ -1888,7 +1922,7 @@ KERNEL CORE:
 - Answer target: ${answer_target}
 - Known trap / confusion: ${potential_trap || 'none specified'}
 - Concept family: ${concept_family || 'to be determined'}
-
+${retryGuidance ? buildRetryBlock(retryGuidance) : ''}
 GLOBAL RULES FOR ALL DERIVED VARIANTS:
 - Language: English only
 - Correct answer must match the master's correct answer (same fact: "${masterCorrectText}")

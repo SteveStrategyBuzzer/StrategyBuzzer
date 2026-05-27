@@ -1,0 +1,227 @@
+GO — P4 réel : FEED-FORWARD DIAGNOSTIQUE Phase2 → Phase1
+
+Objectif :
+Brancher un vrai retry guidance compact entre Phase 2 et Phase 1.
+
+IMPORTANT :
+- Phase 1 reste le créateur
+- Phase 2 reste le protecteur
+- Phase 2 ne réécrit jamais le contenu
+- Phase 2 ne devient jamais auteur principal
+- Le feed-forward doit être DIAGNOSTIQUE uniquement
+
+Méthode obligatoire :
+GREP → SLICE → PATCH → VALIDATION.
+
+──────────────────────────────
+OBJECTIF EXACT
+──────────────────────────────
+
+Actuellement :
+- structured_issues existent
+- drift_type existe
+- action_required existe
+- anti-boucle existe
+- human_review existe
+- alerting existe
+
+MAIS :
+les retries utilisent encore essentiellement
+le même prompt Phase1.
+
+Il faut maintenant :
+- transmettre un mini contexte diagnostique
+- empêcher la répétition du même drift
+- sans contaminer créativement Phase1
+
+──────────────────────────────
+RÈGLE ABSOLUE
+──────────────────────────────
+
+Phase 2 peut transmettre :
+- variant_key
+- drift_type
+- action_required
+- patterns à éviter
+
+Phase 2 NE PEUT PAS transmettre :
+- question_text
+- answer_a/b/c/d
+- saviez_vous
+- reformulations
+- exemples de réponses
+- texte gameplay
+- texte créatif
+
+──────────────────────────────
+PATCH À APPLIQUER
+──────────────────────────────
+
+1. KernelContentBuilder.php
+
+Ajouter :
+- MAX_FILL_ATTEMPTS
+- buildRetryGuidance()
+- detectRepeatedDrift()
+
+Modifier :
+- signature buildEnglishContent(?array $retryGuidance = null)
+- pass-through retryGuidance vers :
+  - generateMaster()
+  - generateDerivedVariants()
+
+buildRetryGuidance() doit lire :
+frame_en.phase2_result.structured_issues
+
+Et produire un bloc compact :
+
+[
+  'policy' => 'C',
+  'failed_variants' => [
+      'qcm_reasoning' => 'weak_reasoning',
+      'tf_recognition_false' => 'false_not_plausible'
+  ],
+  'avoid' => [
+      'simple reformulation',
+      'weak inference chain',
+      'implausible false statement'
+  ],
+  'retry_goal' => [
+      'stronger reasoning separation',
+      'more plausible false memory trap'
+  ]
+]
+
+IMPORTANT :
+Aucun contenu créatif.
+Aucune question.
+Aucune réponse.
+
+──────────────────────────────
+2. question-api.js
+──────────────────────────────
+
+Endpoints :
+- /generate-kernel-master
+- /generate-kernel-derived-variants
+
+Ajouter :
+retry_guidance optional dans req.body.
+
+Créer helper :
+buildRetryBlock()
+
+Structure attendue :
+
+--- RETRY CONTEXT ---
+FAILED_VARIANTS:
+- qcm_reasoning → weak_reasoning
+
+AVOID:
+- simple reformulation
+- weak inference chain
+
+RETRY_GOAL:
+- stronger reasoning separation
+---
+
+IMPORTANT :
+- bloc compact
+- max ~400 chars
+- avant les RULES
+- jamais injecté dans les règles centrales
+- jamais de JSON brut
+
+──────────────────────────────
+3. QuestionsKernelFillContentCommand.php
+──────────────────────────────
+
+Avant builder :
+- lire previous phase2_result
+- buildRetryGuidance()
+- incrémenter _fill_attempt_count
+
+Passer retryGuidance au builder.
+
+Ajouter :
+detectRepeatedDrift()
+
+Règles :
+- même drift répété 2 fois → human_review
+- _fill_attempt_count > MAX → rejected
+
+──────────────────────────────
+RÈGLES FEED-FORWARD
+──────────────────────────────
+
+Le retry guidance doit :
+- empêcher le même drift
+- empêcher la même faiblesse
+- réaligner les cognitifs
+- réaligner le sujet touché
+
+Le retry guidance ne doit PAS :
+- réécrire
+- suggérer du contenu
+- corriger pédagogiquement
+- expliquer l’histoire
+- fournir des réponses
+
+──────────────────────────────
+VALIDATIONS OBLIGATOIRES
+──────────────────────────────
+
+# PHP
+php -l app/Services/QuestionBank/KernelContentBuilder.php
+php -l app/Console/Commands/QuestionsKernelFillContentCommand.php
+
+# Node
+cd apps/question-api && npm run build
+
+# Vérifier retry block
+grep -n "RETRY CONTEXT" apps/question-api/question-api.js
+
+# Test nominal
+php artisan questions:kernel:fill-content <intent_normal>
+
+→ guidance null
+→ prompt inchangé
+
+# Test retry
+php artisan questions:kernel:fill-content <intent_human_review> --force
+
+→ retry_guidance injecté
+→ RETRY CONTEXT visible dans logs Question API
+
+# Vérifier DB
+psql "$DATABASE_URL" -c "
+SELECT
+frame_en->>'_fill_attempt_count',
+frame_status,
+frame_en->'phase2_result'->'structured_issues'
+FROM question_intents
+WHERE id=<id>;
+"
+
+# Vérifier anti-boucle
+- même drift répété → human_review
+- > MAX attempts → rejected
+
+──────────────────────────────
+IMPORTANT
+──────────────────────────────
+
+Phase 2 reste READ-ONLY.
+
+Le retry guidance est :
+- diagnostique
+- compact
+- structurel
+- anti-répétition
+
+PAS :
+- créatif
+- pédagogique
+- génératif
+
+STOP après patch + validations.

@@ -100,12 +100,20 @@ class QuestionsKernelFillContentCommand extends Command
         $fillAttemptCount = (int) ($frame['_fill_attempt_count'] ?? 0) + 1;
         $frame['_fill_attempt_count'] = $fillAttemptCount;
 
+        // Build compact diagnostic guidance from the previous Phase 2 result.
+        // Returns null on first run or when previous policy was A (no guidance needed).
+        $retryGuidance = $builder->buildRetryGuidance($previousPhase2);
+
+        if ($retryGuidance !== null) {
+            $this->line('  <fg=yellow>Retry guidance actif</> (policy ' . ($retryGuidance['policy'] ?? '?') . ', ' . count($retryGuidance['failed_variants'] ?? []) . ' variante(s) à corriger)');
+        }
+
         $this->line('  <fg=cyan>Étape 3-A :</> Génération question maître EN → /generate-kernel-master …');
         $this->line('  <fg=cyan>Étape 3-B :</> Validation maître (PHP-side)');
         $this->line('  <fg=cyan>Étape 3-C :</> Génération 6 variantes dérivées → /generate-kernel-derived-variants …');
         $this->line('');
 
-        $result = $builder->buildEnglishContent($frame);
+        $result = $builder->buildEnglishContent($frame, $retryGuidance);
 
         if (! $result['ok']) {
             $step  = $result['step'] ?? '?';
