@@ -1,0 +1,79 @@
+AUDIT CRITIQUE — correct_answer_key / shuffle / logique gameplay
+
+Objectif :
+Vérifier l’alignement complet entre :
+- Phase 1 génération noyaux
+- Phase 2 validation/protection
+- stockage DB
+- Node gameplay
+- shuffle des réponses
+- affichage client
+
+AUCUN PATCH.
+GREP → SLICE → RAPPORT.
+
+Question centrale :
+correct_answer_key représente quoi exactement dans l’architecture actuelle ?
+
+À vérifier :
+
+1. Dans Phase 1
+- où correct_answer_key est généré
+- si A/B/C/D est considéré comme vérité logique
+- si A/B/C/D est considéré comme position fixe
+- comment les réponses sont stockées dans frame_en
+
+2. Dans Phase 2
+- est-ce que Phase 2 corrige correct_answer_key ?
+- est-ce qu’elle vérifie seulement la cohérence logique ?
+- est-ce qu’elle touche à A/B/C/D ?
+- est-ce dangereux avec le shuffle runtime ?
+
+3. Dans DB
+- question_translations.correct_answer_key
+- question_groups.correct_answer_key ou équivalent
+- polarity
+- answer_a/b/c/d
+- est-ce que la DB stocke la position canonique ou la position affichée ?
+
+4. Dans Node gameplay
+- où les réponses sont envoyées aux joueurs
+- où le shuffle est fait
+- est-ce que Node randomise A/B/C/D
+- est-ce que Node conserve un mapping interne original → affiché
+- comment Node valide la bonne réponse après shuffle
+
+5. Dans client Blade/JS
+- est-ce que le client envoie A/B/C/D affiché
+- est-ce que le client envoie un answer_id
+- est-ce que le client connaît correct_answer_key
+- est-ce que le client pourrait tricher
+
+6. Vrai/Faux
+- tf_*_true doit-il absolument être A ?
+- tf_*_false doit-il absolument être B ?
+- ou faut-il plutôt stocker statement_truth=true/false et laisser Node gérer l’affichage ?
+- vérifier si Vrai/Faux est shufflé ou toujours Vrai/Faux fixe
+
+7. Conclusion attendue
+Je veux un verdict clair :
+
+A. correct_answer_key = vérité logique canonique ?
+B. correct_answer_key = position affichée ?
+C. Node shuffle les réponses ou non ?
+D. Si oui, où est le mapping ?
+E. Phase 2 peut-elle toucher correct_answer_key sans casser gameplay ?
+F. Faut-il ajouter statement_truth pour les TF ?
+G. Faut-il garder POLARITY_LOCK A/B ou le remplacer par truth_value ?
+H. Quel est le meilleur alignement production ?
+
+Rapport obligatoire :
+- fichiers exacts
+- lignes exactes
+- slices
+- verdict architecture
+- risques
+- patchs nécessaires dans l’ordre
+
+Aucun patch.
+STOP après audit.
