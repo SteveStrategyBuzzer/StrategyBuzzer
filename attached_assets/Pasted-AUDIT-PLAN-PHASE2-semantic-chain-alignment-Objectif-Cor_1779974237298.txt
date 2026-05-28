@@ -1,0 +1,87 @@
+AUDIT + PLAN — PHASE2 semantic_chain_alignment
+
+Objectif :
+Corriger Phase2 sans casser le pipeline actuel.
+
+Problème :
+Phase2 confond parfois :
+- proximité lexicale du sujet
+avec
+- vraie cohérence cognitive du noyau.
+
+Exemple :
+Une question peut ne pas nommer directement “zooxanthelles”, mais rester correcte si elle suit la chaîne :
+corail → symbiose → nutrition → zooxanthelles.
+
+AUCUN PATCH IMMÉDIAT.
+GREP → SLICE → PLAN.
+
+À vérifier :
+1. Où subjectTouchScore est calculé.
+2. Où VariantAlignmentChecker transforme le score en grade A/B/C/D.
+3. Où structured_issues crée subject_touch_low / weak_reasoning.
+4. Comment ajouter sans remplacer :
+   - lexical_subject_touch
+   - semantic_chain_alignment
+   - cognitive_integrity
+
+Règle :
+Ne pas supprimer subjectTouchScore.
+Ne pas changer les seuils A/B/C/D maintenant.
+Ne pas modifier alerting.
+Ne pas modifier feed-forward.
+Ne pas modifier Phase1.
+
+Objectif Phase2 futur :
+Pour chaque variant, calculer :
+
+1. lexical_subject_touch
+- proximité directe avec subject / answer_target / anchor terms
+
+2. semantic_chain_alignment
+- relation causale, fonctionnelle ou biologique avec le sujet touché
+- exemple accepté :
+  corail → symbiose → nutrition → zooxanthelles
+- exemple refusé :
+  corail → marées → hiver → météo
+
+3. cognitive_integrity
+- vérifie si le variant respecte son cognitif :
+  recognition = accès direct
+  reasoning = relation logique
+  deceptive_trap = confusion plausible
+  tf_false = fausse croyance plausible
+  tf_reasoning_false = fausse conclusion plausible
+
+Pondération par cognitive_type :
+- qcm_recognition :
+  lexical fort, semantic moyen
+- tf_recognition_true :
+  lexical fort, semantic moyen
+- tf_recognition_false :
+  lexical moyen, semantic moyen, false plausible fort
+- qcm_reasoning :
+  lexical moyen, semantic fort
+- tf_reasoning_true :
+  lexical moyen, semantic fort
+- tf_reasoning_false :
+  lexical moyen, semantic fort, false conclusion plausible fort
+- qcm_deceptive_trap :
+  lexical moyen, semantic fort, trap plausible fort
+
+Important :
+Tous les variants doivent rester dans le sujet touché.
+semantic_chain_alignment ne doit PAS autoriser plus de dérive.
+Il doit seulement reconnaître les bonnes chaînes cognitives à l’intérieur du noyau.
+
+Sortie attendue :
+1. état actuel exact de VariantAlignmentChecker
+2. endroits précis à modifier
+3. proposition de structure de score sans changer les seuils
+4. comment stocker ces nouveaux sous-scores dans phase2_result.variant_scores
+5. comment éviter les faux positifs sur les bons traps
+6. comment éviter les vrais drifts
+7. patchs recommandés dans l’ordre
+8. validations nécessaires avec exemple intent 67
+
+STOP après plan.
