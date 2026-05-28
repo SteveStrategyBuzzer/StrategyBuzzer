@@ -48,6 +48,25 @@ final class VariantAlignmentChecker
         'tf_reasoning_false',
     ];
 
+    /**
+     * Composite weights per variant key (shadow-mode monitoring only).
+     * Drives composite sub-score; does NOT affect grade or policy.
+     *
+     * Recognition variants weight lexical heavily — they are expected to
+     * reuse the master's vocabulary directly.
+     * Reasoning / trap variants weight semantic chain and cognitive integrity
+     * more heavily — they approach the subject from a different cognitive angle.
+     */
+    private const COMPOSITE_WEIGHTS = [
+        'qcm_recognition'     => ['lexical' => 0.70, 'semantic' => 0.20, 'cognitive' => 0.10],
+        'tf_recognition_true' => ['lexical' => 0.70, 'semantic' => 0.20, 'cognitive' => 0.10],
+        'tf_recognition_false'=> ['lexical' => 0.40, 'semantic' => 0.30, 'cognitive' => 0.30],
+        'qcm_reasoning'       => ['lexical' => 0.40, 'semantic' => 0.40, 'cognitive' => 0.20],
+        'tf_reasoning_true'   => ['lexical' => 0.40, 'semantic' => 0.40, 'cognitive' => 0.20],
+        'tf_reasoning_false'  => ['lexical' => 0.30, 'semantic' => 0.30, 'cognitive' => 0.40],
+        'qcm_deceptive_trap'  => ['lexical' => 0.40, 'semantic' => 0.30, 'cognitive' => 0.30],
+    ];
+
     // =========================================================================
     // Public API
     // =========================================================================
@@ -124,10 +143,22 @@ final class VariantAlignmentChecker
             $score    = KernelTextHelpers::subjectTouchScore($kernelCore, $haystack);
             $grade    = $this->grade($score);
 
+            // ── Shadow mode: sub-scores (monitoring only — do NOT affect grade/policy) ──
+            $masterVariant  = $variants['qcm_recognition'] ?? [];
+            $semanticChain  = KernelTextHelpers::semanticChainScore($masterVariant, $haystack);
+            $cogIntegrity   = KernelTextHelpers::cognitiveIntegrityScore($v, $key);
+            $composite      = $this->compositeScore($score, $semanticChain, $cogIntegrity, $key);
+
             $variantScores[$key] = [
                 'score'       => round($score, 3),
                 'grade'       => $grade,
                 'haystack_len'=> mb_strlen($haystack),
+                'subscores'   => [
+                    'lexical_subject_touch'    => round($score, 3),
+                    'semantic_chain_alignment' => round($semanticChain, 3),
+                    'cognitive_integrity'      => round($cogIntegrity, 3),
+                    'composite'                => round($composite, 3),
+                ],
             ];
 
             match ($grade) {
@@ -306,6 +337,28 @@ final class VariantAlignmentChecker
             return 'B';
         }
         return 'A';
+    }
+
+    /**
+     * Weighted composite score for shadow-mode monitoring.
+     * Blends lexical_subject_touch, semantic_chain_alignment, and
+     * cognitive_integrity using per-variant-key weights from COMPOSITE_WEIGHTS.
+     * Result is stored in subscores.composite and never used for grading.
+     */
+    private function compositeScore(
+        float  $lexical,
+        float  $semantic,
+        float  $cognitive,
+        string $variantKey
+    ): float {
+        $w = self::COMPOSITE_WEIGHTS[$variantKey]
+            ?? ['lexical' => 0.50, 'semantic' => 0.30, 'cognitive' => 0.20];
+
+        return min(1.0,
+            $lexical  * $w['lexical']  +
+            $semantic * $w['semantic'] +
+            $cognitive * $w['cognitive']
+        );
     }
 
     private function buildRecommendation(

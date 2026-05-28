@@ -276,8 +276,178 @@ final class KernelTextHelpers
     }
 
     // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Semantic chain alignment score [0.0–1.0].
+     *
+     * Measures how many of the master variant's (qcm_recognition) unique
+     * significant tokens appear in the target variant's haystack.
+     *
+     * The master's full content (question_text + correct answer + explanation
+     * + saviez_vous) establishes the authoritative semantic neighborhood of
+     * the kernel concept — including causal/functional vocabulary that may
+     * not be present in en_anchor_terms (e.g. "bleaching", "nutrients",
+     * "photosynthesis" for a coral-reef kernel).
+     *
+     * score = |set(neighborTokens) ∩ set(variantTokens)| / |set(neighborTokens)|
+     *
+     * Returns 0.0 when the master variant is absent or empty.
+     *
+     * @param  array  $masterVariant  The qcm_recognition variant array (may be empty)
+     * @param  string $haystack       question_text + correct_answer_text + explanation of target variant
+     */
+    public static function semanticChainScore(array $masterVariant, string $haystack): float
+    {
+        $masterCk     = strtolower((string) ($masterVariant['correct_answer_key'] ?? ''));
+        $masterAnswer = (string) ($masterVariant["answer_{$masterCk}"] ?? '');
+
+        $neighborhood = implode(' ', [
+            (string) ($masterVariant['question_text'] ?? ''),
+            $masterAnswer,
+            (string) ($masterVariant['explanation']   ?? ''),
+            (string) ($masterVariant['saviez_vous']   ?? ''),
+        ]);
+
+        $neighborTokens = array_unique(self::significantTokens($neighborhood));
+        if (empty($neighborTokens)) {
+            return 0.0;
+        }
+
+        $variantTokens = array_unique(self::significantTokens($haystack));
+        if (empty($variantTokens)) {
+            return 0.0;
+        }
+
+        $neighborSet = array_flip($neighborTokens);
+        $covered     = 0;
+        foreach ($variantTokens as $t) {
+            if (isset($neighborSet[$t])) {
+                $covered++;
+            }
+        }
+
+        return min(1.0, $covered / count($neighborTokens));
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Cognitive integrity score [0.0–1.0].
+     *
+     * Checks whether a variant respects the cognitive contract implied by
+     * its variant_key:
+     *
+     *   qcm_recognition / tf_recognition_true
+     *     → requires_inference must be false (direct retrieval, no chain)
+     *
+     *   qcm_reasoning / tf_reasoning_true
+     *     → question_text must contain a causal/logical connector
+     *
+     *   tf_reasoning_false
+     *     → 1.0 if question_text has causal connector
+     *     → 0.5 if only explanation has one (question is a flat inversion)
+     *     → 0.0 if neither has any causal connector
+     *
+     *   tf_recognition_false
+     *     → correct_answer must be False (key='b') + explanation names concept
+     *
+     *   qcm_deceptive_trap
+     *     → has_deceptive_distractor=true + intuitive_answer_presence=present
+     *
+     * Returns 1.0 (fully respected), 0.5 (partially respected), 0.0 (violated).
+     * Cognitive_contract fields may be flat in the variant array or nested
+     * under 'cognitive_contract' — both layouts are handled.
+     *
+     * @param  array  $variant     Full variant array from frame_en.variants
+     * @param  string $variantKey  One of the 7 VARIANT_KEYS
+     */
+    public static function cognitiveIntegrityScore(array $variant, string $variantKey): float
+    {
+        $qt          = strtolower((string) ($variant['question_text'] ?? ''));
+        $explanation = strtolower((string) ($variant['explanation']   ?? ''));
+
+        // Cognitive-contract fields may be flat or nested
+        $contract = is_array($variant['cognitive_contract'] ?? null)
+            ? $variant['cognitive_contract']
+            : $variant;
+
+        switch ($variantKey) {
+
+            // ── Recognition: no inference required ────────────────────────
+            case 'qcm_recognition':
+            case 'tf_recognition_true':
+                $ri = $contract['requires_inference'] ?? null;
+                if ($ri === false || $ri === 'false') {
+                    return 1.0;
+                }
+                if ($ri === true || $ri === 'true') {
+                    return 0.0;
+                }
+                return 0.5;
+
+            // ── TF false recognition: plausible false claim ───────────────
+            case 'tf_recognition_false':
+                $ckRaw = strtolower((string) ($variant['correct_answer_key'] ?? ''));
+                if (!in_array($ckRaw, ['b', 'false'], true)) {
+                    return 0.0;
+                }
+                return count(self::significantTokens($explanation)) >= 5 ? 1.0 : 0.5;
+
+            // ── Reasoning: causal connector in question_text ─────────────
+            case 'qcm_reasoning':
+            case 'tf_reasoning_true':
+                return self::hasCausalConnector($qt) ? 1.0 : 0.5;
+
+            // ── TF reasoning false: question should present a chain ───────
+            case 'tf_reasoning_false':
+                $qtChain  = self::hasCausalConnector($qt);
+                $expChain = self::hasCausalConnector($explanation);
+                if (!$qtChain && !$expChain) {
+                    return 0.0;
+                }
+                // Full credit only when the question itself encodes the reasoning
+                // (not just a flat assertion that the explanation later corrects)
+                return $qtChain ? 1.0 : 0.5;
+
+            // ── Deceptive trap: anchored confusion ────────────────────────
+            case 'qcm_deceptive_trap':
+                $hasDistractor     = $contract['has_deceptive_distractor'] ?? null;
+                $intuitivePresence = $contract['intuitive_answer_presence'] ?? null;
+                if (($hasDistractor === true || $hasDistractor === 'true')
+                    && $intuitivePresence === 'present') {
+                    return 1.0;
+                }
+                if ($hasDistractor === true || $hasDistractor === 'true') {
+                    return 0.5;
+                }
+                return 0.0;
+        }
+
+        return 0.5;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
     // Private helpers
     // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Returns true if the (already-lowercased) text contains a causal or
+     * logical reasoning connector that indicates an inference chain.
+     */
+    private static function hasCausalConnector(string $text): bool
+    {
+        foreach ([
+            'because', 'since', 'therefore', 'thus', 'hence',
+            'as a result', 'leads to', 'results in', 'causes',
+            'due to', 'consequently', 'explains why', 'which means',
+            'means that',
+        ] as $connector) {
+            if (str_contains($text, $connector)) {
+                return true;
+            }
+        }
+        return false;
+    }
 
     private static function shingles(string $text, int $k = 3): array
     {
