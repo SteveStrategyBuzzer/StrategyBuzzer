@@ -1,0 +1,153 @@
+NEXT — EXPORT HUMAN REVIEW — 8 NOYAUX COMPLETS RÉELS
+
+Objectif :
+Afficher les 8 noyaux complets réels pour calibration humaine gameplay/cognition.
+
+Je veux voir :
+
+* les 7 cognitifs complets
+* les réponses complètes
+* les SV complets
+* les scores
+* les drifts
+* les notes gameplay
+* les WHY FAILED
+* les proximités master
+
+pour pouvoir comparer humainement.
+
+──────────────────────────────
+DOMAINES À EXPORTER
+──────────────────────────────
+
+Depth 3–5 :
+
+* Histoire
+* Géographie
+* Science
+* Art
+* Sport
+* Cinéma
+* Cuisine
+* Faune
+
+──────────────────────────────
+FORMAT OBLIGATOIRE
+──────────────────────────────
+
+UN FICHIER PAR INTENT :
+
+storage/app/human_review_exports/
+
+history_depth3.md
+geography_depth4.md
+science_depth5.md
+etc.
+
+──────────────────────────────
+FORMAT HUMAIN COMPACT
+──────────────────────────────
+
+Pour CHAQUE noyau :
+
+# Subject
+
+# Domain
+
+# Depth
+
+# Policy
+
+# Retry status
+
+Puis :
+
+────────────────────
+
+1. qcm_recognition
+   ────────────────────
+
+Question
+Réponses
+Bonne réponse
+Explanation
+SV
+
+Scores :
+
+* lexical
+* semantic_chain
+* cognitive_integrity
+* composite
+
+Gameplay Notes
+WHY FAILED si applicable
+
+────────────────────
+2. qcm_reasoning
+────────────────────
+
+Même structure
+
+────────────────────
+3. qcm_deceptive_trap
+────────────────────
+
+Même structure
+
+etc jusqu’aux 7 cognitifs.
+
+──────────────────────────────
+IMPORTANT
+──────────────────────────────
+
+1. Inclure :
+
+* cognitive_type explicite
+* drift_type
+* action_required
+* retry info si applicable
+
+2. Inclure :
+   MASTER PROXIMITY :
+
+* expected proximity
+* suspicious proximity
+* acceptable similarity
+
+3. IMPORTANT :
+   Ne PAS flagger :
+   tf_recognition_true
+   comme “too close to master”.
+
+Cette proximité est NORMALE et attendue.
+
+4. Ajouter :
+   GAMEPLAY VERDICT :
+
+* excellent
+* too easy
+* too similar
+* weak trap
+* weak reasoning
+* strong reasoning
+* excellent deceptive
+* obvious false
+* etc.
+
+──────────────────────────────
+VALIDATION
+──────────────────────────────
+
+1. Vérifier que les 8 exports existent.
+2. Vérifier lisibilité markdown.
+3. Vérifier présence des 7 cognitifs.
+4. Vérifier scores visibles.
+5. Vérifier gameplay notes visibles.
+6. Vérifier WHY FAILED visible.
+7. Vérifier qu’aucun JSON brut n’est nécessaire pour lecture humaine.
+
+STOP après :
+
+* affichage du chemin des 8 fichiers
+* affichage complet d’un export exemple.
