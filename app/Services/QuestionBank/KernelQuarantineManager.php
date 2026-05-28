@@ -54,13 +54,16 @@ final class KernelQuarantineManager
      *                                        { variants_before, variants_after, fixed_keys,
      *                                          phase2_before, phase2_after, latency_ms, source, at }
      * @param  array|null  $retryGuidance     Guidance that was passed to attempt 2
+     * @param  array       $finalFrame        The actual final frame_en after all attempts (post-retry).
+     *                                        Used for 07_final_quarantine.json to ensure correct final state.
      * @return string                         Absolute path of the package directory ('' on failure)
      */
     public function writeQuarantinePackage(
         int    $intentId,
         array  $snapshotOriginal,
         array  $snapshotRetry,
-        ?array $retryGuidance
+        ?array $retryGuidance,
+        array  $finalFrame = []
     ): string {
         try {
             $timestamp = now()->format('Ymd_His');
@@ -73,9 +76,12 @@ final class KernelQuarantineManager
                 mkdir($dir, 0755, true);
             }
 
-            $phase2Original = $snapshotOriginal['phase2']      ?? [];
-            $phase2Retry    = $snapshotRetry['phase2_after']   ?? [];
-            $fixedKeys      = $snapshotRetry['fixed_keys']     ?? [];
+            $phase2Original = $snapshotOriginal['phase2']    ?? [];
+            // Final Phase 2 result: prefer retry analysis, fall back to original if retry did not run
+            $phase2Retry    = ! empty($snapshotRetry['phase2_after'])
+                ? $snapshotRetry['phase2_after']
+                : $phase2Original;
+            $fixedKeys      = $snapshotRetry['fixed_keys']   ?? [];
 
             $this->writeFile($dir, '01_original_generation.json',
                 $this->build01OriginalGeneration($snapshotOriginal));
@@ -95,10 +101,14 @@ final class KernelQuarantineManager
             $this->writeFile($dir, '06_diff_report.json',
                 $this->build06DiffReport($snapshotRetry, $phase2Original, $phase2Retry));
 
+            // Use the explicitly-passed final frame (post-retry). If not provided (e.g. caller
+            // is from a code path where retry did not run), fall back to snapshotOriginal frame.
+            $frameForFinal = ! empty($finalFrame) ? $finalFrame : ($snapshotOriginal['frame'] ?? []);
+
             $this->writeFile($dir, '07_final_quarantine.json',
                 $this->build07FinalQuarantine(
                     $intentId,
-                    $snapshotOriginal['frame'] ?? [],
+                    $frameForFinal,
                     $phase2Retry,
                     $phase2Original,
                     $fixedKeys,

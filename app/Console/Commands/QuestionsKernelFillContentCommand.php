@@ -262,7 +262,8 @@ class QuestionsKernelFillContentCommand extends Command
                 $intent->id,
                 $snapshotOriginal,
                 $snapshotRetry,
-                $retryGuidance2
+                $retryGuidance2,
+                $updatedFrame
             );
 
             if ($quarantineDir !== '') {
