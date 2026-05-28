@@ -161,9 +161,22 @@ class QuestionsKernelFillContentCommand extends Command
 
         $this->printPhase2Summary('Tentative 1', $phase2After1);
 
+        // ── Snapshot Tentative 1 (for quarantine audit package) ──────────────
+        $snapshotOriginal = [
+            'frame'              => $updatedFrame,
+            'phase2'             => $phase2After1 ?? [],
+            'sources'            => $sources,
+            'latency_master_ms'  => $latencyMasterMs,
+            'latency_derived_ms' => $latencyDerivedMs,
+            'at'                 => now()->toIso8601String(),
+        ];
+
         // ── 6. Tentative 2 — Retry ciblé si Phase 2 signale C ou D ───────────
         $retryAttempted  = false;
         $retryFixedKeys  = [];
+        $retryGuidance2  = null;
+        $phase2After2    = null;
+        $snapshotRetry   = [];
 
         if (in_array($phase2Policy, self::RETRY_POLICIES, true) && $phase2After1 !== null) {
             $issues1 = $phase2After1['structured_issues'] ?? [];
@@ -175,8 +188,11 @@ class QuestionsKernelFillContentCommand extends Command
             )));
 
             if (! empty($failedKeys)) {
-                $retryAttempted = true;
-                $retryGuidance2 = $builder->buildRetryGuidance($phase2After1);
+                $retryAttempted  = true;
+                $retryGuidance2  = $builder->buildRetryGuidance($phase2After1);
+
+                // Capture variants state BEFORE retry for the diff report
+                $variantsBeforeRetry = $updatedFrame['variants'] ?? [];
 
                 $this->line('  <fg=cyan>Tentative 2 — retry ciblé (Phase 1 corrige variants signalés seulement) :</>');
                 $this->line('    Variants à corriger : ' . implode(', ', $failedKeys));
@@ -186,12 +202,24 @@ class QuestionsKernelFillContentCommand extends Command
                 $retryResult = $builder->retryFlaggedVariants($updatedFrame, $failedKeys, $retryGuidance2);
 
                 if ($retryResult['ok'] && ! ($retryResult['skipped'] ?? false)) {
-                    $updatedFrame  = $retryResult['frame'];
+                    $updatedFrame   = $retryResult['frame'];
                     $retryFixedKeys = $retryResult['fixed_variants'] ?? [];
                     $latencyRetryMs = $retryResult['latency_retry_ms'] ?? 0;
 
                     $phase2After2 = $retryResult['phase2_alignment'] ?? null;
                     $phase2Policy = $phase2After2['policy'] ?? $phase2Policy;
+
+                    // ── Snapshot Tentative 2 (for quarantine audit package) ──
+                    $snapshotRetry = [
+                        'variants_before' => $variantsBeforeRetry,
+                        'variants_after'  => $updatedFrame['variants'] ?? [],
+                        'fixed_keys'      => $retryFixedKeys,
+                        'phase2_before'   => $phase2After1,
+                        'phase2_after'    => $phase2After2 ?? [],
+                        'latency_ms'      => $latencyRetryMs,
+                        'source'          => $sources['derived'] ?? '—',
+                        'at'              => now()->toIso8601String(),
+                    ];
 
                     $this->printPhase2Summary('Tentative 2', $phase2After2);
                 } elseif (! $retryResult['ok']) {
@@ -230,14 +258,15 @@ class QuestionsKernelFillContentCommand extends Command
             $quarantineManager = new KernelQuarantineManager();
             $currentPhase2     = $updatedFrame['phase2_result'] ?? [];
 
-            $quarantineFile = $quarantineManager->writeQuarantineFile(
+            $quarantineDir = $quarantineManager->writeQuarantinePackage(
                 $intent->id,
-                $updatedFrame,
-                $currentPhase2
+                $snapshotOriginal,
+                $snapshotRetry,
+                $retryGuidance2
             );
 
-            if ($quarantineFile !== '') {
-                $this->line("  📁  Fichier quarantaine : <fg=yellow>{$quarantineFile}</>");
+            if ($quarantineDir !== '') {
+                $this->line("  📁  Package quarantaine (7 fichiers) : <fg=yellow>{$quarantineDir}</>");
             }
 
             // QB_KERNEL_ALERT_EMAIL status
@@ -254,7 +283,7 @@ class QuestionsKernelFillContentCommand extends Command
 
             $quarantineManager->sendAlert(
                 $intent->id,
-                $quarantineFile,
+                $quarantineDir,
                 $currentPhase2,
                 $kc
             );
