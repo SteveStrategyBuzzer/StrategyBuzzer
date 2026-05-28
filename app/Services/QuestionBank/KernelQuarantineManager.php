@@ -39,6 +39,17 @@ final class KernelQuarantineManager
     // Grade → numeric rank for policy_improved comparison (higher = better).
     private const GRADE_RANK = ['D' => 1, 'C' => 2, 'B' => 3, 'A' => 4];
 
+    // Cognitive type label per variant key — shown explicitly in 08_human_review.md.
+    private const VARIANT_COGNITIVE_TYPE = [
+        'qcm_recognition'      => 'recognition — QCM (master)',
+        'qcm_reasoning'        => 'causal reasoning — QCM',
+        'qcm_deceptive_trap'   => 'deceptive trap — QCM',
+        'tf_recognition_true'  => 'recognition — T/F true statement',
+        'tf_recognition_false' => 'recognition — T/F false plausible',
+        'tf_reasoning_true'    => 'reasoning — T/F true inference',
+        'tf_reasoning_false'   => 'reasoning — T/F false inference',
+    ];
+
     // =========================================================================
     // Public API
     // =========================================================================
@@ -491,12 +502,12 @@ final class KernelQuarantineManager
     /**
      * Build the human-readable markdown review file (08_human_review.md).
      *
-     * For each of the 7 variant keys, displays:
-     *   - Whether it was retried and the grade evolution
-     *   - BEFORE block: question / answers / explanation / saviez_vous + drift (if retried)
-     *   - AFTER block: same (if retried)
-     *   - Score evolution table (subject_touch / semantic_chain / cognitive_integrity + Δ)
-     *   - Verdict badge: ✅ OK / ⚠️ NEEDS CORRECTION / ❌ CRITICAL / ✅ FIXED BY RETRY
+     * Per variant, displays:
+     *   - Explicit cognitive type (A)
+     *   - BEFORE/AFTER content blocks with scores (retried variants)
+     *   - WHY FAILED section with specific sub-reasons from subscores + drift_type (B)
+     *   - Gameplay Notes with proximity/difficulty judgments (C)
+     *   - Verdict with correction instructions
      */
     private function build08HumanReview(
         int    $intentId,
@@ -507,12 +518,12 @@ final class KernelQuarantineManager
         array  $snapshotRetry,
         array  $fixedKeys
     ): string {
-        $kc             = $frameForFinal['kernel_core']          ?? [];
-        $finalVariants  = $frameForFinal['variants']             ?? [];
-        $variantsBefore = $snapshotRetry['variants_before']      ?? [];
-        $variantsAfter  = $snapshotRetry['variants_after']       ?? [];
-        $scoresBefore   = $phase2Original['variant_scores']      ?? [];
-        $scoresAfter    = $phase2Retry['variant_scores']         ?? [];
+        $kc             = $frameForFinal['kernel_core']     ?? [];
+        $finalVariants  = $frameForFinal['variants']        ?? [];
+        $variantsBefore = $snapshotRetry['variants_before'] ?? [];
+        $variantsAfter  = $snapshotRetry['variants_after']  ?? [];
+        $scoresBefore   = $phase2Original['variant_scores'] ?? [];
+        $scoresAfter    = $phase2Retry['variant_scores']    ?? [];
         $fixedKeySet    = array_flip($fixedKeys);
 
         $issuesBefore = [];
@@ -588,13 +599,18 @@ final class KernelQuarantineManager
         ];
 
         foreach ($variantOrder as $key => $label) {
-            $isRetried    = isset($fixedKeySet[$key]);
-            $isStillBad   = in_array($key, $stillBadKeys, true);
-            $gradeBefore  = $scoresBefore[$key]['grade'] ?? 'A';
-            $gradeAfter   = $scoresAfter[$key]['grade']  ?? ($isRetried ? $gradeBefore : ($scoresBefore[$key]['grade'] ?? 'A'));
-            $scoreBefore  = (float) ($scoresBefore[$key]['score'] ?? 0.0);
-            $scoreAfter   = (float) ($scoresAfter[$key]['score']  ?? $scoreBefore);
+            $isRetried   = isset($fixedKeySet[$key]);
+            $isStillBad  = in_array($key, $stillBadKeys, true);
+            $gradeBefore = $scoresBefore[$key]['grade'] ?? 'A';
+            $gradeAfter  = $scoresAfter[$key]['grade']  ?? ($isRetried ? $gradeBefore : ($scoresBefore[$key]['grade'] ?? 'A'));
+            $scoreBefore = (float) ($scoresBefore[$key]['score'] ?? 0.0);
+            $scoreAfter  = (float) ($scoresAfter[$key]['score']  ?? $scoreBefore);
 
+            // Final subscores (for WHY FAILED + gameplay — available for all paths)
+            $finalSubs  = $scoresAfter[$key]['subscores'] ?? $scoresBefore[$key]['subscores'] ?? [];
+            $finalDrift = $issuesAfter[$key]['drift_type'] ?? '';
+
+            // ── Header ───────────────────────────────────────────────────────
             if ($isStillBad) {
                 $badge = $gradeAfter === 'D' ? '❌ CRITICAL — must be rewritten' : '⚠️ NEEDS CORRECTION';
             } elseif ($isRetried) {
@@ -609,14 +625,18 @@ final class KernelQuarantineManager
             $lines[] = "**Status:** {$badge}";
 
             if ($isRetried) {
-                $rankBefore  = self::GRADE_RANK[$gradeBefore] ?? 1;
-                $rankAfter   = self::GRADE_RANK[$gradeAfter]  ?? 1;
-                $improved    = $rankAfter > $rankBefore;
-                $arrow       = $improved ? '→ ✅ improved' : '→ ❌ no improvement';
+                $rankBefore = self::GRADE_RANK[$gradeBefore] ?? 1;
+                $rankAfter  = self::GRADE_RANK[$gradeAfter]  ?? 1;
+                $improved   = $rankAfter > $rankBefore;
+                $arrow      = $improved ? '→ ✅ improved' : '→ ❌ no improvement';
                 $lines[] = "**Grade:** {$gradeBefore} → {$gradeAfter} {$arrow}";
             } else {
                 $lines[] = "**Grade:** {$gradeAfter}";
             }
+
+            // A — Cognitive type explicit
+            $cogType = self::VARIANT_COGNITIVE_TYPE[$key] ?? $key;
+            $lines[] = "**Cognitive type:** {$cogType}";
             $lines[] = "";
 
             if ($isRetried) {
@@ -685,6 +705,31 @@ final class KernelQuarantineManager
                 }
             }
 
+            // B — WHY FAILED (for any C/D grade variant)
+            $needsWhyFailed = $isStillBad || in_array($gradeAfter, ['C', 'D'], true);
+            if ($needsWhyFailed && $finalDrift !== '') {
+                $whyReasons = $this->deriveFailureReasons($key, $gradeAfter, $scoreAfter, $finalSubs, $finalDrift, $isRetried, $isStillBad);
+                if (! empty($whyReasons)) {
+                    $lines[] = "### ❌ WHY FAILED";
+                    $lines[] = "";
+                    foreach ($whyReasons as $reason) {
+                        $lines[] = "- {$reason}";
+                    }
+                    $lines[] = "";
+                }
+            }
+
+            // C — Gameplay Notes (any variant — even passing ones can have warnings)
+            $gameplayWarnings = $this->deriveGameplayWarnings($key, $scoreAfter, $finalSubs, $gradeAfter, $isStillBad);
+            if (! empty($gameplayWarnings)) {
+                $lines[] = "### 🎮 Gameplay Notes";
+                $lines[] = "";
+                foreach ($gameplayWarnings as $w) {
+                    $lines[] = "- {$w}";
+                }
+                $lines[] = "";
+            }
+
             // ── Verdict ───────────────────────────────────────────────────────
             if ($isStillBad) {
                 $lines[] = "> ✏️ **Manual correction required.** Edit `question_text`, answers, `explanation`, `saviez_vous` until the subject is clearly anchored to: *" . ($kc['subject'] ?? '?') . "*";
@@ -711,6 +756,151 @@ final class KernelQuarantineManager
         $lines[] = "*Generated by KernelQuarantineManager — StrategyBuzzer question bank audit package*";
 
         return implode("\n", $lines);
+    }
+
+    /**
+     * Derive specific WHY FAILED reasons for a C/D grade variant.
+     *
+     * Produces human-readable strings from the combination of:
+     *   - subscores (subject_touch, semantic_chain, cognitive_integrity)
+     *   - drift_type from Phase 2 structured_issues
+     *   - variant key (to apply type-specific logic)
+     *   - retry outcome (wasRetried + isStillBad)
+     */
+    private function deriveFailureReasons(
+        string $variantKey,
+        string $grade,
+        float  $score,
+        array  $subscores,
+        string $driftType,
+        bool   $wasRetried,
+        bool   $isStillBad
+    ): array {
+        $reasons  = [];
+        $semantic  = (float) ($subscores['semantic_chain_alignment'] ?? 0.0);
+        $cognitive = (float) ($subscores['cognitive_integrity']      ?? 0.0);
+
+        // ── Subject anchor (lexical touch) ────────────────────────────────────
+        if ($score < 0.10) {
+            $reasons[] = 'Subject anchor completely absent — the question doesn\'t reference the topic at all';
+        } elseif ($score < 0.15) {
+            $reasons[] = 'Subject touch critically low (' . number_format($score, 3) . ') — topic mentioned at most once across question + answer + explanation';
+        } elseif ($score < 0.22) {
+            $reasons[] = 'Subject touch too low (' . number_format($score, 3) . ') — topic is barely present; increase explicit references to the answer_target and anchor terms';
+        }
+
+        // ── Semantic chain ─────────────────────────────────────────────────────
+        $isReasoningVariant = in_array($variantKey, ['qcm_reasoning', 'tf_reasoning_true', 'tf_reasoning_false'], true);
+        if ($semantic < 0.15) {
+            $reasons[] = 'Semantic chain broken (chain=' . number_format($semantic, 3) . ') — no logical link between this variant and the master concept';
+        } elseif ($semantic < 0.25 && $isReasoningVariant) {
+            $reasons[] = 'Causal chain too short (chain=' . number_format($semantic, 3) . ') — reasoning doesn\'t follow from the master concept; add intermediate inferential steps';
+        } elseif ($semantic < 0.30) {
+            $reasons[] = 'Weak semantic chain (chain=' . number_format($semantic, 3) . ') — connection to master concept is indirect or superficial';
+        }
+
+        // ── Cognitive integrity ────────────────────────────────────────────────
+        $isCognitivelySensitive = in_array($variantKey, ['qcm_reasoning', 'tf_reasoning_true', 'tf_reasoning_false', 'qcm_deceptive_trap'], true);
+        if ($cognitive < 0.35) {
+            $reasons[] = 'Cognitive structure very weak (integrity=' . number_format($cognitive, 3) . ') — variant doesn\'t behave like its declared type';
+        } elseif ($cognitive < 0.50 && $isCognitivelySensitive) {
+            $reasons[] = 'Cognitive integrity insufficient for a ' . (self::VARIANT_COGNITIVE_TYPE[$variantKey] ?? $variantKey) . ' (integrity=' . number_format($cognitive, 3) . ') — logical structure must be reinforced';
+        }
+
+        // ── Drift-type specific diagnosis ─────────────────────────────────────
+        switch ($driftType) {
+            case 'weak_reasoning':
+                if ($variantKey === 'tf_reasoning_false') {
+                    $reasons[] = 'False statement unconvincing — trivial inversion or negation that doesn\'t require subject knowledge to identify as false';
+                } elseif ($variantKey === 'tf_reasoning_true') {
+                    $reasons[] = 'True reasoning statement too direct — paraphrases the definition instead of requiring logical inference';
+                } else {
+                    $reasons[] = 'Reasoning chain doesn\'t require subject knowledge to answer — question works without knowing the topic';
+                }
+                break;
+            case 'weak_deceptive_trap':
+                $reasons[] = 'Trap distractor is generic, not anchored to the subject — the cognitive contract must be specifically designed around this topic\'s potential_trap';
+                break;
+            case 'false_not_plausible':
+                $reasons[] = 'False statement not convincing enough — it doesn\'t appear true about this subject, reducing the cognitive challenge';
+                break;
+            case 'subject_escape':
+                $reasons[] = 'Subject escape — the variant has drifted to a completely different topic';
+                break;
+            case 'subject_touch_low':
+                $reasons[] = 'Topic keyword present but the question\'s core focus is off the subject';
+                break;
+            case 'kernel_collapse':
+                $reasons[] = 'Kernel collapse — content is absent, empty, or completely off-topic';
+                break;
+        }
+
+        // ── Retry outcome ─────────────────────────────────────────────────────
+        if ($wasRetried && $isStillBad) {
+            $reasons[] = 'AI retry did not resolve the core issue — structural rewrite required, not minor rephrasing';
+        }
+
+        return $reasons;
+    }
+
+    /**
+     * Derive gameplay proximity and difficulty warnings for a variant.
+     *
+     * These are UX/gameplay judgments independent of Phase 2 quality scores:
+     *   - Wording too close to master (player who saw master gets free answer)
+     *   - Trap too obvious (experienced player identifies distractor immediately)
+     *   - TF false too easy to detect without subject knowledge
+     *   - Reasoning chain too weak to challenge a knowledgeable player
+     */
+    private function deriveGameplayWarnings(
+        string $variantKey,
+        float  $score,
+        array  $subscores,
+        string $grade,
+        bool   $isStillBad
+    ): array {
+        $warnings  = [];
+        $semantic  = (float) ($subscores['semantic_chain_alignment'] ?? 0.0);
+        $cognitive = (float) ($subscores['cognitive_integrity']      ?? 0.0);
+
+        // Wording too close to master — free answer for player who read master
+        if ($variantKey !== 'qcm_recognition') {
+            if ($semantic > 0.88) {
+                $warnings[] = 'Wording too close to master (semantic chain=' . number_format($semantic, 3) . ') — a player who just read the master can answer without thinking';
+            } elseif ($semantic > 0.78 && in_array($variantKey, ['tf_recognition_true', 'tf_recognition_false'], true)) {
+                $warnings[] = 'Phrasing similar to master (chain=' . number_format($semantic, 3) . ') — this recognition T/F risks being a near-paraphrase; differentiate more from master wording';
+            }
+        }
+
+        // Deceptive trap — obvious or not anchored
+        if ($variantKey === 'qcm_deceptive_trap') {
+            if ($cognitive < 0.45) {
+                $warnings[] = 'Trap too obvious (integrity=' . number_format($cognitive, 3) . ') — experienced players will identify the distractor immediately; cognitive contract must be tighter';
+            }
+            if ($isStillBad) {
+                $warnings[] = 'Deceptive trap not functioning — the distractor must be specifically designed around the subject\'s potential_trap, not a generic implausible option';
+            }
+        }
+
+        // TF false — detectable without subject knowledge
+        if ($variantKey === 'tf_recognition_false' && $score < 0.30) {
+            $warnings[] = 'False statement too easy to detect — player can reject it without knowing the subject, reducing strategic value of the T/F format';
+        }
+        if ($variantKey === 'tf_reasoning_false' && $cognitive < 0.45) {
+            $warnings[] = 'Reasoning false statement won\'t challenge a knowledgeable player — logical structure too weak to create meaningful doubt';
+        }
+
+        // QCM reasoning — generic, not topic-specific
+        if ($variantKey === 'qcm_reasoning' && $score < 0.25 && $grade !== 'A') {
+            $warnings[] = 'Generic reasoning question — could apply to many topics, not specifically tied to this subject; the causal chain must require knowledge of the answer_target';
+        }
+
+        // TF reasoning true — trivially obvious from master
+        if ($variantKey === 'tf_reasoning_true' && $semantic > 0.82) {
+            $warnings[] = 'True reasoning statement may be trivially obvious (master overlap=' . number_format($semantic, 3) . ') — reduce direct overlap with QCM master wording to force genuine inference';
+        }
+
+        return $warnings;
     }
 
     /**
