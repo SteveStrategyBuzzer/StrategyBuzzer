@@ -1,0 +1,198 @@
+GO — QUARANTINE AUDIT PACKAGE (snapshots complets + diff humain)
+
+Objectif :
+Transformer la quarantaine actuelle en véritable package d’audit humain complet.
+
+Problème actuel :
+La quarantaine contient :
+
+* le noyau final
+* phase2_result
+* les issues
+* les scores
+
+MAIS :
+elle ne contient PAS :
+
+* la génération originale complète
+* le retry complet
+* les différences avant/après
+* l’évolution des scores
+* l’évolution cognitive des variants
+
+Donc :
+audit humain difficile.
+
+AUCUN CHANGEMENT DE LOGIQUE PIPELINE.
+Seulement :
+
+* snapshots
+* historique
+* diff
+* audit humain.
+
+──────────────────────────────
+OBJECTIF FINAL
+──────────────────────────────
+
+Chaque noyau quarantined doit produire :
+
+storage/app/quarantine/kernel_{id}/
+
+Contenant :
+
+01_original_generation.json
+02_phase2_analysis.json
+03_retry_guidance.json
+04_retry_generation.json
+05_phase2_retry_analysis.json
+06_diff_report.json
+07_final_quarantine.json
+
+──────────────────────────────
+CONTENU ATTENDU
+──────────────────────────────
+
+1. 01_original_generation.json
+   Contient :
+
+* kernel_core complet
+* 7 variants complets
+* scores Phase2 initiaux
+* policy initiale
+* timestamps
+* provider
+* latency
+
+2. 02_phase2_analysis.json
+   Contient :
+
+* variant_scores complets
+* subscores complets
+* structured_issues complets
+* drift_type
+* action_required
+* recommendation
+
+3. 03_retry_guidance.json
+   Contient :
+
+* failed_variants
+* avoid
+* retry_goal
+* retry timestamp
+* retry attempt number
+
+4. 04_retry_generation.json
+   Contient :
+
+* uniquement les variants régénérés
+* version AVANT
+* version APRÈS
+* retry latency
+* provider
+* retry metadata
+
+5. 05_phase2_retry_analysis.json
+   Contient :
+
+* nouveaux variant_scores
+* nouveaux subscores
+* nouveaux drifts
+* nouvelle policy
+
+6. 06_diff_report.json
+   Très important.
+
+Comparer :
+ORIGINAL vs RETRY
+
+Pour chaque variant retouché :
+
+{
+"variant_key": "tf_reasoning_false",
+
+"before": {
+"question_text": "...",
+"answers": "...",
+"grade": "D",
+"score": 0.198,
+"semantic_chain": 0.120,
+"cognitive_integrity": 0.5
+},
+
+"after": {
+"question_text": "...",
+"answers": "...",
+"grade": "C",
+"score": 0.344,
+"semantic_chain": 0.290,
+"cognitive_integrity": 0.8
+},
+
+"evolution": {
+"score_delta": +0.146,
+"semantic_delta": +0.170,
+"cognitive_delta": +0.300,
+"policy_improved": true
+}
+}
+
+7. 07_final_quarantine.json
+   Contient :
+
+* état final exact
+* raison quarantaine
+* variants encore problématiques
+* retry history
+* workflow humain recommandé
+
+──────────────────────────────
+IMPORTANT
+──────────────────────────────
+
+Le système DOIT :
+
+* préserver tous les snapshots
+* ne jamais overwrite
+* garder timestamps
+* garder retry order
+* garder retry_count
+
+──────────────────────────────
+OBJECTIF HUMAIN
+──────────────────────────────
+
+Steve doit pouvoir :
+
+* comparer avant/après facilement
+* voir si le retry améliore réellement
+* voir si la cognition dérive
+* voir si un trap est devenu plus faible
+* voir si un reasoning est devenu une reformulation
+* voir l’évolution des scores
+
+──────────────────────────────
+NE PAS FAIRE
+──────────────────────────────
+
+* Ne pas modifier grade()
+* Ne pas modifier derivePolicy()
+* Ne pas modifier alerting
+* Ne pas modifier feed-forward
+* Ne pas modifier retry logic
+* Ne pas modifier thresholds
+
+──────────────────────────────
+VALIDATIONS
+──────────────────────────────
+
+1. Créer un vrai noyau quarantine test.
+2. Vérifier présence des 7 fichiers.
+3. Vérifier snapshots différents.
+4. Vérifier diff_report cohérent.
+5. Vérifier before/after corrects.
+6. Vérifier scores delta corrects.
+7. Vérifier aucun overwrite.
+
+STOP après patch + exemple réel de package quarantine.
