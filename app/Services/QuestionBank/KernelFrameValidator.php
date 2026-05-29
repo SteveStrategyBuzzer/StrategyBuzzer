@@ -54,34 +54,49 @@ class KernelFrameValidator
     // (they are later filled by the AI or the content builder).
     private const CC_KEYS_BY_VARIANT = [
         'qcm_recognition' => [
+            'subject_scope',                                      // Fix 4 — grounding in sub_domain+subject
             'requires_inference', 'has_deceptive_distractor',
             'question_form', 'answer_directly_names_subject',
         ],
         'qcm_reasoning' => [
+            'subject_scope',                                      // Fix 4
             'requires_inference', 'has_deceptive_distractor',
-            'reasoning_type', 'answer_derives_from_subject', 'no_direct_recall',
+            'reasoning_type',
+            'reasoning_scope', 'reasoning_anchor',               // Fix 1 — chain must derive from sub_domain+subject
+            'answer_derives_from_subject', 'no_direct_recall',
         ],
         'qcm_deceptive_trap' => [
+            'subject_scope',                                      // Fix 4
             'requires_inference', 'has_deceptive_distractor', 'trap_anchored_to',
+            'trap_carriers',                                      // Fix 2 — which mechanics carry the trap
+            'natural_hypothesis_triggered',                       // Fix 3 — step 1
+            'hypothesis_overturned_after_full_read',              // Fix 3 — step 2
             'implicit_hypothesis', 'hypothesis_invalidated_by', 'reconstruction_required',
             'intuitive_wrong_answer', 'intuitive_answer_presence',
             'fairness_reason', 'alignment_with_kernel_core',
         ],
         'tf_recognition_true' => [
+            'subject_scope',                                      // Fix 4
             'requires_inference', 'has_deceptive_distractor',
             'polarity', 'expected_master_proximity', 'proximity_is_never_penalized',
         ],
         'tf_recognition_false' => [
+            'subject_scope',                                      // Fix 4
             'requires_inference', 'has_deceptive_distractor',
             'polarity', 'must_appear_plausible', 'correct_answer_key',
         ],
         'tf_reasoning_true' => [
+            'subject_scope',                                      // Fix 4
             'requires_inference', 'has_deceptive_distractor',
-            'polarity', 'reasoning_type', 'player_must_reason',
+            'polarity', 'reasoning_type',
+            'reasoning_scope', 'reasoning_anchor',               // Fix 1
+            'player_must_reason',
         ],
         'tf_reasoning_false' => [
+            'subject_scope',                                      // Fix 4
             'requires_inference', 'has_deceptive_distractor',
             'polarity', 'trivial_inversion_forbidden', 'player_must_reason', 'reasoning_type',
+            'reasoning_scope', 'reasoning_anchor',               // Fix 1
         ],
     ];
 

@@ -182,6 +182,7 @@ class KernelFrameBuilder
             // Direct factual recall — identifies the subject directly.
             // Forms: Quel / Quelle / Qui / Qu'est-ce que
             'qcm_recognition' => [
+                'subject_scope'                 => 'subdomain_and_subject',  // Fix 4 — grounded in sub_domain+subject, not domain alone
                 'requires_inference'            => false,
                 'has_deceptive_distractor'      => false,
                 'question_form'                 => 'direct_retrieval',
@@ -189,34 +190,45 @@ class KernelFrameBuilder
             ],
 
             // Reasoning about the subject — cause, consequence, possibility, impact, logical relation.
-            // The answer must DERIVE from the subject, not just recall it.
+            // The answer must DERIVE from sub_domain+subject (not from the domain alone).
             'qcm_reasoning' => [
+                'subject_scope'               => 'subdomain_and_subject',  // Fix 4
                 'requires_inference'          => true,
                 'has_deceptive_distractor'    => false,
                 'reasoning_type'              => null,    // filled by AI: cause|consequence|possibility|impact|relation
+                'reasoning_scope'             => 'subdomain_and_subject',  // Fix 1 — chain rooted in sub_domain+subject
+                'reasoning_anchor'            => 'subject',               // Fix 1 — terminal anchor is subject, not domain
                 'answer_derives_from_subject' => true,
                 'no_direct_recall'            => true,
             ],
 
             // Deceptive trap — triggers a reflexive wrong assumption, then invalidates it on full reading.
-            // Anchored to sub_domain + subject (NOT to the domain alone).
-            // The player must be able to reconstruct the correct logic after reading the full question.
+            // MUST be anchored to sub_domain + subject (NOT to the domain alone).
+            // 3-step validation (AI fills after generation):
+            //   Step 1: natural_hypothesis_triggered         — does the question trigger a reflexive wrong assumption?
+            //   Step 2: hypothesis_overturned_after_full_read — does reading the full question overturn it?
+            //   Step 3: reconstruction_required              — can the player rebuild the correct logic?
             'qcm_deceptive_trap' => [
-                'requires_inference'         => true,
-                'has_deceptive_distractor'   => true,
-                'trap_anchored_to'           => 'sub_domain_and_subject',
-                'implicit_hypothesis'        => null,    // filled by AI: the reflexive wrong assumption triggered
-                'hypothesis_invalidated_by'  => null,    // filled by AI: what in the full reading invalidates it
-                'reconstruction_required'    => null,    // filled by AI: the correct logical path the player rebuilds
-                'intuitive_wrong_answer'     => null,
-                'intuitive_answer_presence'  => null,
-                'fairness_reason'            => null,
-                'alignment_with_kernel_core' => null,
+                'subject_scope'                         => 'subdomain_and_subject',  // Fix 4
+                'requires_inference'                    => true,
+                'has_deceptive_distractor'              => true,
+                'trap_anchored_to'                      => 'sub_domain_and_subject',
+                'trap_carriers'                         => null,    // Fix 2: AI fills — ['choices','wording','cultural_intuition','immediate_interpretation']
+                'natural_hypothesis_triggered'          => null,    // Fix 3: bool — does the question trigger a reflexive wrong assumption?
+                'hypothesis_overturned_after_full_read' => null,    // Fix 3: bool — does full reading overturn that assumption?
+                'implicit_hypothesis'                   => null,    // text — description of the reflexive wrong assumption
+                'hypothesis_invalidated_by'             => null,    // text — what in the question invalidates it
+                'reconstruction_required'               => null,    // text — the correct logical path the player rebuilds
+                'intuitive_wrong_answer'                => null,
+                'intuitive_answer_presence'             => null,
+                'fairness_reason'                       => null,
+                'alignment_with_kernel_core'            => null,
             ],
 
             // T/F version of qcm_recognition — same fact, true statement.
             // High semantic overlap with master is NORMAL and must never be penalized.
             'tf_recognition_true' => [
+                'subject_scope'                => 'subdomain_and_subject',  // Fix 4
                 'requires_inference'           => false,
                 'has_deceptive_distractor'     => false,
                 'polarity'                     => 'true',
@@ -227,6 +239,7 @@ class KernelFrameBuilder
             // T/F false plausible — same subject, false statement that must look credible.
             // Correct answer is always B (False). Statement must appear plausible without subject knowledge.
             'tf_recognition_false' => [
+                'subject_scope'            => 'subdomain_and_subject',  // Fix 4
                 'requires_inference'       => false,
                 'has_deceptive_distractor' => false,
                 'polarity'                 => 'false',
@@ -236,22 +249,28 @@ class KernelFrameBuilder
 
             // T/F reasoning true — player must reason (cause/consequence/possibility/impact) to confirm truth.
             'tf_reasoning_true' => [
+                'subject_scope'            => 'subdomain_and_subject',  // Fix 4
                 'requires_inference'       => true,
                 'has_deceptive_distractor' => false,
                 'polarity'                 => 'true',
                 'reasoning_type'           => null,    // filled by AI: cause|consequence|possibility|impact
+                'reasoning_scope'          => 'subdomain_and_subject',  // Fix 1
+                'reasoning_anchor'         => 'subject',               // Fix 1
                 'player_must_reason'       => true,
             ],
 
             // T/F reasoning false — a false statement that requires genuine reasoning to identify.
             // Trivial inversion ("not X") is explicitly forbidden — the player must follow a reasoning chain.
             'tf_reasoning_false' => [
+                'subject_scope'               => 'subdomain_and_subject',  // Fix 4
                 'requires_inference'          => true,
                 'has_deceptive_distractor'    => false,
                 'polarity'                    => 'false',
                 'trivial_inversion_forbidden' => true,
                 'player_must_reason'          => true,
                 'reasoning_type'              => null,    // filled by AI: cause|consequence|possibility|impact
+                'reasoning_scope'             => 'subdomain_and_subject',  // Fix 1
+                'reasoning_anchor'            => 'subject',               // Fix 1
             ],
         };
     }

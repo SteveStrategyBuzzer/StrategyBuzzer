@@ -409,13 +409,31 @@ final class KernelTextHelpers
                 // (not just a flat assertion that the explanation later corrects)
                 return $qtChain ? 1.0 : 0.5;
 
-            // ── Deceptive trap: anchored confusion ────────────────────────
+            // ── Deceptive trap: 3-step spec validation ────────────────────
             case 'qcm_deceptive_trap':
+                // Fix 3: 3-step validation when AI has filled the new fields.
+                //   Step 1: natural_hypothesis_triggered         (bool)
+                //   Step 2: hypothesis_overturned_after_full_read (bool)
+                //   Step 3: reconstruction_required               (non-null text)
+                $naturalHyp  = $contract['natural_hypothesis_triggered']         ?? null;
+                $overturnedR = $contract['hypothesis_overturned_after_full_read'] ?? null;
+                $reconstruct = $contract['reconstruction_required']               ?? null;
+
+                if ($naturalHyp !== null || $overturnedR !== null) {
+                    // New-format frame: score all 3 steps proportionally
+                    $step1 = ($naturalHyp  === true || $naturalHyp  === 'true') ? 0.40 : 0.0;
+                    $step2 = ($overturnedR === true || $overturnedR === 'true') ? 0.40 : 0.0;
+                    $step3 = ($reconstruct !== null && $reconstruct !== '')      ? 0.20 : 0.0;
+                    return min(1.0, $step1 + $step2 + $step3);
+                }
+
+                // Old-format fallback (frames generated before Fix 3 fields existed).
+                // Max 0.75 to distinguish from fully-validated new-format frames.
                 $hasDistractor     = $contract['has_deceptive_distractor'] ?? null;
                 $intuitivePresence = $contract['intuitive_answer_presence'] ?? null;
                 if (($hasDistractor === true || $hasDistractor === 'true')
                     && $intuitivePresence === 'present') {
-                    return 1.0;
+                    return 0.75;
                 }
                 if ($hasDistractor === true || $hasDistractor === 'true') {
                     return 0.5;

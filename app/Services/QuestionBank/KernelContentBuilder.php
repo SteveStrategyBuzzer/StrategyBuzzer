@@ -52,6 +52,9 @@ class KernelContentBuilder
     ];
 
     private const DECEPTIVE_CONTRACT_FILL_KEYS = [
+        'trap_carriers',                          // Fix 2: array — which mechanics carry the trap
+        'natural_hypothesis_triggered',           // Fix 3: bool — step 1
+        'hypothesis_overturned_after_full_read',  // Fix 3: bool — step 2
         'implicit_hypothesis', 'hypothesis_invalidated_by', 'reconstruction_required',
         'intuitive_wrong_answer', 'intuitive_answer_presence',
         'fairness_reason', 'alignment_with_kernel_core',
