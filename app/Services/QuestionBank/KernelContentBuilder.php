@@ -52,8 +52,9 @@ class KernelContentBuilder
     ];
 
     private const DECEPTIVE_CONTRACT_FILL_KEYS = [
-        'trap_type', 'intuitive_wrong_answer', 'intuitive_answer_presence',
-        'recadrage_expected', 'fairness_reason', 'alignment_with_kernel_core',
+        'implicit_hypothesis', 'hypothesis_invalidated_by', 'reconstruction_required',
+        'intuitive_wrong_answer', 'intuitive_answer_presence',
+        'fairness_reason', 'alignment_with_kernel_core',
     ];
 
     // Mirrors KernelLoopAlerter::MAX_FILL_ATTEMPTS — kept in sync manually.
@@ -530,13 +531,14 @@ class KernelContentBuilder
     private function avoidItemsForDrift(string $driftType): array
     {
         return match ($driftType) {
-            'subject_touch_low'   => ['broad topic drift', 'tangential subject reference'],
-            'weak_reasoning'      => ['simple reformulation', 'weak inference chain'],
-            'weak_deceptive_trap' => ['generic distractors not tied to answer_target'],
-            'false_not_plausible' => ['implausible false statement', 'false claim unrelated to subject'],
-            'subject_escape'      => ['question about a different subject than answer_target'],
-            'kernel_collapse'     => [],
-            default               => ['broad topic drift'],
+            'subject_touch_low'      => ['broad topic drift', 'tangential subject reference'],
+            'weak_reasoning'         => ['simple reformulation', 'weak inference chain'],
+            'weak_deceptive_trap'    => ['generic distractors not tied to answer_target'],
+            'false_not_plausible'    => ['implausible false statement', 'false claim unrelated to subject'],
+            'subject_escape'         => ['question about a different subject than answer_target'],
+            'kernel_collapse'        => [],
+            'proximity_expected'     => [],   // tf_recognition_true: expected behavior, nothing to avoid
+            default                  => ['broad topic drift'],
         };
     }
 
@@ -546,13 +548,14 @@ class KernelContentBuilder
     private function retryGoalForDrift(string $driftType): string
     {
         return match ($driftType) {
-            'subject_touch_low'   => 'tighter subject_touch alignment with answer_target',
-            'weak_reasoning'      => 'stronger causal or comparative reasoning chain',
-            'weak_deceptive_trap' => 'distractor strategy anchored to answer_target confusion',
-            'false_not_plausible' => 'plausible false claim directly about the subject',
-            'subject_escape'      => 'keep question anchored to the exact answer_target',
-            'kernel_collapse'     => 'regenerate variant from kernel_core',
-            default               => 'tighter subject_touch alignment',
+            'subject_touch_low'      => 'tighter subject_touch alignment with answer_target',
+            'weak_reasoning'         => 'stronger causal or comparative reasoning chain',
+            'weak_deceptive_trap'    => 'distractor strategy anchored to answer_target confusion',
+            'false_not_plausible'    => 'plausible false claim directly about the subject',
+            'subject_escape'         => 'keep question anchored to the exact answer_target',
+            'kernel_collapse'        => 'regenerate variant from kernel_core',
+            'proximity_expected'     => '',   // tf_recognition_true: no retry goal — expected behavior
+            default                  => 'tighter subject_touch alignment',
         };
     }
 

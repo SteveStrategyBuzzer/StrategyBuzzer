@@ -172,30 +172,88 @@ class KernelFrameBuilder
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // cognitive_contract
+    // cognitive_contract — one distinct contract per cognitive type
     // ─────────────────────────────────────────────────────────────────────────
 
     private function buildCognitiveContract(string $variantKey): array
     {
-        if ($variantKey === 'qcm_deceptive_trap') {
-            return [
+        return match ($variantKey) {
+
+            // Direct factual recall — identifies the subject directly.
+            // Forms: Quel / Quelle / Qui / Qu'est-ce que
+            'qcm_recognition' => [
+                'requires_inference'            => false,
+                'has_deceptive_distractor'      => false,
+                'question_form'                 => 'direct_retrieval',
+                'answer_directly_names_subject' => true,
+            ],
+
+            // Reasoning about the subject — cause, consequence, possibility, impact, logical relation.
+            // The answer must DERIVE from the subject, not just recall it.
+            'qcm_reasoning' => [
+                'requires_inference'          => true,
+                'has_deceptive_distractor'    => false,
+                'reasoning_type'              => null,    // filled by AI: cause|consequence|possibility|impact|relation
+                'answer_derives_from_subject' => true,
+                'no_direct_recall'            => true,
+            ],
+
+            // Deceptive trap — triggers a reflexive wrong assumption, then invalidates it on full reading.
+            // Anchored to sub_domain + subject (NOT to the domain alone).
+            // The player must be able to reconstruct the correct logic after reading the full question.
+            'qcm_deceptive_trap' => [
                 'requires_inference'         => true,
                 'has_deceptive_distractor'   => true,
-                'trap_description'           => null,
-                'trap_type'                  => null,
+                'trap_anchored_to'           => 'sub_domain_and_subject',
+                'implicit_hypothesis'        => null,    // filled by AI: the reflexive wrong assumption triggered
+                'hypothesis_invalidated_by'  => null,    // filled by AI: what in the full reading invalidates it
+                'reconstruction_required'    => null,    // filled by AI: the correct logical path the player rebuilds
                 'intuitive_wrong_answer'     => null,
                 'intuitive_answer_presence'  => null,
-                'recadrage_expected'         => null,
                 'fairness_reason'            => null,
                 'alignment_with_kernel_core' => null,
-            ];
-        }
+            ],
 
-        return [
-            'requires_inference'       => str_contains($variantKey, 'reasoning'),
-            'has_deceptive_distractor' => false,
-            'trap_description'         => null,
-        ];
+            // T/F version of qcm_recognition — same fact, true statement.
+            // High semantic overlap with master is NORMAL and must never be penalized.
+            'tf_recognition_true' => [
+                'requires_inference'           => false,
+                'has_deceptive_distractor'     => false,
+                'polarity'                     => 'true',
+                'expected_master_proximity'    => true,
+                'proximity_is_never_penalized' => true,
+            ],
+
+            // T/F false plausible — same subject, false statement that must look credible.
+            // Correct answer is always B (False). Statement must appear plausible without subject knowledge.
+            'tf_recognition_false' => [
+                'requires_inference'       => false,
+                'has_deceptive_distractor' => false,
+                'polarity'                 => 'false',
+                'must_appear_plausible'    => true,
+                'correct_answer_key'       => 'B',
+            ],
+
+            // T/F reasoning true — player must reason (cause/consequence/possibility/impact) to confirm truth.
+            'tf_reasoning_true' => [
+                'requires_inference'       => true,
+                'has_deceptive_distractor' => false,
+                'polarity'                 => 'true',
+                'reasoning_type'           => null,    // filled by AI: cause|consequence|possibility|impact
+                'player_must_reason'       => true,
+            ],
+
+            // T/F reasoning false — a false statement that requires genuine reasoning to identify.
+            // Trivial inversion ("not X") is explicitly forbidden — the player must follow a reasoning chain.
+            'tf_reasoning_false' => [
+                'requires_inference'          => true,
+                'has_deceptive_distractor'    => false,
+                'polarity'                    => 'false',
+                'trivial_inversion_forbidden' => true,
+                'player_must_reason'          => true,
+                'reasoning_type'              => null,    // filled by AI: cause|consequence|possibility|impact
+            ],
+        };
     }
 
     // ─────────────────────────────────────────────────────────────────────────

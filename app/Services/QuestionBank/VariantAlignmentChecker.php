@@ -118,7 +118,7 @@ final class VariantAlignmentChecker
             }
 
             $v        = $variants[$key];
-            $haystack = $this->buildHaystack($v);
+            $haystack = $this->buildHaystack($v, $key);
 
             if (empty(trim($haystack))) {
                 $issues[] = "{$key}: content not yet generated (all null)";
@@ -220,22 +220,18 @@ final class VariantAlignmentChecker
      * Build a single structured issue entry for a non-A grade variant.
      *
      * drift_type mapping (based on grade + variant semantics):
-     *   B → subject_touch_low   (score slightly below OK threshold — monitor)
-     *   C → variant-specific    (weak_reasoning, weak_deceptive_trap, false_not_plausible, subject_touch_low)
-     *   D → variant-specific    (same types, escalated action) — may be upgraded to kernel_collapse by caller
+     *   B tf_recognition_true → proximity_expected (high master overlap is normal per spec — no retry)
+     *   B others              → subject_touch_low  (score slightly below OK — monitor)
+     *   C/D                   → variant-specific   (weak_reasoning, weak_deceptive_trap,
+     *                                               false_not_plausible, subject_touch_low, subject_escape)
+     *   may be upgraded to kernel_collapse by the caller when policy=D
      */
     private function buildStructuredIssue(string $variantKey, string $grade, float $score): array
     {
         $driftType      = $this->resolveDriftType($variantKey, $grade);
-        $actionRequired = $this->resolveAction($grade);
-
-        $scoreStr = number_format($score, 3);
-        $message  = match ($grade) {
-            'B' => "score={$scoreStr} légèrement sous le seuil OK (" . self::THRESHOLD_OK . ") — surveiller au prochain cycle.",
-            'C' => "score={$scoreStr} sous le seuil warn (" . self::THRESHOLD_WARN . ") — retry ou review humaine recommandée.",
-            'D' => "score={$scoreStr} sous le seuil partial (" . self::THRESHOLD_PARTIAL . ") — contenu trop éloigné du sujet touché.",
-            default => "grade={$grade} score={$scoreStr}",
-        };
+        $actionRequired = $this->resolveAction($grade, $driftType);
+        $scoreStr       = number_format($score, 3);
+        $message        = $this->buildCognitiveMessage($variantKey, $grade, $scoreStr);
 
         return [
             'variant_key'    => $variantKey,
@@ -249,17 +245,77 @@ final class VariantAlignmentChecker
     }
 
     /**
+     * Build a per-cognitive diagnostic message aligned with the spec.
+     * Each cognitive type gets a message that names the mechanic that failed,
+     * not just a generic threshold message.
+     */
+    private function buildCognitiveMessage(string $variantKey, string $grade, string $scoreStr): string
+    {
+        return match ($variantKey) {
+
+            'tf_recognition_true' => match ($grade) {
+                'B'     => "score={$scoreStr} — proximity au master attendue (normal per spec: proximity_is_never_penalized). Vérifier que les anchor terms du sujet apparaissent dans l'énoncé.",
+                'C'     => "score={$scoreStr} — l'énoncé vrai ne reflète pas le sujet touché ; doit nommer le même fait que qcm_recognition.",
+                'D'     => "score={$scoreStr} — aucune ancre sémantique vers le sujet ; statement détaché du kernel.",
+                default => "score={$scoreStr}",
+            },
+
+            'tf_recognition_false' => match ($grade) {
+                'B'     => "score={$scoreStr} légèrement sous OK (" . self::THRESHOLD_OK . ") — faux énoncé peu ancré au sujet ; must_appear_plausible doit être vérifié.",
+                'C'     => "score={$scoreStr} — faux énoncé pas crédible sur le sujet ; le joueur doit pouvoir le confondre avec un vrai.",
+                'D'     => "score={$scoreStr} — faux énoncé totalement déconnecté du sujet touché.",
+                default => "score={$scoreStr}",
+            },
+
+            'tf_reasoning_false' => match ($grade) {
+                'B'     => "score={$scoreStr} légèrement sous OK (" . self::THRESHOLD_OK . ") — chaîne causale à renforcer ; vérifier trivial_inversion_forbidden.",
+                'C'     => "score={$scoreStr} — risque d'inversion triviale (\"not X\" n'est pas un raisonnement) ; le joueur doit raisonner pour identifier le faux.",
+                'D'     => "score={$scoreStr} — ni chaîne causale ni ancrage sujet ; énoncé faux non raisonnable.",
+                default => "score={$scoreStr}",
+            },
+
+            'qcm_reasoning' => match ($grade) {
+                'B'     => "score={$scoreStr} légèrement sous OK (" . self::THRESHOLD_OK . ") — chaîne causale/conséquentielle à ancrer plus fortement au sujet.",
+                'C'     => "score={$scoreStr} — raisonnement ne requiert pas de connaissance du sujet ; la réponse doit dériver du sujet (cause|conséquence|possibilité|impact).",
+                'D'     => "score={$scoreStr} — chaîne de raisonnement brisée ou hors-sujet.",
+                default => "score={$scoreStr}",
+            },
+
+            'qcm_deceptive_trap' => match ($grade) {
+                'B'     => "score={$scoreStr} légèrement sous OK (" . self::THRESHOLD_OK . ") — piège faiblement ancré au sous-domaine+sujet ; vérifier implicit_hypothesis.",
+                'C'     => "score={$scoreStr} — hypothèse implicite non déclenchée par le sous-domaine+sujet ; le piège doit invalider l'hypothèse réflexe à la lecture complète.",
+                'D'     => "score={$scoreStr} — piège générique non ancré au sujet touché ; reconstruction logique impossible.",
+                default => "score={$scoreStr}",
+            },
+
+            default => match ($grade) {
+                'B'     => "score={$scoreStr} légèrement sous le seuil OK (" . self::THRESHOLD_OK . ") — surveiller au prochain cycle.",
+                'C'     => "score={$scoreStr} sous le seuil warn (" . self::THRESHOLD_WARN . ") — retry ou review humaine recommandée.",
+                'D'     => "score={$scoreStr} sous le seuil partial (" . self::THRESHOLD_PARTIAL . ") — contenu trop éloigné du sujet touché.",
+                default => "grade={$grade} score={$scoreStr}",
+            },
+        };
+    }
+
+    /**
      * Resolve drift_type from variant key + grade.
      *
-     * Variant semantics drive the label:
-     *   qcm_reasoning        → weak_reasoning (reasoning chain broken or off-topic)
-     *   qcm_deceptive_trap   → weak_deceptive_trap (trap is generic, not anchored to subject)
-     *   tf_recognition_false → false_not_plausible (false statement doesn't reference the subject)
-     *   tf_reasoning_*       → weak_reasoning
-     *   qcm_recognition / tf_recognition_true → subject_touch_low (grade B/C) or subject_escape (grade D)
+     *   tf_recognition_true grade B → proximity_expected (expected behavior per spec — not a real drift)
+     *   grade B (others)            → subject_touch_low
+     *   grade C/D → variant-specific:
+     *     qcm_reasoning / tf_reasoning_* → weak_reasoning
+     *     qcm_deceptive_trap             → weak_deceptive_trap
+     *     tf_recognition_false           → false_not_plausible
+     *     others grade D                 → subject_escape
+     *     others grade C                 → subject_touch_low
      */
     private function resolveDriftType(string $variantKey, string $grade): string
     {
+        // tf_recognition_true at grade B: proximity to master is expected — not a real drift
+        if ($variantKey === 'tf_recognition_true' && $grade === 'B') {
+            return 'proximity_expected';
+        }
+
         if ($grade === 'B') {
             return 'subject_touch_low';
         }
@@ -275,10 +331,18 @@ final class VariantAlignmentChecker
     }
 
     /**
-     * Map grade → default action (before kernel_collapse upgrade).
+     * Map grade + drift_type → action required.
+     *
+     * proximity_expected (tf_recognition_true grade B) → verify_subject_anchor
+     * not a real drift; no retry needed, but the human reviewer should confirm
+     * the subject anchor terms are present in the statement.
      */
-    private function resolveAction(string $grade): string
+    private function resolveAction(string $grade, string $driftType = ''): string
     {
+        if ($driftType === 'proximity_expected') {
+            return 'verify_subject_anchor';
+        }
+
         return match ($grade) {
             'A' => 'none',
             'B' => 'monitor',
@@ -289,10 +353,18 @@ final class VariantAlignmentChecker
     }
 
     /**
-     * Build the haystack for scoring: question_text + correct answer text + explanation.
-     * Returns empty string if no content generated yet.
+     * Build the haystack for subject-touch scoring.
+     *
+     * Default: question_text + correct_answer_text + explanation.
+     *
+     * qcm_deceptive_trap: also includes all 4 answer options (A/B/C/D).
+     * The trap mechanic lives in the distractors — the intuitive wrong answer
+     * must be anchored to the sub_domain+subject, not just the correct answer.
+     * Scoring only the correct answer would miss the trap structure entirely.
+     *
+     * Returns empty string if no content has been generated yet.
      */
-    private function buildHaystack(array $v): string
+    private function buildHaystack(array $v, string $variantKey = ''): string
     {
         $questionText = (string) ($v['question_text'] ?? '');
         $explanation  = (string) ($v['explanation']   ?? '');
@@ -300,6 +372,16 @@ final class VariantAlignmentChecker
         $ckRaw      = strtolower((string) ($v['correct_answer_key'] ?? ''));
         $answerKey  = "answer_{$ckRaw}";
         $answerText = (string) ($v[$answerKey] ?? '');
+
+        if ($variantKey === 'qcm_deceptive_trap') {
+            $allAnswers = implode(' ', array_filter([
+                (string) ($v['answer_a'] ?? ''),
+                (string) ($v['answer_b'] ?? ''),
+                (string) ($v['answer_c'] ?? ''),
+                (string) ($v['answer_d'] ?? ''),
+            ]));
+            return trim("{$questionText} {$allAnswers} {$explanation}");
+        }
 
         return trim("{$questionText} {$answerText} {$explanation}");
     }

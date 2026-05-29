@@ -48,14 +48,41 @@ class KernelFrameValidator
     // ─── kernel_core : champs optionnels (warning si null) ───────────────────
     private const KERNEL_OPTIONAL = ['potential_trap', 'pedagogical_intent', 'default_reading_band'];
 
-    // ─── cognitive_contract clés minimales (toutes variantes) ────────────────
-    private const CC_MINIMAL_KEYS = ['requires_inference', 'has_deceptive_distractor', 'trap_description'];
-
-    // ─── cognitive_contract clés complètes (deceptive_trap uniquement) ───────
-    private const CC_DECEPTIVE_KEYS = [
-        'requires_inference', 'has_deceptive_distractor', 'trap_description',
-        'trap_type', 'intuitive_wrong_answer', 'intuitive_answer_presence',
-        'recadrage_expected', 'fairness_reason', 'alignment_with_kernel_core',
+    // ─── cognitive_contract clés requises par cognitif ───────────────────────
+    // One set of required keys per cognitive type — mirrors KernelFrameBuilder::buildCognitiveContract().
+    // Keys with null values ARE required to be present as keys in the skeleton
+    // (they are later filled by the AI or the content builder).
+    private const CC_KEYS_BY_VARIANT = [
+        'qcm_recognition' => [
+            'requires_inference', 'has_deceptive_distractor',
+            'question_form', 'answer_directly_names_subject',
+        ],
+        'qcm_reasoning' => [
+            'requires_inference', 'has_deceptive_distractor',
+            'reasoning_type', 'answer_derives_from_subject', 'no_direct_recall',
+        ],
+        'qcm_deceptive_trap' => [
+            'requires_inference', 'has_deceptive_distractor', 'trap_anchored_to',
+            'implicit_hypothesis', 'hypothesis_invalidated_by', 'reconstruction_required',
+            'intuitive_wrong_answer', 'intuitive_answer_presence',
+            'fairness_reason', 'alignment_with_kernel_core',
+        ],
+        'tf_recognition_true' => [
+            'requires_inference', 'has_deceptive_distractor',
+            'polarity', 'expected_master_proximity', 'proximity_is_never_penalized',
+        ],
+        'tf_recognition_false' => [
+            'requires_inference', 'has_deceptive_distractor',
+            'polarity', 'must_appear_plausible', 'correct_answer_key',
+        ],
+        'tf_reasoning_true' => [
+            'requires_inference', 'has_deceptive_distractor',
+            'polarity', 'reasoning_type', 'player_must_reason',
+        ],
+        'tf_reasoning_false' => [
+            'requires_inference', 'has_deceptive_distractor',
+            'polarity', 'trivial_inversion_forbidden', 'player_must_reason', 'reasoning_type',
+        ],
     ];
 
     // ─── translation_slots : champs obligatoires ──────────────────────────────
@@ -307,9 +334,7 @@ class KernelFrameValidator
             return;
         }
 
-        $requiredKeys = $variantKey === 'qcm_deceptive_trap'
-            ? self::CC_DECEPTIVE_KEYS
-            : self::CC_MINIMAL_KEYS;
+        $requiredKeys = self::CC_KEYS_BY_VARIANT[$variantKey] ?? [];
 
         foreach ($requiredKeys as $key) {
             if (! array_key_exists($key, $cc)) {

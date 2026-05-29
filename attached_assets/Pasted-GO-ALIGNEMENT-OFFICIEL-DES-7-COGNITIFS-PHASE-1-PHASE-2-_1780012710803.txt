@@ -1,0 +1,253 @@
+GO — ALIGNEMENT OFFICIEL DES 7 COGNITIFS (PHASE 1 + PHASE 2)
+
+Après revue humaine des exemples et des audits récents, il faut maintenant réaligner la logique de création (Phase 1) et la logique d'analyse (Phase 2).
+
+Objectif :
+
+Les 7 cognitifs ne doivent plus être traités comme de simples variantes d'un même master.
+
+Chaque cognitif possède :
+
+* sa propre mécanique mentale
+* sa propre logique de création
+* sa propre logique de validation
+* sa propre logique gameplay
+
+──────────────────────────────
+HIÉRARCHIE OFFICIELLE
+──────────────────────────────
+
+Domaine
+↓
+Sous-domaine
+↓
+Sujet
+↓
+Cognitif
+↓
+Question
+↓
+Réponse
+
+Le Sujet :
+
+* court
+* unique
+* fermé
+* sans indice
+* sans réponse
+* sans date (sauf si la date est le sujet)
+
+Le Sujet découle du Sous-domaine.
+Le Sous-domaine découle du Domaine.
+
+──────────────────────────────
+QCM_RECOGNITION
+──────────────────────────────
+
+Objectif :
+
+Identifier directement le Sujet.
+
+Validation :
+
+* question directe
+* reconnaissance du Sujet
+* réponse directement liée au Sujet
+
+Formes :
+
+* Quel...
+* Quelle...
+* Qui...
+* Qu'est-ce que...
+
+──────────────────────────────
+QCM_REASONING
+──────────────────────────────
+
+Objectif :
+
+Faire réfléchir à partir du Sujet.
+
+Validation :
+
+* cause
+* conséquence
+* possibilité
+* impact
+* relation logique
+
+Le joueur doit raisonner.
+
+La réponse doit découler du Sujet.
+
+──────────────────────────────
+QCM_DECEPTIVE_TRAP
+──────────────────────────────
+
+ATTENTION :
+
+Le trap possède sa propre logique.
+
+Le trap n'est pas :
+
+* une question ambiguë
+* une question fausse
+* une simple reformulation
+
+Le trap doit :
+
+1.
+
+Déclencher une hypothèse implicite naturelle.
+
+Cette hypothèse doit être créée par :
+
+Sous-domaine
++
+Sujet
+
+Pas par le Domaine.
+
+2.
+
+La lecture complète doit invalider cette hypothèse.
+
+3.
+
+Le joueur doit pouvoir reconstruire la bonne logique.
+
+4.
+
+Le piège doit rester cohérent avec :
+
+Sous-domaine
++
+Sujet
+
+Validation Phase 2 :
+
+* hypothèse implicite détectable ?
+* hypothèse invalidée après lecture complète ?
+* logique reconstructible ?
+* cohérence sous-domaine/sujet ?
+* piège porté par :
+
+  * wording
+  * choix
+  * intuition culturelle
+  * interprétation immédiate
+
+Le piège peut être porté par plusieurs mécanismes simultanément.
+
+Exemple conceptuel :
+
+Paris
+↓
+réponse réflexe : Paris
+↓
+lecture complète
+↓
+Paris devient faux
+↓
+bonne logique reconstruite
+
+──────────────────────────────
+TF_RECOGNITION_TRUE
+──────────────────────────────
+
+Version T/F du Recognition.
+
+Très proche du QCM_RECOGNITION.
+
+Cette proximité est normale.
+
+Ne jamais pénaliser automatiquement cette proximité.
+
+──────────────────────────────
+TF_RECOGNITION_FALSE
+──────────────────────────────
+
+Version T/F fausse mais plausible.
+
+Même Sujet.
+
+Même logique Recognition.
+
+Affirmation fausse.
+
+Mais crédible.
+
+──────────────────────────────
+TF_REASONING_TRUE
+──────────────────────────────
+
+Version T/F du Reasoning.
+
+Même logique que QCM_REASONING.
+
+Réponse vraie.
+
+Le joueur doit raisonner.
+
+──────────────────────────────
+TF_REASONING_FALSE
+──────────────────────────────
+
+Version T/F du Reasoning.
+
+Même logique que QCM_REASONING.
+
+Réponse fausse.
+
+Mais :
+
+PAS une inversion triviale.
+
+Le joueur doit réellement raisonner.
+
+──────────────────────────────
+PHASE 2
+──────────────────────────────
+
+Le scoring ne doit plus être pensé comme :
+
+"7 variantes d'une même question"
+
+Mais comme :
+
+"7 cognitifs différents"
+
+Chaque cognitif doit être analysé selon ses propres règles.
+
+Exemples :
+
+TF_RECOGNITION_TRUE :
+
+* proximité master attendue
+
+QCM_DECEPTIVE_TRAP :
+
+* hypothèse implicite
+* invalidation
+* reconstruction logique
+
+TF_REASONING_FALSE :
+
+* raisonnement réel
+* pas inversion triviale
+
+QCM_REASONING :
+
+* vraie causalité
+* vraie conséquence
+* vraie possibilité
+
+Objectif final :
+
+Aligner complètement la création (Phase 1)
+et la validation (Phase 2)
+sur les 7 styles cognitifs officiels de StrategyBuzzer.
+
+STOP après audit des règles actuelles et liste précise des écarts entre l'implémentation actuelle et cette spécification.
