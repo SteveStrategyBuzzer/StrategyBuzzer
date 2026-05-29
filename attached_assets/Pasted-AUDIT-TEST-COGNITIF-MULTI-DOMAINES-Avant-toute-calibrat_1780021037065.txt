@@ -1,0 +1,217 @@
+AUDIT + TEST COGNITIF MULTI-DOMAINES
+
+Avant toute calibration supplémentaire, je veux valider deux hypothèses fondamentales.
+
+──────────────────────────────
+VÉRIFICATION 1
+──────────────────────────────
+
+Confirmer que les scores sont calculés
+INDIVIDUELLEMENT pour chacun des 7 cognitifs.
+
+Je veux voir dans le code :
+
+qcm_recognition
+qcm_reasoning
+qcm_deceptive_trap
+tf_recognition_true
+tf_recognition_false
+tf_reasoning_true
+tf_reasoning_false
+
+Pour chacun :
+
+- lexical_subject_touch
+- semantic_chain_alignment
+- cognitive_integrity
+- composite
+
+Montrer où ils sont calculés.
+
+Montrer qu'ils ne sont pas dérivés
+d'un score global du noyau.
+
+Montrer le chemin exact :
+
+variant
+→ score lexical
+→ score semantic
+→ score cognitive
+→ composite
+→ grade
+
+STOP si un score global influence plusieurs cognitifs.
+
+──────────────────────────────
+VÉRIFICATION 2
+──────────────────────────────
+
+Je veux maintenant tester la doctrine cognitive
+sur les 8 domaines.
+
+Domaines :
+
+- Histoire
+- Géographie
+- Science
+- Art
+- Sport
+- Cinéma
+- Cuisine
+- Faune
+
+Sélection :
+
+- 1 intent par domaine
+- depth entre 3 et 5
+- intent déjà généré
+- pas de modification
+- pas de retry
+- pas de régénération
+
+──────────────────────────────
+POUR CHAQUE INTENT
+──────────────────────────────
+
+Afficher complètement :
+
+Domaine :
+Sous-domaine :
+Sujet :
+Depth :
+
+Puis les 7 cognitifs complets :
+
+qcm_recognition
+qcm_reasoning
+qcm_deceptive_trap
+tf_recognition_true
+tf_recognition_false
+tf_reasoning_true
+tf_reasoning_false
+
+Pour chacun :
+
+QUESTION
+
+ANSWERS
+A
+B
+C
+D
+
+(si TF :
+A=True
+B=False)
+
+EXPLANATION
+
+SAVIEZ-VOUS
+
+Puis :
+
+Grade
+
+lexical_subject_touch
+
+semantic_chain_alignment
+
+cognitive_integrity
+
+composite
+
+drift_type
+
+action_required
+
+──────────────────────────────
+ANALYSE HUMAINE
+──────────────────────────────
+
+Pour chaque cognitif :
+
+Indiquer :
+
+- conforme
+- partiellement conforme
+- non conforme
+
+par rapport à la doctrine officielle.
+
+Vérifier particulièrement :
+
+QCM_RECOGNITION
+- identification directe du sujet
+
+QCM_REASONING
+- cause
+- conséquence
+- possibilité
+- impact
+- relation
+
+QCM_DECEPTIVE_TRAP
+
+1. hypothèse implicite naturelle ?
+
+2. hypothèse invalidée après lecture complète ?
+
+3. logique reconstructible ?
+
+4. cohérence Sous-domaine + Sujet ?
+
+5. piège porté par :
+   - choix
+   - wording
+   - intuition culturelle
+   - interprétation immédiate
+
+TF_RECOGNITION_TRUE
+- proximité master normale ?
+
+TF_RECOGNITION_FALSE
+- faux plausible ?
+
+TF_REASONING_TRUE
+- vrai raisonnement ?
+
+TF_REASONING_FALSE
+- faux raisonnement ?
+- pas inversion triviale ?
+
+──────────────────────────────
+RAPPORT FINAL
+──────────────────────────────
+
+Tableau :
+
+Domaine
+Sujet
+Cognitif
+Verdict
+
+Lister :
+
+- faux positifs détectés
+- vrais problèmes détectés
+- traps excellents
+- traps faibles
+- reasoning excellents
+- reasoning faibles
+- faux plausibles excellents
+- faux plausibles faibles
+
+Puis :
+
+Verdict global :
+
+La doctrine cognitive actuelle est-elle :
+
+- prête pour calibration massive
+- nécessite ajustements mineurs
+- nécessite ajustements majeurs
+
+Aucun patch.
+Aucune modification.
+
+STOP après rapport complet.
