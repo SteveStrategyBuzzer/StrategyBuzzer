@@ -1,0 +1,247 @@
+GO — ALIGNEMENT COGNITIF FINAL (AUDIT UNIQUEMENT)
+
+Après plusieurs audits humains, nous avons maintenant une définition beaucoup plus précise des 7 cognitifs.
+
+L'objectif n'est PAS de modifier le code.
+
+Je veux vérifier si l'implémentation actuelle reflète réellement cette doctrine.
+
+──────────────────────────────
+RÈGLE FONDAMENTALE
+──────────────────────────────
+
+Hiérarchie officielle :
+
+Domaine
+↓
+Sous-domaine
+↓
+Sujet
+↓
+Cognitif
+↓
+Question
+↓
+Réponse
+
+Le Sujet :
+
+* court
+* unique
+* fermé
+* sans réponse incluse
+* sans indice inclus
+* sans date incluse sauf si la date EST le sujet
+
+Le Sous-domaine est obligatoire.
+
+Les cognitifs doivent découler de :
+
+Sous-domaine
++
+Sujet
+
+Le Domaine sert au contexte général mais ne doit pas être utilisé pour élargir artificiellement les cognitifs.
+
+──────────────────────────────
+LES 7 COGNITIFS OFFICIELS
+──────────────────────────────
+
+qcm_recognition
+
+Mesure :
+
+Reconnaissance directe du sujet.
+
+Question directe :
+
+* Quel...
+* Quelle...
+* Qui...
+* Qu'est-ce que...
+
+Le joueur identifie le sujet.
+
+──────────────────────────────
+
+qcm_reasoning
+
+Mesure :
+
+Compréhension logique du sujet.
+
+Le raisonnement doit découler du :
+
+Sous-domaine
++
+Sujet
+
+Types :
+
+* cause
+* conséquence
+* possibilité
+* impact
+* relation
+
+Le joueur doit réfléchir.
+
+Pas de rappel direct.
+
+──────────────────────────────
+
+qcm_deceptive_trap
+
+Mesure :
+
+Résistance à une hypothèse réflexe erronée.
+
+IMPORTANT :
+
+Le trap ne mesure pas principalement la connaissance.
+
+Le trap mesure :
+
+* la résistance à l'intuition immédiate
+* la capacité à lire complètement
+* la capacité à reconstruire la bonne logique
+
+Validation officielle :
+
+1.
+
+Le trap déclenche-t-il une hypothèse implicite naturelle ?
+
+2.
+
+Cette hypothèse devient-elle fausse après lecture complète ?
+
+3.
+
+Le joueur peut-il reconstruire la bonne logique ?
+
+4.
+
+Le piège reste-t-il cohérent avec :
+
+Sous-domaine
++
+Sujet
+
+Le piège peut être porté par :
+
+* les choix
+* le wording
+* l'intuition culturelle
+* l'interprétation immédiate
+
+Le trap crée une réponse réflexe crédible.
+
+Cette réponse réflexe devient fausse.
+
+Le joueur attentif peut reconstruire la bonne logique.
+
+──────────────────────────────
+
+tf_recognition_true
+
+Mesure :
+
+Confirmation d'un fait vrai du sujet.
+
+Très proche du qcm_recognition.
+
+Cette proximité est normale.
+
+Elle ne doit jamais être pénalisée.
+
+──────────────────────────────
+
+tf_recognition_false
+
+Mesure :
+
+Détection d'un faux plausible du sujet.
+
+Le faux doit être plausible pour quelqu'un qui connaît mal le sujet.
+
+Un faux absurde n'a aucune valeur.
+
+──────────────────────────────
+
+tf_reasoning_true
+
+Mesure :
+
+Validation d'un raisonnement vrai.
+
+Le joueur doit confirmer une chaîne logique vraie.
+
+Pas un simple rappel.
+
+──────────────────────────────
+
+tf_reasoning_false
+
+Mesure :
+
+Réfutation d'un raisonnement faux.
+
+Conditions :
+
+* faux
+* raisonnement
+* pas d'inversion triviale
+* ancré au Sous-domaine + Sujet
+
+C'est probablement le cognitif le plus exigeant.
+
+──────────────────────────────
+AUDIT DEMANDÉ
+──────────────────────────────
+
+Pour chacun des 7 cognitifs :
+
+1.
+
+Montrer l'objectif cognitif actuellement implémenté.
+
+2.
+
+Montrer la compétence mentale réellement mesurée.
+
+3.
+
+Montrer l'erreur mentale recherchée ou évitée.
+
+4.
+
+Montrer la preuve exacte utilisée par Phase2 pour conclure que le cognitif est réussi.
+
+5.
+
+Indiquer si l'implémentation actuelle est :
+
+* conforme
+* partiellement conforme
+* non conforme
+
+par rapport à cette doctrine.
+
+──────────────────────────────
+IMPORTANT
+──────────────────────────────
+
+Ne pas proposer de patch.
+
+Ne pas modifier le code.
+
+Je veux uniquement :
+
+Doctrine officielle
+VS
+Implémentation actuelle
+
+avec les écarts précis restant à corriger.
+
+STOP après le tableau complet.
