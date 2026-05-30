@@ -1,0 +1,75 @@
+On continue la refonte cognitive Question Bank V2.
+
+Objectif immédiat :
+corriger la génération des `qcm_deceptive_trap` pour que les nouveaux champs trap soient obligatoirement produits, validés et non null.
+
+Contexte officiel :
+Le Deceptive Trap n’est pas un simple distracteur.
+Il doit mesurer une hypothèse réflexe erronée.
+
+Un bon trap doit :
+
+1. créer une hypothèse implicite naturelle;
+2. rendre cette hypothèse fausse après lecture complète;
+3. permettre au joueur de reconstruire la bonne logique;
+4. rester cohérent avec Sous-domaine + Sujet.
+
+Champs à rendre obligatoires dans la génération Question API Node :
+
+* `trap_carriers`
+* `implicit_hypothesis`
+* `natural_hypothesis_triggered`
+* `hypothesis_overturned_after_full_read`
+* `reconstruction_required`
+
+Pour chaque `qcm_deceptive_trap`, Replit doit maintenant retourner :
+
+QUESTION
+ANSWERS
+BONNE RÉPONSE
+EXPLANATION
+SAVIEZ-VOUS
+
+Puis obligatoirement :
+
+`implicit_hypothesis` :
+l’hypothèse réflexe que le joueur risque de faire.
+
+`trap_carriers` :
+ce qui porte le piège : wording, choix, intuition culturelle, interprétation immédiate, similarité lexicale, date, lieu, chiffre, etc.
+
+`natural_hypothesis_triggered` :
+true/false + justification.
+
+`hypothesis_overturned_after_full_read` :
+true/false + justification.
+
+`reconstruction_required` :
+la logique exacte que le joueur doit reconstruire pour arriver à la bonne réponse.
+
+Validation obligatoire :
+Si un de ces champs est null, vide, générique ou non relié au Sous-domaine + Sujet, le variant doit être rejeté ou envoyé en retry.
+
+À vérifier maintenant :
+
+1. Où le prompt de génération Node construit les `cognitive_contract`.
+2. Où le schéma JSON attend les champs cognitifs.
+3. Où Phase 2 valide les champs cognitifs.
+4. Où Retry/Quarantaine reçoit les raisons de rejet.
+
+Livrable attendu :
+
+* grep des fichiers concernés;
+* slice réel des zones de prompt/schéma/validation;
+* proposition de patch ancrée;
+* génération test sur :
+
+  * Paris / capitale francophone
+  * Mont Everest
+  * Mitochondrie
+  * Prise de la Bastille
+  * Zooxanthelles / corail
+
+Ne pas réinventer la doctrine.
+Ne pas créer une nouvelle logique parallèle.
+Brancher les champs manquants dans la structure existante.

@@ -1,0 +1,2 @@
+- [Trap prompt fix](trap-prompt-fix.md) — 5 nouveaux champs trap étaient dans PHP mais absents du prompt Node ; fix appliqué dans question-api.js.
+- [hasCausalConnector gaps](causal-connector-gaps.md) — "If", "Given", "As", "For", "suggests", "indicates" absents de la liste → cogIntegrity=0 sur raisonnements valides.

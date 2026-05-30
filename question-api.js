@@ -1998,6 +1998,28 @@ qcm_deceptive_trap: A NORMAL factual question where DISTRACTOR SELECTION creates
     - fairness_reason: why the trap is fair (question is complete, correct answer is reachable)
     - alignment_with_kernel_core: confirm correct answer matches "${answer_target}" — state explicitly
     - distractor_strategy: how the choices were built to exploit the identified reflex
+    - trap_carriers: array of 1–3 strings — which mechanics physically carry the trap.
+        Choose from: "wording", "distractor_placement", "cultural_intuition",
+        "false_precision", "category_confusion", "temporal_confusion", "lexical_similarity",
+        "number_proximity", "geographic_confusion".
+        Example: ["distractor_placement", "cultural_intuition"]
+        FORBIDDEN: empty array, null, or a single generic entry like ["confusion"].
+    - implicit_hypothesis: string — the EXACT wrong belief the player holds BEFORE reading the choices.
+        Must be specific to the sub-domain "${sub_domain}" and subject "${subject}".
+        Write it as the player's inner thought: "I think X because Y."
+        FORBIDDEN: generic phrasing like "The player might get confused" or "This is a common mistake".
+        Minimum 20 characters. Must reference the specific subject content.
+    - natural_hypothesis_triggered: boolean — true if the question WORDING ALONE (before the player
+        reads the choices) activates a wrong reflex in a typical player. False if the trap only
+        activates when the player reads a specific distractor choice.
+    - hypothesis_overturned_after_full_read: boolean — true if, after reading ALL 4 choices carefully,
+        the correct answer is clearly reachable through reasoning. False if the trap remains
+        ambiguous even after full reading.
+    - reconstruction_required: string — the EXACT reasoning chain the player must follow to move
+        from wrong intuition to the correct answer. Must be specific to the subject content.
+        Write it as a logical sequence: "Step 1 → Step 2 → correct answer."
+        FORBIDDEN: generic phrasing like "Think carefully" or "Read the question again".
+        Minimum 25 characters.
 
 tf_recognition_true:  A direct V/F statement about the kernel fact — the statement MUST BE TRUE.
   answer_a="True", answer_b="False", answer_c=null, answer_d=null. correct_answer_key MUST be "A".
@@ -2049,7 +2071,12 @@ Return EXACTLY this JSON:
       "recadrage_expected": "...",
       "fairness_reason": "...",
       "alignment_with_kernel_core": "...",
-      "distractor_strategy": "..."
+      "distractor_strategy": "...",
+      "trap_carriers": ["wording|distractor_placement|cultural_intuition|false_precision|category_confusion|temporal_confusion|lexical_similarity|number_proximity|geographic_confusion"],
+      "implicit_hypothesis": "I think [wrong answer] because [specific false belief about ${subject}].",
+      "natural_hypothesis_triggered": true,
+      "hypothesis_overturned_after_full_read": true,
+      "reconstruction_required": "Step 1: [identify the key distinction] → Step 2: [apply subject knowledge] → correct answer: [answer_target]."
     }
   },
   "tf_recognition_true": {
@@ -2107,6 +2134,7 @@ Return EXACTLY this JSON:
     'intuitive_wrong_answer', 'intuitive_answer_presence',
     'recadrage_expected', 'fairness_reason',
     'alignment_with_kernel_core', 'distractor_strategy',
+    'implicit_hypothesis', 'reconstruction_required',
   ];
   const VALID_TRAP_TYPES  = ['popularity_bias','cultural_bias','frequent_confusion','implicit_category','absent_intuition','false_mental_frame'];
 
@@ -2184,6 +2212,26 @@ Return EXACTLY this JSON:
         }
         if (!['present','absent','implicit'].includes(cc.intuitive_answer_presence)) {
           return { ok: false, reason: `intuitive_answer_presence must be present|absent|implicit` };
+        }
+        // NEW FIELD VALIDATION — trap_carriers (array, 1–3 items)
+        if (!Array.isArray(cc.trap_carriers) || cc.trap_carriers.length === 0) {
+          return { ok: false, reason: 'qcm_deceptive_trap.cognitive_contract.trap_carriers must be a non-empty array' };
+        }
+        // NEW FIELD VALIDATION — natural_hypothesis_triggered (boolean)
+        if (typeof cc.natural_hypothesis_triggered !== 'boolean') {
+          return { ok: false, reason: 'qcm_deceptive_trap.cognitive_contract.natural_hypothesis_triggered must be a boolean (true/false)' };
+        }
+        // NEW FIELD VALIDATION — hypothesis_overturned_after_full_read (boolean)
+        if (typeof cc.hypothesis_overturned_after_full_read !== 'boolean') {
+          return { ok: false, reason: 'qcm_deceptive_trap.cognitive_contract.hypothesis_overturned_after_full_read must be a boolean (true/false)' };
+        }
+        // NEW FIELD VALIDATION — implicit_hypothesis (string, min 20 chars, subject-specific)
+        if (!cc.implicit_hypothesis || cc.implicit_hypothesis.trim().length < 20) {
+          return { ok: false, reason: 'qcm_deceptive_trap.cognitive_contract.implicit_hypothesis too short or missing (min 20 chars)' };
+        }
+        // NEW FIELD VALIDATION — reconstruction_required (string, min 25 chars)
+        if (!cc.reconstruction_required || cc.reconstruction_required.trim().length < 25) {
+          return { ok: false, reason: 'qcm_deceptive_trap.cognitive_contract.reconstruction_required too short or missing (min 25 chars)' };
         }
         // KERNEL_CORE_LOCK_VALIDATION: correct answer must match master
         const dtKey = String(v.correct_answer_key || '').toLowerCase();
