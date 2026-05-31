@@ -1,0 +1,160 @@
+Correction majeure.
+
+Nous pensons maintenant que le problème n'est pas seulement le moteur de génération.
+
+Le problème est plus profond.
+
+Nous pensons que :
+
+* la création
+* la vérification
+* la quarantaine création
+* la traduction
+* la vérification traduction
+* la quarantaine traduction
+
+ont toutes été conçues à partir d'une compréhension erronée du noyau.
+
+Donc attention :
+
+Nous ne sommes pas en train de remplacer un moteur par un autre.
+
+Nous sommes en train de redéfinir ce qu'est réellement un noyau StrategyBuzzer.
+
+Conséquence :
+
+Aucune phase actuelle ne doit être considérée comme valide par défaut.
+
+Même si elle fonctionne techniquement.
+
+Même si elle produit du contenu.
+
+Même si elle a déjà été développée.
+
+Nous devons repartir de la question fondamentale :
+
+Qu'est-ce qu'un noyau ?
+
+Aujourd'hui notre compréhension évolue vers :
+
+Un noyau n'est pas une question.
+
+Un noyau n'est pas une réponse.
+
+Un noyau n'est pas une question maître avec variantes.
+
+Un noyau est un objet cognitif complet contenant :
+
+* Depth
+* Domaine
+* Sous-domaine
+* Sujet
+
+Puis :
+
+* QCM_Recognition + SV + traduction 9 langues
+* QCM_Reasoning + SV+ traduction 9 langues
+* QCM_DeceptiveTrap + SV+ traduction 9 langues
+* TF_Recognition_True + SV+ traduction 9 langues
+* TF_Recognition_False + SV+ traduction 9 langues
+* TF_Reasoning_True + SV+ traduction 9 langues
+* TF_Reasoning_False + SV+ traduction 9 langues
+
+puis
+
+Chaque cognitif possède :
+
+* ses propres règles
+* sa propre capacité mentale observée
+* ses propres relations cognitives
+* son propre nœud cognitif
+* son propre mécanisme cognitif
+* sa propre spécification cognitive
+* sa propre phase de traduction
+
+Conséquence :
+
+La phase Création actuelle doit être considérée comme potentiellement invalide.
+
+La phase Vérification actuelle doit être considérée comme potentiellement invalide.
+
+Les banques de quarantaine actuelles doivent être considérées comme potentiellement invalides.
+
+La logique de traduction actuelle doit être considérée comme potentiellement invalide.
+
+La logique de validation post-traduction doit être considérée comme potentiellement invalide.
+
+Nous voulons que tu conceptualise se que tu as présentement pour une compréhension future de la reconstruction  logistique du flow de la structure du V2.
+
+Questions :
+
+1.
+
+Quelle est aujourd'hui la définition implicite du noyau utilisée par chaque phase :
+
+* création
+* vérification
+* quarantaine création
+* traduction
+* vérification traduction
+* quarantaine traduction
+
+2.
+
+Quelles parties de ces phases reposent encore sur :
+
+* question maître
+* variantes dérivées
+* answer_target
+* cohérence inter-variantes
+* modèle ancien
+
+3.
+
+Si nous adoptons la nouvelle définition du noyau :
+
+quelles phases deviennent immédiatement incorrectes ?
+
+4.
+
+Quelles phases doivent être entièrement reconçues ?
+
+5.
+
+Quelles données aujourd'hui stockées en quarantaine ne seraient plus des erreurs avec la nouvelle définition du noyau ?
+
+6.
+
+Quelle serait l'architecture correcte du cycle de vie d'un noyau V2 :
+
+structure de rotation domaine / depth
+
+↓
+
+CREATING
+↓
+CREATION_VALIDATION
+↓
+CREATION_QUARANTINE ou CREATION_APPROVED
+↓
+TRANSLATING
+↓
+TRANSLATION_VALIDATION
+↓
+TRANSLATION_QUARANTINE ou READY_BANK
+
+7.
+
+Quelles responsabilités exactes appartiennent à chacune de ces phases ?
+
+Important :
+
+Ne pas proposer de patch.
+
+Ne pas modifier le code.
+
+Ne pas parler de migration.
+
+Ne pas parler de suppression de fichiers.
+
+Nous voulons d'abord vérifier si notre compréhension actuelle de toutes les phases repose encore sur une définition erronée du noyau.
