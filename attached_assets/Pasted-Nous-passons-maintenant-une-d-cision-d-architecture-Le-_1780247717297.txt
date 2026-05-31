@@ -1,0 +1,963 @@
+Nous passons maintenant à une décision d’architecture.
+
+Le moteur actuel de création cognitive doit être isolé / désactivé / supprimé.
+
+Objectif :
+
+Éviter tout overlap d’informations entre l’ancien moteur et le nouveau moteur cognitif StrategyBuzzer V2.
+
+IMPORTANT :
+
+Ne pas améliorer l’ancien moteur.
+Ne pas refactorer l’ancien moteur.
+Ne pas conserver l’ancienne logique en fallback cognitif.
+Ne pas continuer avec une question maître.
+Ne pas dériver 6 variantes depuis une question maître.
+Ne pas partir d’un answer_target.
+Ne pas remplir un cognitive_contract après coup.
+
+L’ancien modèle est abandonné :
+
+Question maître
+↓
+Variantes dérivées
+↓
+Classification cognitive postérieure
+
+Le nouveau modèle obligatoire est :
+Depth
+↓
+Domaine
+↓
+Sous-domaine
+↓
+Sujet
+↓
+Cognitif cible
+↓
+Capacité mentale observée
+↓
+Relation cognitive
+↓
+Nœud cognitif
+↓
+Mécanisme cognitif
+↓
+Spécification cognitive
+↓
+Contraintes gameplay
+↓
+Question
+↓
+Réponses
+
+──────────────────────────────
+1. NOYAU COMMUN OBLIGATOIRE
+──────────────────────────────
+
+Chaque question doit partir du même noyau commun :
+
+- Domaine
+- Sous-domaine
+- Sujet
+- Depth
+- Langue de création : EN
+- Contraintes gameplay
+
+Le noyau commun ne contient PAS une question maître.
+
+Le noyau commun ne contient PAS un answer_target comme point de départ.
+
+Le noyau commun définit seulement le territoire de connaissance et les contraintes de création.
+
+──────────────────────────────
+2. COGNITIF CIBLE
+──────────────────────────────
+
+Le cognitif cible est l’instrument choisi dès le départ.
+
+Les 7 cognitifs officiels sont :
+
+- QCM_Recognition
+- QCM_Reasoning
+- QCM_DeceptiveTrap
+- TF_Recognition_True
+- TF_Recognition_False
+- TF_Reasoning_True
+- TF_Reasoning_False
+
+Chaque cognitif doit naître indépendamment du sous domanine + du Sujet + Relations cognitives.
+
+Aucun cognitif ne doit être dérivé d’un autre cognitif.
+
+Aucun cognitif ne doit être dérivé d’une question déjà produite.
+
+──────────────────────────────
+3. CAPACITÉ MENTALE OBSERVÉE
+──────────────────────────────
+
+La capacité mentale observée répond à :
+
+Quelle capacité du cerveau ce cognitif cible veut-il observer avec la forme QCM ou TF ?
+
+Pour chaque cognitif :
+
+QCM_Recognition :
+- observer la reconnaissance directe
+- observer la mémoire immédiate
+- observer le rappel d’un fait sans raisonnement
+- Observer une réponse à choix multiple
+
+QCM_Reasoning :
+- observer la compréhension
+- observer l’application d’une logique
+- observer une déduction courte
+- Observer une réponse à choix multiple
+
+QCM_DeceptiveTrap :
+- observer la résistance au réflexe
+- observer la correction d’une hypothèse implicite
+- observer la capacité à ne pas suivre une intuition trompeuse
+- Observer une réponse à choix multiple
+
+TF_Recognition_True :
+- observer la validation immédiate d’un fait vrai reconnu
+- Observer un résultat vrai
+
+TF_Recognition_False :
+- observer la détection d’une erreur factuelle plausible
+- Observer un résultat Faut
+
+TF_Reasoning_True :
+- observer la validation d’une relation logique correcte
+- Observer un résultat vrai
+
+TF_Reasoning_False :
+- observer la détection d’une relation logique incorrecte mais plausible
+- Observer un résultat faut
+
+──────────────────────────────
+4. RELATION COGNITIVE
+──────────────────────────────
+
+La relation cognitive sert à faire naître le nœud cognitif à partir du mix :
+
+Depth
++
+Sous-domaine
++
+Sujet
++
+Cognitif cible
++
+Capacité mentale observée
+
+Relations cognitives à utiliser :
+
+1. Quel / Quelle / Qui / Où / Quand / Combien
+   → identification directe
+   → surtout Recognition
+
+2. Pourquoi
+   → cause
+   → Reasoning
+
+3. Qu’est ce que / Qu’est qui …
+   → Reasoning
+
+4. Comment
+   → mécanisme
+   → Reasoning
+
+5. Conséquence / effet / résultat / rôle
+   → conséquence logique
+   → Reasoning
+
+6. Comparaison / lequel / laquelle
+   → position comparative
+   → Reasoning ou Trap selon le cas
+
+7. Trap
+   → hypothèse implicite
+   → réflexe
+   → correction
+   → DeceptiveTrap
+
+La relation cognitive ne doit pas être indépendante du cognitif.
+
+Le cognitif cible limite les relations cognitives autorisées.
+
+Exemples :
+
+QCM_Recognition :
+relations autorisées :
+- Quel
+- Quelle
+- Qui
+- Où
+- Quand
+- Combien
+
+QCM_Reasoning :
+relations autorisées :
+- Pourquoi
+- Comment
+- Conséquence
+- Effet
+- Résultat
+- Rôle
+- Comparaison logique
+
+QCM_DeceptiveTrap :
+relations autorisées :
+- Trap
+- Hypothèse implicite
+- Réflexe populaire
+- Comparaison trompeuse
+- Correction d’hypothèse
+
+TF_Recognition_True :
+relations autorisées :
+- affirmation vraie directe
+- reconnaissance de fait
+
+TF_Recognition_False :
+relations autorisées :
+- affirmation fausse plausible
+- erreur factuelle proche du vrai
+
+TF_Reasoning_True :
+relations autorisées :
+- relation logique vraie
+- cause vraie
+- mécanisme vrai
+- conséquence vraie
+
+TF_Reasoning_False :
+relations autorisées :
+- relation logique fausse mais plausible
+- faux mécanisme
+- fausse cause
+- fausse conséquence
+
+──────────────────────────────
+5. NŒUD COGNITIF
+──────────────────────────────
+
+Le nœud cognitif ne naît pas seulement de :
+Depth
++
+Sous-domaine
++
+Sujet
+
+Il naît de :
+
+Sous-domaine
++
+Sujet
++
+Cognitif cible
++
+Capacité mentale observée
++
+Relation cognitive
+
+Le nœud cognitif est la connaissance exacte sélectionnée pour mesurer la capacité mentale ciblée.
+
+Exemple :
+
+Sous-domaine : Capitales
+Sujet : Paris
+
+QCM_Recognition :
+Relation : Quelle
+Nœud cognitif :
+France ↔ Paris
+
+Question possible :
+Quelle est la capitale de la France ?
+
+Bonne réponse :
+Paris
+
+QCM_Reasoning :
+Relation : Pourquoi
+Nœud cognitif :
+Capitale ↔ fonction politique / gouvernementale
+
+Question possible :
+Pourquoi Paris est-elle considérée comme la capitale politique de la France ?
+
+Bonne réponse possible :
+Parce qu’elle concentre les institutions du gouvernement.
+
+QCM_DeceptiveTrap :
+Relation : Trap
+Nœud cognitif :
+Capitale francophone
+↓
+Réflexe = Paris
+↓
+Correction = Kinshasa
+
+Question possible :
+Quelle est la plus grande capitale francophone du monde ?
+
+Bonne réponse :
+Kinshasa
+
+Conclusion :
+
+Même sous-domaine.
+Même sujet.
+Mais nœud différent selon le cognitif.
+
+Donc le nœud cognitif doit être construit après le choix du cognitif cible.
+
+──────────────────────────────
+6. MÉCANISME COGNITIF
+──────────────────────────────
+
+Le mécanisme cognitif décrit le trajet mental que le joueur doit parcourir.
+
+Exemples :
+
+QCM_Recognition :
+Question
+↓
+Mémoire
+↓
+Réponse
+
+QCM_Reasoning :
+Information donnée
+↓
+Lien logique
+↓
+Déduction
+↓
+Réponse
+
+QCM_DeceptiveTrap :
+Wording
+↓
+Hypothèse implicite
+↓
+Réflexe
+↓
+Erreur potentielle
+↓
+Correction
+↓
+Réponse
+
+TF_Recognition_True :
+Affirmation vraie
+↓
+Reconnaissance
+↓
+Validation TRUE
+
+TF_Recognition_False :
+Affirmation fausse plausible
+↓
+Comparaison avec mémoire
+↓
+Détection de l’erreur
+↓
+Validation FALSE
+
+TF_Reasoning_True :
+Affirmation logique vraie
+↓
+Vérification du lien
+↓
+Validation TRUE
+
+TF_Reasoning_False :
+Affirmation logique fausse mais plausible
+↓
+Vérification du lien
+↓
+Détection de la faille
+↓
+Validation FALSE
+
+──────────────────────────────
+7. SPÉCIFICATION COGNITIVE
+──────────────────────────────
+
+La spécification cognitive est la recette obligatoire avant d’écrire la question.
+
+Elle doit contenir ce qu’il faut construire pour provoquer le mécanisme cognitif.
+
+QCM_Recognition :
+- relation d’identification directe
+- fait reconnu
+- question directe
+- réponses du même type
+- aucune logique nécessaire
+- aucun piège
+
+QCM_Reasoning :
+- relation logique choisie : pourquoi / comment / conséquence / comparaison
+- principe logique utilisé
+- contexte minimal
+- déduction attendue
+- mauvaise réponse = erreur de raisonnement plausible
+- pas de mini-cours
+
+QCM_DeceptiveTrap :
+- hypothèse implicite
+- primer dans le wording
+- réponse réflexe attendue
+- élément qui casse le réflexe
+- reconstruction possible
+- bonne réponse différente du réflexe
+- natural_hypothesis_triggered doit être TRUE
+
+TF_Recognition_True :
+- affirmation vraie directe
+- fait reconnu
+- aucun lien logique complexe
+- réponse TRUE
+
+TF_Recognition_False :
+- affirmation fausse plausible
+- dimension fausse précise : date, lieu, personne, quantité, rôle, catégorie
+- faux élément proche du vrai
+- réponse FALSE
+
+TF_Reasoning_True :
+- relation logique vraie
+- cause / mécanisme / conséquence
+- lien vérifiable
+- réponse TRUE
+
+TF_Reasoning_False :
+- relation logique fausse mais plausible
+- faux lien logique
+- mécanisme incorrect mais crédible
+- réponse FALSE
+
+──────────────────────────────
+8. CONTRAINTES GAMEPLAY
+──────────────────────────────
+
+Les contraintes gameplay sont obligatoires.
+
+La question doit être compatible avec StrategyBuzzer.
+
+Inclure :
+
+- lecture rapide
+- compatibilité buzzer temps réel
+- lisibilité mobile
+- absence de mini-cours
+- question courte selon le Depth
+- réponses courtes
+- choix lisibles rapidement
+- pas de surcharge cognitive inutile
+- pas de question scolaire lourde
+- pas de formulation longue si Depth 3-5
+
+Contraintes de lecture :
+
+Depth 3-5 :
+- question courte
+- lecture humaine cible : 4 à 7 secondes maximum
+- aucun paragraphe explicatif
+
+Depth 6-8 :
+- subtilité permise
+- vocabulaire plus précis
+- longueur maîtrisée
+- toujours compatible gameplay buzzer
+
+──────────────────────────────
+9. EXEMPLE COMPLET — CAPITALS / PARIS
+──────────────────────────────
+
+Noyau commun :
+
+Domaine : Geography
+Sous-domaine : Capitals
+Sujet : Paris
+Depth : 3-5
+Langue création : EN
+Contraintes gameplay : lecture rapide, QCM mobile, buzzer temps réel
+
+QCM_Recognition :
+
+Capacité mentale observée :
+Reconnaissance directe.
+
+Relation cognitive :
+Quelle.
+
+Nœud cognitif :
+France ↔ Paris.
+
+Question :
+What is the capital of France?
+
+Réponses :
+A. Paris ✅
+B. Lyon
+C. Marseille
+D. Bordeaux
+
+QCM_Reasoning — Pourquoi :
+
+Capacité mentale observée :
+Compréhension de la fonction politique d’une capitale.
+
+Relation cognitive :
+Pourquoi.
+
+Nœud cognitif :
+Capital ↔ seat of government.
+
+Question :
+Why is Paris France’s political capital?
+
+Réponses :
+A. It hosts the national government ✅
+B. It has the most beaches
+C. It is France’s oldest city
+D. It has the largest airport
+
+QCM_Reasoning — Comment :
+
+Capacité mentale observée :
+Compréhension du mécanisme de capitale.
+
+Relation cognitive :
+Comment.
+
+Nœud cognitif :
+City ↔ institutions ↔ capital.
+
+Question :
+How does a city function as a national capital?
+
+Réponses :
+A. By hosting key state institutions ✅
+B. By having the most tourists
+C. By being the largest city
+D. By having the oldest buildings
+
+QCM_Reasoning — Conséquence :
+
+Capacité mentale observée :
+Compréhension de l’effet d’une capitale.
+
+Relation cognitive :
+Conséquence / rôle.
+
+Nœud cognitif :
+Capital ↔ government concentration.
+
+Question :
+What is a main role of a national capital?
+
+Réponses :
+A. Hosting central government institutions ✅
+B. Producing most national food
+C. Controlling all private companies
+D. Replacing all regional cities
+
+QCM_DeceptiveTrap :
+
+Capacité mentale observée :
+Résistance au réflexe “francophone = Paris”.
+
+Relation cognitive :
+Trap.
+
+Nœud cognitif :
+French-speaking capital
+↓
+Reflex = Paris
+↓
+Correction = Kinshasa
+
+Question :
+What is the largest French-speaking capital by population?
+
+Réponses :
+A. Paris
+B. Brussels
+C. Kinshasa ✅
+D. Ottawa
+
+TF_Recognition_True :
+
+Capacité mentale observée :
+Validation d’un fait vrai reconnu.
+
+Relation cognitive :
+Affirmation vraie directe.
+
+Nœud cognitif :
+Paris ↔ capital of France.
+
+Statement :
+Paris is the capital of France.
+
+Réponses :
+A. True ✅
+B. False
+
+TF_Recognition_False :
+
+Capacité mentale observée :
+Détection d’une erreur factuelle plausible.
+
+Relation cognitive :
+Affirmation fausse plausible.
+
+Nœud cognitif :
+Paris ↔ capital of Belgium = false.
+
+Statement :
+Paris is the capital of Belgium.
+
+Réponses :
+A. True
+B. False ✅
+
+TF_Reasoning_True :
+
+Capacité mentale observée :
+Validation d’une relation logique vraie.
+
+Relation cognitive :
+Relation logique vraie.
+
+Nœud cognitif :
+Because Paris hosts France’s national government, it functions as the political capital.
+
+Statement :
+Paris is France’s political capital because it hosts national government institutions.
+
+Réponses :
+A. True ✅
+B. False
+
+TF_Reasoning_False :
+
+Capacité mentale observée :
+Détection d’une relation logique fausse mais plausible.
+
+Relation cognitive :
+Fausse cause / faux mécanisme.
+
+Nœud cognitif :
+Paris is capital because it is the most populated city = false logic.
+
+Statement :
+Paris is France’s capital because it is the country’s most populated city.
+
+Réponses :
+A. True
+B. False ✅
+
+──────────────────────────────
+9.5 RÈGLES DE SÉPARATION COGNITIVE
+──────────────────────────────
+
+L'ancien moteur a montré que plusieurs cognitifs dérivaient progressivement vers d'autres cognitifs.
+
+Le nouveau moteur doit empêcher cela dès la conception.
+
+Chaque cognitif doit posséder :
+
+- une capacité mentale principale unique
+- des relations cognitives autorisées
+- des relations cognitives interdites
+- un mécanisme cognitif propre
+- des critères de pureté cognitive
+
+Le moteur ne doit jamais considérer qu'une question est valide simplement parce qu'elle ressemble globalement au cognitif demandé.
+
+Le moteur doit démontrer que le mécanisme cognitif réellement observé correspond au cognitif cible.
+
+──────────────────────────────
+QCM_Recognition
+──────────────────────────────
+
+Capacité principale :
+
+- reconnaissance directe
+- mémoire
+- rappel immédiat
+
+Relations autorisées :
+
+- Quel
+- Quelle
+- Qui
+- Où
+- Quand
+- Combien
+
+Relations interdites :
+
+- Pourquoi
+- Comment
+- Conséquence
+- Effet
+- Résultat
+- Trap
+
+Interdictions :
+
+- aucune déduction nécessaire
+- aucun raisonnement causal
+- aucun mécanisme
+- aucune hypothèse implicite
+
+Si la bonne réponse exige une logique ou une déduction :
+
+→ rejet
+
+──────────────────────────────
+QCM_Reasoning
+──────────────────────────────
+
+Capacité principale :
+
+- compréhension
+- application d'une logique
+- déduction
+
+Relations autorisées :
+
+- Pourquoi
+- Comment
+- Conséquence
+- Effet
+- Résultat
+- Rôle
+- Comparaison logique
+
+Relations interdites :
+
+- identification directe pure
+- piège réflexe
+
+Interdictions :
+
+- rappel direct pur
+- définition brute
+- simple fait mémorisé
+
+Si la bonne réponse peut être obtenue uniquement par mémoire :
+
+→ rejet
+
+──────────────────────────────
+QCM_DeceptiveTrap
+──────────────────────────────
+
+Capacité principale :
+
+- résistance au réflexe
+- correction d'hypothèse
+- contrôle d'un biais cognitif
+
+Relations autorisées :
+
+- Hypothèse implicite
+- Réflexe populaire
+- Comparaison trompeuse
+- Correction d'hypothèse
+
+Relations interdites :
+
+- identification directe
+- simple cause
+- simple conséquence
+
+Conditions obligatoires :
+
+- hypothèse implicite réelle
+- réflexe naturel déclenché
+- correction possible
+- reconstruction possible
+
+Interdictions :
+
+- distracteur fort seul
+- difficulté artificielle
+- piège basé uniquement sur l'ignorance
+
+Si aucun réflexe n'est déclenché :
+
+→ rejet
+
+──────────────────────────────
+TF_Recognition_True
+──────────────────────────────
+
+Capacité principale :
+
+- validation d'un fait reconnu
+
+Interdictions :
+
+- raisonnement
+- mécanisme
+- relation causale
+
+Le joueur doit reconnaître le fait immédiatement.
+
+──────────────────────────────
+TF_Recognition_False
+──────────────────────────────
+
+Capacité principale :
+
+- détection d'une erreur factuelle
+
+Interdictions :
+
+- fausse logique
+- faux mécanisme
+
+L'erreur doit porter sur le fait lui-même.
+
+──────────────────────────────
+TF_Reasoning_True
+──────────────────────────────
+
+Capacité principale :
+
+- validation d'une relation logique correcte
+
+Interdictions :
+
+- simple fait reconnu
+
+Le joueur doit vérifier le lien logique.
+
+──────────────────────────────
+TF_Reasoning_False
+──────────────────────────────
+
+Capacité principale :
+
+- détection d'une relation logique incorrecte mais plausible
+
+Interdictions :
+
+- simple erreur factuelle
+
+L'erreur doit porter sur le lien logique.
+
+──────────────────────────────
+9.6 TEST DE PURETÉ COGNITIVE
+──────────────────────────────
+
+Avant qu'une question soit validée, le moteur doit exécuter un test de pureté cognitive.
+
+Question à se poser :
+
+"Si j'enlève le cognitif déclaré, dans quel cognitif cette question retombe-t-elle naturellement ?"
+
+Exemples :
+
+QCM_Reasoning :
+
+Si la question retombe naturellement dans Recognition :
+
+→ rejet
+
+QCM_DeceptiveTrap :
+
+Si la question retombe naturellement dans Recognition :
+
+→ rejet
+
+Si la question retombe naturellement dans Comparaison :
+
+→ rejet
+
+Si la question retombe naturellement dans Difficulté élevée :
+
+→ rejet
+
+TF_Reasoning_False :
+
+Si l'erreur est seulement factuelle :
+
+→ rejet
+
+TF_Recognition_False :
+
+Si l'erreur porte principalement sur une relation logique :
+
+→ rejet
+
+Objectif :
+
+Garantir que chaque question mesure réellement le cognitif demandé.
+
+Le moteur doit protéger la séparation des cognitifs dès la création du nœud cognitif et non uniquement lors de la validation finale.
+
+──────────────────────────────
+10. DEMANDE À REPLIT
+──────────────────────────────
+
+Maintenant, applique cette structure au nouveau moteur cognitif StrategyBuzzer V2.
+
+Ne propose pas de patch immédiatement.
+
+Je veux d’abord :
+
+1. Identifier tous les fichiers/blocs de l’ancien moteur à supprimer, désactiver ou isoler.
+2. Identifier tous les endroits où l’ancien modèle peut encore influencer la génération.
+3. Proposer une nouvelle architecture de fichiers/fonctions pour ce moteur V2.
+4. Décrire le nouveau flux complet :
+   Domaine
+   ↓
+   Sous-domaine
+   ↓
+   Sujet
+   ↓
+   Cognitif cible
+   ↓
+   Capacité mentale observée
+   ↓
+   Relation cognitive
+   ↓
+   Nœud cognitif
+   ↓
+   Mécanisme cognitif
+   ↓
+   Spécification cognitive
+   ↓
+   Contraintes gameplay
+   ↓
+   Question
+   ↓
+   Réponses
+5. Expliquer comment chaque cognitif sera généré indépendamment.
+6. Expliquer comment éviter tout overlap avec l’ancien moteur.
+7. Expliquer comment éviter que QCM_Reasoning redevienne Recognition.
+8. Expliquer comment éviter que QCM_DeceptiveTrap redevienne un simple distracteur fort.
+9. Expliquer comment éviter que TF_Reasoning_False redevienne une simple fausse affirmation factuelle.
+
+Réponse attendue :
+
+- pas de théorie vague
+- pas de retour vers l’ancien moteur
+- pas de question maître
+- pas d’answer_target comme point de départ
+- pas de variantes dérivées
+- architecture concrète du nouveau moteur
+- fichiers à supprimer / isoler / remplacer
+- étapes exactes du nouveau flux
+- responsabilités de chaque couche
