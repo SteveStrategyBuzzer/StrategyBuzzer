@@ -1,0 +1,468 @@
+RESET CONCEPTUEL COMPLET — ARCHITECTURE QUESTION BANK V2
+
+IMPORTANT
+
+Nous ne sommes plus dans une logique :
+
+ancien moteur
+↓
+nouveau moteur
+
+Nous sommes dans une logique :
+
+redéfinition complète :
+
+* du noyau
+* du cycle de vie du noyau
+* de la création
+* de la validation
+* de la quarantaine
+* de la traduction
+* de la ready_bank
+* des cognitifs
+* du gameplay
+
+Donc attention :
+
+Ne pas partir du principe que les phases actuelles sont correctes.
+
+Ne pas partir du principe que le moteur actuel est réparable.
+
+Ne pas partir du principe que les quarantaines actuelles sont valides.
+
+Ne pas partir du principe que les validations actuelles sont valides.
+
+Nous voulons d'abord vérifier la compréhension.
+
+──────────────────────────────
+
+1. DÉFINITION DU NOYAU V2
+   ──────────────────────────────
+
+Le noyau n'est pas :
+
+* une question
+* une réponse
+* une question maître
+* une variante
+* un answer_target
+
+Le noyau est d'abord :
+
+UNE UNITÉ DE PRODUCTION
+
+Puis :
+
+UNE STRUCTURE DE STOCKAGE
+
+Puis :
+
+UNE UNITÉ VALIDÉE
+
+Puis :
+
+UNE UNITÉ GAMEPLAY
+
+Un noyau complet contient :
+
+Depth
+Domaine
+Sous-domaine
+Sujet
+
+Puis :
+
+QCM_Recognition + SV
+QCM_Reasoning + SV
+QCM_DeceptiveTrap + SV
+TF_Recognition_True + SV
+TF_Recognition_False + SV
+TF_Reasoning_True + SV
+TF_Reasoning_False + SV
+
+Puis les traductions.
+
+Le noyau n'est pas considéré terminé tant qu'il n'a pas passé toutes les phases du cycle de vie.
+
+──────────────────────────────
+2. ROTATION DOMAIN / DEPTH
+──────────────────────────────
+
+La rotation détermine le prochain noyau à produire.
+
+Depth actuel
+↓
+Domaine
+↓
+Sous-domaine
+↓
+Sujet
+↓
+Noyau suivant à produire
+
+Le système doit :
+
+* parcourir les 8 domaines
+* au même Depth
+* produire les noyaux
+* les faire passer dans le cycle complet
+* puis seulement augmenter le Depth
+
+Exemple :
+
+Depth 3
+↓
+Domaine 1
+↓
+Domaine 2
+↓
+...
+↓
+Domaine 8
+↓
+Depth 4
+↓
+Domaine 1
+↓
+...
+
+Le moteur ne génère donc jamais de façon aléatoire.
+
+──────────────────────────────
+3. CYCLE DE VIE DU NOYAU
+──────────────────────────────
+
+ROTATION DOMAIN / DEPTH
+↓
+Sélection du noyau à produire
+(Depth + Domaine + Sous-domaine + Sujet)
+↓
+PHASE CRÉATION
+(remplissage complet du noyau)
+↓
+NOYAU PRODUIT
+↓
+VALIDATION DE CRÉATION
+↓
+APPROUVÉ
+ou
+QUARANTAINE CRÉATION
+↓
+NOYAU VALIDÉ CRÉATION
+↓
+PHASE TRADUCTION
+↓
+NOYAU MULTILINGUE PRODUIT
+↓
+VALIDATION DE TRADUCTION
+↓
+APPROUVÉ
+ou
+QUARANTAINE TRADUCTION
+↓
+NOYAU VALIDÉ TRADUCTION
+↓
+READY_BANK
+↓
+NOYAU GAMEPLAY
+
+Le noyau est validé deux fois.
+
+Validation #1 :
+
+Validation de création.
+
+Validation #2 :
+
+Validation post-traduction.
+
+Un noyau validé création n'est pas encore un noyau gameplay.
+
+──────────────────────────────
+4. PHASE CRÉATION
+──────────────────────────────
+
+La phase création ne produit pas une question.
+
+Elle produit un noyau complet.
+
+Résultat attendu :
+
+QCM_Recognition + SV
+QCM_Reasoning + SV
+QCM_DeceptiveTrap + SV
+TF_Recognition_True + SV
+TF_Recognition_False + SV
+TF_Reasoning_True + SV
+TF_Reasoning_False + SV
+
+Tous remplis.
+
+Aucune traduction.
+
+Le résultat est :
+
+NOYAU PRODUIT
+
+──────────────────────────────
+5. DÉFINITION D'UN COGNITIF COMPLET
+──────────────────────────────
+
+Un cognitif n'est pas seulement une question.
+
+Un cognitif complet contient :
+
+* Capacité mentale observée
+* Relation cognitive
+* Nœud cognitif
+* Mécanisme cognitif
+* Spécification cognitive
+* Question
+* Réponses
+* Bonne réponse
+* SV
+
+Les réponses font partie du cognitif.
+
+Les réponses participent au mécanisme cognitif.
+
+Le moteur ne doit jamais fonctionner comme :
+
+Question
+↓
+Réponses ajoutées ensuite
+
+Le moteur doit fonctionner comme :
+
+Mécanisme cognitif
+↓
+Question + Réponses
+↓
+Bonne réponse
+↓
+SV
+
+Pour certains cognitifs, notamment QCM_DeceptiveTrap, les réponses participent directement au piège cognitif.
+
+──────────────────────────────
+6. COGNITIFS OFFICIELS
+──────────────────────────────
+
+QCM_Recognition
+QCM_Reasoning
+QCM_DeceptiveTrap
+TF_Recognition_True
+TF_Recognition_False
+TF_Reasoning_True
+TF_Reasoning_False
+
+Chaque cognitif possède :
+
+* ses propres règles
+* sa propre capacité mentale observée
+* ses propres relations cognitives
+* son propre nœud cognitif
+* son propre mécanisme cognitif
+* sa propre spécification cognitive
+
+Aucun cognitif ne doit être dérivé d'un autre.
+
+Aucune question maître.
+
+Aucune variante dérivée.
+
+Aucun answer_target comme point de départ.
+
+──────────────────────────────
+7. SV
+──────────────────────────────
+
+Pour :
+
+QCM_Recognition
+QCM_Reasoning
+TF_Recognition_True
+TF_Recognition_False
+TF_Reasoning_True
+TF_Reasoning_False
+
+Le SV découle de la bonne réponse.
+
+Pour :
+
+QCM_DeceptiveTrap
+
+Le SV peut découler :
+
+* de la bonne réponse
+* de l'écart entre réponse réflexe et bonne réponse
+* du sujet
+* du mécanisme du piège
+
+Exemple :
+
+Sujet :
+Paris
+
+Réponse réflexe :
+Paris
+
+Bonne réponse :
+Kinshasa
+
+Le SV peut parler :
+
+* de Kinshasa
+* du contraste Paris/Kinshasa
+* de la réalité qui corrige le réflexe
+
+──────────────────────────────
+8. VALIDATION DE CRÉATION
+──────────────────────────────
+
+La validation de création doit vérifier :
+
+* les cognitifs
+* les mécanismes cognitifs
+* les relations cognitives
+* les SV
+* les contraintes gameplay
+* les longueurs
+* les règles propres à chaque cognitif
+
+La validation ne doit plus être basée sur :
+
+* question maître
+* variantes dérivées
+* answer_target
+* cohérence inter-variantes
+
+──────────────────────────────
+9. QUARANTAINE CRÉATION
+──────────────────────────────
+
+La quarantaine création doit être repensée.
+
+Elle ne doit plus reposer sur :
+
+* proximité avec un master
+* semantic_chain_alignment vers un master
+* alignement vers answer_target
+
+Elle doit être fondée sur :
+
+* pureté cognitive
+* respect du mécanisme cognitif
+* respect des règles du cognitif
+
+──────────────────────────────
+10. PHASE TRADUCTION
+──────────────────────────────
+
+La traduction ne doit plus être :
+
+Master
+↓
+Copies linguistiques
+
+Le noyau validé création devient :
+
+noyau multilingue.
+
+Chaque cognitif doit conserver :
+
+* sa capacité mentale observée
+* son mécanisme cognitif
+* son piège cognitif si applicable
+* sa bonne réponse
+* son SV
+
+La traduction doit préserver le mécanisme.
+
+Pas seulement les mots.
+
+──────────────────────────────
+11. VALIDATION DE TRADUCTION
+──────────────────────────────
+
+Elle doit vérifier :
+
+* le mécanisme cognitif
+* les relations cognitives
+* les SV
+* les contraintes gameplay
+* les limites de longueur
+* la conservation du cognitif
+
+Question principale :
+
+Le cognitif survit-il à la traduction ?
+
+Pas :
+
+Les mots sont-ils identiques ?
+
+──────────────────────────────
+12. QUARANTAINE TRADUCTION
+──────────────────────────────
+
+Elle doit être fondée sur :
+
+* perte du cognitif
+* perte du mécanisme
+* perte du piège
+* perte de la logique
+* problèmes de longueur
+* problèmes gameplay
+
+Et non sur :
+
+* simple différence avec une version source
+
+──────────────────────────────
+13. READY_BANK
+──────────────────────────────
+
+READY_BANK est :
+
+la banque officielle des noyaux prêts.
+
+Un noyau ne devient gameplay que lorsqu'il a :
+
+* passé la validation création
+* passé la validation traduction
+
+READY_BANK contient uniquement :
+
+des noyaux gameplay-ready.
+
+──────────────────────────────
+14. CE QUE NOUS VOULONS DE TOI
+──────────────────────────────
+
+Nous ne voulons pas encore de patch.
+
+Nous ne voulons pas encore de code.
+
+Nous ne voulons pas encore de migration.
+
+Nous voulons :
+
+1. Cartographier les hypothèses implicites actuelles de chaque phase.
+2. Identifier quelles parties reposent encore sur :
+
+   * question maître
+   * variantes dérivées
+   * answer_target
+   * cohérence inter-variantes
+3. Identifier quelles phases deviennent incorrectes avec cette définition V2.
+4. Identifier quelles phases doivent être totalement reconstruites.
+5. Identifier quelles quarantaines actuelles sont probablement des faux positifs sous V2.
+6. Représenter l'architecture conceptuelle complète du cycle de vie d'un noyau V2.
+7. Vérifier si toute la Question Bank actuelle repose encore sur une définition erronée du noyau.
+
+Ne réponds pas avec du code.
+
+Ne réponds pas avec des patchs.
+
+Réponds uniquement avec une analyse architecturale complète basée sur cette nouvelle définition du noyau.
