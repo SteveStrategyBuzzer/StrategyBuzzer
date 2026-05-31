@@ -1,0 +1,186 @@
+Nous venons d’identifier le problème fondamental.
+
+Le moteur actuel de création est conceptuellement corrompu pour l’objectif StrategyBuzzer.
+
+Il repose sur l’ancienne logique :
+
+Question maître
+↓
+6 variantes dérivées
+↓
+étiquettes cognitives
+
+Cette logique doit être abandonnée.
+
+Une question maître qcm_recognition ne doit plus servir de base pour créer les 6 autres cognitifs.
+
+Pourquoi ?
+
+Parce qu’elle force les autres cognitifs à devenir des reformulations du même fait, au lieu de naître de leur propre mécanisme cognitif.
+
+Résultat observé :
+
+- qcm_reasoning devient souvent Recognition reformulé
+- qcm_deceptive_trap devient Recognition + distracteur fort
+- tf_reasoning_true devient souvent une affirmation vraie avec deux faits juxtaposés
+- tf_reasoning_false devient souvent un faux fait, pas une fausse logique
+- les cognitifs ne naissent pas de leur capacité mentale propre
+
+Conclusion :
+
+Il ne faut pas patcher l’ancien moteur.
+Il faut concevoir un nouveau moteur de création cognitive.
+
+Nouveau modèle obligatoire :
+
+Domaine
+↓
+Sous-domaine
+↓
+Sujet
+↓
+Depth
+↓
+Langue de création EN
+↓
+Contraintes gameplay
+↓
+Cognitif cible
+↓
+Capacité mentale mesurée
+↓
+Mécanisme cognitif
+↓
+Spécification cognitive pré-question
+↓
+Question indépendante
+↓
+Réponses
+↓
+Validation
+
+Règle centrale :
+
+Chaque cognitif doit naître indépendamment à partir du mix :
+
+Sous-domaine
++
+Sujet
++
+Depth
++
+Contraintes gameplay
+
+Aucun cognitif ne doit être dérivé d’une question maître qcm_recognition.
+
+Le noyau doit obligatoirement rester commun :
+
+- Domaine
+- Sous-domaine
+- Sujet
+- Depth
+- Langue de création EN
+- Contraintes gameplay
+
+Les contraintes gameplay incluent notamment :
+
+- temps de lecture humain compatible avec le Depth
+- longueur maximale de question
+- clarté sur mobile
+- absence de mini-cours
+- réponses lisibles rapidement
+- aucune surcharge cognitive inutile
+- compatibilité buzzer temps réel
+
+La question ne doit jamais naître d’une autre question.
+
+La question doit naître de :
+
+Cognitif cible
++
+Capacité mentale mesurée
++
+Mécanisme cognitif
++
+Sous-domaine
++
+Sujet
++
+Depth
++
+Contraintes gameplay
+
+Ce que je veux maintenant :
+
+Aucun patch.
+Aucun code.
+Aucune optimisation de l’ancien moteur.
+
+Je veux une proposition d’architecture complète de remplacement du moteur de création.
+
+Pour chacun des 7 cognitifs :
+
+1. Quel input minimal doit exister avant la question ?
+2. Comment le mix Sous-domaine + Sujet doit guider la création ?
+3. Quelle capacité mentale est mesurée ?
+4. Quel mécanisme cognitif doit être construit ?
+5. Quelle spécification cognitive doit être créée avant le wording ?
+6. Comment le Depth influence la longueur et la complexité ?
+7. Comment les contraintes gameplay influencent la question ?
+8. Comment la question doit naître sans dépendre d’une question maître ?
+9. Comment les réponses doivent être construites ?
+10. Comment la validation doit vérifier que le cognitif est réel ?
+11. Qu’est-ce qui provoque retry ?
+12. Qu’est-ce qui provoque quarantaine ?
+
+Les 7 cognitifs :
+
+- qcm_recognition
+- qcm_reasoning
+- qcm_deceptive_trap
+- tf_recognition_true
+- tf_recognition_false
+- tf_reasoning_true
+- tf_reasoning_false
+
+Contraintes strictes :
+
+- Ne pas partir de la question maître.
+- Ne pas dériver les 6 autres cognitifs du master.
+- Ne pas proposer un patch sur l’ancien système.
+- Ne pas optimiser l’ancien moteur.
+- Ne pas répondre avec une théorie générale.
+- Ne pas parler seulement du qcm_deceptive_trap.
+- Ne pas oublier les contraintes gameplay.
+- Ne pas oublier le Depth.
+- Ne pas oublier que la création initiale doit être en EN.
+
+Nous voulons comprendre comment remplacer l’ancien moteur par un moteur cognitif réel où chaque question naît de son cognitif cible.
+
+Objectif final :
+
+Passer définitivement de :
+
+Question maître
+↓
+Variantes
+↓
+Classification cognitive
+
+à :
+
+Noyau commun
+↓
+Cognitif cible
+↓
+Capacité mentale
+↓
+Mécanisme
+↓
+Spécification pré-question
+↓
+Question indépendante
+↓
+Validation cognitive
+
+C’est cette architecture que nous voulons maintenant définir.
