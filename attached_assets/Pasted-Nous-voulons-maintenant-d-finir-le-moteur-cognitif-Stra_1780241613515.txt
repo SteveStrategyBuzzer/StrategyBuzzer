@@ -1,0 +1,162 @@
+Nous voulons maintenant définir le moteur cognitif StrategyBuzzer V2.
+
+Considère que rien n'existe encore.
+
+Il n'y a :
+
+- aucune question
+- aucune réponse
+- aucun answer_target
+- aucun cognitf existant
+- aucun moteur précédent
+- aucune validation
+- aucun retry
+- aucune quarantaine
+
+Nous partons d'une feuille blanche.
+
+Notre objectif :
+
+Comprendre comment une question doit naître naturellement à partir d'un sujet de connaissance.
+
+Nous avons observé quelque chose d'important.
+
+Le couple :
+
+Sous-domaine
++
+Sujet
+
+ne semble pas produire directement une question.
+
+Il produit plutôt un espace de connaissances possibles.
+
+Exemple :
+
+Sous-domaine : Capitales
+Sujet : Paris
+
+À partir de ce seul couple, plusieurs questions valides peuvent naître.
+
+Exemples :
+
+Quelle est la capitale de la France ?
+
+Pourquoi Paris est-elle la capitale de la France ?
+
+Comment une ville devient-elle capitale d'un pays ?
+
+Quel est le rôle principal d'une capitale ?
+
+Quelle est la plus grande capitale francophone du monde ?
+
+Nous en déduisons que quelque chose doit exister entre :
+
+Sous-domaine + Sujet
+
+et
+
+Question
+
+Nous appelons provisoirement cette couche :
+
+Relation cognitive
+
+Exemples :
+
+- Identification
+- Cause
+- Mécanisme
+- Conséquence
+- Comparaison
+- Réflexe implicite
+- Correction d'hypothèse
+
+Notre hypothèse actuelle est :
+
+Sous-domaine
++
+Sujet
+↓
+Relation cognitive
+↓
+Nœud cognitif
+↓
+Question
+
+Nous voulons challenger cette hypothèse.
+
+Questions :
+
+1.
+
+Si tu devais concevoir un moteur cognitif neuf pour StrategyBuzzer :
+
+quelle est la première couche qui doit exister après :
+
+Sous-domaine
++
+Sujet
+
+2.
+
+Une relation cognitive doit-elle exister avant le nœud ?
+
+3.
+
+Le nœud cognitif est-il créé par la relation cognitive ?
+
+4.
+
+Quels types de relations cognitives fondamentales vois-tu émerger naturellement ?
+
+5.
+
+Pour chacune :
+
+- définition
+- ce qu'elle cherche à mesurer
+- type de nœud qu'elle crée
+
+6.
+
+En utilisant uniquement :
+
+Sous-domaine : Capitales
+Sujet : Paris
+
+montre comment chaque relation cognitive produit un nœud différent.
+
+7.
+
+À partir de chaque nœud obtenu :
+
+montre quelle question pourrait naturellement naître.
+
+Important :
+
+Ne parle pas de moteur existant.
+
+Ne parle pas de migration.
+
+Ne parle pas d'ancien système.
+
+Ne parle pas de validation.
+
+Ne parle pas de code.
+
+Ne parle pas de génération actuelle.
+
+Ne parle pas d'implémentation.
+
+Nous voulons uniquement comprendre la structure naturelle de naissance d'une question cognitive.
+
+Objectif :
+
+Découvrir les couches fondamentales qui existent entre :
+
+Sous-domaine + Sujet
+
+et
+
+Question.
