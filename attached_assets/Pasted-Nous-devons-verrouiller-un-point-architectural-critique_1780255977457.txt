@@ -1,0 +1,237 @@
+Nous devons verrouiller un point architectural critique avant tout patch.
+
+Tu as proposé une nouvelle structure de flow V2 avec :
+
+ROTATION DOMAIN / DEPTH
+↓
+Sélection du noyau à produire
+↓
+PHASE CRÉATION
+↓
+NOYAU PRODUIT
+↓
+VALIDATION DE CRÉATION
+↓
+QUARANTAINE CRÉATION ou NOYAU VALIDÉ CRÉATION
+↓
+PHASE TRADUCTION
+↓
+NOYAU MULTILINGUE PRODUIT
+↓
+VALIDATION DE TRADUCTION
+↓
+QUARANTAINE TRADUCTION ou NOYAU VALIDÉ TRADUCTION
+↓
+READY_BANK
+↓
+NOYAU GAMEPLAY
+
+Maintenant nous devons définir précisément les règles d’existence du noyau.
+
+IMPORTANT :
+
+Ne patch pas.
+Ne modifie pas le code.
+Ne propose pas encore d’implémentation.
+Ne reviens pas à l’ancien modèle question maître / variantes / answer_target.
+
+Objectif :
+
+Clarifier ce qu’est un noyau valide, incomplet, quarantainé, traduisible et gameplay-ready dans la nouvelle architecture V2.
+
+──────────────────────────────
+PARTIE A — DÉFINITION DU NOYAU
+──────────────────────────────
+
+Réponds précisément à ces questions :
+
+1. Qu’est-ce qu’un noyau valide en V2 ?
+
+2. Qu’est-ce qu’un noyau incomplet ?
+
+3. Un noyau peut-il exister avec seulement 6/7 cognitifs remplis ?
+
+4. Un noyau peut-il entrer en phase traduction avec 6/7 cognitifs ?
+
+5. Un noyau peut-il entrer en ready_bank avec 6/7 cognitifs ?
+
+6. La quarantaine création agit-elle sur :
+   - le noyau complet
+   - un cognitif individuel
+   - ou les deux selon le type d’échec ?
+
+7. La quarantaine traduction agit-elle sur :
+   - le noyau complet
+   - une langue complète
+   - un cognitif individuel
+   - ou un couple cognitif + langue ?
+
+8. À quel moment un noyau cesse-t-il d’exister comme noyau exploitable et doit être régénéré complètement ?
+
+9. À quel moment un cognitif peut-il être régénéré seul sans refaire tout le noyau ?
+
+10. Quelle différence fais-tu entre :
+    - noyau produit
+    - noyau validé création
+    - noyau multilingue produit
+    - noyau validé traduction
+    - noyau ready_bank
+    - noyau gameplay
+
+──────────────────────────────
+PARTIE B — RÈGLE STRUCTURELLE ATTENDUE
+──────────────────────────────
+
+Notre compréhension actuelle :
+
+Un noyau produit doit contenir obligatoirement :
+
+- Depth
+- Domaine
+- Sous-domaine
+- Sujet
+
+Puis les 7 cognitifs complets en EN :
+
+1. QCM_Recognition + réponses + bonne réponse + SV
+2. QCM_Reasoning + réponses + bonne réponse + SV
+3. QCM_DeceptiveTrap + réponses + bonne réponse + réponse réflexe + SV
+4. TF_Recognition_True + True/False + bonne réponse + SV
+5. TF_Recognition_False + True/False + bonne réponse + SV
+6. TF_Reasoning_True + True/False + bonne réponse + SV
+7. TF_Reasoning_False + True/False + bonne réponse + SV
+
+Donc :
+
+Question :
+Est-ce qu’un noyau avec 6/7 cognitifs doit être considéré comme :
+
+A. un noyau incomplet non traduisible
+B. un noyau partiel traduisible
+C. un noyau valide partiellement
+D. un échec de création à corriger avant traduction
+
+Donne ton choix recommandé et justifie-le.
+
+──────────────────────────────
+PARTIE C — AUDIT DU FLOW QUE TU AS PROPOSÉ
+──────────────────────────────
+
+Nous voulons aussi auditer ta dernière proposition de flow.
+
+Dans ta réponse précédente, tu as introduit des notions comme :
+
+- PARTIALLY_APPROVED
+- PARTIALLY_TRANSLATED
+- disponibilité par cognitif
+- disponibilité par langue
+- quarantaine par cognitif
+- quarantaine par cognitif × langue
+
+Nous devons savoir si ces notions sont compatibles avec notre définition du noyau.
+
+Audit demandé :
+
+1. Pourquoi as-tu proposé PARTIALLY_APPROVED ?
+
+2. Est-ce compatible avec un noyau qui doit contenir 7/7 cognitifs avant traduction ?
+
+3. Pourquoi as-tu proposé PARTIALLY_TRANSLATED ?
+
+4. Est-ce compatible avec ready_bank comme banque de noyaux complets gameplay-ready ?
+
+5. Est-ce que la granularité cognitif × langue est utile seulement pour diagnostic/quarantaine, ou aussi pour gameplay ?
+
+6. Est-ce qu’un joueur doit pouvoir recevoir un noyau si un seul cognitif ou une seule langue du noyau est manquant ?
+
+7. Si non, comment éviter que PARTIALLY_READY devienne une source de bugs gameplay ?
+
+8. Si oui, quelles protections faudrait-il pour que le gameplay ne sélectionne jamais un cognitif/langue manquant ?
+
+──────────────────────────────
+PARTIE D — RÈGLES DE CRÉATION DU NOYAU
+──────────────────────────────
+
+Nous voulons comprendre ce que tu proposes réellement comme structure de création.
+
+Pour un noyau donné :
+
+Depth
+Domaine
+Sous-domaine
+Sujet
+
+Explique :
+
+1. Est-ce que les 7 cognitifs doivent être créés comme un lot complet avant validation création ?
+
+2. Ou est-ce qu’ils peuvent être créés un par un avec validation individuelle ?
+
+3. Si un cognitif échoue, est-ce qu’on :
+   - régénère seulement ce cognitif ?
+   - régénère tout le noyau ?
+   - met tout le noyau en quarantaine ?
+   - met seulement le cognitif en quarantaine ?
+
+4. Combien de retries maximum par cognitif avant quarantaine création ?
+
+5. Si le QCM_DeceptiveTrap échoue parce que le sujet ne permet pas de bon trap naturel, doit-on :
+   - forcer un trap faible ?
+   - choisir un autre nœud trap ?
+   - changer de sujet ?
+   - mettre le noyau en quarantaine ?
+   - marquer ce sujet comme peu compatible avec ce cognitif ?
+
+6. Si QCM_Reasoning retombe en Recognition, doit-on :
+   - régénérer le reasoning avec une autre relation cognitive ?
+   - changer le nœud cognitif ?
+   - changer le sujet ?
+   - mettre le cognitif en quarantaine ?
+
+7. Si TF_Reasoning_False retombe en simple fausse affirmation factuelle, doit-on :
+   - régénérer le faux mécanisme ?
+   - rerouter vers TF_Recognition_False ?
+   - rejeter complètement ?
+   - quarantainer le cognitif ?
+
+──────────────────────────────
+PARTIE E — SORTIE ATTENDUE
+──────────────────────────────
+
+Réponds sous forme d’audit structuré.
+
+Je veux :
+
+1. Ta définition officielle recommandée du noyau V2.
+
+2. Les statuts exacts du noyau dans le flow.
+
+3. Les règles exactes pour :
+   - noyau complet
+   - noyau incomplet
+   - noyau produit
+   - noyau validé création
+   - noyau traduit
+   - noyau validé traduction
+   - noyau ready_bank
+   - noyau gameplay
+
+4. Les règles exactes de quarantaine :
+   - création
+   - traduction
+
+5. Les règles exactes de retry :
+   - par cognitif
+   - par noyau
+
+6. Les corrections à apporter à ta dernière proposition si PARTIALLY_APPROVED / PARTIALLY_TRANSLATED ne correspondent pas à notre définition.
+
+7. Un diagramme final du flow V2 corrigé.
+
+Rappel :
+
+Nous voulons éviter une architecture floue.
+
+Le noyau V2 doit avoir des règles d’existence strictes.
+
+Un noyau gameplay ne doit jamais être ambigu.
