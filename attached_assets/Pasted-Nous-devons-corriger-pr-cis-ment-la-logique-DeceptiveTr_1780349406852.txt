@@ -1,0 +1,456 @@
+Nous devons corriger précisément la logique DeceptiveTrap dans le moteur V2.
+
+Le problème actuel :
+
+Le moteur cherche souvent à fabriquer un trap en ajoutant :
+- un narratif
+- un contexte trompeur
+- une question longue
+- un distracteur fort
+
+Ce n’est pas ce que nous voulons.
+
+Dans StrategyBuzzer, DeceptiveTrap doit être construit à partir du couple :
+
+Sous-domaine
++
+Sujet
+
+et non à partir d’un paragraphe narratif.
+
+──────────────────────────────
+RÈGLE CENTRALE DECEPTIVETRAP
+──────────────────────────────
+
+DeceptiveTrap doit partir de cette logique :
+
+Sous-domaine
++
+Sujet
+↓
+idée dominante évoquée par le sujet dans ce sous-domaine
+↓
+réponse réflexe attendue
+↓
+question compacte basée sur cette idée
+↓
+réponses sans forcément que le sujet soit la bonne réponse
+↓
+doute / correction / reconstruction
+↓
+bonne réponse
+
+Le trap ne vient pas d’un narratif.
+
+Le trap vient de l’interprétation naturelle du sujet dans son sous-domaine.
+
+──────────────────────────────
+FORMULE OFFICIELLE
+──────────────────────────────
+
+Pour créer un DeceptiveTrap, le moteur doit identifier :
+
+1. Sous-domaine
+
+2. Sujet
+
+3. Idée dominante évoquée par le sujet dans ce sous-domaine
+
+4. Réponse réflexe attendue
+
+5. Est-ce que cette réponse réflexe peut être absente ou incorrecte dans les choix ?
+
+6. Quelle est la vraie bonne réponse ?
+
+7. Pourquoi la bonne réponse corrige le réflexe ?
+
+8. Est-ce que le joueur peut reconstruire après coup ?
+
+Si une de ces étapes n’est pas claire :
+
+→ ne pas produire DeceptiveTrap.
+
+──────────────────────────────
+RÈGLE DU SUJET
+──────────────────────────────
+
+Un bon sujet DeceptiveTrap doit être assez précis pour produire une idée dominante.
+
+Si le sujet est trop large, il produit trop d’associations et le trap devient faible.
+
+Exemple faible :
+
+Domaine : Sport
+Sous-domaine : Football
+Sujet : Coupe du Monde FIFA
+
+Problème :
+
+Coupe du Monde FIFA évoque trop d’idées :
+- Brésil
+- Argentine
+- Messi
+- Pelé
+- Zidane
+- trophée
+- finale
+- qualifications
+
+Donc il n’y a pas une seule réponse réflexe dominante.
+
+Le sujet peut être valide pour Recognition ou Reasoning,
+mais il est difficile pour DeceptiveTrap.
+
+Meilleur sujet possible :
+
+Sous-domaine : Football
+Sujet : Pelé
+
+ou
+
+Sous-domaine : Football
+Sujet : Brésil
+
+ou
+
+Sous-domaine : Football
+Sujet : Trophée Jules-Rimet
+
+car ces sujets déclenchent une idée plus précise.
+
+──────────────────────────────
+RÈGLE PAS DE NARRATIF
+──────────────────────────────
+
+Aucune portion narrative ne doit porter le cognitif. Dans tous les cognitifs
+
+Interdit :
+
+Narratif
++
+question Recognition
+=
+faux trap
+
+Exemple invalide :
+
+Chaque année, des milliers d’alpinistes quittent le camp de base du Népal pour tenter l’ascension du mont Everest.
+Dans quel pays se trouve réellement le sommet de l’Everest ?
+
+La vraie question est :
+
+Dans quel pays se trouve réellement le sommet de l’Everest ?
+
+Donc le cognitif réel est Recognition.
+
+Le narratif ne transforme pas Recognition en DeceptiveTrap.
+
+──────────────────────────────
+RÈGLE DE LA QUESTION COMPACTE
+──────────────────────────────
+
+La question doit rester courte.
+
+Pour Depth 3-5, viser Depth 4.
+
+La question doit être compatible avec :
+- lecture rapide
+- buzzer
+- mobile
+- compréhension immédiate
+
+Interdit :
+- mini-cours
+- paragraphe
+- contexte long
+- question qui prend 10 secondes à lire
+
+Le mécanisme doit être dans :
+
+Question
++
+Réponses
+
+pas dans un texte avant la question.
+
+──────────────────────────────
+RÈGLE RÉPONSE RÉFLEXE ABSENTE OU INCORRECTE
+──────────────────────────────
+
+Un DeceptiveTrap peut fonctionner de deux façons :
+
+TYPE A — réponse réflexe présente mais incorrecte
+
+Exemple :
+
+Sous-domaine : Capitales
+Sujet : Paris
+
+Question :
+Quelle est la plus grande capitale francophone du monde ?
+
+A. Paris
+B. Bruxelles
+C. Kinshasa
+D. Ottawa
+
+Réponse réflexe :
+Paris
+
+Bonne réponse :
+Kinshasa
+
+Pourquoi valide :
+le sujet Paris évoque capitale francophone, mais la propriété appartient à Kinshasa.
+
+TYPE B — réponse réflexe absente
+
+Exemple :
+
+Sous-domaine : Animaux terrestres
+Sujet : Éléphant
+
+Question :
+Quel est le plus gros animal terrestre ? pas mettre une spécification comme “parmi ces choix” 
+
+A. Tigre
+B. Lion
+C. Ours noir
+D. Épaulard
+
+Réponse réflexe attendue :
+Éléphant
+
+Mais Éléphant est absent.
+
+Le joueur doit relire et reconstruire :
+- il pensait Éléphant
+- Éléphant n’est pas dans les choix
+- il doit choisir le plus gros parmi les choix proposés
+- l’épaulard force aussi une relecture du mot terrestre
+
+Ce type est valide si :
+- la réponse réflexe est vraiment attendue
+- son absence crée un doute naturel
+- les choix restent cohérents
+- la bonne réponse est clairement défendable dans le cadre demandé
+
+──────────────────────────────
+EXEMPLES VALIDES
+──────────────────────────────
+
+EXEMPLE 1 — Pâtes alimentaires / Spaghetti
+
+Sous-domaine :
+Pâtes alimentaires
+
+Sujet :
+Spaghetti
+
+Idée dominante :
+Spaghetti est associé à la carbonara.
+
+Question :
+Quelle pâte est traditionnellement utilisée pour la carbonara romaine ?
+
+A. Spaghetti
+B. Bucatini
+C. Farfalle
+D. Fusilli
+
+Réponse réflexe :
+Spaghetti
+
+Bonne réponse :
+Bucatini
+
+Pourquoi valide :
+le sujet Spaghetti évoque naturellement carbonara, mais la tradition romaine pointe vers Bucatini.
+
+──────────────────────────────
+
+EXEMPLE 2 — Monuments / Tour Eiffel
+
+Sous-domaine :
+Monuments
+
+Sujet :
+Tour Eiffel
+
+Idée dominante :
+Tour Eiffel = Gustave Eiffel.
+
+Question :
+De qui vient l’idée initiale de la Tour Eiffel ?
+
+A. Deux ingénieurs
+B. Gustave Eiffel
+C. Un journaliste
+D. Un diplomate français
+
+Réponse réflexe :
+Gustave Eiffel
+
+Bonne réponse :
+Deux ingénieurs
+
+Pourquoi valide :
+le sujet Tour Eiffel déclenche Gustave Eiffel, mais l’idée initiale vient de Maurice Koechlin et Émile Nouguier.
+
+──────────────────────────────
+
+EXEMPLE 3 — Films / Titanic
+
+Sous-domaine :
+Films
+
+Sujet :
+Titanic
+
+Idée dominante :
+Titanic = navire + iceberg.
+
+Question :
+Dans quel film un navire coule après avoir frappé un iceberg ?
+
+A. Pirates des Caraïbes
+B. A Night to Remember
+C. Poseidon
+D. The Perfect Storm
+
+Réponse réflexe :
+Titanic
+
+Mais Titanic est absent.
+
+Bonne réponse :
+A Night to Remember
+
+Pourquoi valide :
+le sujet Titanic déclenche immédiatement Titanic, mais le choix absent force le joueur à reconstruire vers un autre film basé sur le même événement.
+
+──────────────────────────────
+
+EXEMPLE 4 — Histoire / Bastille
+
+Sous-domaine :
+Révolution française
+
+Sujet :
+Bastille
+
+Idée dominante :
+14 juillet 1789 = prise de la Bastille.
+
+Question :
+Le 14 juillet 1789, quelle étape précède la prise de la Bastille ?
+
+A. Pillage des Invalides
+B. Prise de la Bastille
+C. Assassinat du roi
+D. Retour de Necker
+
+Réponse réflexe :
+Prise de la Bastille
+
+Bonne réponse :
+Pillage des Invalides
+
+Pourquoi valide :
+le sujet Bastille déclenche la prise de la Bastille, mais la question demande l’étape qui précède.
+
+──────────────────────────────
+EXEMPLE FAIBLE / À REJETER
+──────────────────────────────
+
+Domaine :
+Sport
+
+Sous-domaine :
+Football
+
+Sujet :
+Coupe du Monde FIFA
+
+Problème :
+le sujet est trop large.
+
+Il évoque trop d’idées :
+- Brésil
+- Messi
+- Pelé
+- finale
+- trophée
+- champion
+- Argentine
+- France
+
+Il ne produit pas une réponse réflexe unique.
+
+Donc DeceptiveTrap est difficile ou faible avec ce sujet.
+
+Action attendue :
+- soit utiliser ce sujet pour Recognition ou Reasoning
+- soit choisir un sujet plus précis pour DeceptiveTrap
+- soit mettre DeceptiveTrap en incompatibilité sujet/cognitif si aucun réflexe dominant n’est trouvable
+
+──────────────────────────────
+GATE 1 — VALIDATION DECEPTIVETRAP
+──────────────────────────────
+
+Gate 1 doit rejeter DeceptiveTrap si :
+
+1. le sujet est trop large
+2. aucune idée dominante claire n’est trouvée
+3. aucune réponse réflexe naturelle n’existe
+4. la question dépend d’un narratif
+5. la question résumée devient Recognition
+6. le trap est seulement un distracteur fort
+7. le doute vient seulement d’une mauvaise formulation
+8. la bonne réponse n’est pas clairement défendable
+9. la reconstruction après révélation est impossible
+
+Gate 1 valide DeceptiveTrap si :
+
+1. Sous-domaine + Sujet produisent une idée dominante
+2. une réponse réflexe est identifiable
+3. la question compacte exploite cette idée
+4. les réponses activent le doute ou la correction
+5. la bonne réponse corrige le réflexe
+6. la reconstruction est possible
+7. aucune narration externe n’est nécessaire
+8. la lecture respecte le Depth
+
+──────────────────────────────
+IMPORTANT
+──────────────────────────────
+
+Ne pas essayer de rendre tous les sujets compatibles DeceptiveTrap.
+
+Certains sujets sont trop larges ou trop pauvres pour Trap.
+
+Exemple :
+Football + Coupe du Monde FIFA peut être trop large.
+
+Le moteur doit détecter :
+
+subject_trap_compatibility = strong / medium / weak / incompatible
+
+Si weak ou incompatible :
+- ne pas forcer un trap
+- ne pas produire un faux trap narratif
+- ne pas déguiser Recognition en Trap
+
+Objectif final :
+
+Créer des DeceptiveTrap courts, propres, compatibles Depth 4, où le doute vient directement de :
+
+Sous-domaine
++
+Sujet
++
+Question
++
+Réponses
+
+et jamais d’un narratif artificiel.
