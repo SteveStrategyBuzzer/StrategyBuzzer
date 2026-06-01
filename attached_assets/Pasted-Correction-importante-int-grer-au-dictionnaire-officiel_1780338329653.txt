@@ -1,0 +1,250 @@
+Correction importante à intégrer au dictionnaire officiel des cognitifs V2.
+
+Nous devons corriger la règle de détermination cognitive.
+
+Le cognitif ne doit jamais être déterminé par un narratif, une mise en contexte ou un paragraphe avant la question.
+
+Dans StrategyBuzzer, le cognitif est déterminé uniquement par :
+
+1. la structure de la question
+2. la structure des réponses
+3. la relation entre question et réponses
+4. pour DeceptiveTrap seulement : l’illusion cognitive créée entre Sous-domaine et Sujet
+
+──────────────────────────────
+RÈGLE ABSOLUE — PAS DE NARRATIF
+──────────────────────────────
+
+Aucune question StrategyBuzzer ne doit dépendre d’une portion narrative pour porter son cognitif.
+
+Interdit :
+
+Narratif
+↓
+Question Recognition
+
+Exemple invalide :
+
+Chaque année, des milliers d’alpinistes quittent le camp de base du Népal pour tenter l’ascension du mont Everest.
+Dans quel pays se trouve réellement le sommet de l’Everest ?
+
+Même avec le narratif, la vraie question reste :
+
+Dans quel pays se trouve réellement le sommet de l’Everest ?
+
+Cette question est Recognition.
+
+Le narratif ne transforme pas une question Recognition en DeceptiveTrap.
+
+Donc :
+
+Si on supprime le narratif et que la question devient Recognition, alors le cognitif réel est Recognition.
+
+Le moteur doit donc rejeter toute tentative de créer un cognitif par narration externe.
+
+──────────────────────────────
+RÈGLE DE DÉTERMINATION COGNITIVE
+──────────────────────────────
+
+Le cognitif est déterminé par :
+
+1. Structure de la question
+
+Exemples :
+- Quel / Quelle / Qui / Où / Quand / Combien → souvent Recognition
+- Pourquoi / Comment / Cause / Conséquence / Rôle → souvent Reasoning
+- Formulation qui active une illusion entre Sous-domaine et Sujet → potentiel DeceptiveTrap
+
+2. Structure des réponses
+
+Les réponses font partie du cognitif.
+
+Elles ne sont pas ajoutées après.
+
+Elles peuvent confirmer ou invalider le cognitif.
+
+Exemple :
+
+DeceptiveTrap peut dépendre de la présence de la réponse réflexe dans les choix.
+
+3. Relation entre question et réponses
+
+Le cognitif dépend du lien entre :
+
+Question
++
+Réponses
++
+Bonne réponse
++
+Réponse réflexe si applicable
+
+4. Illusion entre Sous-domaine et Sujet pour DeceptiveTrap
+
+Pour DeceptiveTrap, il faut une illusion cognitive naturelle créée par le couple :
+
+Sous-domaine
++
+Sujet
+
+Cette illusion doit exister avant même d’écrire un long texte.
+
+Exemple valide :
+
+Sous-domaine :
+Capitales
+
+Sujet :
+Paris
+
+Illusion cognitive :
+Capitales + Paris
+↓
+le joueur pense naturellement Paris
+
+Question :
+What is the largest French-speaking capital by population?
+
+Réponses :
+A. Paris
+B. Brussels
+C. Kinshasa
+D. Ottawa
+
+Réponse réflexe :
+Paris
+
+Bonne réponse :
+Kinshasa
+
+Pourquoi valide :
+Le couple Sous-domaine + Sujet crée une attente mentale forte.
+La question exploite cette attente.
+Les réponses contiennent la réponse réflexe.
+La bonne réponse corrige le réflexe.
+
+──────────────────────────────
+RÈGLE SPÉCIALE — DECEPTIVETRAP
+──────────────────────────────
+
+DeceptiveTrap ne naît pas d’un paragraphe narratif.
+
+DeceptiveTrap naît de :
+
+Sous-domaine
++
+Sujet
+↓
+Illusion cognitive naturelle
+↓
+Question compacte
+↓
+Réponses incluant la réponse réflexe
+↓
+Bonne réponse différente
+↓
+Reconstruction possible
+
+Pour DeceptiveTrap, le moteur doit documenter :
+
+- Sous-domaine
+- Sujet
+- illusion cognitive attendue
+- hypothèse implicite
+- réponse réflexe
+- bonne réponse
+- correction
+- reconstruction
+
+Si l’illusion Sous-domaine + Sujet n’existe pas clairement :
+
+→ rejet DeceptiveTrap
+
+Si la question résumée devient une question Recognition :
+
+→ rejet DeceptiveTrap
+
+Si le trap dépend uniquement d’un narratif avant la question :
+
+→ rejet DeceptiveTrap
+
+Si la réponse réflexe est injectée artificiellement dans le narratif mais pas portée par Sous-domaine + Sujet :
+
+→ rejet DeceptiveTrap
+
+──────────────────────────────
+EXEMPLE EVEREST — À CLASSER CORRECTEMENT
+──────────────────────────────
+
+Sous-domaine :
+Montagnes
+
+Sujet :
+Everest
+
+Version narrative invalide :
+
+Chaque année, des milliers d’alpinistes quittent le camp de base du Népal pour tenter l’ascension du mont Everest.
+Dans quel pays se trouve réellement le sommet de l’Everest ?
+
+Analyse :
+
+La vraie question est :
+
+Dans quel pays se trouve réellement le sommet de l’Everest ?
+
+Cette question demande :
+
+Everest
+↓
+Pays
+↓
+Réponse
+
+Donc c’est Recognition.
+
+Le narratif ne change pas le cognitif.
+
+Conclusion :
+
+Cette question ne doit pas être classée DeceptiveTrap.
+
+Elle doit être classée Recognition ou rejetée si elle était demandée comme Trap.
+
+──────────────────────────────
+AJUSTEMENT À FAIRE DANS LE DICTIONNAIRE DES COGNITIFS
+──────────────────────────────
+
+Ajoute cette règle officielle :
+
+Le cognitif doit être identifiable sans narratif externe.
+
+Pour chaque génération, Gate 1 doit exécuter ce test :
+
+1. Supprimer tout narratif ou préambule.
+2. Garder seulement la question réelle + réponses.
+3. Reclassifier le cognitif.
+4. Si la classification change, alors le cognitif était porté artificiellement par le narratif.
+5. Rejeter.
+
+Pour DeceptiveTrap, Gate 1 doit aussi vérifier :
+
+- illusion Sous-domaine + Sujet présente
+- réponse réflexe naturelle
+- réponse réflexe présente ou activable dans les choix
+- bonne réponse différente
+- reconstruction possible
+
+Objectif :
+
+Empêcher le moteur de produire :
+
+Narratif trompeur
++
+Question Recognition
+
+en pensant produire :
+
+DeceptiveTrap
+
+Nous voulons des questions compactes, compatibles Depth, sans narration inutile, où le cognitif est porté directement par la question, les réponses et, pour DeceptiveTrap, l’illusion Sous-domaine + Sujet.
