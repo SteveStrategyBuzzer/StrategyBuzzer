@@ -1,0 +1,380 @@
+Nous devons maintenant structurer officiellement les règles du noyau V2.
+
+Objectif :
+
+Le noyau V2 ne doit pas seulement contenir du contenu.
+Il doit contenir les règles qui guident la création, la traduction et la validation.
+
+Point important :
+
+La phase traduction ne redéfinit pas les règles.
+Elle hérite des règles établies dès la création du noyau.
+
+La traduction doit remplir les champs vides en respectant :
+
+1. les règles héritées du noyau
+2. les règles de création de la question
+3. le cognitif cible
+4. les règles du cognitif cible
+5. les règles propres à la langue
+
+──────────────────────────────
+1. STRUCTURE DU SLOT LANGUE
+──────────────────────────────
+
+Chaque slot langue doit suivre cette structure :
+
+Langue X
+├─ règles héritées du noyau
+│  ├─ Depth
+│  ├─ Domaine
+│  ├─ Sous-domaine
+│  └─ Sujet
+│
+├─ règles de création de la question
+├─ cognitif cible
+├─ règles du cognitif cible
+│
+├─ règles propres à la langue
+│  ├─ conservation du cognitif
+│  ├─ conservation du mécanisme
+│  ├─ conservation de la bonne réponse
+│  ├─ conservation des autres choix
+│  └─ conservation de la structure QCM/TF
+│
+├─ question / statement
+├─ réponses
+├─ bonne réponse
+└─ SV
+
+──────────────────────────────
+2. RÈGLES HÉRITÉES DU NOYAU
+──────────────────────────────
+
+Ces règles viennent du noyau.
+
+Elles ne sont pas recréées en traduction.
+
+Elles incluent :
+
+- Depth
+- Domaine
+- Sous-domaine
+- Sujet
+
+Le Depth transporte déjà :
+
+- contrainte de longueur de question
+- contrainte de longueur des réponses
+- niveau de langage
+- temps de lecture cible
+
+Donc ces éléments ne doivent pas être redéfinis dans les règles propres à la langue.
+
+La langue doit seulement adapter le contenu à ces contraintes.
+
+Important :
+
+Le SV est moins contraint que la question et les réponses, car le joueur peut le lire plus longtemps s’il le souhaite.
+
+──────────────────────────────
+3. RÈGLES DE CRÉATION DE LA QUESTION
+──────────────────────────────
+
+Il faut séparer clairement :
+
+- la structure de question
+- le cognitif
+
+La structure de question est :
+
+QCM
+ou
+TF
+
+QCM :
+- 4 réponses
+- 1 seule bonne réponse
+- choix plausibles
+- réponses du même type
+- aucune ambiguïté
+
+TF :
+- True / False
+- polarité claire
+- aucune ambiguïté
+- bonne réponse = True ou False
+
+Important :
+
+QCM et TF ne sont pas des cognitifs.
+
+Ce sont des formats de question.
+
+Donc on ne doit pas écrire :
+
+QCM_Recognition
+
+On doit comprendre :
+
+Structure : QCM
+Cognitif : Recognition
+
+ou
+
+Structure : TF
+Cognitif : Reasoning
+
+──────────────────────────────
+4. COGNITIF CIBLE
+──────────────────────────────
+
+Le cognitif cible doit être distinct de la structure QCM/TF.
+
+Les cognitifs cibles sont :
+
+- Recognition
+- Reasoning
+- DeceptiveTrap
+
+Les formes possibles sont donc :
+
+QCM + Recognition
+QCM + Reasoning
+QCM + DeceptiveTrap
+TF + Recognition + True
+TF + Recognition + False
+TF + Reasoning + True
+TF + Reasoning + False
+
+La forme QCM ou TF est comprise dans les règles de création de la question.
+
+Le cognitif cible indique le travail mental attendu.
+
+──────────────────────────────
+5. RÈGLES DU COGNITIF CIBLE
+──────────────────────────────
+
+Chaque cognitif cible doit transporter ses règles.
+
+Recognition :
+
+Capacité observée :
+- reconnaissance directe
+- mémoire immédiate
+- rappel d’un fait sans raisonnement
+
+Aides de création :
+- Quel
+- Quelle
+- Qui
+- Où
+- Quand
+- Combien
+
+Interdits :
+- Pourquoi
+- Comment
+- Cause
+- Conséquence
+- Mécanisme
+- Trap
+- hypothèse implicite
+- déduction obligatoire
+
+Reasoning :
+
+Capacité observée :
+- compréhension
+- application d’une logique
+- déduction courte
+
+Aides de création :
+- Pourquoi
+- Comment
+- Cause
+- Conséquence
+- Effet
+- Résultat
+- Rôle
+- Comparaison logique
+
+Obligatoire :
+- lien logique
+- principe ou relation à appliquer
+- déduction nécessaire
+- bonne réponse non obtenue par simple rappel direct
+
+Interdits :
+- simple définition
+- simple fait mémorisé
+- reconnaissance directe déguisée
+
+DeceptiveTrap :
+
+Capacité observée :
+- résistance au réflexe
+- correction d’une hypothèse implicite
+- contrôle d’un biais cognitif
+
+Aides de création :
+- hypothèse implicite
+- réflexe naturel
+- réponse réflexe
+- comparaison trompeuse
+- correction d’hypothèse
+
+Obligatoire :
+- une réponse réflexe attendue
+- une bonne réponse différente du réflexe
+- un mécanisme de correction
+- une reconstruction possible
+
+Le trap peut être porté par :
+- le wording
+- les choix de réponses
+- la présence de la réponse réflexe
+- le contraste entre réponse réflexe et bonne réponse
+
+Interdits :
+- simple distracteur fort
+- simple question difficile
+- piège basé seulement sur l’ignorance
+- comparaison sans réflexe naturel
+
+──────────────────────────────
+6. RÈGLES PROPRES À LA LANGUE
+──────────────────────────────
+
+Les règles propres à la langue ne redéfinissent pas le cognitif.
+
+Elles doivent seulement garantir que la traduction conserve :
+
+- le cognitif
+- le mécanisme
+- la bonne réponse
+- les autres choix
+- la structure QCM/TF
+- le sens
+- la lisibilité
+
+Elles doivent respecter les contraintes déjà données par le Depth :
+
+- longueur maximale de la question
+- longueur maximale des réponses
+- niveau de langage
+- temps de lecture cible
+
+Le SV est moins contraint que la question et les réponses, mais il doit rester lisible, clair et lié à la bonne réponse ou au mécanisme du cognitif.
+
+──────────────────────────────
+7. RÈGLE IMPORTANTE SUR LA TRADUCTION
+──────────────────────────────
+
+La traduction ne crée pas une nouvelle question.
+
+Elle remplit les slots langue déjà présents dans le noyau.
+
+La traduction doit lire :
+
+- règles héritées du noyau
+- règles de création de la question
+- cognitif cible
+- règles du cognitif cible
+- règles propres à la langue
+
+Puis remplir :
+
+- question / statement
+- réponses
+- bonne réponse
+- SV
+
+Exemple :
+
+Pour DeceptiveTrap :
+
+La traduction doit conserver :
+
+- le réflexe
+- la réponse réflexe
+- la bonne réponse
+- la correction
+- le contraste
+- la reconstruction possible
+
+Si le trap disparaît dans une langue, la traduction échoue.
+
+Pour Reasoning :
+
+La traduction doit conserver :
+
+- la relation logique
+- la déduction
+- le lien cause / mécanisme / conséquence
+- les mauvais choix plausibles
+
+Si le reasoning devient Recognition après traduction, la traduction échoue.
+
+Pour Recognition :
+
+La traduction doit conserver :
+
+- la reconnaissance directe
+- la simplicité
+- l’absence de raisonnement
+- l’absence de piège
+
+Si Recognition devient Reasoning ou Trap, la traduction échoue.
+
+──────────────────────────────
+8. CE QUE JE VEUX DE REPLIT
+──────────────────────────────
+
+Structure cette logique dans l’architecture V2.
+
+Ne patch pas encore.
+
+Je veux :
+
+1. Une proposition de structure officielle du slot langue V2.
+
+2. Une proposition de structure officielle des règles héritées du noyau.
+
+3. Une proposition de structure officielle des règles de création de la question.
+
+4. Une proposition de structure officielle du cognitif cible.
+
+5. Une proposition de structure officielle des règles du cognitif cible.
+
+6. Une proposition de structure officielle des règles propres à la langue.
+
+7. Une explication claire de comment la phase traduction lit ces règles avant de remplir :
+   - question / statement
+   - réponses
+   - bonne réponse
+   - SV
+
+8. Une explication de comment Gate 2 vérifie que :
+   - le cognitif est conservé
+   - le mécanisme est conservé
+   - les réponses restent cohérentes
+   - la bonne réponse reste correcte
+   - la structure QCM/TF est respectée
+   - le SV reste cohérent
+
+9. Une correction de toute partie de ta dernière architecture qui mélange encore :
+   - QCM/TF
+   - cognitif
+   - règles de langue
+   - règles du noyau
+
+Important :
+
+Ne pas revenir à :
+- question maître
+- variantes dérivées
+- answer_target
+- cognitive_contract post-hoc
+
+Nous structurons maintenant les règles du noyau V2 avant toute implémentation.
