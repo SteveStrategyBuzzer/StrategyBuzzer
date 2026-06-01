@@ -1,0 +1,501 @@
+RESET ARCHITECTURE V2 — CORRECTION DU FLOW, DES RÈGLES ET DE LA STRUCTURE DU NOYAU
+
+Nous ne validons pas encore les résultats générés.
+
+Avant tout test, nous devons corriger et figer :
+
+* la structure du noyau
+* le flow complet
+* les règles de création
+* les règles de validation
+* les règles de quarantaine
+* les règles de traduction
+* les règles d’entrée en ready_bank
+* les règles gameplay
+
+Objectif :
+
+Définir une architecture V2 propre avant de produire ou vérifier de nouveaux contenus.
+
+──────────────────────────────
+
+1. DÉFINITION DU NOYAU V2
+   ──────────────────────────────
+
+Un noyau V2 est d’abord une unité de production.
+
+Il devient ensuite :
+
+1. une structure de stockage
+2. une unité validée création
+3. une unité multilingue
+4. une unité validée traduction
+5. une unité ready_bank
+6. une unité gameplay
+
+Un noyau n’est pas :
+
+* une question
+* une réponse
+* une question maître
+* une variante
+* un answer_target
+
+Un noyau est basé sur :
+
+* Depth
+* Domaine
+* Sous-domaine
+* Sujet
+
+Puis il doit contenir 7 cognitifs complets :
+
+1. QCM_Recognition + réponses + bonne réponse + SV
+2. QCM_Reasoning + réponses + bonne réponse + SV
+3. QCM_DeceptiveTrap + réponses + bonne réponse + réponse réflexe + SV
+4. TF_Recognition_True + True/False + bonne réponse + SV
+5. TF_Recognition_False + True/False + bonne réponse + SV
+6. TF_Reasoning_True + True/False + bonne réponse + SV
+7. TF_Reasoning_False + True/False + bonne réponse + SV
+
+Un cognitif complet contient :
+
+* capacité mentale observée
+* relation cognitive
+* nœud cognitif
+* mécanisme cognitif
+* spécification cognitive
+* question ou statement
+* réponses
+* bonne réponse
+* SV
+
+Important :
+
+Les réponses font partie du cognitif.
+
+Elles ne sont pas ajoutées après la question.
+
+Le moteur doit produire :
+
+mécanisme cognitif
+↓
+question + réponses
+↓
+bonne réponse
+↓
+SV
+
+──────────────────────────────
+2. ROTATION DOMAIN / DEPTH
+──────────────────────────────
+
+La rotation détermine le prochain noyau à produire.
+
+Flow :
+
+Depth actuel
+↓
+Domaine 1
+↓
+création noyau complet
+↓
+validation création
+↓
+traduction
+↓
+validation traduction
+↓
+ready_bank
+↓
+Domaine suivant au même Depth
+
+Quand les 8 domaines sont passés :
+
+Depth suivant
+↓
+reprise des 8 domaines
+
+Règle :
+
+On ne saute pas aléatoirement de domaine.
+
+On complète la rotation des 8 domaines sur le même Depth avant de passer au Depth supérieur.
+
+──────────────────────────────
+3. FLOW OFFICIEL DU NOYAU
+──────────────────────────────
+
+ROTATION DOMAIN / DEPTH
+↓
+SÉLECTION DU NOYAU À PRODUIRE
+Depth + Domaine + Sous-domaine + Sujet
+↓
+PHASE CRÉATION
+remplissage complet du noyau en EN
+↓
+NOYAU PRODUIT
+7/7 cognitifs remplis en EN, sans traduction
+↓
+VALIDATION DE CRÉATION
+↓
+si échec :
+QUARANTAINE CRÉATION / RÉPARATION CRÉATION
+↓
+si réussite :
+NOYAU VALIDÉ CRÉATION
+↓
+PHASE TRADUCTION
+traduction dans les 9 autres langues
+↓
+NOYAU MULTILINGUE PRODUIT
+↓
+VALIDATION DE TRADUCTION
+↓
+si échec :
+QUARANTAINE TRADUCTION / RÉPARATION TRADUCTION
+↓
+si réussite :
+NOYAU VALIDÉ TRADUCTION
+↓
+READY_BANK
+↓
+NOYAU GAMEPLAY
+
+──────────────────────────────
+4. RÈGLE 7/7
+──────────────────────────────
+
+Un noyau produit doit contenir 7/7 cognitifs remplis en EN.
+
+Un noyau à 6/7 est incomplet.
+
+Un noyau à 6/7 ne peut pas entrer en traduction.
+
+Un noyau à 6/7 ne peut pas entrer en ready_bank.
+
+Un noyau à 6/7 doit rester en réparation création jusqu’à correction.
+
+Aucun statut PARTIALLY_READY ne doit être visible par le gameplay.
+
+Le gameplay ne voit que :
+
+READY
+ou
+NOT_READY
+
+──────────────────────────────
+5. PHASE CRÉATION
+──────────────────────────────
+
+La phase création produit le noyau complet en EN.
+
+Elle ne produit pas une question isolée.
+
+Elle ne produit pas une question maître.
+
+Elle ne produit pas des variantes dérivées.
+
+Chaque cognitif est généré selon ses règles propres.
+
+Les 7 cognitifs peuvent être créés séquentiellement ou en parallèle, mais le noyau ne devient NOYAU PRODUIT que lorsque les 7 sont remplis.
+
+──────────────────────────────
+6. RÈGLES PAR COGNITIF
+──────────────────────────────
+
+QCM_Recognition
+
+Objectif :
+observer la reconnaissance directe.
+
+Relations autorisées :
+Quel / Quelle / Qui / Où / Quand / Combien
+
+Interdit :
+raisonnement, cause, mécanisme, trap.
+
+QCM_Reasoning
+
+Objectif :
+observer la compréhension, l’application d’une logique, une déduction courte.
+
+Relations autorisées :
+Pourquoi / Comment / Conséquence / Effet / Résultat / Rôle / Comparaison logique
+
+Interdit :
+simple rappel direct.
+
+QCM_DeceptiveTrap
+
+Objectif :
+observer la résistance au réflexe et la correction d’une hypothèse implicite.
+
+Obligatoire :
+
+* hypothèse implicite
+* réponse réflexe
+* bonne réponse différente du réflexe
+* correction possible
+* reconstruction possible
+
+Le trap peut être porté par :
+
+* wording
+* choix de réponses
+* présence de la réponse réflexe
+* contraste entre réponse réflexe et bonne réponse
+
+TF_Recognition_True
+
+Objectif :
+valider un fait vrai reconnu.
+
+Interdit :
+raisonnement ou chaîne logique.
+
+TF_Recognition_False
+
+Objectif :
+détecter une erreur factuelle plausible.
+
+Interdit :
+fausse logique ou faux mécanisme.
+
+TF_Reasoning_True
+
+Objectif :
+valider une relation logique correcte.
+
+Interdit :
+simple fait reconnu.
+
+TF_Reasoning_False
+
+Objectif :
+détecter une relation logique incorrecte mais plausible.
+
+Interdit :
+simple erreur factuelle.
+
+──────────────────────────────
+7. SV
+──────────────────────────────
+
+Chaque cognitif possède son propre SV.
+
+Pour :
+
+* QCM_Recognition
+* QCM_Reasoning
+* TF_Recognition_True
+* TF_Recognition_False
+* TF_Reasoning_True
+* TF_Reasoning_False
+
+Le SV découle de la bonne réponse.
+
+Pour :
+
+* QCM_DeceptiveTrap
+
+Le SV peut découler :
+
+* de la bonne réponse
+* de la réponse réflexe
+* du contraste entre réponse réflexe et bonne réponse
+* du sujet
+* du mécanisme du piège
+
+Exemple :
+
+Sujet :
+Paris
+
+Réponse réflexe :
+Paris
+
+Bonne réponse :
+Kinshasa
+
+Le SV peut parler de Kinshasa ou du contraste Paris/Kinshasa.
+
+──────────────────────────────
+8. VALIDATION DE CRÉATION
+──────────────────────────────
+
+La validation de création vérifie le noyau produit EN.
+
+Elle doit vérifier :
+
+* 7/7 cognitifs présents
+* chaque cognitif respecte sa règle
+* chaque question + réponses + bonne réponse + SV sont cohérents
+* les réponses participent bien au mécanisme cognitif
+* les SV sont liés correctement
+* les contraintes gameplay sont respectées
+* les longueurs sont compatibles avec le Depth
+* aucun cognitif ne retombe dans un autre
+
+La validation ne doit plus utiliser :
+
+* question maître
+* variantes dérivées
+* answer_target
+* cohérence inter-variantes
+
+──────────────────────────────
+9. QUARANTAINE CRÉATION
+──────────────────────────────
+
+La quarantaine création agit sur le cognitif fautif, mais bloque le noyau.
+
+Exemple :
+
+6 cognitifs valides
+1 cognitif invalide
+
+Résultat :
+
+* les 6 valides restent en attente
+* le cognitif fautif va en quarantaine création
+* le noyau reste NOT_READY
+* le noyau ne peut pas passer en traduction
+
+Le noyau complet est régénéré seulement si le squelette est mauvais :
+
+* mauvais domaine
+* mauvais sous-domaine
+* mauvais sujet
+* depth incompatible
+* sujet incapable de supporter plusieurs cognitifs essentiels
+
+Sinon, on corrige seulement le cognitif fautif.
+
+──────────────────────────────
+10. PHASE TRADUCTION
+──────────────────────────────
+
+La traduction commence seulement après validation création 7/7.
+
+La traduction ne doit pas être une simple copie linguistique.
+
+Elle doit préserver :
+
+* le cognitif
+* le mécanisme cognitif
+* les réponses
+* la bonne réponse
+* le SV
+* le trap si applicable
+* la logique si applicable
+
+Pour QCM_DeceptiveTrap :
+
+La traduction doit préserver le réflexe cognitif dans la langue cible.
+
+Pour TF_Reasoning_False :
+
+La traduction doit préserver la fausse relation logique plausible.
+
+──────────────────────────────
+11. VALIDATION DE TRADUCTION
+──────────────────────────────
+
+La validation de traduction vérifie :
+
+* chaque cognitif
+* chaque langue
+* conservation du mécanisme
+* conservation de la bonne réponse
+* conservation du SV
+* respect des longueurs par langue
+* lisibilité gameplay
+* polarité True/False
+* survie du trap après traduction
+* survie du reasoning après traduction
+
+Question centrale :
+
+Le cognitif survit-il à la traduction ?
+
+──────────────────────────────
+12. QUARANTAINE TRADUCTION
+──────────────────────────────
+
+La quarantaine traduction agit sur le couple :
+
+cognitif + langue
+
+Mais elle bloque le noyau pour ready_bank tant que tout n’est pas réparé.
+
+Exemple :
+
+QCM_DeceptiveTrap valide dans 8 langues
+échoue en arabe
+
+Résultat :
+
+* seul QCM_DeceptiveTrap + arabe est en quarantaine traduction
+* le noyau reste NOT_READY
+* le noyau n’entre pas en ready_bank
+* après correction, validation traduction reprend sur le couple fautif
+
+──────────────────────────────
+13. READY_BANK
+──────────────────────────────
+
+READY_BANK contient uniquement des noyaux validés traduction.
+
+Conditions obligatoires :
+
+* 7/7 cognitifs validés création
+* 7/7 cognitifs traduits
+* toutes les langues validées
+* validation traduction réussie
+* aucune quarantaine active
+* contraintes gameplay respectées
+
+READY_BANK ne doit jamais contenir :
+
+* noyau partiel
+* noyau 6/7
+* noyau sans traduction complète
+* noyau avec cognitif manquant
+* noyau avec langue manquante
+* noyau avec quarantaine active
+
+──────────────────────────────
+14. AUDIT DEMANDÉ
+──────────────────────────────
+
+Maintenant, audite ta dernière proposition avec ces règles corrigées.
+
+Réponds précisément :
+
+1. Quelles parties de ta dernière proposition doivent être corrigées ?
+2. Est-ce que PARTIALLY_APPROVED doit être supprimé ?
+3. Est-ce que PARTIALLY_TRANSLATED doit être supprimé ?
+4. Est-ce que la quarantaine doit rester interne seulement ?
+5. Est-ce que le gameplay doit voir uniquement READY / NOT_READY ?
+6. Quelles phases actuelles sont incompatibles avec ce flow ?
+7. Quels anciens concepts contaminent encore le système ?
+8. Quelle architecture corrigée proposes-tu maintenant ?
+9. Quel diagramme final du flow V2 respectes-tu ?
+10. Quelles règles exactes empêchent un noyau incomplet d’entrer en traduction ou ready_bank ?
+
+Important :
+
+Ne patch pas.
+
+Ne code pas.
+
+Ne propose pas encore de migration.
+
+Ne reviens pas à question maître.
+
+Ne reviens pas à variantes dérivées.
+
+Ne reviens pas à answer_target.
+
+L’objectif est de corriger l’ensemble du flow, des règles et de la structure du noyau avant de vérifier les résultats.
