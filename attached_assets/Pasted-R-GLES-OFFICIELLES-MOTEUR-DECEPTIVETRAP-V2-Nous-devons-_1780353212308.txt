@@ -1,0 +1,657 @@
+RÈGLES OFFICIELLES — MOTEUR DECEPTIVETRAP V2
+
+Nous devons mettre à jour officiellement les règles du moteur DeceptiveTrap.
+
+Objectif :
+
+Empêcher le moteur de créer de faux traps basés sur :
+
+* un narratif
+* une question trop longue
+* un simple distracteur fort
+* une question Recognition déguisée
+* un sujet trop large
+* une association personnelle non démontrée
+
+Le DeceptiveTrap doit être construit à partir du noyau :
+
+Domaine
++
+Sous-domaine
++
+Sujet
+
+et plus précisément à partir de :
+
+Sous-domaine
++
+Sujet
+↓
+Idée dominante
+↓
+Propriété associée
+↓
+Réponse réflexe
+↓
+Autre porteur possible ou absence du réflexe
+↓
+Question compacte
+↓
+Réponses
+↓
+Bonne réponse
+↓
+Correction
+↓
+Reconstruction
+
+──────────────────────────────
+
+1. RÈGLE ABSOLUE : LE TRAP NE NAÎT PAS DU NARRATIF
+   ──────────────────────────────
+
+Le moteur ne doit jamais fabriquer un DeceptiveTrap en ajoutant un paragraphe narratif avant une question Recognition.
+
+Interdit :
+
+Narratif
++
+Question Recognition
+====================
+
+Faux Trap
+
+Exemple invalide :
+
+Chaque année, des milliers d’alpinistes quittent le camp de base du Népal pour tenter l’ascension du mont Everest.
+Dans quel pays se trouve réellement le sommet de l’Everest ?
+
+Analyse :
+
+La vraie question est :
+
+Dans quel pays se trouve réellement le sommet de l’Everest ?
+
+Cette question est Recognition.
+
+Le narratif ne transforme pas Recognition en DeceptiveTrap.
+
+Gate 1 doit donc exécuter un strip test :
+
+1. Supprimer le narratif.
+2. Garder seulement la question + réponses.
+3. Reclassifier le cognitif.
+4. Si le cognitif devient Recognition ou Reasoning au lieu de DeceptiveTrap :
+   → rejet.
+
+──────────────────────────────
+2. RÈGLE CENTRALE : LE SUJET ÉVOQUE UNE IDÉE, PAS UNE QUESTION
+──────────────────────────────
+
+Le moteur DeceptiveTrap ne commence jamais par écrire une question.
+
+Il commence par identifier ce que le sujet évoque naturellement dans son sous-domaine.
+
+Formule :
+
+Sous-domaine
++
+Sujet
+↓
+Idée dominante évoquée
+↓
+Propriété associée
+↓
+Réponse réflexe
+
+Exemple :
+
+Sous-domaine :
+Football
+
+Sujet :
+Pelé
+
+Idée dominante :
+Pelé est associé à 3 Coupes du Monde.
+
+Propriété associée :
+Avoir remporté 3 Coupes du Monde.
+
+Réponse réflexe :
+Brésil / Pelé selon la formulation.
+
+Le moteur doit ensuite chercher comment exploiter cette idée sans que le sujet soit forcément la bonne réponse.
+
+──────────────────────────────
+3. RÈGLE DE LA PROPRIÉTÉ ASSOCIÉE
+──────────────────────────────
+
+Un DeceptiveTrap doit identifier une propriété fortement associée au sujet.
+
+Le sujet n’est pas nécessairement la bonne réponse.
+
+La question peut utiliser l’idée du sujet pour mener vers une autre réponse.
+
+Formule :
+
+Sujet
+↓
+Idée dominante
+↓
+Propriété associée
+↓
+Qui possède aussi cette propriété ?
+ou
+Qui possède réellement cette propriété ?
+ou
+Que reste-t-il si la réponse réflexe est absente ?
+↓
+Bonne réponse
+
+Exemple Football / Pelé :
+
+Sous-domaine :
+Football
+
+Sujet :
+Pelé
+
+Idée dominante :
+3 Coupes du Monde.
+
+Propriété :
+Avoir exactement 3 Coupes du Monde.
+
+Question :
+Quel pays possède un total de trois Coupes du Monde ?
+
+A. Allemagne
+B. Brésil
+C. Italie
+D. Argentine
+
+Réponse réflexe :
+Brésil
+
+Bonne réponse :
+Italie
+
+Pourquoi valide :
+Le sujet Pelé évoque 3 Coupes du Monde et Brésil.
+Mais le Brésil possède 5 Coupes du Monde.
+L’Italie correspond au total de 3.
+Le joueur doit corriger son réflexe.
+
+──────────────────────────────
+4. DEUX TYPES OFFICIELS DE DECEPTIVETRAP
+──────────────────────────────
+
+TYPE A — RÉPONSE RÉFLEXE PRÉSENTE MAIS INCORRECTE
+
+Le joueur voit son réflexe dans les choix.
+Il est tenté de le sélectionner.
+La bonne réponse corrige ce réflexe.
+
+Structure :
+
+Sous-domaine + Sujet
+↓
+Idée dominante
+↓
+Réponse réflexe
+↓
+Réponse réflexe présente dans les choix
+↓
+Bonne réponse différente
+↓
+Correction
+
+Exemples :
+
+Capitales / Paris
+
+Question :
+Quelle est la plus grande capitale francophone du monde ?
+
+A. Paris
+B. Bruxelles
+C. Kinshasa
+D. Ottawa
+
+Réponse réflexe :
+Paris
+
+Bonne réponse :
+Kinshasa
+
+---
+
+Monuments / Tour Eiffel
+
+Question :
+De qui vient l’idée initiale de la Tour Eiffel ?
+
+A. Deux ingénieurs
+B. Gustave Eiffel
+C. Un journaliste
+D. Un diplomate français
+
+Réponse réflexe :
+Gustave Eiffel
+
+Bonne réponse :
+Deux ingénieurs
+
+---
+
+Football / Pelé
+
+Question :
+Quel pays possède un total de trois Coupes du Monde ?
+
+A. Allemagne
+B. Brésil
+C. Italie
+D. Argentine
+
+Réponse réflexe :
+Brésil
+
+Bonne réponse :
+Italie
+
+TYPE B — RÉPONSE RÉFLEXE ABSENTE
+
+Le joueur cherche son réflexe dans les choix.
+Il ne le trouve pas.
+L’absence crée le doute et force la reconstruction.
+
+Structure :
+
+Sous-domaine + Sujet
+↓
+Idée dominante
+↓
+Réponse réflexe attendue
+↓
+Réponse réflexe absente des choix
+↓
+Doute naturel
+↓
+Relecture / reconstruction
+↓
+Bonne réponse
+
+Exemples :
+
+Films / Titanic
+
+Question :
+Dans quel film un navire coule après avoir frappé un iceberg ?
+
+A. Pirates des Caraïbes
+B. A Night to Remember
+C. Poseidon
+D. The Perfect Storm
+
+Réponse réflexe :
+Titanic
+
+Bonne réponse :
+A Night to Remember
+
+Pourquoi valide :
+Titanic est attendu mais absent.
+Le joueur doit reconstruire vers un autre film qui raconte le même naufrage.
+
+---
+
+Animaux terrestres / Éléphant
+
+Question :
+Quel est le plus gros animal terrestre ?
+
+A. Tigre
+B. Lion
+C. Ours noir
+D. Épaulard
+
+Réponse réflexe :
+Éléphant
+
+Bonne réponse :
+à valider selon le cadre exact choisi.
+
+Pourquoi le mécanisme est intéressant :
+Éléphant est attendu mais absent.
+L’épaulard force une relecture du mot terrestre.
+La question crée un doute naturel.
+
+Important :
+Ce type doit être utilisé seulement si la bonne réponse reste clairement défendable.
+
+──────────────────────────────
+5. RÈGLE DU SUJET : TROP LARGE ≠ PAUVRE
+──────────────────────────────
+
+Un sujet peut être riche cognitivement mais non conforme comme sujet de noyau.
+
+Exemple :
+
+Domaine :
+Sport
+
+Sous-domaine :
+Football
+
+Sujet :
+Coupe du Monde FIFA
+
+Ce sujet est riche cognitivement, mais trop large.
+
+Il agit comme un sous-domaine.
+
+Il évoque trop d’idées :
+
+* Brésil
+* Argentine
+* Pelé
+* Messi
+* Maradona
+* trophée
+* finale
+* pays hôte
+* champion
+* records
+* qualifications
+
+Donc il ne produit pas une idée dominante unique assez stable.
+
+Conclusion :
+
+# Football + Coupe du Monde FIFA
+
+subject_too_broad
+
+et non :
+
+subject_cognitively_poor
+
+Règle :
+
+Un sujet V2 doit être assez précis pour :
+
+* produire une idée dominante identifiable
+* supporter Recognition
+* supporter Reasoning
+* supporter DeceptiveTrap
+* remplir 7/7 cognitifs sans forçage
+
+Si un sujet agit comme un sous-domaine :
+→ rejet du sujet pour noyau V2
+→ choisir un sujet plus précis.
+
+Exemples meilleurs :
+
+Sous-domaine :
+Football
+
+Sujets possibles :
+
+* Pelé
+* Brésil en Coupe du Monde
+* Trophée Jules-Rimet
+* Finale 1950
+* Diego Maradona
+* Lionel Messi
+
+──────────────────────────────
+6. VALIDATION PRÉALABLE DU SUJET
+──────────────────────────────
+
+Avant de créer DeceptiveTrap, le moteur doit évaluer le sujet.
+
+Critères :
+
+1. Granularité du sujet
+
+valid :
+sujet précis, exploitable.
+
+too_broad :
+le sujet agit comme un sous-domaine.
+
+too_narrow :
+le sujet est trop anecdotique ou trop pauvre pour 7 cognitifs.
+
+2. Idée dominante
+
+Le sujet doit produire une idée dominante claire dans son sous-domaine.
+
+Si plusieurs idées concurrentes existent sans dominante :
+→ rejet DeceptiveTrap.
+
+3. Propriété associée
+
+Le sujet doit évoquer une propriété exploitable.
+
+Exemples :
+
+Pelé
+↓
+3 Coupes du Monde
+
+Spaghetti
+↓
+Carbonara
+
+Tour Eiffel
+↓
+Gustave Eiffel
+
+Titanic
+↓
+Navire + iceberg
+
+Bastille
+↓
+14 juillet 1789 / prise de la Bastille
+
+4. Réponse réflexe
+
+La propriété doit produire une réponse réflexe naturelle.
+
+5. Correction possible
+
+Il doit exister :
+
+* une bonne réponse différente
+  ou
+* une réponse réflexe absente créant une reconstruction possible.
+
+──────────────────────────────
+7. ORDRE DE CRÉATION OBLIGATOIRE
+──────────────────────────────
+
+Le moteur DeceptiveTrap doit suivre cet ordre :
+
+1. Lire le Domaine.
+2. Lire le Sous-domaine.
+3. Lire le Sujet.
+4. Vérifier que le sujet n’est pas trop large.
+5. Identifier l’idée dominante évoquée par le sujet.
+6. Identifier la propriété associée.
+7. Identifier la réponse réflexe.
+8. Choisir le type de trap :
+
+   * Type A : réponse réflexe présente mais incorrecte
+   * Type B : réponse réflexe absente
+9. Identifier la bonne réponse.
+10. Vérifier que la bonne réponse est défendable.
+11. Construire une question compacte.
+12. Construire les réponses.
+13. Documenter la correction.
+14. Documenter la reconstruction.
+15. Générer le SV.
+
+Interdit :
+
+* commencer par écrire la question
+* ajouter un narratif pour forcer le piège
+* forcer DeceptiveTrap sur un sujet trop large
+* forcer DeceptiveTrap sur un sujet qui ne produit pas d’idée dominante
+* créer une question Recognition puis la déguiser
+
+──────────────────────────────
+8. GATE 1 — VALIDATION DECEPTIVETRAP
+──────────────────────────────
+
+Gate 1 valide DeceptiveTrap si :
+
+1. le sujet n’est pas trop large
+2. l’idée dominante est claire
+3. la propriété associée est explicite
+4. la réponse réflexe est naturelle
+5. la question est compacte
+6. la question ne dépend pas d’un narratif
+7. les réponses créent le doute ou la correction
+8. la bonne réponse est différente du réflexe ou le réflexe est absent
+9. la bonne réponse est défendable
+10. la reconstruction est possible
+11. le tout respecte le Depth
+
+Gate 1 rejette DeceptiveTrap si :
+
+1. sujet trop large
+2. sujet trop étroit
+3. aucune idée dominante
+4. propriété associée floue
+5. réponse réflexe non naturelle
+6. question narrative
+7. question trop longue
+8. question résumée = Recognition
+9. simple distracteur fort
+10. bonne réponse non défendable
+11. reconstruction impossible
+12. piège basé seulement sur l’ignorance
+
+──────────────────────────────
+9. RÈGLE "PAS DE PARMI CES CHOIX"
+──────────────────────────────
+
+La question ne doit pas annoncer que la réponse attendue peut être absente.
+
+Interdit :
+
+* Parmi ces choix, lequel...
+* Parmi les options suivantes...
+* Lequel de ces...
+
+Pourquoi :
+
+Cette formulation casse le piège Type B.
+
+Le joueur comprend immédiatement qu’il doit seulement comparer les choix.
+
+La question doit rester naturelle.
+
+Exemple correct :
+
+Quel est le plus gros animal terrestre ?
+
+et non :
+
+Parmi ces choix, quel est le plus gros animal terrestre ?
+
+──────────────────────────────
+10. RÈGLE DEPTH
+──────────────────────────────
+
+Pour Depth 3-5, viser Depth 4.
+
+Le DeceptiveTrap doit être :
+
+* court
+* lisible rapidement
+* sans mini-cours
+* sans narratif
+* jouable au buzzer
+* compatible mobile
+
+La complexité doit venir du doute cognitif,
+pas de la longueur.
+
+──────────────────────────────
+11. COMPORTEMENT SI ÉCHEC
+──────────────────────────────
+
+Si DeceptiveTrap échoue :
+
+1. tenter réparation ciblée si le sujet semble exploitable
+2. si l’échec vient du sujet trop large :
+   → régénérer le sujet
+3. si l’échec vient du sujet trop étroit :
+   → régénérer le sujet
+4. si l’échec vient d’une question mal écrite :
+   → régénérer seulement DeceptiveTrap
+5. si aucun DeceptiveTrap valide n’est trouvable :
+   → le noyau ne peut pas devenir 7/7
+   → le squelette doit être remplacé
+
+Rappel :
+
+Un noyau V2 valide doit avoir 7/7 cognitifs.
+
+Aucun 6/7 ne peut entrer en ready_bank.
+
+──────────────────────────────
+12. CE QUE JE VEUX DE REPLIT
+──────────────────────────────
+
+Intègre ces règles dans la définition officielle du moteur DeceptiveTrap V2.
+
+Ne patch pas encore si les fichiers ne sont pas identifiés.
+
+Je veux d’abord :
+
+1. confirmer que tu comprends la différence entre :
+
+   * sujet trop large
+   * sujet trop pauvre
+   * sujet incompatible trap
+
+2. confirmer que DeceptiveTrap doit partir de :
+   Sous-domaine + Sujet → Idée dominante → Propriété associée → Réponse réflexe
+
+3. confirmer que le moteur ne doit pas commencer par écrire une question
+
+4. confirmer que les types A et B sont reconnus
+
+5. confirmer que 6/7 reste invalide
+
+6. proposer les champs exacts à stocker pour documenter DeceptiveTrap :
+
+   * idée_dominante
+   * propriété_associée
+   * réponse_réflexe
+   * type_trap
+   * bonne_réponse
+   * correction
+   * reconstruction
+   * subject_granularity
+   * rejet_reason si applicable
+
+7. proposer comment Gate 1 devra valider ces champs
+
+8. ne pas réintroduire :
+
+   * narratif
+   * question maître
+   * answer_target
+   * variantes dérivées
+   * PARTIAL 6/7
+
+Objectif :
+
+Que le moteur DeceptiveTrap V2 crée des traps courts, précis, Depth 4, construits à partir de l’idée dominante du sujet, et non à partir d’un narratif ou d’un faux piège.
