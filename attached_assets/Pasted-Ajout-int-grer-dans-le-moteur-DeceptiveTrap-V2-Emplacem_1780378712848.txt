@@ -1,0 +1,102 @@
+Ajout à intégrer dans le moteur DeceptiveTrap V2.
+
+Emplacement :
+QCM × DeceptiveTrap
+→ Inventaire brut des évocations
+
+RÈGLE OFFICIELLE — INVENTAIRE BRUT DES ÉVOCATIONS
+
+Une évocation est une idée qu’un joueur moyen associe spontanément au sujet, dans son sous-domaine, sans réflexion prolongée.
+
+Formule :
+
+Sous-domaine
++
+Sujet
+↓
+Inventaire brut des évocations
+
+Une évocation doit entrer dans au moins une de ces catégories :
+
+1. Association directe
+Le sujet évoque immédiatement l’idée.
+
+Exemples :
+Pelé → Brésil
+Tour Eiffel → Paris
+Titanic → Iceberg
+
+2. Fait dominant
+Le sujet est fortement connu pour ce fait.
+
+Exemples :
+Pelé → 3 Coupes du Monde
+Neil Armstrong → premier homme sur la Lune
+Mont Everest → plus haute montagne
+
+3. Record dominant
+Le sujet possède un record ou une caractéristique très connue.
+
+Exemples :
+Guépard → animal terrestre le plus rapide
+Éléphant → plus gros animal terrestre
+
+4. Relation historique ou culturelle forte
+Le sujet est constamment associé à un autre élément.
+
+Exemples :
+Bastille → 14 juillet 1789
+Titanic → naufrage
+Spaghetti → carbonara
+Pelé → Santos FC
+
+INTERDIT DANS L’INVENTAIRE BRUT :
+
+- évocation trop éloignée
+- évocation trop spécialisée
+- évocation non reliée directement au sujet
+- évocation seulement intéressante mais non spontanée
+- évocation qui demande une expertise avancée
+
+Exemples invalides :
+Pelé → arbitre
+Tour Eiffel → cuisine française
+Titanic → télévision couleur
+Bastille → Napoléon, sauf si le lien direct est démontré
+
+TEST D’ÉVOCATION :
+
+Pour chaque évocation candidate, le moteur doit se demander :
+
+“Si je montre ce sujet à 100 joueurs moyens, combien penseraient spontanément à cette idée ?”
+
+Barème :
+
+80%+ = très forte
+50-79% = forte
+20-49% = moyenne
+<20% = faible
+
+Règle :
+
+Une évocation faible ne doit pas entrer dans le Top 5, sauf si le sujet ne produit presque aucune autre évocation exploitable.
+
+Rappel :
+
+Une évocation n’est pas une idée intéressante.
+
+Une évocation est une idée naturellement associée au sujet par le public général.
+
+Après inventaire brut :
+
+Inventaire brut des évocations
+↓
+Classement
+↓
+Top 1 à 5 idées dominantes
+↓
+Inventaire brut des propriétés
+↓
+Classement
+↓
+Exploration
