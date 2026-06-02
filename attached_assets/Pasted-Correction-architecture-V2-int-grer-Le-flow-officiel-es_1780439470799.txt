@@ -1,0 +1,83 @@
+Correction architecture V2 à intégrer.
+
+Le flow officiel est :
+
+ROTATION
+↓
+PHASE 1 — création / remplissage
+↓
+PHASE 2 — analyse création
+↓
+PHASE 3 — traduction
+↓
+PHASE 4 — analyse traduction
+↓
+READY_BANK
+
+Règles corrigées :
+
+1. Phase 1 ne corrige pas.
+Elle crée/remplit le noyau et se réaligne seulement pour les prochains noyaux selon le feedback reçu de Phase 2.
+
+2. Phase 2 analyse la création.
+Elle marque chaque bloc cognitif :
+- VALIDATED_OK
+- WARNING
+
+3. Il n’y a pas d’état EMPTY séparé.
+EMPTY / inconceivable / contenu fautif = cause du WARNING.
+
+4. Si bloc conforme après Phase 1 :
+→ bloc marqué VALIDATED_OK
+→ envoyé vers Phase 3 pour traduction.
+
+5. Si bloc non conforme après Phase 1 :
+→ bloc marqué WARNING
+→ copie du noyau envoyée en quarantaine
+→ diagnostic ajouté
+→ feedback envoyé vers Phase 1 pour réalignement futur.
+
+6. Phase 3 ne corrige pas.
+Elle traduit les blocs disponibles et se réaligne pour les prochaines traductions selon feedback de Phase 4.
+
+7. Phase 4 analyse uniquement les traductions.
+Elle marque les blocs traduits :
+- VALIDATED_OK
+- WARNING
+
+8. Il n’y a pas de Phase 2B.
+Le flow ne recule pas.
+La structure reste :
+Rotation → Phase 1 → Phase 2 → Phase 3 → Phase 4 → Ready_Bank.
+
+9. La quarantaine est un dossier unique par noyau.
+Les copies Phase 2 et Phase 4 ne s’accumulent pas séparément.
+Elles s’imbriquent dans le même dossier/quarantaine du noyau.
+
+10. L’email de correction est envoyé seulement après passage complet du noyau jusqu’à Phase 4 / Ready_Bank.
+Objectif : inclure tous les problèmes création + traduction dans une seule demande de correction.
+
+11. Ready_Bank peut contenir un noyau avec des blocs WARNING.
+Le gameplay peut consommer uniquement les blocs VALIDATED_OK.
+Le gameplay n’a jamais accès aux blocs WARNING.
+
+12. Si une correction humaine est renvoyée :
+→ elle repart de la quarantaine vers Phase 2
+→ elle s’efface de la quarantaine
+→ Phase 2 analyse la correction
+→ Phase 3 traduit les sections concernées
+→ Phase 4 analyse les traductions concernées
+→ Ready_Bank remplace les anciens blocs WARNING par les blocs corrigés VALIDATED_OK.
+
+13. Si 2 blocs WARNING sur 3 sont corrigés :
+→ ces 2 blocs remplacent les versions WARNING dans Ready_Bank
+→ leur statut devient VALIDATED_OK
+→ le bloc restant demeure WARNING et inaccessible au gameplay.
+
+Phrase officielle :
+
+Phase 2 analyse la création.
+Phase 4 analyse la traduction.
+Ready_Bank stocke le noyau final avec statuts par bloc.
+Gameplay consomme uniquement les blocs VALIDATED_OK.
+Quarantaine conserve la copie imbriquée des blocs WARNING jusqu’à correction humaine.

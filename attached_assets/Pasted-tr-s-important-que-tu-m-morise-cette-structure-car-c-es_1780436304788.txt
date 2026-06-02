@@ -1,0 +1,40 @@
+très important que tu mémorise cette structure car c’est exactement le flow qu’on veut avoir après phase 1, si tu vois des irrégularités dit le moi
+Arrivé à PHASE 2
+
+Si bloc “conforme” :
+→ Après analyse, marqué VALIDATED_OK sur le ou les bloc(s) Question, Réponse, SV des cognitifs réussis
+→ envoyé vers Phase 3 “pour” traduction requise
+
+Si bloc non conforme :
+→ marqué “warning”
+→ copier le noyau en quarantaine
+→ diagnostic ajouté
+→ attente fin du processus du parcours du noyau vers ready_bank pour ajouter d’autres correctifs si nécessaire au niveau des traductions 
+→ feedback envoyé vers Phase 1 sur erreur(s) perçu
+
+Si retour d’un noyau après correction humaine
+→ il doit partir de la quarantaine à phase 2 avec les correctifs effectués 
+→ s’effacer de la quarantaine
+→ être analysé pour aligner phase 1 avec les correctifs pour complémenter sur les erreurs vu
+→ transférer vers phase 3
+
+Pour ton cas DeceptiveTrap :
+6 blocs bons mais pas deceptive_trap
+→ Phase 1 met conceptive_trap "inconceivable"
+→ Phase 2 valide les 6 autres blocs
+→ phase 2 envoie une copie dans quarantaine
+→ Phase 3 les traduit les 6 blocs du noyau
+→ Phase 4 analyse/valide les traductions
+→ Phase 4 voit le warning ”Inconceivable” et envoie la copie du noyau complété passé par Translation à quarantaine pour s’imbriquer avec le noyau existant avec connotation prête pour correction*.
+→ READY_BANK, deceptive_trap bloqué pour gameplay avec empreinte numérique qui s’aligne avec son noyau qui est mi dans la quarantaine pour si il est corrigé le noyau de la quarantaine pour quand il sera à rentrer dans ready_bank il s’emboite avec celui qui est existant et tous les correctifs et ou rajouts prennent la place dans dans le noyau de la ready_bank 
+
+Trap vide ou autre problématique
+→ Phase 2 et phase 4 l’analyse comme incomplet
+→ copie quarantaine enrichie
+→ email seulement quand le noyau est fini d'être  traité par phase 4 et rendu dans ready_bank
+→ Phase 4 à la responsabilité aussi de dire à Translation les problèmes soulevés
+→ Phase 4 si c’est les premières erreurs détectées, il envoie le noyau dans quarantaine avec warning aux emplacements qu’il à détecté, envoyant le noyau dans quarantaine avec spécification noyau complet pour correction.
+→ Phase 4 si une copie du noyau est déjà été mise en quarantaine par Phase 2 la copie de phase 4 s’imbrique dans la copie de la phase 2 et la copie de la phase 4 doit apporter dans l’ambriquemant la connotation de l'amalgame des 2 copies prête pour correction*.
+→ Phase 4 si il voie que dans tout le noyau il n’y pas de warning il l’envoie dans ready_bank sans rien envoyer à quarantaine et ready_bank à accès à tout le contenue du noyau
+
+prête pour correction*. fait en sorte que l’info par email est envoyé pour correction
