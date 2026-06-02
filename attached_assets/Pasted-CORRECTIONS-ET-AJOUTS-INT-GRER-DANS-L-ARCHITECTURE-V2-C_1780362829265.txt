@@ -1,0 +1,308 @@
+CORRECTIONS ET AJOUTS À INTÉGRER DANS L'ARCHITECTURE V2
+
+Ces points complètent l'audit V2 et doivent être ajoutés aux sections existantes.
+
+──────────────────────────────
+
+1. PHASE DECEPTIVETRAP
+   AJOUT AVANT "IDÉES DOMINANTES"
+   ──────────────────────────────
+
+Emplacement :
+
+PHASE CRÉATION
+→ Moteur DeceptiveTrap
+
+Ajouter une étape obligatoire :
+
+Sous-domaine
++
+Sujet
+↓
+INVENTAIRE BRUT DES ÉVOCATIONS
+↓
+FILTRAGE
+↓
+IDÉES DOMINANTES
+(1 à 5 maximum)
+
+Définition :
+
+Le moteur ne génère pas directement les idées dominantes.
+
+Il produit d'abord une liste brute des évocations naturelles du sujet.
+
+Exemple :
+
+Sujet :
+Pelé
+
+Inventaire brut :
+
+* Brésil
+* 3 Coupes du Monde
+* Roi du football
+* Santos FC
+* numéro 10
+* plus jeune champion du monde
+* Coupe du Monde 1958
+* buts en carrière
+
+Puis :
+
+Filtrage
+↓
+Classement
+↓
+Top 1 à 5 idées dominantes
+
+Pourquoi :
+
+Deux moteurs différents doivent pouvoir retrouver les mêmes idées dominantes.
+
+L'inventaire brut devient donc auditable.
+
+Nouveaux champs :
+
+raw_evocations
+dominant_ideas_ranked
+
+──────────────────────────────
+2. PHASE DECEPTIVETRAP
+AJOUT APRÈS "IDÉE DOMINANTE"
+──────────────────────────────
+
+Emplacement :
+
+Sous-domaine
++
+Sujet
+↓
+Idée dominante
+
+Ajouter :
+
+Idée dominante
+↓
+Inventaire des propriétés possibles
+↓
+Exploration des propriétés
+↓
+Réponse réflexe
+↓
+Correction
+↓
+Reconstruction
+
+Définition :
+
+Une idée dominante ne doit jamais être rejetée après une seule tentative.
+
+Le moteur doit explorer les propriétés exploitables liées à cette idée dominante.
+
+Exemple :
+
+Sujet :
+Pelé
+
+Idée dominante :
+3 Coupes du Monde
+
+Propriétés possibles :
+
+* seul joueur à avoir 3 Coupes du Monde
+* Brésil associé aux 3 Coupes du Monde
+* premier pays à atteindre certains records
+* comparaison avec autres pays titrés
+
+Le moteur explore toutes les propriétés pertinentes avant d'abandonner cette idée dominante.
+
+Nouveaux champs :
+
+dominant_idea_properties
+properties_tried
+property_selected
+
+──────────────────────────────
+3. QUARANTAINE DECEPTIVETRAP
+CORRECTION IMPORTANTE
+──────────────────────────────
+
+Remplacer toute logique équivalente à :
+
+Idée dominante
+↓
+Échec
+↓
+Quarantaine
+
+par :
+
+Idée dominante
+↓
+Exploration complète des propriétés
+↓
+Échec de toutes les propriétés
+↓
+Idée dominante suivante
+
+Puis :
+
+Toutes les idées dominantes épuisées
+↓
+QUARANTAINE_DECEPTIVETRAP
+
+Règle officielle :
+
+Une idée dominante n'entre jamais directement en quarantaine.
+
+La quarantaine n'est autorisée qu'après :
+
+* épuisement de toutes les propriétés
+  ET
+* épuisement de toutes les idées dominantes disponibles
+
+──────────────────────────────
+4. SECTION QUARANTAINE
+MISE À JOUR DES CAUSES
+──────────────────────────────
+
+Ajouter :
+
+all_properties_exhausted
+
+Définition :
+
+Toutes les propriétés d'une idée dominante ont été explorées sans produire un DeceptiveTrap valide.
+
+Ce statut ne provoque pas la quarantaine.
+
+Il provoque :
+
+Passage à l'idée dominante suivante.
+
+Ajouter :
+
+all_dominant_ideas_exhausted
+
+Définition :
+
+Toutes les idées dominantes disponibles (1 à 5) ont été explorées.
+
+Toutes leurs propriétés ont été explorées.
+
+Aucun DeceptiveTrap valide n'a été trouvé.
+
+Alors seulement :
+
+QUARANTINE_CREATION
+
+──────────────────────────────
+5. SECTION ROTATION
+PRÉCISION IMPORTANTE
+──────────────────────────────
+
+Ajouter :
+
+Un domaine ne peut pas être bloqué.
+
+Seul un noyau peut échouer.
+
+Flow officiel :
+
+Depth
+↓
+Domaine
+↓
+Noyau
+
+Si le noyau échoue :
+
+* réparation
+* régénération sujet
+* régénération squelette
+
+Le système continue à travailler sur ce domaine jusqu'à obtenir un noyau conforme.
+
+Le domaine n'est jamais sauté.
+
+La rotation n'avance jamais sur un échec de noyau.
+
+──────────────────────────────
+6. SECTION SÉLECTION DU SQUELETTE
+CORRECTION
+──────────────────────────────
+
+Retirer toute règle de rejet automatique basée uniquement sur :
+
+subject_trap_compatibility
+
+Remplacer par :
+
+Le sujet doit être évalué selon :
+
+* subject_granularity
+* subject_cognitive_coverage
+* capacité à produire des idées dominantes exploitables
+
+La compatibilité DeceptiveTrap est le résultat du processus d'exploration.
+
+Elle n'est pas un critère de rejet précoce.
+
+──────────────────────────────
+7. RÈGLE OFFICIELLE À AJOUTER
+──────────────────────────────
+
+Le moteur DeceptiveTrap ne cherche pas la réponse du sujet.
+
+Le moteur cherche :
+
+Sujet
+↓
+Idée dominante
+↓
+Propriété associée
+↓
+Réponse réflexe
+↓
+Correction
+↓
+Reconstruction
+
+Le sujet peut disparaître complètement de la question finale.
+
+L'idée dominante doit cependant rester détectable.
+
+Exemples :
+
+Paris
+↓
+Capitale francophone
+↓
+Kinshasa
+
+Spaghetti
+↓
+Carbonara
+↓
+Bucatini
+
+Pelé
+↓
+3 Coupes du Monde
+↓
+Italie
+
+Titanic
+↓
+Iceberg
+↓
+A Night to Remember
+
+Le cognitif doit rester porté par :
+
+Question
++
+Réponses
+
+Jamais par un narratif.
