@@ -1,0 +1,163 @@
+──────────────────────────────
+STRUCTURE DE CLÉ DECEPTIVETRAP
+──────────────────────────────
+
+La Rotation conserve :
+
+KEY_STRUCTURE
+
+Depth
++
+Domaine
++
+Sous-domaine
++
+Sujet
+
+Exemple :
+
+depth4.sport.football.pelé
+
+Cette clé protège contre les doublons structurels.
+
+──────────────────────────────
+CLÉ COGNITIVE DECEPTIVETRAP
+──────────────────────────────
+
+Lorsqu'une idée dominante est sélectionnée :
+
+Sujet
+↓
+Idée dominante
+↓
+Propriété dominante
+
+Le moteur doit construire :
+
+DECEPTIVETRAP_SIGNATURE
+
+Structure :
+
+Sujet
++
+Idée dominante
++
+Propriété dominante
+
+Exemple :
+
+Pelé
++
+3 Coupes du Monde
++
+posséder exactement 3 Coupes du Monde
+
+↓
+
+DECEPTIVETRAP_SIGNATURE
+
+pele|3_world_cups|exactly_3_world_cups
+
+──────────────────────────────
+LEARNING_SIGNATURE
+──────────────────────────────
+
+Après construction du trap :
+
+Sujet
++
+Idée dominante
++
+Propriété dominante
++
+Bonne réponse
++
+Correction
++
+Reconstruction
+
+Exemple :
+
+Pelé
++
+3 Coupes du Monde
++
+exactement 3 Coupes du Monde
++
+Italie
++
+Brésil possède 5 titres
++
+La propriété recherchée était "exactement 3"
+
+↓
+
+LEARNING_SIGNATURE
+
+pele
+|3_world_cups
+|exactly_3_world_cups
+|italy
+|brazil_has_5
+|exactly_3_reconstruction
+
+──────────────────────────────
+UTILISATION DES CLÉS
+──────────────────────────────
+
+KEY_STRUCTURE
+→ anti-doublon structurel
+→ Rotation
+
+DECEPTIVETRAP_SIGNATURE
+→ anti-doublon de mécanique trap
+→ Phase 1 / Phase 2
+
+LEARNING_SIGNATURE
+→ anti-doublon d'apprentissage
+→ Phase 2
+
+Exemple :
+
+Football → Pelé
+
+et
+
+Coupe du Monde FIFA → Pelé
+
+peuvent avoir :
+
+KEY_STRUCTURE différente
+
+mais :
+
+DECEPTIVETRAP_SIGNATURE identique
+
+ou :
+
+LEARNING_SIGNATURE identique
+
+Dans ce cas :
+
+Phase 2 doit signaler :
+
+COGNITIVE_DUPLICATE_DETECTED
+
+car le joueur apprend essentiellement la même chose.
+
+──────────────────────────────
+RÈGLE OFFICIELLE
+──────────────────────────────
+
+Deux noyaux peuvent avoir :
+
+- un Domaine différent
+- un Sous-domaine différent
+- une KEY_STRUCTURE différente
+
+mais être rejetés si :
+
+LEARNING_SIGNATURE identique.
+
+La banque doit éviter les doublons d'apprentissage,
+pas seulement les doublons de structure.
