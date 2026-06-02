@@ -1,0 +1,153 @@
+Nous voulons maintenant un AUDIT COMPLET du flow V2 Question Bank.
+
+Objectif :
+Vérifier si tout le roulement est cohérent de la rotation jusqu’à ready_bank, incluant création, validation, traduction, quarantaines, réparations et régénération.
+
+Ne patch pas.
+Ne code pas.
+Ne propose pas encore d’implémentation.
+Nous voulons un audit architectural complet.
+
+Audit demandé :
+
+1. ROTATION
+- Comment le système choisit le prochain noyau ?
+- Depth → Domaine → Sous-domaine → Sujet
+- Est-ce que la rotation respecte bien les 8 domaines au même Depth ?
+- Quand passe-t-on au Depth suivant ?
+- Que se passe-t-il si un sujet est rejeté ?
+
+2. SÉLECTION DU SQUELETTE
+Pour chaque squelette :
+- Depth
+- Domaine
+- Sous-domaine
+- Sujet
+
+Auditer :
+- subject_granularity
+- subject_too_broad
+- subject_too_narrow
+- subject_cognitive_coverage
+- capacité à produire 7/7 cognitifs
+
+3. PHASE CRÉATION
+Auditer comment le noyau est rempli :
+- Recognition
+- Reasoning
+- DeceptiveTrap
+- TF Recognition True
+- TF Recognition False
+- TF Reasoning True
+- TF Reasoning False
+
+Vérifier :
+- aucun master
+- aucune variante dérivée
+- aucun answer_target
+- aucun narratif artificiel
+- question + réponses + bonne réponse + SV créés ensemble
+
+4. DECEPTIVETRAP
+Auditer spécialement :
+- idées dominantes générées : 1 à 5
+- classement : naturelle → associée → connue → exploitable
+- exploration dans l’ordre
+- aucune idée sautée
+- quarantaine seulement après échec de toutes les idées disponibles
+- Type A / Type B
+- propriété associée
+- réponse réflexe
+- correction
+- reconstruction
+
+5. VALIDATION CRÉATION / GATE 1
+Auditer :
+- règles 7/7
+- strip test
+- pureté cognitive
+- longueur selon Depth
+- structure QCM/TF
+- SV
+- rejet Recognition déguisé en Trap
+- rejet Reasoning déguisé en Recognition
+- rejet question narrative
+
+6. QUARANTAINE CRÉATION
+Auditer :
+- quand un cognitif va en quarantaine
+- quand un sujet est régénéré
+- quand un squelette complet est régénéré
+- combien d’idées dominantes doivent être tentées avant quarantaine
+- comment les raisons de rejet sont stockées
+- aucun 6/7 ne peut continuer vers traduction
+
+7. PHASE TRADUCTION
+Auditer :
+- les slots langue existent dès la création
+- EN est rempli en création
+- les autres langues sont remplies seulement après Gate 1
+- la traduction lit les règles héritées du noyau
+- elle conserve format, cognitif, mécanisme, bonne réponse, réponses, SV
+
+8. VALIDATION TRADUCTION / GATE 2
+Auditer :
+- conservation du cognitif
+- conservation du mécanisme
+- conservation du trap
+- conservation du reasoning
+- polarité TF
+- longueurs selon langue et Depth
+- aucune perte de bonne réponse
+- aucune ambiguïté nouvelle
+
+9. QUARANTAINE TRADUCTION
+Auditer :
+- quarantaine par couple cognitif × langue
+- réparation ciblée
+- retry
+- quand régénérer traduction
+- quand bloquer le noyau complet
+
+10. READY_BANK
+Auditer les conditions exactes :
+- 7/7 cognitifs validés création
+- toutes les langues validées
+- aucune quarantaine active
+- aucune traduction manquante
+- aucun statut partial
+- gameplay voit seulement READY / NOT_READY
+
+11. RISQUES D’OVERLAP AVEC L’ANCIEN MOTEUR
+Identifier toute trace restante de :
+- question maître
+- variantes dérivées
+- answer_target
+- semantic_chain_alignment
+- cognitive_contract post-hoc
+- PARTIALLY_APPROVED
+- PARTIALLY_TRANSLATED
+- génération question-first
+
+12. SORTIE ATTENDUE
+Je veux :
+
+A. Diagramme complet du flow V2.
+B. Liste des statuts officiels du noyau.
+C. Liste des statuts des cognitifs.
+D. Liste des statuts des traductions.
+E. Tableau des causes de quarantaine création.
+F. Tableau des causes de quarantaine traduction.
+G. Règles exactes de régénération sujet / squelette.
+H. Conditions exactes d’entrée en ready_bank.
+I. Liste des incohérences restantes dans ta compréhension.
+J. Recommandations avant toute implémentation.
+
+Rappel absolu :
+
+Un noyau V2 valide = 7/7 cognitifs + traductions validées.
+Aucun 6/7.
+Aucun partial.
+Aucune question maître.
+Aucun narratif pour créer un cognitif.
+Node/Question API ne doit pas inventer un flow différent.
