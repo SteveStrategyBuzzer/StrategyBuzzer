@@ -1,0 +1,88 @@
+Lance une production neuve V2 contrôlée.
+
+Objectif :
+tester la rotation complète et le flow complet jusqu’à Ready_Bank.
+
+Paramètres :
+
+- Depth cible : 4
+- Domaines : les 8 domaines officiels
+- 1 noyau par domaine
+- Langue de création : EN
+- Traductions : les 9 autres langues du jeu
+- Flow obligatoire :
+  Rotation → Phase 1 → Phase 2 → Phase 3 → Phase 4 → Ready_Bank
+
+À produire pour chaque noyau :
+
+1. Domaine
+2. Sous-domaine
+3. Sujet
+4. Idée dominante directrice
+5. KEY_STRUCTURE
+6. KEY_LEARNING_DIRECTION
+7. Statut des 7 blocs cognitifs :
+   - QCM Recognition + SV
+   - QCM Reasoning + SV
+   - QCM DeceptiveTrap + SV
+   - TF Recognition True + SV
+   - TF Recognition False + SV
+   - TF Reasoning True + SV
+   - TF Reasoning False + SV
+
+Pour chaque bloc :
+- VALIDATED_OK ou WARNING
+- warning_reason si WARNING
+- langues traduites
+- statut Phase 4
+- accessible gameplay : oui/non
+
+Mesurer les temps :
+
+- temps Rotation
+- temps Phase 1
+- temps Phase 2
+- temps Phase 3
+- temps Phase 4
+- temps total jusqu’à Ready_Bank
+- temps par noyau
+- temps moyen par phase
+- temps total pour les 8 domaines
+
+Je veux aussi un topo complet :
+
+A. Résumé global
+- combien de noyaux produits
+- combien de blocs VALIDATED_OK
+- combien de blocs WARNING
+- combien de noyaux avec quarantaine
+- combien de blocs accessibles gameplay
+
+B. Analyse Phase 2
+- erreurs création détectées
+- warning_reason
+- feedback envoyé vers Phase 1
+- doublons détectés ou non
+
+C. Analyse Phase 4
+- erreurs traduction détectées
+- warning_reason traduction
+- feedback envoyé vers Phase 3
+- langues problématiques
+
+D. Ready_Bank
+- contenu accepté
+- contenu bloqué gameplay
+- confirmation que gameplay consomme seulement VALIDATED_OK
+
+E. Quarantaine
+- dossiers créés
+- noyaux concernés
+- warnings imbriqués Phase 2 + Phase 4
+- email humain prêt ou non
+
+Important :
+ne pas patcher l’architecture pendant ce test.
+Ne pas changer les règles.
+C’est un test de production neuve contrôlé pour observer :
+rotation, flow, timings, warnings, ready_bank et cohérence globale.
