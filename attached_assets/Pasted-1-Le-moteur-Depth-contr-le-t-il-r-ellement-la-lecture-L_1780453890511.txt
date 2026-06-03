@@ -1,0 +1,167 @@
+1. Le moteur Depth contrôle-t-il réellement la lecture ?
+
+Le rapport montre :
+
+longueur des questions
+longueur des réponses
+longueur des SV
+temps de lecture estimé
+
+Mais je veux savoir si ces valeurs proviennent :
+
+A) d'un vrai moteur Depth
+
+ou
+
+B) d'un calcul fait après génération pour l'audit.
+
+C'est très différent.
+
+Je demanderais à Replit :
+
+Lors de la création du noyau, est-ce que Phase 1 reçoit déjà :
+
+target_question_words
+max_question_words
+target_answer_words
+max_answer_words
+target_sv_words
+reading_time_target
+
+depuis la Rotation ?
+
+Ou bien l'audit les calcule seulement après coup ?
+
+Parce que si c'est seulement après coup, le moteur Depth ne dirige pas encore réellement la génération.
+
+2. Les SV sont-ils réellement pilotés par le Depth ?
+
+C'est ici que j'ai le plus gros doute.
+
+Exemple :
+
+SV Recognition :
+
+La face cachée de la Lune a été photographiée...
+
+SV Reasoning :
+
+Ce phénomène s'appelle rotation synchrone...
+
+SV Trap :
+
+Le verrouillage gravitationnel...
+
+Ces SV sont bons.
+
+Mais je veux savoir :
+
+est-ce que le moteur impose une taille ?
+est-ce qu'il impose un niveau cognitif ?
+est-ce qu'il impose un vocabulaire ?
+
+Sinon le SV peut facilement exploser en longueur.
+
+3. Depth 4 doit contenir plus qu'une longueur
+
+Je demanderais à Replit de confirmer que Depth contient :
+
+Depth
+
+├─ longueur question
+├─ longueur réponse
+├─ longueur SV
+
+├─ temps lecture question
+├─ temps lecture réponse
+├─ temps lecture SV
+
+├─ complexité cognitive cible
+
+├─ vocabulaire autorisé
+├─ vocabulaire interdit
+
+├─ difficulté piège autorisée
+
+├─ longueur correction
+├─ longueur reconstruction
+
+├─ longueur traduction cible
+
+Sinon on n'a pas un vrai moteur Depth.
+
+On a juste un compteur de mots.
+
+4. Le DeceptiveTrap
+
+Celui-ci est bon.
+
+Mais je veux voir :
+
+Idée dominante :
+Rotation synchrone
+
+Propriété retenue :
+La rotation existe mais est imperceptible
+
+Réflexe :
+La Lune ne tourne pas
+
+Correction :
+Elle tourne
+
+Reconstruction :
+Rotation = orbite
+
+Ça permettrait de vérifier que le moteur suit réellement le flow :
+
+Idée dominante
+↓
+Propriété
+↓
+Réflexe
+↓
+Correction
+↓
+Reconstruction
+↓
+Question
+
+et non :
+
+Question
+↓
+Correction inventée après
+5. Le point le plus important
+
+Je demanderais absolument ceci à Replit :
+
+Je veux voir le frame complet généré par Rotation
+avant Phase 1.
+
+Je veux voir :
+
+Depth
+Domaine
+Sous-domaine
+Sujet
+Idée dominante directrice
+
+et toutes les règles héritées du noyau :
+
+- longueur question
+- longueur réponse
+- longueur SV
+- temps lecture
+- difficulté
+- vocabulaire
+- contraintes cognitives
+- contraintes DeceptiveTrap
+
+afin de vérifier que le moteur Depth dirige réellement
+la création du noyau
+et n'est pas seulement utilisé dans les audits.
+
+C'est probablement la vérification la plus importante à faire maintenant.
+
+Parce que le noyau que tu as montré est globalement bon, mais il ne prouve pas encore que Rotation → Depth → Phase 1 pilote réellement toute la génération. Il prouve surtout que le résultat final est cohérent.
