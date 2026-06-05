@@ -1,0 +1,279 @@
+Complément critique — Le rôle du Depth dans Rotation
+
+Le Depth n'est plus un simple niveau de difficulté.
+
+Le Depth est le premier élément de direction de Rotation.
+
+Rotation commence par :
+
+Depth
+↓
+Domaine
+↓
+Sous-domaine
+↓
+Sujet
+↓
+Idée dominante directrice
+
+Le Depth représente un profil pédagogique complet.
+
+Il détermine les règles que Phase 1 devra respecter lors de la création du noyau.
+
+──────────────────────────────
+
+RÈGLES CONTRÔLÉES PAR LE DEPTH
+
+Le Depth influence :
+
+* connaissances requises
+* vocabulaire
+* temps de lecture accepté
+* temps de réflexion accepté
+* complexité cognitive
+* difficulté des traps
+* répartition des cognitifs
+* longueur acceptable des questions
+* longueur acceptable des réponses
+
+Le Depth n'influence PAS :
+
+* la qualité du SV
+
+Le SV doit toujours rester d'une qualité pédagogique élevée.
+
+──────────────────────────────
+
+DEPTH 2
+
+Public cible :
+Solo 1-9
+
+Connaissances :
+Culture générale simple
+
+Vocabulaire :
+Très accessible
+
+Temps lecture accepté :
+1 à 6 secondes
+
+Temps réflexion accepté :
+1 à 4 secondes
+
+Complexité :
+Faible
+
+Trap :
+facile à suivre ex; Quel animal terrestre et le plus gros? on peut s'attendre à éléphant mais éléphant n'est pas là mais la baleine oui, donc le joueur peut se tromper sur le plus gros animal avec la baleine mais elle n'est pas terrestre et le vrai choix le joueur choisi parmi les choix
+
+Répartition cognitive :
+Recognition très dominant
+Reasoning faible
+Trap rare
+
+──────────────────────────────
+
+DEPTH 4
+
+Public cible :
+Solo 11-29
+Duo Novice
+MJ Novice
+
+Connaissances :
+Secondaire début
+
+Vocabulaire :
+Accessible
+
+Temps lecture accepté :
+2 à 6 secondes
+
+Temps réflexion accepté :
+2 à 5 secondes
+
+Complexité :
+Faible à moyenne
+
+Trap :
+Simple
+
+Répartition cognitive :
+Recognition dominant
+Reasoning présent
+Trap occasionnel
+
+──────────────────────────────
+
+DEPTH 6
+
+Public cible :
+Solo 31-59
+Boss 10-20-30
+Duo Intermédiaire
+MJ Intermédiaire
+
+Connaissances :
+Secondaire complet
+
+Vocabulaire :
+Intermédiaire
+
+Temps lecture accepté :
+3 à 7 secondes
+
+Temps réflexion accepté :
+2 à 6 secondes
+
+Complexité :
+Moyenne
+
+Trap :
+Crédible
+
+Répartition cognitive :
+Recognition
+Reasoning
+Trap relativement équilibrés
+
+Depth prioritaire du moteur.
+
+──────────────────────────────
+
+DEPTH 7
+
+Public cible :
+Solo 61-79
+Ligue Platine
+
+Connaissances :
+Secondaire avancé
+
+Vocabulaire :
+Intermédiaire à avancé
+
+Temps lecture accepté :
+3 à 8 secondes
+
+Temps réflexion accepté :
+3 à 6 secondes
+
+Complexité :
+Moyenne à élevée
+
+Trap :
+Solide
+
+Répartition cognitive :
+Reasoning augmente
+Recognition diminue progressivement
+
+──────────────────────────────
+
+DEPTH 8
+
+Public cible :
+Solo 81-89
+Boss 40-50-60
+Duo Expert
+
+Connaissances :
+Collégial
+
+Vocabulaire :
+Avancé
+
+Temps lecture accepté :
+4 à 8 secondes
+
+Temps réflexion accepté :
+3 à 7 secondes
+
+Complexité :
+Élevée
+
+Trap :
+Fort
+
+Répartition cognitive :
+Reasoning dominant
+Trap fréquent
+Recognition minoritaire
+
+──────────────────────────────
+
+DEPTH 9
+
+Public cible :
+Solo 91-99
+Boss 70-80-90
+Ligue Légende
+
+Connaissances :
+Très élevées
+
+Vocabulaire :
+Très avancé
+
+Temps lecture accepté :
+4 à 9 secondes
+
+Temps réflexion accepté :
+4 à 8 secondes
+
+Complexité :
+Très élevée
+
+Trap :
+Très fort
+
+Répartition cognitive :
+Reasoning très dominant
+Trap fortement présent
+Recognition minoritaire
+
+──────────────────────────────
+
+DEPTH 10
+
+Public cible :
+Boss 100
+Cerveau Ultime
+
+Connaissances :
+Élite
+
+Vocabulaire :
+Expert
+
+Temps lecture accepté :
+5 à 9 secondes
+
+Temps réflexion accepté :
+4 à 9 secondes
+
+Complexité :
+Maximum
+
+Trap :
+Maximum
+
+Répartition cognitive :
+Reasoning maximal
+Trap maximal
+Recognition très rare
+
+──────────────────────────────
+
+RÈGLE FONDAMENTALE
+
+Rotation doit utiliser le Depth avant toute autre décision.
+
+Le Depth définit le cadre pédagogique.
+
+Le Domaine, le Sous-domaine, le Sujet et l'Idée dominante doivent ensuite respecter les contraintes imposées par ce Depth.
+
+Le moteur ne choisit donc pas seulement un sujet.
+
+Il choisit d'abord un profil pédagogique.
