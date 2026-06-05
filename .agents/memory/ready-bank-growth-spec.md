@@ -38,6 +38,7 @@ different reconstruction, different DECEPTIVETRAP_SIGNATURE.
 | 10    | Boss 100 / Cerveau Ultime / prestige                     | 25 000        | 175 000   |
 
 **Total: 685 000 kernels × 7 = 4 795 000 questions**
+The 685 000 figure is the official target — expressed in kernels, never in questions.
 
 ## Production priority
 1. Depth 6  (Solo actif + Duo + MJ intermédiaire — highest traffic)
@@ -55,7 +56,32 @@ different reconstruction, different DECEPTIVETRAP_SIGNATURE.
 4. Lancement
 5. Montée internationale
 
-Kernel access rule: only VALIDATED_OK kernels are accessible for gameplay.
+## KernelNeedsCalculator — official piloting metrics
 
-**Why:** Official architectural spec from user (2026-06-05). Defines the scaling model
-for the international 1M-player target.
+KernelNeedsCalculator MUST pilot growth at the QuestionIntent (kernel) level.
+It MUST NOT count question_groups to determine deficit.
+
+Official metrics:
+  kernel_count_complete  = COUNT(intents WHERE variants_validated_ok = 7)
+  kernel_count_partial   = COUNT(intents WHERE variants_validated_ok IN [1..6])
+  kernel_count_empty     = COUNT(intents WHERE variants_validated_ok = 0)
+  kernel_deficit         = target_kernels_per_slot - kernel_count_complete
+
+Saturation rule: slot is saturated when kernel_count_complete >= target_kernels_per_slot.
+Never use question count to determine saturation.
+
+Worker priority order:
+  1. Complete partial kernels (variants_validated_ok >= 1, variants_missing > 0)
+  2. Complete empty kernels with frame_en already filled
+  3. Skeleton + fill empty kernels without frame_en
+  4. Skip if no enriched QuestionIntent available for the slot
+
+Official production unit: QuestionIntent + KEY_STRUCTURE + variant_keys_missing.
+The segment (domain, sub_domain, cognitive_type, question_type) is NOT the production unit.
+
+question_groups are a mechanical consequence:
+  1 complete kernel = 7 VALIDATED_OK variants = 7 question_groups.
+  They are never counted to pilot growth.
+
+**Why:** Locked architectural decision (2026-06-05). Prevents regression to segment-based
+logic which cannot distinguish kernel completion from raw question accumulation.
