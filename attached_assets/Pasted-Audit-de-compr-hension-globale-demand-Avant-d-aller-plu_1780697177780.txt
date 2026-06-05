@@ -1,0 +1,188 @@
+Audit de compréhension globale demandé.
+
+Avant d'aller plus loin dans la migration Worker → Kernel, je veux valider que nous partageons la même vision du moteur.
+
+Le moteur StrategyBuzzer n'est PAS un générateur de questions.
+
+Le moteur StrategyBuzzer est un moteur de couverture pédagogique.
+
+La hiérarchie officielle est :
+
+Rotation = Apprentissage
+↓
+Noyau
+↓
+7 styles cognitifs
+↓
+Questions
+
+et NON :
+
+Question
+↓
+Question
+↓
+Question
+
+──────────────────────────────
+
+RÔLE DE ROTATION
+
+Rotation est le cerveau du système.
+
+Rotation ne choisit pas une question.
+
+Rotation choisit :
+
+Depth qui détient des règles pédagogique et structurale pour les questions / réponses 
+
+| ÉlémentContrôlé par le Depth  |                       |
+| ----------------------------- | --------------------- |
+| Difficulté globale            | Oui                   |
+| Niveau de connaissance requis | Oui                   |
+| Complexité cognitive          | Oui                   |
+| Vocabulaire                   | Oui                   |
+| Longueur acceptable question  | Oui                   |
+| Longueur acceptable réponses  | Oui                   |
+| Difficulté des traps          | Oui                   |
+| Répartition des cognitifs     | Oui                   |
+| Temps de lecture accepté      | Oui                   |
+| Temps de réflexion accepté    | Oui                   |
+| Types de sujets autorisés     | Partiellement         |
+| Qualité SV                    | Non (toujours élevée) |
+
+
+Domaine
+↓
+Sous-domaine
+↓
+Sujet
+↓
+Idée dominante directrice
+
+Puis Rotation vérifie :
+
+# KEY_STRUCTURE
+
+Depth + Domaine + Sous-domaine + Sujet + Idée dominante
+
+# KEY_LEARNING_DIRECTION
+
+Sujet + Idée dominante
+
+L'objectif est d'éviter les doublons pédagogiques.
+
+Rotation doit couvrir l'espace pédagogique.
+
+Rotation ne remplit pas une banque de questions.
+
+──────────────────────────────
+
+RÔLE DU NOYAU
+
+Le noyau représente un apprentissage.
+
+Un noyau n'est pas une question.
+
+Un noyau représente :
+
+Sujet
++
+Idée dominante directrice
+
+Exemple :
+
+Sujet :
+Photosynthèse
+
+Idée dominante :
+Les chloroplastes permettent la fixation du CO₂
+
+Le noyau existe pour organiser cet apprentissage.
+
+──────────────────────────────
+
+RÔLE DES 7 STYLES
+
+Les 7 styles ne sont pas 7 apprentissages.
+
+Les 7 styles sont 7 observations du même apprentissage.
+
+QCM Recognition
+QCM Reasoning
+QCM DeceptiveTrap
+
+TF Recognition True
+TF Recognition False
+
+TF Reasoning True
+TF Reasoning False
+
+Ils partagent tous :
+
+Sujet
++
+Idée dominante
+
+Ils ne doivent jamais dériver vers un autre apprentissage.
+
+──────────────────────────────
+
+RÔLE DE READY_BANK
+
+Ready_Bank n'est pas l'objectif.
+
+Ready_Bank est simplement le résultat final.
+
+L'objectif est :
+
+couvrir l'espace pédagogique mondial
+
+à travers :
+
+Depth
+↓
+Domaine
+↓
+Sous-domaine
+↓
+Sujet
+↓
+Idée dominante
+↓
+Noyaux
+
+Ready_Bank n'est qu'une conséquence.
+
+──────────────────────────────
+
+QUESTION DE VALIDATION
+
+Expliquez avec vos mots :
+
+1.
+
+Pourquoi un noyau existe.
+
+2.
+
+Quelle est la différence entre :
+
+KEY_STRUCTURE
+
+et
+
+KEY_LEARNING_DIRECTION.
+
+3.
+
+Pourquoi les 7 styles ne doivent pas être considérés comme 7 apprentissages différents.
+
+4.
+
+Comment Rotation participe à la couverture pédagogique plutôt qu'à la génération de questions.
+
+Aucun code.
+Aucune migration.
+
+Je veux uniquement vérifier la compréhension globale du moteur.
