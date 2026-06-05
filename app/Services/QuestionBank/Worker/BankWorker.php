@@ -186,6 +186,22 @@ class BankWorker
                     continue; // cooldown will engage if threshold reached
                 }
 
+                // Non-blocking SV quality warnings — question still enters the bank
+                // but issues are logged for triage (sv_cognitive_mismatch, sv_low_explanatory_quality).
+                if (!empty($eval['warnings'])) {
+                    foreach ($eval['warnings'] as $w) {
+                        Log::info('[BankWorker] guard SV warning (non-blocking)', [
+                            'code'    => $w['code']   ?? 'unknown',
+                            'detail'  => $w['detail'] ?? '',
+                            'segment' => [
+                                'domain'         => $segment['domain']         ?? null,
+                                'sub_domain'     => $segment['sub_domain']     ?? null,
+                                'cognitive_type' => $segment['cognitive_type'] ?? null,
+                            ],
+                        ]);
+                    }
+                }
+
                 $group = $this->repo->addToBank($result['payload'], updateExisting: false);
                 if ($group === null) {
                     $this->recordReject('insert_skipped', 'duplicate concept_id', $segment);

@@ -24,6 +24,13 @@ use Illuminate\Support\Facades\DB;
  *   - missing_translations         : worker config requires more languages than provided
  *   - saviez_vous_contradicts_answer : saviez_vous cites a distractor but not the correct answer
  *   - saviez_vous_tautological       : saviez_vous is a near-reformulation of the question text
+ *
+ * Non-blocking warnings (ok:true, warnings:[...]) — question enters the bank but issue is logged:
+ *   - sv_cognitive_mismatch       : saviez_vous structure doesn't match cognitive_type
+ *       • reasoning/tf_reasoning  : no explicit causal marker found
+ *       • deceptive_trap          : natural_reflex or correction component missing
+ *   - sv_low_explanatory_quality  : saviez_vous has generic filler text, is too short for the
+ *       cognitive type, or a translation dropped explanatory depth vs the French master (Phase 4)
  */
 class QualityGuards
 {
@@ -35,13 +42,16 @@ class QualityGuards
      * Run every guard against a candidate payload.
      *
      * @param  array  $payload  same shape as QuestionBankRepository::addToBank()
-     * @return array{ok:bool, code?:string, detail?:string}
+     * @return array{ok:bool, code?:string, detail?:string, warnings?:array<int,array{code:string,detail:string}>}
+     *         ok=false → hard reject with code+detail.
+     *         ok=true  → accepted; warnings[] may be non-empty (sv_cognitive_mismatch, sv_low_explanatory_quality).
      */
     public function evaluate(array $payload): array
     {
-        $config = config('question_bank_profiles');
-        $worker = $config['worker'];
-        $guards = $worker['guards'];
+        $config   = config('question_bank_profiles');
+        $worker   = $config['worker'];
+        $guards   = $worker['guards'];
+        $warnings = [];
 
         // 1. Required languages present.
         $translations = $payload['translations'] ?? [];
@@ -495,7 +505,164 @@ class QualityGuards
 
         // ── END PATCH GROUP QUALITÉ CONTENU ────────────────────────────────
 
-        return ['ok' => true];
+        // 17. SV cognitive mismatch — heuristic check that saviez_vous structure
+        // matches the cognitive type of the question (French only, non-blocking).
+        //
+        // Reasoning (QCM or TF): SV must contain at least one explicit causal marker.
+        //   Without it the SV is likely a bare fact rather than a causal explanation.
+        //
+        // DeceptiveTrap: SV must contain markers for BOTH the reflex/error AND the
+        //   correction. Missing either component means the 4-step pedagogical structure
+        //   is incomplete.
+        //
+        // Returns a WARNING added to $warnings — not a hard reject.
+        // The question still enters the bank but the issue is logged for triage.
+        $frTrForCog = $translations['fr'] ?? null;
+        if ($frTrForCog !== null) {
+            $svCogRaw = trim((string) ($frTrForCog['saviez_vous'] ?? ''));
+            $svCog    = mb_strtolower($svCogRaw);
+            $cogType  = (string) ($payload['cognitive_type'] ?? '');
+            $qType    = (string) ($payload['question_type']  ?? 'qcm');
+
+            if ($svCog !== '') {
+                $isReasoning = ($cogType === 'reasoning');
+                $isTrap      = ($cogType === 'deceptive_trap');
+
+                if ($isReasoning) {
+                    // A reasoning SV must expose WHY — an explicit causal link.
+                    $causalMarkers = [
+                        'car ', 'parce que', 'puisque', 'en raison', 'grâce à', 'grace à',
+                        "c'est pourquoi", 'ce qui explique', 'ainsi,', 'donc,',
+                        'dès lors', 'des lors', 'provoque', 'entraîne', 'entraine',
+                        'résulte', 'resulte', 'permet de', 'due à', 'due a',
+                        'because', 'since ', 'therefore', 'which explains',
+                        'results in', 'leads to', 'owing to',
+                    ];
+                    $hasCausal = false;
+                    foreach ($causalMarkers as $m) {
+                        if (str_contains($svCog, mb_strtolower($m))) {
+                            $hasCausal = true;
+                            break;
+                        }
+                    }
+                    if (!$hasCausal) {
+                        $warnings[] = [
+                            'code'   => 'sv_cognitive_mismatch',
+                            'detail' => "{$cogType}({$qType}): saviez_vous has no causal marker — expected mechanism explanation, not a bare fact",
+                        ];
+                    }
+                }
+
+                if ($isTrap) {
+                    // DeceptiveTrap SV must cover the reflex AND the correction.
+                    // Both clusters must be present for the 4-step structure to work.
+                    $reflexMarkers = [
+                        'réflexe', 'reflexe', 'instinct', 'naturellement', 'intuition',
+                        'spontanément', 'spontanement', 'a priori', 'pensent', 'croient',
+                        'confondent', 'souvent', 'instinctively', 'reflex', 'intuitively',
+                        'naturally', 'often think', 'tend to think',
+                    ];
+                    $correctionMarkers = [
+                        'en réalité', 'en realite', 'or ', 'pourtant', 'cependant',
+                        'mais en fait', 'en fait', 'à tort', 'a tort', 'contrairement',
+                        'paradoxalement', 'correction', 'rectification',
+                        'however', 'in reality', 'in fact', 'contrary to',
+                        'actually', 'mistakenly',
+                    ];
+                    $hasReflex = $hasCorrection = false;
+                    foreach ($reflexMarkers as $m) {
+                        if (str_contains($svCog, mb_strtolower($m))) { $hasReflex = true; break; }
+                    }
+                    foreach ($correctionMarkers as $m) {
+                        if (str_contains($svCog, mb_strtolower($m))) { $hasCorrection = true; break; }
+                    }
+                    if (!$hasReflex || !$hasCorrection) {
+                        $missing = [];
+                        if (!$hasReflex)     $missing[] = 'natural_reflex';
+                        if (!$hasCorrection) $missing[] = 'correction';
+                        $warnings[] = [
+                            'code'   => 'sv_cognitive_mismatch',
+                            'detail' => "deceptive_trap: saviez_vous missing components: " . implode(', ', $missing) . " — 4-step structure incomplete",
+                        ];
+                    }
+                }
+            }
+        }
+
+        // 18. SV low explanatory quality — detects generic filler phrases that add
+        // no pedagogical value, and SV too short for cognitively complex types.
+        //
+        // Non-blocking WARNING. Question enters the bank but is flagged for review.
+        $frTrForQuality = $translations['fr'] ?? null;
+        if ($frTrForQuality !== null) {
+            $svQuality = trim((string) ($frTrForQuality['saviez_vous'] ?? ''));
+            $svQLower  = mb_strtolower($svQuality);
+            $cogTypeQ  = (string) ($payload['cognitive_type'] ?? '');
+
+            if ($svQuality !== '') {
+                $genericFillers = [
+                    'est connu pour', 'est célèbre pour', 'est celebre pour',
+                    'est souvent associé', 'est souvent associe',
+                    'est largement reconnu', 'joue un rôle important', 'joue un role important',
+                    'est un élément important', 'est un element important',
+                    'est un fait connu', 'est un fait bien connu',
+                    'is known for its', 'is famous for', 'is often associated',
+                    'plays an important role', 'is widely recognized', 'is widely known',
+                    'has been growing', 'is considered one of',
+                ];
+                foreach ($genericFillers as $filler) {
+                    if (str_contains($svQLower, $filler)) {
+                        $warnings[] = [
+                            'code'   => 'sv_low_explanatory_quality',
+                            'detail' => "saviez_vous contains generic filler: \"{$filler}\" — must be pedagogically specific",
+                        ];
+                        break;
+                    }
+                }
+
+                // DeceptiveTrap SV must be long enough to cover all 4 steps.
+                if ($cogTypeQ === 'deceptive_trap' && mb_strlen($svQuality) < 80) {
+                    $warnings[] = [
+                        'code'   => 'sv_low_explanatory_quality',
+                        'detail' => "deceptive_trap saviez_vous too short (" . mb_strlen($svQuality) . " chars < 80 min) — cannot cover reflex + error + correction + reconstruction",
+                    ];
+                }
+            }
+        }
+
+        // 19. Phase 4 — translation SV depth check.
+        //
+        // Verifies that each translation's saviez_vous is not dramatically shorter
+        // than the French master SV — a significant drop indicates the translator
+        // dropped explanatory content rather than adapting it faithfully.
+        //
+        // Language density ratios (script compression relative to French):
+        //   zh (Chinese): 0.35 — CJK characters are semantically denser; cap = 95
+        //   ar (Arabic):  0.45 — Arabic script is denser; cap = 135
+        //   others:       0.60 — similar density to French
+        //
+        // Only applied when FR SV is substantial (> 60 chars). Non-blocking WARNING.
+        $frSvForPhase4 = mb_strlen(trim((string) ($translations['fr']['saviez_vous'] ?? '')));
+        if ($frSvForPhase4 > 60) {
+            $densityRatios = ['zh' => 0.35, 'ar' => 0.45];
+            $defaultRatio  = 0.60;
+            foreach ($translations as $lang => $tr) {
+                if ($lang === 'fr') {
+                    continue;
+                }
+                $tSvLen = mb_strlen(trim((string) ($tr['saviez_vous'] ?? '')));
+                $ratio  = $densityRatios[$lang] ?? $defaultRatio;
+                $minLen = (int) round($frSvForPhase4 * $ratio);
+                if ($tSvLen < $minLen) {
+                    $warnings[] = [
+                        'code'   => 'sv_low_explanatory_quality',
+                        'detail' => "translation[{$lang}] saviez_vous={$tSvLen} < {$minLen} ({$ratio}×fr={$frSvForPhase4}) — likely truncated during translation, explanatory depth lost",
+                    ];
+                }
+            }
+        }
+
+        return ['ok' => true, 'warnings' => $warnings];
     }
 
     /**

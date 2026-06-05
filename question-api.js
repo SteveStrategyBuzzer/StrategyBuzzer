@@ -1203,6 +1203,30 @@ app.post('/generate-bank-question', async (req, res) => {
     deceptive_trap: 'distracteurs très plausibles ; confusion classique ; bonne réponse contre-intuitive',
   }[cognitive_type];
 
+  // SV rule varies by cognitive_type AND question_type.
+  // The SV must be pedagogically tied to the cognitive structure of the question —
+  // not a generic fun fact. The Depth does NOT reduce SV quality requirements.
+  const svCognitiveRule = (() => {
+    if (question_type === 'true_false') {
+      if (cognitive_type === 'recognition') {
+        return "saviez_vous OBLIGATOIRE : explique POURQUOI l'énoncé est vrai ou faux — quel fait précis le confirme ou l'infirme. INTERDIT : reformuler l'énoncé ou simplement répéter la polarité. OBLIGATOIRE : apporter un contexte factuel ou une nuance pédagogique nouvelle que le joueur n'avait pas.";
+      }
+      if (cognitive_type === 'reasoning') {
+        return "saviez_vous OBLIGATOIRE : explique POURQUOI le raisonnement est vrai ou faux — quel mécanisme logique, causal ou contextuel valide ou invalide l'affirmation. Pas de simple confirmation : révèle la LOGIQUE sous-jacente avec un marqueur causal explicite (\"car\", \"parce que\", \"ce qui explique\", \"grâce à\", \"c'est pourquoi\").";
+      }
+    }
+    if (cognitive_type === 'recognition') {
+      return "saviez_vous OBLIGATOIRE : explique le FAIT PRINCIPAL lié à la bonne réponse — un contexte précis (historique, scientifique, géographique ou culturel) que ni la question ni les choix de réponse ne contiennent. INTERDIT : reformuler la réponse, insérer un fait générique non lié. OBLIGATOIRE : information NOUVELLE et mémorable.";
+    }
+    if (cognitive_type === 'reasoning') {
+      return "saviez_vous OBLIGATOIRE : explique le MÉCANISME CAUSAL ou LOGIQUE derrière la bonne réponse — pourquoi c'est ainsi, quelle cause produit cet effet, quelle règle ou principe s'applique. Pas un fait brut : une EXPLICATION CAUSALE. Inclure au moins un marqueur causal explicite (\"car\", \"parce que\", \"grâce à\", \"c'est pourquoi\", \"en raison de\", \"ce qui explique\").";
+    }
+    if (cognitive_type === 'deceptive_trap') {
+      return "saviez_vous OBLIGATOIRE : explique les 4 étapes du piège — (1) RÉFLEXE NATUREL : quelle réponse vient instinctivement à l'esprit, (2) ERREUR INTUITIVE : pourquoi ce réflexe est trompeur, (3) CORRECTION : pourquoi la vraie réponse est différente, (4) RECONSTRUCTION : la règle ou logique à retenir. Ces 4 composantes DOIVENT être présentes et lisibles en ≤215 chars.";
+    }
+    return "saviez_vous OBLIGATOIRE : apporte une information pédagogique nouvelle liée à la bonne réponse (≥40 caractères).";
+  })();
+
   const answersHint = isTF
     ? '`answer_a` = libellé "Vrai" dans la langue principale, `answer_b` = libellé "Faux", `answer_c` et `answer_d` = null.'
     : 'Fournis exactement 4 réponses non-vides (answer_a/b/c/d), une seule correcte.';
@@ -1273,7 +1297,7 @@ CONTRAINTES:
 - ${answersHint}
 - ${concept_hint ? `Indice concept: ${concept_hint}` : 'Choisis un fait précis et vérifiable.'}
 - correct_answer_key DOIT être la même lettre dans TOUTES les langues
-- saviez_vous OBLIGATOIRE : mini récompense cognitive (≥40 caractères) révélant un fait SURPRENANT, une conséquence remarquable, un contexte historique/scientifique inattendu ou une anecdote insolite — exclusivement lié à la réponse correcte et ABSENT de la question elle-même. INTERDIT ABSOLU : reformuler la réponse correcte sous forme affirmative (ex : "La bataille de la Boyne a eu lieu en 1690", "Paris est la capitale de la France"), insérer la réponse dans une phrase qui reprend les mots-clés de la question, paraphraser l'énoncé. Le saviez_vous DOIT apporter une information NOUVELLE et mémorable que ni la question ni les choix de réponse ne contiennent déjà.
+- ${svCognitiveRule}
 - Distracteurs (réponses incorrectes) : chacun doit être plausible pour quelqu'un qui confond un fait proche, mais UNIVOQUEMENT FAUX. Interdit : distractor évident ("Je ne sais pas"), reformulation de la bonne réponse, contradiction logique, ou réponse qui pourrait être partiellement correcte.
 - concept_family : EN ANGLAIS, kebab-case, 1-4 mots, taxonomie stable (ex: "basketball-rules", "australian-geography", "medieval-history")
 - LONGUEUR STRICTE (limites absolues, dépassement = rejet automatique) :
@@ -1754,10 +1778,15 @@ RULES:
 - 4 answers (answer_a/b/c/d), all non-null, one correct
 - question_text ≤ 110 chars (slow_reader_safe — direct recall, short phrasing; hard max: 135)
 - each answer ≤ 60 chars
-- saviez_vous ≥ 30 chars, ≤ 220 chars — a cognitive memory anchor, NOT a generic encyclopedia fact.
-  Choose ONE angle from this list (pick the most powerful for this kernel):
+- saviez_vous ≥ 30 chars, ≤ 220 chars — COGNITIVE TYPE: qcm_recognition.
+  The saviez_vous MUST explain the MAIN FACT behind the correct answer: a precise historical,
+  scientific, geographic or cultural context that neither the question nor the answer choices contain.
+  FORBIDDEN: restating the correct answer, generic encyclopedia phrases ("X is known for its...",
+  "X has been growing rapidly"), vague anecdotes unrelated to the specific answer.
+  REQUIRED: new, memorable information the player didn't have before reading the SV.
+  Choose ONE angle (pick the most powerful for this fact):
     why_it_matters        → why this answer is important in context
-    why_this_answer       → why this answer dominates / beats the alternatives
+    why_this_answer       → why this answer is correct / beats the alternatives
     why_people_confuse_it → why players get this wrong
     surprising_scale      → a striking number, proportion, or size comparison
     hidden_consequence    → a concrete real-world consequence
@@ -1765,10 +1794,8 @@ RULES:
     evolution_connection  → a scientific / evolutionary link
     human_story           → a memorable human detail about this fact
     visual_memory         → a strong mental image that locks in the answer
-  The saviez_vous MUST implicitly answer one of: "Why this answer?", "Why does it matter?",
-  "Why is it surprising?", "Why do people get it wrong?", "What does it change?", "What will I remember?"
-  FORBIDDEN: vague documentary sentences, generic descriptions, restating the correct answer,
-  random unrelated anecdotes, phrases like "X is known for its..." or "X has been growing rapidly."
+  The saviez_vous MUST implicitly answer: "Why this answer?", "Why does it matter?",
+  "Why is it surprising?", or "What will I remember?"
 - No negative framing ("is not", "except", "none of the following")
 - Distractors must be plausible but unambiguously wrong
 - Correct answer must clearly match answer_target
@@ -1935,15 +1962,35 @@ GLOBAL RULES FOR ALL DERIVED VARIANTS:
   tf_reasoning_true:     ≤ 145 chars / hard 170 (normal_reader — contextual TRUE V/F statement)
   tf_reasoning_false:    ≤ 145 chars / hard 170 (normal_reader — contextual FALSE V/F statement)
 - each answer ≤ 60 chars
-- saviez_vous ≥ 30 chars, ≤ 220 chars — a cognitive memory anchor, NOT a generic encyclopedia fact.
-  Each variant's saviez_vous must use a DIFFERENT angle than the master's saviez_vous.
-  Choose ONE angle from: why_it_matters | why_this_answer | why_people_confuse_it |
-  surprising_scale | hidden_consequence | historical_connection | evolution_connection |
-  human_story | visual_memory
-  The saviez_vous MUST implicitly answer one of: "Why this answer?", "Why does it matter?",
-  "Why is it surprising?", "Why do people get it wrong?", "What does it change?", "What will I remember?"
-  FORBIDDEN: vague documentary sentences, restating the correct answer, phrases like "X is known for its..."
+- saviez_vous ≥ 30 chars, ≤ 220 chars — pedagogically tied to each variant's cognitive type (see
+  SAVIEZ-VOUS RULES BY VARIANT below). Each variant's saviez_vous must use a DIFFERENT angle than
+  the master's saviez_vous. FORBIDDEN: restating the correct answer, vague encyclopedia phrases.
+- MASTER saviez_vous for reference: "${master.saviez_vous || ''}"
 - No negative framing ("is not", "except", "none of the following")
+
+SAVIEZ-VOUS RULES BY VARIANT (Depth does NOT reduce SV quality — always fully explanatory):
+
+  qcm_reasoning saviez_vous:
+    MUST explain the CAUSAL or LOGICAL MECHANISM behind the correct answer.
+    Not a bare fact — an explicit causal explanation. Include at least one causal marker
+    ("because", "since", "which explains", "due to", "therefore", "this is why", "leading to").
+    FORBIDDEN: restating the answer as a simple fact without causal explanation.
+
+  qcm_deceptive_trap saviez_vous:
+    MUST cover all 4 steps: (1) NATURAL REFLEX — what players instinctively answer,
+    (2) INTUITIVE ERROR — why that reflex is wrong, (3) CORRECTION — why the real answer differs,
+    (4) RECONSTRUCTION — the rule or logic to retain. All 4 components must be readable in ≤ 220 chars.
+    FORBIDDEN: generic descriptions that omit the reflex or the correction.
+
+  tf_recognition_true / tf_recognition_false saviez_vous:
+    MUST explain WHY the statement is true or false — the precise fact that confirms or disproves it.
+    FORBIDDEN: simply restating the polarity ("This is true because it is true") or the statement itself.
+    REQUIRED: a new factual context or nuance the player didn't have before reading the SV.
+
+  tf_reasoning_true / tf_reasoning_false saviez_vous:
+    MUST explain WHY the reasoning is true or false — which logical, causal, or contextual mechanism
+    validates or invalidates the statement. Include at least one explicit causal marker.
+    FORBIDDEN: confirmation without explanation, simple restatement of the statement with polarity flipped.
 
 VARIANT-SPECIFIC RULES:
 

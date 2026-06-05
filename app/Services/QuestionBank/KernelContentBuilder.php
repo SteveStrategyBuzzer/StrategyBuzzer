@@ -273,6 +273,24 @@ class KernelContentBuilder
             $warnings[] = "master.saviez_vous may be too long ({$svLen})";
         }
 
+        // saviez_vous cognitive check — master is always qcm_recognition.
+        // The SV must explain the main fact, not a generic description.
+        // Non-blocking: logged as a warning, does not reject the master.
+        $svCheck = mb_strtolower(trim($master['saviez_vous']));
+        $genericFillersSV = [
+            'is known for its', 'is famous for', 'is often associated',
+            'plays an important role', 'is widely recognized', 'is widely known',
+            'has been growing', 'is considered one of',
+            'est connu pour', 'est célèbre pour', 'est souvent associé',
+            'joue un rôle important', 'est largement reconnu',
+        ];
+        foreach ($genericFillersSV as $filler) {
+            if (str_contains($svCheck, $filler)) {
+                $warnings[] = "3-B: master.saviez_vous (recognition) contains generic filler \"{$filler}\" — must explain the main fact with specific context";
+                break;
+            }
+        }
+
         // All 4 answer options must be distinct
         $answers = array_map('strtolower', array_map('trim', [
             $master['answer_a'], $master['answer_b'], $master['answer_c'], $master['answer_d'],
