@@ -1,0 +1,217 @@
+Structuration officielle — croissance Ready_Bank par Depth.
+
+Objectif :
+structurer la croissance de la banque de questions en NOYAUX, pas seulement en questions.
+
+Règles de base :
+
+1 noyau =
+- 1 sujet
+- 1 idée dominante directrice
+- 7 questions cognitives
+
+Les 7 cognitifs :
+- QCM Recognition
+- QCM Reasoning
+- QCM DeceptiveTrap
+- TF Recognition True
+- TF Recognition False
+- TF Reasoning True
+- TF Reasoning False
+
+Le noyau sert à :
+- produire les 7 variantes cognitives
+- contrôler l’anti-répétition
+- éviter les doublons pédagogiques
+- gérer KEY_STRUCTURE et KEY_LEARNING_DIRECTION
+
+Important :
+un match moyen = 3 manches × 20 questions = 60 questions.
+
+Donc la Ready_Bank doit raisonner en :
+noyaux exploitables gameplay,
+pas seulement en volume brut de questions.
+
+──────────────────────────────
+ANTI-REDONDANCE
+──────────────────────────────
+
+Par défaut :
+- éviter de rejouer le même noyau dans une même manche
+- éviter de rejouer le même noyau trop rapidement dans un même match
+- éviter de rejouer le même noyau trop souvent dans l’historique joueur
+
+Mais :
+DeceptiveTrap peut être une exception contrôlée,
+car il peut volontairement réutiliser le même sujet/idée dominante
+sous un angle trompeur différent.
+
+Condition :
+- jamais même cognitif immédiatement
+- jamais simple reformulation
+- DeceptiveTrap doit changer réellement l’angle
+- learning_direction contrôlé
+- reconstruction différente ou suffisamment forte
+
+Anti-répétition recommandé :
+- question_id
+- noyau_id
+- KEY_LEARNING_DIRECTION
+- DECEPTIVETRAP_SIGNATURE
+- LEARNING_SIGNATURE
+
+──────────────────────────────
+DEPTH = QUESTION
+PERSONNALITÉ = ADVERSAIRE
+──────────────────────────────
+
+Depth appartient aux questions.
+
+Depth définit :
+- complexité cognitive
+- degré de connaissance requis
+- vocabulaire
+- raisonnement
+- difficulté du DeceptiveTrap
+- longueur potentielle de la question
+- longueur maximum selon vitesse de lecture attendue
+
+Personnalité adversaire appartient aux élèves/Boss :
+- buzz %
+- temps de buzz
+- abstention
+- précision
+- radar par domaine
+- style de jeu
+- agressivité / prudence
+
+Ne jamais mélanger :
+Depth = question
+Personnalité = adversaire
+
+──────────────────────────────
+SV
+──────────────────────────────
+
+SV =
+grande qualité constante de l’explication pédagogique,
+indépendamment du Depth,
+mais toujours liée au cognitif.
+
+Recognition :
+→ explique le fait principal
+
+Reasoning :
+→ explique le mécanisme causal/logique
+
+DeceptiveTrap :
+→ explique le réflexe naturel
+→ l’erreur intuitive
+→ la correction
+→ la reconstruction
+
+TF Recognition :
+→ explique pourquoi vrai/faux
+
+TF Reasoning :
+→ explique pourquoi le raisonnement est vrai/faux
+
+Si SV vague, décoratif ou non lié au cognitif :
+→ WARNING
+→ sv_low_explanatory_quality ou sv_cognitive_mismatch
+
+──────────────────────────────
+OBJECTIF READY_BANK INTERNATIONAL
+──────────────────────────────
+
+Hypothèse :
+- jeu international
+- jusqu’à 1M joueurs
+- match moyen : 60 questions
+- historique anti-répétition par joueur
+- besoin d’éviter la trivia redondante
+
+Besoin recommandé en NOYAUX par Depth :
+
+Depth 2 :
+- usage : Solo 1-9 + Ligue Bronze
+- besoin : 40 000 noyaux
+- questions possibles : 280 000
+
+Depth 4 :
+- usage : Solo 11-29 + Duo Novice + MJ Auto Novice
+- besoin : 120 000 noyaux
+- questions possibles : 840 000
+
+Depth 6 :
+- usage : Solo 31-59 + Boss 10/20/30 + Duo Intermédiaire + MJ Auto Intermédiaire
+- besoin : 180 000 noyaux
+- questions possibles : 1 260 000
+
+Depth 7 :
+- usage : Solo 61-79 + Ligue Platine
+- besoin : 90 000 noyaux
+- questions possibles : 630 000
+
+Depth 8 :
+- usage : Solo 81-89 + Boss 40/50/60 + Duo Expert + MJ Auto Expert
+- besoin : 140 000 noyaux
+- questions possibles : 980 000
+
+Depth 9 :
+- usage : Solo 91-99 + Boss 70/80/90 + Ligue Légende
+- besoin : 90 000 noyaux
+- questions possibles : 630 000
+
+Depth 10 :
+- usage : Boss 100 / Cerveau Ultime / prestige
+- besoin : 25 000 noyaux
+- questions possibles : 175 000
+
+Total cible :
+685 000 noyaux
+× 7 cognitifs
+= 4 795 000 questions
+
+──────────────────────────────
+PRIORITÉ DE PRODUCTION
+──────────────────────────────
+
+Ordre recommandé :
+
+1. Depth 6
+2. Depth 4
+3. Depth 8
+4. Depth 7
+5. Depth 9
+6. Depth 2
+7. Depth 10
+
+Raison :
+Depth 6, 4 et 8 supportent le plus de trafic réel :
+Solo actif, Duo, MJ, progression intermédiaire/expert.
+
+──────────────────────────────
+À FAIRE
+──────────────────────────────
+
+Créer une stratégie de croissance Ready_Bank basée sur :
+
+- noyaux disponibles par Depth
+- noyaux disponibles par domaine
+- distribution des 7 cognitifs
+- taux de consommation par mode
+- historique anti-répétition joueur
+- warning/quarantaine
+- blocs VALIDATED_OK seulement accessibles gameplay
+
+Ne pas générer tous les 685 000 noyaux d’un coup.
+
+Créer une croissance par paliers :
+- minimum opérationnel
+- beta fermée
+- beta publique
+- lancement
+- montée internationale
+
+Produire ensuite un plan chiffré par palier.

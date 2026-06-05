@@ -1,3 +1,4 @@
 - [Trap prompt fix](trap-prompt-fix.md) — 5 nouveaux champs trap étaient dans PHP mais absents du prompt Node ; fix appliqué dans question-api.js.
 - [hasCausalConnector gaps](causal-connector-gaps.md) — "If", "Given", "As", "For", "suggests", "indicates" absents de la liste → cogIntegrity=0 sur raisonnements valides.
 - [Depth vs Adversary Personality](depth-vs-personality.md) — Depth = propriété question (complexité) ; Personnalité = propriété adversaire (buzz%, radar, style). Ne jamais confondre.
+- [Ready_Bank growth spec](ready-bank-growth-spec.md) — Unité = noyau (7 cognitifs). Cibles par Depth (685K noyaux / 4.8M questions). Priorité prod : Depth 6→4→8→7→9→2→10.
