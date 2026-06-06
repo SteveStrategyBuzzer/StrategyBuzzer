@@ -1,0 +1,234 @@
+Planning data model structure definition (37 seconds)
+The user wants a pure conceptual/architectural answer — no code, no migration. They want:
+
+The final data model structure: Domain → Sub-domain → Subject → Dominant idea, with knowledge_frequency at the right level
+Where the dominant idea (angle_large) is stored
+Whether knowledge_frequency is AI-evaluated or stored in the taxonomy
+How knowledge_frequency + cognitive type produce the final Depth
+This is a pure reasoning exercise. No tools needed. Let me think through this carefully.
+
+1. Structure hiérarchique
+
+The hierarchy from the documents:
+
+Rotation
+↓
+Depth
+↓
+Domaine
+↓
+Sous-domaine
+↓
+Sujet
+↓
+Idée dominante directrice (angle_large)
+
+Now, where does knowledge_frequency sit? It's a property of the subject within a specific context — not of the domain or sub-domain itself. For example, "Paris" as a capital has a different knowledge frequency than "Ouagadougou," even though both fall under the same geography sub-domain.
+
+But the angle_large also shapes how deep we need to go. A simple recognition question about Paris as France's capital requires less depth than exploring Paris's historical influence on global diplomacy. So knowledge_frequency really belongs to the (subject + angle_large) pair at the question intent level, not at the taxonomy level.
+
+The taxonomy is the pre-creation structure — a curated tree of domains, sub-domains, and subject pools. Knowledge_frequency, on the other hand, gets evaluated for each specific subject-angle combination, so it might only store a typical frequency range at the taxonomy level.
+
+The angle_large is always stored in the question intent since it's one of the two core fields of a noyau. The taxonomy only tracks subject candidates, not angle_large candidates, because a single subject can branch into multiple valid angles.
+
+For example, "Photosynthèse" could explore chloroplast CO₂ fixation, solar energy conversion, or C3 versus C4 differences—each representing a distinct noyau with potentially different depths. The taxonomy avoids storing angle_large since it would inflate the taxonomy size unnecessarily, and angle_large is generative by nature—theoretically infinite valid angles exist for each subject. The AI proposes angle_large candidates, but the rotation system determines which ones are actually valid.
+
+The taxonomy can suggest a frequency range for sub-domains, but the precise value for each subject-angle_large pair is evaluated by AI rather than invented—it classifies based on the combination. A subject alone partially determines frequency, though angle_large can shift it up or down depending on the specific framing.
+
+Now I'm looking at how knowledge_frequency combines with cognitive complexity to determine the final depth, using a matrix that maps frequency values to candidate depth levels. So frequency alone doesn't determine depth—it's more of a starting point that the cognitive type can adjust. The document suggests a more nuanced calculation where frequency provides the primary direction, but cognitive factors like recognition versus reasoning can shift the depth up or down. Looking at the concrete example with Ottawa, frequency=2 gives either Depth 2 or 4 depending on whether the cognitive type is simple retrieval or requires deeper reasoning.
+
+For cases with a single frequency candidate like Dhaka (frequency=3 → Depth 4), the cognitive type might still have some influence, though it seems constrained to the official depths documented. The pattern appears to be: frequency gives one or two candidate depths, and when there's ambiguity between two options, the cognitive type breaks the tie—recognition pulls toward the lower depth, reasoning or trap-type questions pull toward the higher one.
+
+Now I'm ready to formulate a complete answer addressing all four questions.
+
+Aucun outil nécessaire — pure réflexion architecturale. Voici le modèle de données final.
+
+Modèle de données final de Rotation
+1. Structure hiérarchique complète et niveau de stockage de knowledge_frequency
+TAXONOMIE (structure pré-création — humainement curatée)
+═══════════════════════════════════════════════════════
+Domaine
+│   → Histoire
+│   → Science
+│   → Géographie
+│   → ...
+│
+└── Sous-domaine
+    │   → Capitales du monde
+    │   → Guerres mondiales
+    │   → Physique des particules
+    │   → ...
+    │   (≠ Domaine — vrais sous-domaines, pas copies)
+    │
+    ├── frequency_hint_range : [4, 6]    ← fourchette indicative pour ce sous-domaine
+    │
+    └── Sujet (pool de candidats pré-approuvés)
+        │   → "Ouagadougou"
+        │   → "Douchanbé"
+        │   → "Capitale déplacée du Kazakhstan"
+        │   → ...
+        │
+        └── (Aucune idée dominante stockée ici — voir section 2)
+QUESTION_INTENTS (noyau — unité de génération)
+═══════════════════════════════════════════════
+Noyau
+├── domain               : "Géographie"
+├── sub_domain           : "Capitales du monde"
+├── difficulty_depth     : 6               ← Depth final calculé par Rotation
+├── subject              : "Ouagadougou"
+├── angle_large          : "Capitale nationale africaine au cœur du Sahel"
+├── knowledge_frequency  : 4               ← évalué par AI, stocké ici (section 3)
+├── knowledge_frequency_source : 'ai_eval'
+├── depth_rationale      : "freq=4 → Depth 6 ; cognitif=reasoning confirmé"
+└── [7 styles cognitifs = 7 question_groups produits par la pipeline]
+
+La règle de niveau :
+
+Niveau	Ce qu'il stocke	Ce qu'il ne stocke pas
+Taxonomie / Sous-domaine	frequency_hint_range indicatif	knowledge_frequency précis
+Taxonomie / Sujet pool	Sujets candidats validés	angle_large, knowledge_frequency
+QuestionIntent (noyau)	subject + angle_large + knowledge_frequency précis + difficulty_depth	Rien de la taxonomie
+2. Où est stockée l'idée dominante
+L'idée dominante (angle_large) vit exclusivement sur le QuestionIntent. Elle n'est jamais dans la taxonomie.
+
+Raison structurelle : un seul sujet peut produire plusieurs noyaux distincts, chacun avec une idée dominante différente.
+
+Sujet : "Photosynthèse"
+Noyau 1 :
+  angle_large : "Les chloroplastes fixent le CO₂ grâce à la lumière"
+  knowledge_frequency : 3 (assez commune)
+  difficulty_depth : 4
+Noyau 2 :
+  angle_large : "Différence de rendement entre photosynthèse C3 et C4"
+  knowledge_frequency : 6 (rare)
+  difficulty_depth : 8
+Noyau 3 :
+  angle_large : "Rôle du cycle de Calvin dans la fixation du carbone"
+  knowledge_frequency : 5 (peu commune)
+  difficulty_depth : 7
+
+Le même sujet génère 3 noyaux à 3 profondeurs différentes, parce que l'idée dominante change. Si angle_large était dans la taxonomie, on perdrait cette flexibilité.
+
+C'est le couple (subject, angle_large) qui définit un apprentissage unique. La taxonomie fournit le sujet. L'idée dominante est proposée par Rotation (avec aide AI) au moment de la création du QuestionIntent.
+
+3. knowledge_frequency — évalué par IA ou stocké dans la taxonomie ?
+Réponse : les deux niveaux coexistent, avec des rôles différents.
+
+NIVEAU TAXONOMIE → frequency_hint_range (fourchette, guide humain)
+─────────────────────────────────────────────────────────────────────
+Sous-domaine "Capitales du monde" :
+  frequency_hint_range : [2, 7]
+  → Ce sous-domaine contient des sujets de fréquence 2 (Ottawa)
+    jusqu'à 7 (Douchanbé)
+  → C'est une contrainte de ciblage pour Rotation
+Sous-domaine "Physique des particules" :
+  frequency_hint_range : [6, 8]
+  → Toujours rare à très pointu
+NIVEAU QUESTION_INTENT → knowledge_frequency (valeur précise, évaluée)
+─────────────────────────────────────────────────────────────────────────
+Pour chaque (subject, angle_large) :
+  AI évalue la fréquence exacte → valeur 1 à 8
+  Rotation valide que cette valeur est dans la fourchette attendue
+  du sous-domaine (frequency_hint_range)
+  Valeur stockée : knowledge_frequency = 4
+
+Pourquoi l'AI évalue et ne stocke pas directement ?
+
+Parce que knowledge_frequency dépend du couple (subject + angle_large), pas du sujet seul :
+
+Sujet : "Paris"
+  angle_large : "Capitale de la France"
+  → knowledge_frequency = 1 (très commune)
+  → Depth 2
+  angle_large : "Évolution du statut diplomatique de Paris au XXe siècle"
+  → knowledge_frequency = 7 (pointue)
+  → Depth 9
+
+Le sujet "Paris" est très commun (frequency=1), mais une idée dominante experte sur ce même sujet peut atteindre frequency=7. La fréquence est donc une propriété du noyau entier, pas du sujet isolé. Elle ne peut pas être pré-stockée dans la taxonomie — elle doit être évaluée pour chaque (subject, angle_large) à la création du noyau.
+
+Règle : l'AI classifie, Rotation valide. L'AI ne choisit pas le sujet ni l'angle — elle évalue seulement la fréquence d'une paire que Rotation a déjà proposée.
+
+4. Comment knowledge_frequency + cognitif produisent le Depth final
+Étape 1 — La matrice donne les candidats Depth
+
+knowledge_frequency  →  depth_candidates
+────────────────────────────────────────
+1  Très commune      →  [2]
+2  Commune           →  [2, 4]       ← ambiguïté → résoudre par cognitif
+3  Assez commune     →  [4]
+4  Un peu commune    →  [6]
+5  Peu commune       →  [7]
+6  Rare              →  [8]
+7  Pointue           →  [9]
+8  Très pointue      →  [10]
+
+Étape 2 — Le style cognitif résout l'ambiguïté
+
+La seule fréquence avec 2 candidats est frequency=2. Le cognitif tranche :
+
+frequency = 2 → depth_candidates = [2, 4]
+  Si style cognitif = Recognition
+    → Depth final = 2
+    → Justification : récupération directe, connaissance accessible
+  Si style cognitif = Reasoning ou DeceptiveTrap
+    → Depth final = 4
+    → Justification : raisonnement ou piège sur une connaissance
+      accessible élève la complexité cognitive d'un niveau
+
+Étape 3 — Le cognitif n'intervient pas quand la fréquence fixe 1 seul candidat
+
+frequency = 4 → depth_candidates = [6]
+  Recognition  → Depth 6  (cognitif ne change pas le Depth)
+  Reasoning    → Depth 6
+  Trap         → Depth 6
+  → Le Depth 6 accommode les 3 styles dans sa composition cognitive
+    (Depth 6 = "relativement équilibrés")
+  → Ce n'est pas le Depth qui change, c'est la question qui change
+    selon le style — mais elle reste ancrée au même Depth
+
+Tableau complet — lecture croisée frequency × cognitif → Depth
+
+             Recognition     Reasoning     DeceptiveTrap
+freq=1          2               2               2
+freq=2          2               4               4       ← seul niveau ambigu
+freq=3          4               4               4
+freq=4          6               6               6
+freq=5          7               7               7
+freq=6          8               8               8
+freq=7          9               9               9
+freq=8         10              10              10
+
+La règle fondamentale :
+
+knowledge_frequency  →  ancre le Depth dans l'espace pédagogique
+style cognitif       →  résout l'ambiguïté freq=2 uniquement
+                     →  dans tous les autres cas : il choisit la question,
+                        pas le Depth
+Le Depth est toujours décidé par la fréquence.
+Le cognitif ne déplace jamais le Depth de plus d'un cran,
+et uniquement quand la fréquence laisse une marge explicite.
+
+Vue synthétique du modèle final
+TAXONOMIE
+  Domaine
+  └── Sous-domaine
+      ├── frequency_hint_range : [min, max]
+      └── subject_pool : ["Ouagadougou", "Douchanbé", ...]
+ROTATION (à la création du QuestionIntent)
+  Input  : (sub_domain, subject, angle_large)
+  Calcul : AI évalue knowledge_frequency
+  Résolution : frequency → depth_candidates
+               + cognitif si freq=2
+  Output : difficulty_depth (Depth final)
+QUESTION_INTENT (noyau — résultat de Rotation)
+  domain
+  sub_domain
+  subject                     ← vient de la taxonomie
+  angle_large                 ← proposé par Rotation, validé, stocké ici
+  difficulty_depth            ← calculé par Rotation
+  knowledge_frequency         ← évalué par AI, stocké ici
+  knowledge_frequency_source  ← 'ai_eval' | 'human_override'
+  depth_rationale             ← explication de la décision
+
+
+Scroll to latest
