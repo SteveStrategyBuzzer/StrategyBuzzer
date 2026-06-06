@@ -1,0 +1,97 @@
+Correction architecturale importante.
+Nous devons verrouiller la définition officielle de la structure pédagogique.
+La hiérarchie n'est PAS :
+Sujet
+↓
+Idée dominante libre
+La hiérarchie officielle est :
+Domaine
+↓
+Sous-domaine
+↓
+Sujet
+↓
+Idée dominante
+Chaque niveau contraint le suivant.
+──────────────────────────────
+Définition officielle
+Domaine
+univers de connaissance
+Sous-domaine
+ce que nous étudions dans ce domaine
+Sujet
+objet précis étudié dans ce sous-domaine
+Idée dominante
+ce que nous voulons faire apprendre sur ce sujet
+à l'intérieur du sous-domaine
+──────────────────────────────
+Exemple
+Domaine :
+Géographie
+Sous-domaine :
+Capitales
+Sujet :
+Ouagadougou
+INCORRECT :
+Idée dominante :
+Ouagadougou
+INCORRECT :
+Idée dominante :
+capitale du Burkina Faso
+(si cela ne fait que répéter le sous-domaine)
+INCORRECT :
+Idée dominante :
+rôle politique du Burkina Faso
+(car on sort du sous-domaine Capitales)
+CORRECT :
+Idée dominante =
+un apprentissage spécifique sur Ouagadougou
+dans le cadre du sous-domaine Capitales.
+──────────────────────────────
+Règle de validation obligatoire
+Lors de la création d'un noyau :
+
+
+Le Sujet doit appartenir au Sous-domaine.
+
+
+L'Idée dominante doit appartenir au Sujet.
+
+
+L'Idée dominante doit rester à l'intérieur du Sous-domaine.
+
+
+Si l'Idée dominante peut exister sans le Sous-domaine,
+elle doit être rejetée.
+
+
+Si l'Idée dominante répète simplement le Sujet,
+elle doit être rejetée.
+──────────────────────────────
+Formule officielle
+Domaine
++
+Sous-domaine
++
+Sujet
++
+Idée dominante
+L'idée dominante n'existe jamais seule.
+Elle est toujours :
+une propriété du Sujet
+dans le contexte du Sous-domaine.
+──────────────────────────────
+Conséquence pour Rotation
+Rotation ne doit jamais raisonner :
+Sujet
+↓
+Idée dominante
+Rotation doit raisonner :
+Sous-domaine
+↓
+Sujet
+↓
+Idée dominante
+Le Sous-domaine est le garde-fou principal.
+Il empêche les dérives sémantiques
+et garantit la cohérence pédagogique du noyau.
