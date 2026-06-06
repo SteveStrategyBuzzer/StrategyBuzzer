@@ -1,0 +1,100 @@
+Intégration officielle — Fréquence de connaissance → Depth.
+
+À intégrer dans Rotation.
+
+La fréquence/profondeur de connaissance devient un facteur de direction du Depth.
+
+Échelle officielle :
+
+1 = Très commune       → Depth 2
+2 = Commune            → Depth 2 ou Depth 4
+3 = Assez commune      → Depth 4
+4 = Un peu commune     → Depth 6
+5 = Peu commune        → Depth 7
+6 = Rare               → Depth 8
+7 = Pointue            → Depth 9
+8 = Très pointue       → Depth 10
+
+Définitions :
+
+Très commune :
+connaissance que presque tout le monde devrait connaître.
+
+Commune :
+connaissance qu’une personne cultivée devrait connaître.
+Zone tampon entre Depth 2 et Depth 4.
+
+Assez commune :
+beaucoup de gens connaissent, mais pas la majorité.
+
+Un peu commune :
+connaissance spécialisée légère.
+
+Peu commune :
+connaissance spécialisée.
+
+Rare :
+connaissance experte.
+
+Pointue :
+connaissance très spécialisée.
+
+Très pointue :
+connaissance élite.
+
+Règle importante :
+
+La fréquence de connaissance n’est pas le seul facteur du Depth,
+mais elle devient un facteur majeur de Rotation.
+
+Rotation doit raisonner ainsi :
+
+Depth candidat
+← fréquence de connaissance
++ complexité cognitive
++ maîtrise attendue
++ style cognitif
+
+Exemple :
+
+Paris / capitale France
+→ Très commune
+→ Depth 2
+
+Ottawa / capitale Canada
+→ Commune
+→ Depth 2 ou 4 selon cognitif
+
+Dhaka / capitale Bangladesh
+→ Assez commune
+→ Depth 4
+
+Ouagadougou / Burkina Faso
+→ Un peu commune
+→ Depth 6
+
+Douchanbé / Tadjikistan
+→ Peu commune
+→ Depth 7
+
+Capitale déplacée du Kazakhstan
+→ Rare
+→ Depth 8
+
+Capitale administrative vs constitutionnelle
+→ Pointue
+→ Depth 9
+
+Impact géopolitique d’un déplacement de capitale
+→ Très pointue
+→ Depth 10
+
+Objectif :
+insérer cette règle dans la future Rotation avant la création du QuestionIntent.
+
+Aucun patch encore.
+Je veux d’abord savoir :
+- où cette matrice doit être stockée
+- quel fichier/config doit la porter
+- comment Rotation va l’utiliser
+- quels champs doivent être ajoutés au QuestionIntent si nécessaire
