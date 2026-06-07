@@ -1,0 +1,82 @@
+Correction ciblée — TaxonomyReader en fait trop.
+
+On touche une seule chose maintenant : TaxonomyReader / Taxonomy.
+
+Règle à appliquer :
+Rotation = structure de décision.
+BankTarget = total de noyau fait
+DepthNeedMatrix = rotation depth 
+DomainCycle = rotation Domaines
+Taxonomy= création sujet en lien du domaine et créer 5 Idées Dominantes du sujet enregistrementen / enregistrement des 4 autres idées en réserve.
+KEY_LEARNING_DIRECTION s’assurer de pas reprendre les mêmes sujet et idée dominante dans le future
+KEY_STRUCTURE = garde structurel. 
+QuestionIntent = puce du noyau. 
+
+
+KEY_LEARNING_DIRECTION = sécurité pédagogique + knowledge_frequency.
+
+Donc TaxonomyReader ne doit pas décider quoi produire.
+
+DOMAIN CYCLE fournit déjà le Domaine.
+
+Ensuite Taxonomy doit créer / enregistrer / fournir la structure suivante :
+
+
+└─ Sous-domaine en lien avec Domaine fournie
+   └─ Sujet
+      ├─ idées dominantes directrices
+    
+
+Responsabilités TaxonomyReader :
+
+- recevoir le Domaine fourni par DomainCycle
+- lire les sous-domaines disponibles de ce Domaine
+- lire les sujets disponibles de chaque sous-domaine
+- lire les idées dominantes directrices disponibles pour chaque sujet
+- enregistrer / exposer la structure taxonomique
+- retourner des candidats disponibles
+
+Responsabilités interdites TaxonomyReader :
+
+- ne choisit pas le Domaine
+- ne décide pas quoi produire
+- ne gère pas la stratégie de Rotation
+- ne décide pas du fallback final
+- ne valide pas KEY_STRUCTURE
+- ne pose pas QuestionIntent
+
+Correction importante :
+
+knowledge_frequency est contrôlé par KEY_LEARNING_DIRECTION, pas par TaxonomyReader comme décision autonome.
+
+Taxonomy stocke / expose la valeur, mais la validation/cohérence pédagogique du couple :
+
+Sujet + Idée dominante
+
+passe par KEY_LEARNING_DIRECTION.
+
+Donc le flow corrigé est :
+
+DOMAIN CYCLE
+→ donne Domaine
+
+Taxonomy
+→ fournit :
+Sous-domaine
+Sujet
+Idées dominantes directrices
+knowledge_frequency
+
+KEY_LEARNING_DIRECTION
+→ vérifie Sujet + Idée dominante
+→ valide la cohérence pédagogique
+→ contrôle le risque de doublon
+→ confirme/encadre knowledge_frequency
+
+KEY_STRUCTURE
+→ garde structurel final
+
+Rotation
+→ décide quelle possibilité utiliser selon les signaux reçus.
+
+Merci de corriger la spécification pour que TaxonomyReader soit une source structurée, pas un décideur.
