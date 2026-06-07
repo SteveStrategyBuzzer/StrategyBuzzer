@@ -1,0 +1,165 @@
+Validation d'architecture — clarifications finales avant implémentation
+
+Validation à ~95%.
+
+Il reste quelques points à verrouiller avant toute implémentation.
+
+──────────────────────────────
+
+1. TAXONOMY
+   ──────────────────────────────
+
+Taxonomy n'est plus seulement une structure de stockage.
+
+Elle doit pouvoir répondre aux demandes de navigation provenant de KEY_LEARNING_DIRECTION.
+
+Exemples :
+
+* autre idée dominante du même sujet
+* autre sujet du même sous-domaine
+* autre sous-domaine du même domaine
+
+Question :
+
+Quel composant est responsable de cette navigation ?
+
+Taxonomy elle-même ?
+TaxonomyNavigator ?
+Autre composant dédié ?
+
+Je veux verrouiller cette responsabilité avant implémentation.
+
+──────────────────────────────
+2. KEY_STRUCTURE
+──────────────────────────────
+
+KEY_STRUCTURE n'est pas un générateur.
+
+KEY_STRUCTURE n'est pas un composant de création.
+
+KEY_STRUCTURE est un garde structurel.
+
+Formule :
+
+Depth
++
+Domaine
++
+Sous-domaine
++
+Sujet
++
+Idée dominante
+
+Responsabilités :
+
+* vérifier la cohérence structurelle du noyau
+* vérifier que tous les composants obligatoires sont présents
+* avertir la structure lorsqu'une information manque
+* permettre à Taxonomy de compléter les éléments manquants
+* produire l'identité structurelle finale du noyau
+
+La signature/hash est seulement un outil technique.
+
+La responsabilité métier principale est le contrôle structurel.
+
+──────────────────────────────
+3. QUESTIONINTENT
+──────────────────────────────
+
+Clarification officielle.
+
+QuestionIntent ne crée pas le noyau.
+
+QuestionIntent n'est pas le noyau.
+
+QuestionIntent n'est pas un simple ordre de fabrication.
+
+QuestionIntent sert à pucer le noyau.
+
+Rôle :
+
+* donner une identité persistante au noyau
+* permettre au gameplay d'identifier l'origine des variants
+* permettre aux variants de rester reliés au bon noyau
+* permettre la dissociation pendant :
+
+  * Validation
+  * Traduction
+  * Quarantaine
+* permettre la réassociation après :
+
+  * Correction
+  * Validation
+  * Traduction
+* permettre le retour vers Ready_Bank
+
+QuestionIntent est l'identifiant relationnel vivant entre :
+
+* KernelBlueprint
+* variants
+* traductions
+* traces de quarantaine
+* corrections
+* Ready_Bank
+* gameplay
+
+KEY_STRUCTURE conserve les combinaisons déjà produites :
+
+Depth
++
+Domaine
++
+Sous-domaine
++
+Sujet
++
+Idée dominante
+
+KEY_LEARNING_DIRECTION conserve les directions pédagogiques déjà utilisées :
+
+Sujet
++
+Idée dominante
+
+QuestionIntent sert à suivre cette combinaison partout dans le système.
+
+──────────────────────────────
+FLOW MIS À JOUR
+──────────────────────────────
+
+KernelBlueprint
+↓
+BankTarget
+↓
+DepthNeedMatrix
+↓
+DomainCycle
+↓
+Taxonomy
+↓
+KEY_LEARNING_DIRECTION
+↓
+KEY_STRUCTURE
+↓
+QuestionIntent (puce du noyau)
+↓
+Phase 1 Création
+↓
+Phase 2 Validation
+↓
+Phase 3 Traduction
+↓
+Phase 4 Validation Traduction
+↓
+Ready_Bank
+
+Question ouverte restante :
+
+Qui est responsable de la navigation demandée par KEY_LEARNING_DIRECTION lorsque :
+
+* une idée dominante est déjà utilisée
+* tous les sujets sont saturés
+* tous les sous-domaines sont saturés
+
+Je veux verrouiller cette responsabilité avant toute implémentation.
