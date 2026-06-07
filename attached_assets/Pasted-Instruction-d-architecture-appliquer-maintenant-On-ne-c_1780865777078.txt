@@ -1,0 +1,233 @@
+Instruction d’architecture — à appliquer maintenant
+
+On ne cherche plus à savoir ce que le code actuel fait.
+
+On définit maintenant ce que le nouveau moteur doit faire.
+
+Tu dois structurer le nouveau moteur selon cette architecture, sans interprétation libre.
+
+Règle centrale :
+
+Taxonomy = connaissance.
+Rotation = décision.
+KEY_STRUCTURE = garde structurel.
+QuestionIntent = puce du noyau.
+KernelBlueprint = structure complète du noyau.
+
+──────────────────────────────
+
+1. TAXONOMY
+   ──────────────────────────────
+
+Taxonomy doit seulement fournir les possibilités disponibles :
+
+* sous-domaines disponibles
+* sujets disponibles
+* idées dominantes disponibles
+
+Taxonomy ne décide pas quoi produire.
+
+──────────────────────────────
+2. ROTATION
+──────────────────────────────
+
+Rotation décide quoi produire.
+
+Rotation utilise :
+
+* BankTarget
+* DepthNeedMatrix
+* DomainCycle
+* Taxonomy
+* KEY_LEARNING_DIRECTION
+* KEY_STRUCTURE
+
+Rotation choisit l’alternative suivante quand un doublon est détecté.
+
+──────────────────────────────
+3. KEY_LEARNING_DIRECTION
+──────────────────────────────
+
+KEY_LEARNING_DIRECTION = Sujet + Idée dominante.
+
+Rôle :
+détecter les doublons pédagogiques.
+
+Si déjà utilisé :
+Rotation demande à Taxonomy une autre possibilité.
+
+──────────────────────────────
+4. KEY_STRUCTURE
+──────────────────────────────
+
+KEY_STRUCTURE = Depth + Domaine + Sous-domaine + Sujet + Idée dominante.
+
+Rôle :
+garde structurel final.
+
+KEY_STRUCTURE autorise ou bloque le verrouillage.
+
+KEY_STRUCTURE ne dépend pas de QuestionIntent.
+
+KEY_STRUCTURE dit :
+OK → QuestionIntent peut poser la puce.
+
+──────────────────────────────
+5. QUESTIONINTENT
+──────────────────────────────
+
+QuestionIntent ne décide rien.
+
+QuestionIntent ne crée rien.
+
+QuestionIntent ne valide rien.
+
+QuestionIntent pose seulement la puce persistante du noyau autorisé par KEY_STRUCTURE.
+
+Il sert à relier :
+
+* KernelBlueprint
+* variants
+* traductions
+* quarantaine
+* corrections
+* ready_bank
+* gameplay
+
+──────────────────────────────
+6. KERNELBLUEPRINT
+──────────────────────────────
+
+KernelBlueprint est la structure complète du noyau.
+
+Il doit contenir :
+
+Identité :
+
+* depth
+* domain
+* sub_domain
+* subject
+* idee_dominante
+* key_learning_direction
+* key_structure
+* question_intent_id
+
+Slots cognitifs obligatoires :
+
+* qcm_recognition
+* qcm_reasoning
+* qcm_deceptive_trap
+* tf_recognition_true
+* tf_recognition_false
+* tf_reasoning_true
+* tf_reasoning_false
+
+Chaque slot doit contenir :
+
+* cognitive_type
+* question_or_statement
+* answer_type
+* choices
+* correct_answer_key
+* saviez_vous
+* creation_rules
+* validation_rules
+* translation_rules
+* gameplay_constraints
+* validation_status
+
+──────────────────────────────
+7. PHASE 1 CRÉATION
+──────────────────────────────
+
+Phase 1 remplit les 7 slots.
+
+Phase 1 ne modifie jamais :
+
+* depth
+* domain
+* sub_domain
+* subject
+* idee_dominante
+* key_learning_direction
+* key_structure
+* question_intent_id
+
+──────────────────────────────
+8. PHASE 2 VALIDATION
+──────────────────────────────
+
+Phase 2 valide chaque variant individuellement.
+
+Résultat :
+
+* VALIDATED_OK
+* WARNING
+
+Si WARNING :
+trace en quarantaine.
+
+──────────────────────────────
+9. PHASE 3 TRADUCTION
+──────────────────────────────
+
+Phase 3 traduit uniquement les variants VALIDATED_OK.
+
+──────────────────────────────
+10. PHASE 4 VALIDATION TRADUCTION
+──────────────────────────────
+
+Phase 4 valide chaque traduction indépendamment.
+
+Résultat :
+
+* VALIDATED_OK
+* WARNING
+
+Si WARNING :
+trace en quarantaine.
+
+──────────────────────────────
+11. READY_BANK
+──────────────────────────────
+
+Ready_Bank reçoit uniquement les variants VALIDATED_OK.
+
+Un noyau partiel est accepté.
+
+Exemple :
+5 variants OK
+2 WARNING
+
+Résultat :
+5 vont dans Ready_Bank.
+2 vont en quarantaine.
+
+──────────────────────────────
+12. QUARANTAINE
+──────────────────────────────
+
+Quarantaine contient seulement une trace du noyau ou du variant problématique.
+
+Elle ne bloque pas Ready_Bank.
+
+Elle conserve toujours question_intent_id pour réassociation.
+
+──────────────────────────────
+SORTIE ATTENDUE
+──────────────────────────────
+
+Tu dois maintenant produire une structure technique conforme à cette architecture :
+
+1. fichiers à créer
+2. responsabilités exactes
+3. ordre d’appel
+4. champs du KernelBlueprint
+5. statuts
+6. stockage des clés
+7. stockage de la taxonomie
+8. stockage des traces quarantaine
+9. règles interdites par composant
+
+Aucun patch tant que cette structure n’est pas validée.
