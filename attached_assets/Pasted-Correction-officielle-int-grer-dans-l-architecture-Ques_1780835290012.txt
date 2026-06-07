@@ -1,0 +1,73 @@
+Correction officielle à intégrer dans l’architecture Question Bank / Kernels.
+
+Le terme idee_dominante est validé, mais sa granularité doit être corrigée.
+
+Règle finale :
+
+idee_dominante n’est pas une phrase.
+idee_dominante n’est pas une mini-description.
+idee_dominante n’est pas une question déguisée.
+idee_dominante est un axe pédagogique minimal.
+
+Format cible :
+1 à 3 mots maximum.
+
+Rôle :
+Sujet = ce dont on parle.
+idee_dominante = l’angle d’apprentissage minimal.
+Les 7 cognitifs développent ensuite cet angle.
+
+Exemple officiel :
+
+Domaine : Géographie
+Sous-domaine : Capitales
+Sujet : Ouagadougou
+
+Idées dominantes valides :
+- statut
+- sahélienne
+- enclavement
+- indépendance
+
+À éviter :
+- statut de capitale sahélienne
+- capitale enclavée
+- capitale depuis 1960
+- maintien du statut de capitale
+- croissance urbaine nationale
+
+Pourquoi :
+
+“indépendance” est meilleur que “indépendance 1960”, parce que la date fige trop vite le noyau.
+L’idée dominante doit laisser de l’espace aux 7 cognitifs pour produire la variété.
+
+“croissance urbaine nationale” est rejeté, car ce n’est pas directement rattaché au sous-domaine Capitales.
+Cela relève plutôt de l’urbanisation, de la démographie ou du développement urbain.
+
+Règle de validation :
+
+Une idee_dominante est valide seulement si elle respecte les 4 critères :
+
+1. Courte : 1 à 3 mots.
+2. Stable : ne dépend pas d’une formulation de question.
+3. Comparable : utile pour KEY_LEARNING_DIRECTION.
+4. Ancrée : naturellement liée au Sujet ET au Sous-domaine.
+
+KEY_LEARNING_DIRECTION =
+subject + idee_dominante
+
+Exemple :
+Ouagadougou + indépendance
+Ouagadougou + enclavement
+Ouagadougou + statut
+
+Important :
+Ne pas transformer idee_dominante en réponse complète.
+Ne pas y mettre de date sauf si la date est elle-même l’axe principal.
+Ne pas y mettre une phrase explicative.
+Ne pas sortir du sous-domaine.
+
+Prochaine étape demandée :
+mettre à jour la documentation interne / prompts architecture avec cette granularité.
+
+Aucun patch code tant que l’audit Taxonomie n’est pas fait.
