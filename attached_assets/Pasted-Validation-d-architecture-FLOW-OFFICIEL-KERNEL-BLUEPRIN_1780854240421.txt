@@ -1,0 +1,354 @@
+Validation d'architecture — FLOW OFFICIEL KERNEL BLUEPRINT FIRST
+
+Après plusieurs itérations, nous avons enfin convergé vers la structure cible du moteur.
+
+Important :
+
+Ce document remplace toutes les interprétations précédentes où les responsabilités de Rotation, Taxonomy, KEY_STRUCTURE ou QuestionIntent étaient mélangées.
+
+──────────────────────────────
+FLOW OFFICIEL
+──────────────────────────────
+
+KERNEL BLUEPRINT
+↓
+BANK TARGET
+↓
+DEPTH NEED MATRIX
+↓
+DOMAIN CYCLE
+↓
+TAXONOMY
+↓
+KEY_LEARNING_DIRECTION
+↓
+KEY_STRUCTURE
+↓
+PHASE 1 CRÉATION
+↓
+PHASE 2 VALIDATION
+↓
+PHASE 3 TRADUCTION
+↓
+PHASE 4 VALIDATION TRADUCTION
+↓
+PHASE 5 READY_BANK
+↓
+GAMEPLAY
+
+Branche parallèle :
+
+WARNING
+↓
+PHASE 6 QUARANTAINE
+↓
+PHASE 7 CORRECTION
+↓
+PHASE 2 VALIDATION
+↓
+PHASE 3 TRADUCTION
+↓
+PHASE 4 VALIDATION TRADUCTION
+↓
+READY_BANK
+
+──────────────────────────────
+
+1. KERNEL BLUEPRINT
+   ──────────────────────────────
+
+Responsabilité :
+
+Ouvrir le frame vide du noyau.
+
+Le frame existe avant toute décision métier.
+
+Il contient les espaces qui seront remplis progressivement par les couches suivantes.
+
+──────────────────────────────
+2. BANK TARGET
+──────────────────────────────
+
+Responsabilité :
+
+Déterminer si la production doit continuer.
+
+Exemple :
+
+124 000 / 685 000 noyaux
+
+Si cible atteinte :
+STOP
+
+Sinon :
+continuer.
+
+──────────────────────────────
+3. DEPTH NEED MATRIX
+──────────────────────────────
+
+Responsabilité :
+
+Remplir uniquement le Depth.
+
+Ne choisit jamais le domaine.
+
+Respecte la rotation :
+
+Depth 2 × 8 domaines
+Depth 4 × 8 domaines
+Depth 6 × 8 domaines
+Depth 7 × 8 domaines
+Depth 8 × 8 domaines
+Depth 9 × 8 domaines
+Depth 10 × 8 domaines
+
+Puis recommence.
+
+Peut sauter un Depth uniquement si son besoin est déjà rempli.
+
+Elle doit aussi suivre les déficits réels par profondeur.
+
+──────────────────────────────
+4. DOMAIN CYCLE
+──────────────────────────────
+
+Responsabilité :
+
+Remplir uniquement le Domaine.
+
+Ordre :
+
+Géographie
+Histoire
+Faune
+Art
+Sport
+Cinéma
+Cuisine
+Général
+
+──────────────────────────────
+5. TAXONOMY
+──────────────────────────────
+
+Responsabilité :
+
+Recevoir :
+
+Depth
++
+Domaine
+
+Puis compléter :
+
+Sous-domaine
+Sujet
+Idée dominante
+
+La Taxonomy est une source de structure.
+
+Elle ne décide jamais de la production globale.
+
+──────────────────────────────
+6. KEY_LEARNING_DIRECTION
+──────────────────────────────
+
+Formule :
+
+Sujet + Idée dominante
+
+Exemple :
+
+Ouagadougou + indépendance
+
+Responsabilité :
+
+Détecter les doublons pédagogiques.
+
+Si déjà utilisé :
+
+→ retourner vers Taxonomy
+
+Taxonomy essaie :
+
+1. autre idée dominante du même sujet
+2. autre sujet du même sous-domaine
+3. autre sous-domaine
+
+──────────────────────────────
+7. KEY_STRUCTURE
+──────────────────────────────
+
+Formule :
+
+Depth
++
+Domaine
++
+Sous-domaine
++
+Sujet
++
+Idée dominante
+
+Responsabilité :
+
+Garde structurel.
+
+Ne choisit pas.
+Ne remplit pas.
+Ne crée pas.
+
+Vérifie la cohérence de l’identité complète du noyau.
+
+Si une information manque :
+
+→ avertit la structure
+→ Taxonomy complète les champs manquants
+
+KEY_STRUCTURE est un mécanisme de contrôle, pas un mécanisme de génération.
+
+──────────────────────────────
+8. PHASE 1 CRÉATION
+──────────────────────────────
+
+Responsabilité :
+
+Remplir les 7 cognitifs.
+
+Obligation :
+
+Respecter strictement :
+
+Depth
+Domaine
+Sous-domaine
+Sujet
+Idée dominante
+
+Ne jamais modifier :
+
+KEY_STRUCTURE
+KEY_LEARNING_DIRECTION
+Sujet
+Idée dominante
+Domaine
+Sous-domaine
+Depth
+
+──────────────────────────────
+9. PHASE 2 VALIDATION
+──────────────────────────────
+
+Responsabilité :
+
+Valider individuellement chacun des 7 variants.
+
+Résultat :
+
+VALIDATED_OK
+
+ou
+
+WARNING
+
+Si WARNING :
+
+→ création d'une trace en quarantaine
+
+──────────────────────────────
+10. PHASE 3 TRADUCTION
+──────────────────────────────
+
+Responsabilité :
+
+Traduire uniquement les variants VALIDATED_OK.
+
+──────────────────────────────
+11. PHASE 4 VALIDATION TRADUCTION
+──────────────────────────────
+
+Responsabilité :
+
+Valider chaque traduction indépendamment.
+
+Résultat :
+
+VALIDATED_OK
+
+ou
+
+WARNING
+
+Si WARNING :
+
+→ trace en quarantaine
+
+──────────────────────────────
+12. PHASE 5 READY_BANK
+──────────────────────────────
+
+Responsabilité :
+
+Recevoir uniquement les variants VALIDATED_OK.
+
+Le gameplay consomme uniquement Ready_Bank.
+
+Ready_Bank peut contenir :
+
+* un noyau 7/7 validé
+  ou
+* uniquement les variants validés d’un noyau partiel
+
+──────────────────────────────
+13. PHASE 6 QUARANTAINE
+──────────────────────────────
+
+Responsabilité :
+
+Contenir uniquement une trace du noyau ou du variant problématique.
+
+La quarantaine :
+
+* n'est pas le noyau principal
+* ne bloque pas Ready_Bank
+* ne bloque pas les VALIDATED_OK
+
+──────────────────────────────
+14. PHASE 7 CORRECTION
+──────────────────────────────
+
+Responsabilité :
+
+Corriger les WARNING.
+
+Après correction :
+
+PHASE 2 VALIDATION
+↓
+PHASE 3 TRADUCTION
+↓
+PHASE 4 VALIDATION TRADUCTION
+↓
+READY_BANK
+
+──────────────────────────────
+POINT CRITIQUE À RETENIR
+──────────────────────────────
+
+Taxonomy = source de structure
+
+KEY_LEARNING_DIRECTION = garde pédagogique
+
+KEY_STRUCTURE = garde structurel
+
+PHASE 1 = remplissage
+
+PHASE 2 = validation
+
+PHASE 3 = traduction
+
+PHASE 4 = validation traduction
+
+READY_BANK = seule source consommée par le gameplay
