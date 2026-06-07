@@ -1,0 +1,374 @@
+Objectif : structurer immédiatement le nouveau moteur Question Bank / Kernels selon le flow officiel KERNEL BLUEPRINT FIRST.
+Ne pas coder encore sans confirmer l’architecture fichier par fichier.
+Je veux que tu structures le système selon ces responsabilités exactes.
+──────────────────────────────
+FLOW OFFICIEL
+──────────────────────────────
+KERNEL BLUEPRINT
+
+
+Rotation->
+KernelRotationPlanner =
+BANK TARGET
+↓
+DEPTH NEED MATRIX
+↓
+DOMAIN CYCLE
+↓
+TAXONOMY
+↓
+KEY_LEARNING_DIRECTION
+↓
+KEY_STRUCTURE
+↓
+QUESTIONINTENT
+
+PHASE 1 CRÉATION
+
+PHASE 2 VALIDATION
+
+PHASE 3 TRADUCTION
+
+PHASE 4 VALIDATION TRADUCTION
+
+PHASE 5 READY_BANK
+
+GAMEPLAY
+Branche parallèle :
+WARNING
+↓
+PHASE 6 QUARANTAINE
+↓
+PHASE 7 CORRECTION
+↓
+PHASE 2 VALIDATION
+↓
+PHASE 3 TRADUCTION
+↓
+PHASE 4 VALIDATION TRADUCTION
+↓
+READY_BANK
+──────────────────────────────
+RÈGLE CENTRALE
+──────────────────────────────
+Le moteur doit être KERNEL BLUEPRINT FIRST.
+On ouvre un frame vide de noyau.
+Ensuite chaque couche remplit uniquement sa responsabilité.
+Aucune couche ne doit prendre la responsabilité d’une autre.
+──────────────────────────────
+KERNEL BLUEPRINT
+──────────────────────────────
+Rôle :
+ouvrir le frame vide complet du noyau.
+Il doit prévoir les emplacements suivants :
+Identité :
+depth
+domain
+sub_domain
+subject
+idee_dominante
+key_learning_direction
+key_structure
+question_intent_id
+7 slots cognitifs :
+qcm_recognition
+qcm_reasoning
+qcm_deceptive_trap
+tf_recognition_true
+tf_recognition_false
+tf_reasoning_true
+tf_reasoning_false
+Chaque slot doit prévoir :
+cognitive_type
+question / statement
+answer_type
+choices attendus
+correct_answer_key
+rules
+saviez_vous
+validation_status : MISSING / VALIDATED_OK / WARNING
+Traductions :
+langues attendues
+question traduite
+réponses traduites
+saviez_vous traduit
+validation traduction
+statut traduction
+Le blueprint ne génère pas les questions.
+Il ouvre seulement les cases obligatoires.
+──────────────────────────────
+2. BANK TARGET
+──────────────────────────────
+Rôle :
+décider si la production continue.
+Exemple :
+124 000 / 685 000 noyaux.
+Si cible atteinte :
+STOP.
+Sinon :
+continuer.
+Unité officielle :
+noyau, pas question_count.
+──────────────────────────────
+3. DEPTH NEED MATRIX
+──────────────────────────────
+Rôle :
+remplir seulement le Depth.
+Elle ne choisit jamais le domaine.
+Rotation officielle :
+Depth 2 x 8
+Depth 4 x 8
+Depth 6 x 8
+Depth 7 x 8
+Depth 8 x 8
+Depth 9 x 8
+Depth 10 x 8
+Puis recommence.
+Elle peut sauter un Depth seulement si son besoin est rempli.
+Elle doit connaître :
+combien il manque par Depth
+combien est déjà ready_bank
+combien est en création
+combien est partiel
+combien est en warning
+──────────────────────────────
+4. DOMAIN CYCLE
+──────────────────────────────
+Rôle :
+remplir seulement le Domaine.
+Ordre fixe :
+Géographie
+Histoire
+Faune
+Art
+Sport
+Cinéma
+Cuisine
+Général
+Il ne choisit pas le Depth.
+Il ne choisit pas le sujet.
+Il ne choisit pas l’idée dominante.
+──────────────────────────────
+5. TAXONOMY
+──────────────────────────────
+Rôle :
+recevoir Depth + Domaine déjà inscrits dans le frame.
+Elle remplit :
+sub_domain
+subject
+idee_dominante
+La Taxonomy est la source structurée.
+Structure attendue :
+Domaine
+→ Sous-domaine
+→ Sujet
+→ knowledge_frequency
+→ idées dominantes possibles
+Important :
+idee_dominante = 1 mot.
+Exemple :
+Domaine : Géographie
+Sous-domaine : Capitales
+Sujet : Ouagadougou
+Idées dominantes :
+statut
+sahélienne
+enclavement
+indépendance
+Rejet :
+croissance urbaine nationale
+capitale depuis 1960
+statut de capitale sahélienne
+──────────────────────────────
+6. KEY_LEARNING_DIRECTION
+──────────────────────────────
+Formule :
+Sujet + Idée dominante
+Rôle :
+garde pédagogique.
+Elle détecte si la même direction pédagogique a déjà été utilisée.
+Si déjà utilisée :
+→ signal à Taxonomy
+→ Taxonomy essaie :
+autre idée dominante du même sujet
+autre sujet du même sous-domaine
+autre sous-domaine
+KEY_LEARNING_DIRECTION ne crée rien.
+Elle détecte et signale.
+──────────────────────────────
+7. KEY_STRUCTURE
+──────────────────────────────
+Formule :
+Depth + Domaine + Sous-domaine + Sujet + Idée dominante
+Rôle :
+garde structurel final.
+KEY_STRUCTURE ne choisit pas.
+KEY_STRUCTURE ne remplit pas.
+KEY_STRUCTURE ne crée pas.
+Elle vérifie que l’identité complète est cohérente.
+Quand KEY_STRUCTURE confirme que la structure est valide et non déjà verrouillée :
+→ elle autorise QuestionIntent à poser la puce du noyau.
+Sens obligatoire :
+KEY_STRUCTURE
+→ autorise
+QuestionIntent
+→ puce
+PHASE 1
+→ remplit
+Jamais l’inverse.
+──────────────────────────────
+8. QUESTIONINTENT
+──────────────────────────────
+Rôle :
+pucer le noyau.
+QuestionIntent ne crée pas le noyau.
+QuestionIntent n’est pas le noyau.
+QuestionIntent ne choisit rien.
+QuestionIntent ne valide rien.
+QuestionIntent sert à :
+donner une identité persistante au noyau
+relier les variants au bon noyau
+relier les traductions au bon noyau
+relier les traces de quarantaine au bon noyau
+permettre la réassociation après correction
+permettre au gameplay d’identifier l’origine du variant
+QuestionIntent est la puce relationnelle vivante entre :
+KernelBlueprint
+variants
+traductions
+quarantine prints
+corrections
+ready_bank
+gameplay
+──────────────────────────────
+9. PHASE 1 CRÉATION
+──────────────────────────────
+Rôle :
+remplir les 7 cognitifs du frame.
+La Phase 1 reçoit un noyau déjà structuré et pucé.
+Elle doit respecter :
+Depth
+Domaine
+Sous-domaine
+Sujet
+Idée dominante
+KEY_LEARNING_DIRECTION
+KEY_STRUCTURE
+Elle ne peut jamais modifier l’identité du noyau.
+Elle remplit seulement les slots cognitifs.
+──────────────────────────────
+10. PHASE 2 VALIDATION
+──────────────────────────────
+Rôle :
+valider individuellement chacun des 7 variants.
+Résultat par variant :
+VALIDATED_OK
+WARNING
+Si WARNING :
+→ création d’une trace en quarantaine.
+Le WARNING ne bloque pas les variants VALIDATED_OK.
+──────────────────────────────
+11. PHASE 3 TRADUCTION
+──────────────────────────────
+Rôle :
+traduire seulement les variants VALIDATED_OK.
+Ne jamais traduire les variants WARNING.
+La traduction ne recrée pas la question.
+Elle conserve :
+le sens
+le cognitif
+la bonne réponse
+le piège si deceptive_trap
+le raisonnement si reasoning
+──────────────────────────────
+12. PHASE 4 VALIDATION TRADUCTION
+──────────────────────────────
+Rôle :
+valider chaque traduction indépendamment.
+Résultat :
+VALIDATED_OK
+WARNING
+Si WARNING :
+→ trace en quarantaine.
+──────────────────────────────
+13. PHASE 5 READY_BANK
+──────────────────────────────
+Rôle :
+recevoir uniquement les variants VALIDATED_OK.
+Le gameplay consomme uniquement Ready_Bank.
+Ready_Bank peut recevoir :
+un noyau complet 7/7
+ou
+les variants VALIDATED_OK d’un noyau partiel
+Exemple :
+7 variants attendus
+5 VALIDATED_OK
+2 WARNING
+Résultat :
+5 variants vont dans Ready_Bank.
+2 traces vont en quarantaine.
+──────────────────────────────
+14. PHASE 6 QUARANTAINE
+──────────────────────────────
+Rôle :
+contenir une trace du noyau / variant problématique.
+La quarantaine :
+n’est pas le noyau principal
+ne bloque pas Ready_Bank
+garde le lien avec QuestionIntent
+sert à la correction future
+──────────────────────────────
+15. PHASE 7 CORRECTION
+──────────────────────────────
+Rôle :
+corriger les éléments WARNING.
+Après correction :
+→ PHASE 2 VALIDATION
+→ PHASE 3 TRADUCTION
+→ PHASE 4 VALIDATION TRADUCTION
+→ READY_BANK
+──────────────────────────────
+NOMS TECHNIQUES
+──────────────────────────────
+Ne pas imposer de nom sans le définir.
+Si tu proposes :
+KernelRotationPlanner
+IntentKeyBuilder
+TaxonomyReader
+DepthNeedMatrix
+DomainCycle
+FrequencyEvaluator
+Tu dois préciser pour chacun :
+existe déjà ou à créer
+rôle exact
+qui l’appelle
+ce qu’il appelle
+entrée
+sortie
+responsabilités interdites
+Important :
+ROTATION est la couche métier.
+KernelRotationPlanner, si utilisé, serait seulement l’orchestrateur technique de ROTATION.
+Il ne faut pas confondre le nom technique avec la responsabilité métier.
+──────────────────────────────
+SORTIE ATTENDUE MAINTENANT
+──────────────────────────────
+Je veux un plan de structure avant tout patch :
+Liste des composants à créer.
+Rôle exact de chaque composant.
+Qui appelle qui.
+Entrée / sortie de chaque composant.
+Champs exacts du KernelBlueprint.
+Statuts exacts possibles.
+Où seront stockés :
+KEY_LEARNING_DIRECTION
+KEY_STRUCTURE
+QuestionIntent
+traces de quarantaine
+Ready_Bank
+Ce qui existe déjà dans le code.
+Ce qui manque.
+Ce qui doit rester legacy sans toucher.
+Aucun patch.
+Aucune migration.
+Aucune création de fichier avant cette structure validée.
