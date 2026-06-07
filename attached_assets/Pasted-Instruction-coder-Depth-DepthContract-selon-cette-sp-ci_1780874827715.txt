@@ -1,0 +1,139 @@
+Instruction — coder Depth / DepthContract selon cette spécification.
+
+Depth n’est pas un simple entier.
+Depth est un contrat de production.
+
+À créer conceptuellement :
+
+DepthContract
+
+Rôle :
+fournir toutes les règles associées à un Depth pour guider Taxonomy et Phase 1.
+
+Depths officiels :
+2, 4, 6, 7, 8, 9, 10
+
+──────────────────────────────
+TABLE OFFICIELLE DEPTHCONTRACT
+──────────────────────────────
+
+Depth 2
+- knowledge_frequency : 1–2
+- sujet attendu : très commun / commun
+- question : courte
+- réponses : très simples
+- raisonnement : quasi nul
+- piège : interdit ou très léger
+- formulation : directe
+- objectif : reconnaissance simple
+- interdit : sujet rare, formulation abstraite, piège complexe
+
+Depth 4
+- knowledge_frequency : 2–3
+- sujet attendu : commun / assez commun
+- question : simple
+- réponses : simples mais distinctes
+- raisonnement : léger
+- piège : léger autorisé
+- formulation : claire
+- objectif : reconnaissance + petit lien logique
+- interdit : sujet pointu, raisonnement multi-étapes
+
+Depth 6
+- knowledge_frequency : 4
+- sujet attendu : un peu commun
+- question : moyenne
+- réponses : plus nuancées
+- raisonnement : présent
+- piège : autorisé si reconstructible
+- formulation : précise
+- objectif : comprendre cause, rôle ou contexte
+- interdit : piège gratuit, sujet trop spécialisé
+
+Depth 7
+- knowledge_frequency : 5
+- sujet attendu : peu commun
+- question : moyenne à soutenue
+- réponses : proches mais différenciables
+- raisonnement : solide
+- piège : autorisé
+- formulation : précise et moins évidente
+- objectif : distinguer des notions proches
+- interdit : réponse devinable sans lecture complète
+
+Depth 8
+- knowledge_frequency : 6
+- sujet attendu : rare
+- question : soutenue
+- réponses : exigeantes
+- raisonnement : fort
+- piège : autorisé et structurant
+- formulation : technique mais lisible
+- objectif : mobiliser contexte + inférence
+- interdit : pure mémorisation obscure
+
+Depth 9
+- knowledge_frequency : 7
+- sujet attendu : pointu
+- question : soutenue
+- réponses : très proches
+- raisonnement : avancé
+- piège : fort mais loyal
+- formulation : spécialisée
+- objectif : tester précision conceptuelle
+- interdit : ambiguïté non résoluble
+
+Depth 10
+- knowledge_frequency : 8
+- sujet attendu : très pointu
+- question : experte mais jouable
+- réponses : très exigeantes
+- raisonnement : expert
+- piège : très structuré
+- formulation : spécialisée contrôlée
+- objectif : expertise + reconstruction
+- interdit : question impossible, obscure sans indice interne
+
+──────────────────────────────
+RÈGLES GÉNÉRALES
+──────────────────────────────
+
+DepthContract doit exposer :
+
+- depth
+- knowledge_frequency_range
+- subject_profile
+- question_length_profile
+- answer_length_profile
+- reasoning_level
+- trap_level
+- formulation_level
+- cognitive_expectation
+- forbidden_rules
+
+Taxonomy utilise DepthContract pour construire :
+
+Sous-domaine
+→ Sujet
+→ 5 idées directrices
+
+Phase 1 utilise DepthContract pour remplir les 7 cognitifs.
+
+INTERDIT :
+
+- Taxonomy ne choisit pas un sujet hors knowledge_frequency du Depth.
+- Phase 1 ne modifie jamais le Depth.
+- Phase 1 ne contourne jamais les règles du DepthContract.
+- DepthContract ne dépend pas de Taxonomy.
+- DepthContract ne dépend pas de QuestionIntent.
+
+Responsabilité :
+
+DepthNeedMatrix choisit le Depth.
+DepthContract fournit les règles de ce Depth.
+Taxonomy applique ces règles pour construire la branche.
+Phase 1 applique ces règles pour créer les variants.
+
+Sortie attendue :
+mettre à jour la spécification technique avec ce DepthContract.
+Pas d’implémentation tant que cette spec n’est pas intégrée proprement.
