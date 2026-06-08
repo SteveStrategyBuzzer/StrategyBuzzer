@@ -1,0 +1,90 @@
+Correction majeure — mécanique réelle de Taxonomy.
+
+Taxonomy n’est pas seulement une bibliothèque.
+
+Taxonomy = Gemini + banque taxonomique + logique de réservoir.
+
+Fonctionnement officiel :
+
+Entrées :
+- Depth
+- DepthContract
+- Domaine
+
+1. Taxonomy/Gemini regarde :
+- le Depth
+- les règles du DepthContract
+- le Domaine
+
+2. Taxonomy/Gemini propose un Sous-domaine relié au Domaine.
+
+3. Taxonomy vérifie dans la banque taxonomique :
+
+Si le Sous-domaine n’existe pas :
+→ enregistrer le Sous-domaine
+→ créer minimum 1 à 50 maximum de Sujet cohérent
+→ créer 5 Idées Dominantes sur le premier Sous Domaine
+→ utilise la premier idée
+→ continuer vers KEY_LEARNING_DIRECTION
+
+Si le Sous-domaine existe :
+→ créer/proposer un Sujet cohérent avec ce Sous-domaine
+
+4. Taxonomy vérifie le Sujet dans la banque :
+
+Si le Sujet n’existe pas :
+→ enregistrer le Sujet
+→ créer 5 Idées Dominantes
+→ continuer vers KEY_LEARNING_DIRECTION
+
+Si le Sujet existe :
+→ regarder les Idées Dominantes déjà enregistrées pour ce Sujet
+
+5. Gestion des Idées Dominantes :
+
+Si une Idée Dominante disponible existe :
+→ prendre la prochaine idée disponible
+→ continuer vers KEY_LEARNING_DIRECTION
+
+Si aucune Idée Dominante disponible :
+→ utilise un nouveau Sujet dans le même Sous-domaine
+
+6. Limite par Sous-domaine :
+
+Si les 50 Sujets du Sous-domaine sont déjà utilisés / épuisés :
+→ changer de Sous-domaine
+
+7. Ensuite seulement :
+
+KEY_LEARNING_DIRECTION
+→ vérifie Sujet + Idée Dominante déjà utilisé ?
+
+Si PASS :
+→ KEY_STRUCTURE
+
+Si FAIL :
+→ retour Taxonomy pour prochaine Idée / Sujet / Sous-domaine selon l’état du réservoir.
+
+Règle importante :
+
+Gemini ne crée pas une question ici.
+
+Gemini aide Taxonomy à créer :
+- Sous-domaine
+- Sujet
+- 5 Idées Dominantes
+
+Phase 1 seulement créera les 7 variants de questions.
+
+Résumé :
+
+Taxonomy
+= Gemini pour construction taxonomique
++ banque pour vérifier l’existant
++ réservoir pour utiliser les idées disponibles
++ règles de bascule :
+   idée suivante
+   sinon sujet suivant
+   sinon sous-domaine suivant après 50 sujets épuisés
+
+Merci de corriger la spécification Taxonomy avec cette mécanique exacte.
