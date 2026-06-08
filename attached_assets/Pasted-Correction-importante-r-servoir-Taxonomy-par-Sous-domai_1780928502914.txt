@@ -1,0 +1,89 @@
+Correction importante — réservoir Taxonomy par Sous-domaine.
+
+La règle n’est PAS :
+
+“Taxonomy peut alimenter jusqu’à 50 sujets.”
+
+La règle officielle est :
+
+Quand Taxonomy crée un nouveau Sous-domaine, Gemini doit essayer de créer le plus grand nombre possible de Sujets cohérents pour ce Sous-domaine, jusqu’à un maximum de 50 Sujets.
+
+Objectif :
+installer une empreinte taxonomique forte dès la création du Sous-domaine.
+
+Structure :
+
+Sous-domaine X
+→ jusqu’à 50 Sujets enregistrés dans la banque
+
+Ensuite le moteur consomme un Sujet à la fois.
+
+Flow officiel :
+
+1. Gemini propose un Sous-domaine.
+
+2. Taxonomy vérifie si ce Sous-domaine existe déjà dans la banque.
+
+SI le Sous-domaine existe :
+→ Taxonomy regarde ce qu’il reste dedans :
+   - sujets disponibles
+   - sujets épuisés
+   - idées disponibles du sujet actif
+
+SI le Sous-domaine n’existe pas :
+→ Taxonomy crée le Sous-domaine
+→ Gemini tente de générer le plus possible de Sujets cohérents
+→ maximum 50 Sujets
+→ Taxonomy enregistre ces Sujets dans la banque
+
+3. Consommation des Sujets :
+
+Taxonomy prend le premier Sujet disponible.
+
+Pour ce Sujet :
+→ Gemini crée 5 Idées Dominantes
+→ Taxonomy enregistre les 5 Idées
+→ utilise la première Idée Dominante
+→ passe à KEY_LEARNING_DIRECTION
+
+4. Quand les 5 Idées du Sujet sont brûlées / consommées :
+
+→ Taxonomy passe au Sujet suivant disponible dans le même Sous-domaine
+→ Gemini crée 5 Idées Dominantes pour ce nouveau Sujet
+→ Taxonomy utilise la première Idée Dominante
+
+5. Quand tous les Sujets du Sous-domaine sont épuisés :
+
+→ Taxonomy demande / crée un nouveau Sous-domaine compatible avec :
+   - Domaine
+   - Depth
+   - DepthContract
+
+Résumé officiel :
+
+Sous-domaine X
+→ banque de maximum 50 Sujets
+→ consommation Sujet 1
+   → 5 Idées Dominantes
+   → idée 1 utilisée
+   → idée 2, 3, 4, 5 en réserve
+→ quand Sujet 1 épuisé
+→ Sujet 2
+   → 5 Idées Dominantes
+→ etc.
+
+Important :
+
+Les 50 Sujets appartiennent au Sous-domaine.
+Les 5 Idées Dominantes appartiennent au Sujet.
+Taxonomy vérifie d’abord si le Sous-domaine existe.
+S’il existe, il utilise ce qu’il reste.
+S’il n’existe pas, il le crée et installe sa banque de Sujets.
+
+Gemini ne crée toujours pas les questions.
+Gemini crée seulement :
+- Sous-domaine
+- Sujets du Sous-domaine
+- Idées Dominantes du Sujet
+
+Phase 1 crée les questions.
