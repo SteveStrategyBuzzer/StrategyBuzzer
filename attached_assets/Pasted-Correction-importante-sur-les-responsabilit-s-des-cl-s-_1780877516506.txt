@@ -1,0 +1,131 @@
+Correction importante sur les responsabilités des clés.
+
+pour être sur de pas dériver les rôles de KEY_LEARNING_DIRECTION et KEY_STRUCTURE.
+
+Merci de t'assurer de la spécification selon ce qui suit.
+
+──────────────────────────────
+KEY_LEARNING_DIRECTION
+──────────────────────────────
+
+Rôle principal :
+
+Anti-répétition pédagogique.
+
+Base :
+
+(Sujet + Idée Directrice)
+
+Exemple :
+
+Ouagadougou
++
+statut
+
+KEY_LEARNING_DIRECTION doit répondre à :
+
+"Est-ce que ce couple a déjà servi à produire un noyau ?"
+
+Si NON :
+→ continuer.
+
+Si OUI :
+→ retour vers Taxonomy.
+
+Taxonomy doit alors essayer :
+
+* autre idée directrice du même sujet
+* sinon autre sujet
+* sinon autre sous-domaine
+
+KEY_LEARNING_DIRECTION ne valide pas :
+
+* le Depth
+* le Domaine
+* le Sous-domaine
+* la structure du noyau
+* QuestionIntent
+
+KEY_LEARNING_DIRECTION n'est pas un super-validateur.
+
+Son rôle principal est la protection pédagogique contre la répétition du couple :
+
+Sujet + Idée Directrice.
+
+──────────────────────────────
+KEY_STRUCTURE
+──────────────────────────────
+
+Rôle principal :
+
+Garde structurel du noyau.
+
+Base :
+
+Depth
++
+Domaine
++
+Sous-domaine
++
+Sujet
++
+Idée Directrice
+
+KEY_STRUCTURE vérifie :
+
+* présence des champs obligatoires
+* cohérence structurelle
+* identité complète du noyau
+
+KEY_STRUCTURE ne choisit rien.
+
+KEY_STRUCTURE ne remplit rien.
+
+KEY_STRUCTURE ne cherche pas d'alternative.
+
+KEY_STRUCTURE avertit si un élément obligatoire manque.
+
+──────────────────────────────
+RELATION ENTRE LES DEUX
+──────────────────────────────
+
+Taxonomy
+↓
+Sous-domaine
+↓
+Sujet
+↓
+Idée Directrice
+
+KEY_LEARNING_DIRECTION
+↓
+Sujet + Idée Directrice déjà utilisé ?
+
+NON
+↓
+KEY_STRUCTURE
+
+OUI
+↓
+retour Taxonomy
+
+Puis :
+
+KEY_STRUCTURE
+↓
+structure complète valide ?
+
+OUI
+↓
+autorise QuestionIntent
+
+QuestionIntent
+↓
+pose la puce
+
+Phase 1
+↓
+création des 7 variants
+
+Merci de mettre à jour la spécification avec cette séparation stricte des responsabilités.
