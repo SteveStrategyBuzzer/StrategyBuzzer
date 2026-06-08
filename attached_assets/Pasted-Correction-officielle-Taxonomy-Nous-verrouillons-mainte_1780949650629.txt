@@ -1,0 +1,223 @@
+Correction officielle — Taxonomy
+
+Nous verrouillons maintenant la mécanique réelle de Taxonomy.
+
+Taxonomy n'est pas une simple bibliothèque.
+
+Taxonomy =
+
+* Gemini
+* Banque taxonomique
+* Réservoir
+* Règles de progression
+
+Entrées :
+
+* Depth
+* DepthContract
+* Domaine
+
+Rappel :
+
+DepthNeedMatrix
+→ fournit Depth
+
+DepthContract
+→ fournit les règles du Depth
+
+DomainCycle
+→ fournit le Domaine
+
+Taxonomy reçoit ces 3 éléments.
+
+──────────────────────────────
+CRÉATION D'UN SOUS-DOMAINE
+──────────────────────────────
+
+Gemini propose un Sous-domaine cohérent avec :
+
+* Domaine
+* Depth
+* DepthContract
+
+Taxonomy vérifie si ce Sous-domaine existe déjà.
+
+SI le Sous-domaine existe :
+
+→ utiliser le Sous-domaine existant
+→ consulter son contenu
+→ regarder les Sujets disponibles
+→ regarder les Sujets épuisés
+
+SI le Sous-domaine n'existe pas :
+
+→ créer le Sous-domaine
+→ Gemini tente de produire le plus grand nombre possible de Sujets cohérents
+→ maximum autorisé : 50 Sujets
+→ ne jamais créer artificiellement des Sujets pour atteindre 50
+→ la cohérence taxonomique est prioritaire sur la quantité
+→ enregistrer tous les Sujets créés dans la banque
+
+Important :
+
+50 n'est pas un objectif.
+50 est un plafond.
+
+──────────────────────────────
+CRÉATION DES SUJETS
+──────────────────────────────
+
+Les Sujets sont créés lors de la naissance du Sous-domaine.
+
+Taxonomy stocke :
+
+Sous-domaine
+└─ Sujet 1
+└─ Sujet 2
+└─ Sujet 3
+...
+└─ Sujet N
+
+Maximum : 50.
+
+À ce stade :
+
+AUCUNE Idée Dominante n'est créée.
+
+──────────────────────────────
+CRÉATION DES IDÉES DOMINANTES
+──────────────────────────────
+
+Les Idées Dominantes sont créées uniquement lorsque le Sujet devient actif.
+
+Exemple :
+
+Sous-domaine X
+└─ Sujet Y devient actif
+
+À ce moment :
+
+Gemini crée :
+
+* Idée A
+* Idée B
+* Idée C
+* Idée D
+* Idée E
+
+Taxonomy enregistre les 5 Idées.
+
+Taxonomy utilise immédiatement :
+
+Idée A
+
+Puis en réserve :
+
+* Idée B
+* Idée C
+* Idée D
+* Idée E
+
+Pourquoi :
+
+Nous ne voulons pas figer des faits ou des directions pédagogiques plusieurs mois avant leur utilisation.
+
+Les Sujets sont stables.
+Les Idées sont générées juste-à-temps.
+
+──────────────────────────────
+CONSOMMATION DU RÉSERVOIR
+──────────────────────────────
+
+Ordre de consommation :
+
+Idée
+↓
+Sujet
+↓
+Sous-domaine
+
+Quand les 5 Idées du Sujet sont consommées :
+
+→ Sujet épuisé
+
+Taxonomy passe au Sujet suivant disponible.
+
+Quand aucun Sujet disponible ne reste :
+
+→ Sous-domaine épuisé
+
+Taxonomy demande un nouveau Sous-domaine.
+
+──────────────────────────────
+KEY_LEARNING_DIRECTION
+──────────────────────────────
+
+Taxonomy envoie :
+
+Sujet + Idée Dominante
+
+à KEY_LEARNING_DIRECTION.
+
+KEY_LEARNING_DIRECTION répond uniquement :
+
+"Déjà utilisé ?"
+
+PASS
+→ KEY_STRUCTURE
+
+FAIL
+→ retour Taxonomy
+
+Taxonomy tente alors :
+
+1. prochaine Idée
+2. sinon prochain Sujet
+3. sinon prochain Sous-domaine
+
+──────────────────────────────
+KEY_STRUCTURE
+──────────────────────────────
+
+KEY_STRUCTURE vérifie :
+
+* Depth
+* Domaine
+* Sous-domaine
+* Sujet
+* Idée Dominante
+
+KEY_STRUCTURE produit l'identité structurelle du noyau.
+
+Puis :
+
+→ autorise QuestionIntent
+
+QuestionIntent fixe définitivement le noyau.
+
+Avant QuestionIntent :
+
+tout ce qui appartient à Taxonomy reste interchangeable.
+
+Après QuestionIntent :
+
+l'identité du noyau est gelée.
+
+──────────────────────────────
+IMPORTANT
+──────────────────────────────
+
+Taxonomy ne crée jamais de questions.
+
+Taxonomy ne crée jamais de noyaux.
+
+Taxonomy crée uniquement :
+
+* Sous-domaines
+* Sujets
+* Idées Dominantes
+
+Phase 1 créera ensuite les 7 variants cognitifs.
+
+Taxonomy stocke des possibilités de noyaux.
+Phase 1 produit les noyaux.
