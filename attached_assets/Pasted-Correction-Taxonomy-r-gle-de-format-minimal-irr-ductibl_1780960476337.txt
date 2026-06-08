@@ -1,0 +1,154 @@
+Correction Taxonomy — règle de format minimal irréductible + intégration DepthContract
+
+Taxonomy reçoit :
+
+* Depth
+* DepthContract
+* Domaine
+
+DepthContract contient actuellement :
+
+* knowledge_frequency
+* subject_profile
+* forbidden_rules
+
+──────────────────────────────
+RÈGLE 1 — FORMAT MINIMAL IRRÉDUCTIBLE
+──────────────────────────────
+
+Sous-domaine, Sujet et Idée Dominante doivent respecter une règle commune :
+
+1 unité de sens minimale.
+
+Ce n’est pas obligatoirement 1 mot.
+
+C’est :
+
+* 1 mot si 1 mot suffit
+* un mot composé si le sens change en le séparant
+* un groupe de mots seulement s’il est irréductible
+
+Exemples valides :
+
+Sous-domaine :
+
+* Capitales
+* Mammifères
+* Révolutions
+* Directeur artistique
+
+Sujet :
+
+* Paris
+* Ouagadougou
+* Mount Rushmore
+* Première Guerre mondiale
+
+Idée Dominante :
+
+* statut
+* indépendance
+* enclavement
+* réunification
+* double hélice
+
+Exemples invalides :
+
+* Capitales africaines
+  car "Capitales" suffit
+
+* capitale de la France
+  car "statut" suffit comme Idée Dominante
+
+* croissance urbaine nationale
+  car trop narratif et trop spécifique
+
+Règle :
+
+Ne jamais ajouter dans le Sous-domaine une précision qui peut être portée par le Sujet ou l’Idée Dominante.
+
+Ne jamais ajouter dans l’Idée Dominante une phrase qui pourra être développée plus tard par Phase 1.
+
+Objectif :
+
+* éviter les doublons déguisés
+* protéger KEY_LEARNING_DIRECTION
+* garder les Sous-domaines comparables
+* garder les Sujets stables
+* garder les Idées Dominantes courtes
+* laisser les cognitifs enrichir le contenu plus tard
+
+──────────────────────────────
+RÈGLE 2 — KNOWLEDGE_FREQUENCY
+──────────────────────────────
+
+knowledge_frequency décrit la fréquence de connaissance du Sujet.
+
+Ce n’est pas la difficulté.
+Ce n’est pas le raisonnement.
+Ce n’est pas le gameplay.
+
+C’est :
+
+"À quel point ce Sujet est connu."
+
+Échelle officielle :
+
+1 = très commune
+2 = commune
+3 = assez commune
+4 = un peu commune
+5 = peu commune
+6 = rare
+7 = pointue
+8 = très pointue
+
+Taxonomy doit utiliser knowledge_frequency pour orienter :
+
+* le choix du Sous-domaine
+* le choix du Sujet
+* le choix des Idées Dominantes
+
+afin que l’ensemble soit cohérent avec le Depth demandé.
+
+──────────────────────────────
+RÈGLE 3 — SUBJECT_PROFILE
+──────────────────────────────
+
+subject_profile donne le ton intellectuel du Sous-domaine.
+
+Ce n’est pas le Sujet.
+Ce n’est pas l’Idée Dominante.
+
+Il sert à définir le niveau de spécialisation attendu du territoire exploré par Taxonomy.
+
+Exemples :
+
+* grand public
+* culture générale
+* initié
+* spécialisé
+* expert
+
+Taxonomy doit utiliser subject_profile pour guider :
+
+Domaine
+→ Sous-domaine
+→ Sujet
+→ Idées Dominantes
+
+afin que l’univers généré soit cohérent avec le Depth demandé.
+
+──────────────────────────────
+RÈGLE 4 — FORBIDDEN_RULES
+──────────────────────────────
+
+forbidden_rules reste présent dans DepthContract.
+
+Le concept est conservé.
+
+Par contre les règles exactes ne sont pas encore verrouillées.
+
+Ne pas inventer de règles pour le moment.
+
+Prévoir simplement le support du concept dans l’architecture jusqu’à validation de la liste officielle.
