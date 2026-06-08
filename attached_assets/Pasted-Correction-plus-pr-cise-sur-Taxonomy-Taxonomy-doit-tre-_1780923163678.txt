@@ -1,0 +1,82 @@
+Correction plus précise sur Taxonomy.
+
+Taxonomy doit être vu comme un moteur fermé avec réservoir interne.
+
+Taxonomy ne donne pas 5 idées à KernelRotationPlanner pour qu’il les gère.
+
+Taxonomy construit et conserve :
+
+Sous-domaine
+→ Sujet
+→ idée_active
+→ idées_en_réserve
+
+Exemple :
+
+Sous-domaine : Capitales
+Sujet : Ouagadougou
+idée_active : statut
+réserve :
+- sahélienne
+- enclavement
+- indépendance
+- [autre]
+
+Quand KEY_LEARNING_DIRECTION dit FAIL sur :
+
+Sujet + idée_active
+
+KernelRotationPlanner ne choisit pas lui-même la prochaine idée.
+
+Il demande à Taxonomy :
+
+“prochaine idée disponible pour ce Sujet.”
+
+Taxonomy consulte son réservoir :
+
+Si une idée en réserve existe :
+→ elle devient idée_active
+→ Taxonomy retourne cette nouvelle proposition.
+
+Si le réservoir d’idées du Sujet est vide :
+→ Taxonomy crée ou fournit un autre Sujet compatible dans le même Sous-domaine.
+
+Si le Sous-domaine ne peut plus fournir de Sujet valide :
+→ Taxonomy crée ou fournit un autre Sous-domaine compatible avec le Domaine + DepthContract.
+
+Donc :
+
+KernelRotationPlanner
+= orchestre les appels et transmet les FAIL/PASS
+
+Taxonomy
+= possède la branche, le réservoir, l’ordre des idées, les alternatives Sujet/Sous-domaine
+
+KEY_LEARNING_DIRECTION
+= répond seulement :
+Sujet + Idée déjà utilisé ?
+PASS / FAIL
+
+KEY_STRUCTURE
+= valide l’identité complète du noyau
+
+QuestionIntent
+= fige la proposition retenue
+
+Règle importante :
+
+Les 4 idées en réserve restent dans Taxonomy.
+Elles ne deviennent pas la propriété de KernelRotationPlanner.
+
+KernelRotationPlanner peut demander :
+- prochaine idée
+- prochain sujet
+- prochain sous-domaine
+
+mais c’est Taxonomy qui sait quoi fournir.
+
+Merci de corriger la décomposition interne selon ce modèle :
+
+Taxonomy = moteur fermé + réservoir.
+KernelRotationPlanner = orchestrateur.
+IdeaIterator, si utilisé, ne doit être qu’un adaptateur d’appel vers Taxonomy, pas le propriétaire de la liste.
