@@ -1,0 +1,88 @@
+Correction stratégique importante.
+
+On n’est pas dans une migration douce pour garder l’ancien moteur vivant.
+
+On est dans une reconstruction propre sur Replit.
+
+Le legacy ne fonctionne pas comme voulu.
+Il ne doit pas guider l’architecture.
+Il ne doit pas être conservé comme référence.
+Il ne doit pas être rénové morceau par morceau.
+
+Objectif :
+rebâtir le moteur Question Bank / Kernels proprement selon la nouvelle architecture.
+
+Donc :
+
+1. L’ancien pipeline BankWorker / BankNeedsCalculator / BankAIGenerator est OUT pour la nouvelle création.
+2. Il peut rester physiquement dans le code tant qu’on ne le supprime pas, mais il ne doit plus servir de modèle.
+3. Le nouveau pipeline doit être construit comme source officielle.
+4. On ne doit pas adapter le nouveau moteur autour du legacy.
+5. On doit seulement identifier les fichiers legacy pour éviter qu’ils contaminent la nouvelle logique.
+
+Nouvelle directive :
+
+Legacy = à isoler / contourner.
+Nouveau pipeline = à construire proprement.
+
+Pipeline officiel à construire :
+
+DepthNeedMatrix
+→ Depth
+
+DepthContract
+→ règles du Depth
+
+DomainCycle
+→ Domaine
+
+Taxonomy
+→ Sous-domaine
+→ Sujet
+→ 5 Idées Directrices
+
+KEY_LEARNING_DIRECTION
+→ anti-répétition pédagogique
+
+KEY_STRUCTURE
+→ garde structurel / identité du noyau
+
+QuestionIntent
+→ puce officielle
+
+KernelBlueprint
+→ structure complète du noyau
+
+Phase 1 Création
+→ 7 variants cognitifs
+
+Phase 2 Validation
+→ VALIDATED_OK / WARNING
+
+Phase 3 Traduction
+
+Phase 4 Validation traduction
+
+Ready_Bank
+
+Instruction :
+arrêter de raisonner en “migration progressive depuis le legacy”.
+
+Raisonner en “nouvelle construction propre”.
+
+Prochaine sortie attendue :
+cartographie des composants du nouveau pipeline uniquement :
+
+- composant
+- rôle
+- entrée
+- sortie
+- qui l’appelle
+- ce qu’il appelle
+- données écrites
+- données interdites
+- dépendances
+
+Ne pas proposer de patch legacy.
+Ne pas proposer de rénovation BankWorker.
+Ne pas faire dépendre la nouvelle architecture de l’ancien moteur.
