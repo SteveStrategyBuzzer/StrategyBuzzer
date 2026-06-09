@@ -1,0 +1,99 @@
+Correction DepthContract — forbidden_rules.
+
+On valide maintenant la première règle officielle dans forbidden_rules.
+
+DepthContract contient :
+
+- knowledge_frequency
+- subject_profile
+- forbidden_rules
+
+forbidden_rules n’est plus vide.
+
+Règle officielle #1 :
+
+FORMAT_MINIMAL_IRREDUCTIBLE
+
+Cette règle s’applique à :
+
+- Sous-domaine
+- Sujet
+- Idée Dominante
+
+Principe :
+
+Chaque niveau doit utiliser 1 unité de sens minimale.
+
+Ce n’est pas obligatoirement 1 mot.
+
+C’est :
+
+- 1 mot si 1 mot suffit
+- un mot composé si le sens change en le séparant
+- un groupe de mots seulement s’il est irréductible
+
+Règles interdites :
+
+1.
+Ne jamais ajouter dans le Sous-domaine une précision qui peut être portée par le Sujet ou par l’Idée Dominante.
+
+2.
+Ne jamais ajouter dans le Sujet une précision qui peut être portée par l’Idée Dominante.
+
+3.
+Ne jamais ajouter dans l’Idée Dominante une phrase qui peut être développée plus tard par Phase 1.
+
+Exemples valides :
+
+Sous-domaine :
+- Capitales
+- Mammifères
+- Révolutions
+- Directeur artistique
+
+Sujet :
+- Paris
+- Ouagadougou
+- Mount Rushmore
+- Première Guerre mondiale
+
+Idée Dominante :
+- statut
+- indépendance
+- enclavement
+- réunification
+- double hélice
+
+Exemples invalides :
+
+- Capitales africaines
+  car “Capitales” suffit et “africaines” pré-spécialise inutilement le Sous-domaine.
+
+- Capitales européennes
+  car cela peut recréer artificiellement les mêmes Sujets sous un Sous-domaine dérivé.
+
+- capitale de la France
+  car “statut” suffit comme Idée Dominante.
+
+- croissance urbaine nationale
+  car c’est trop narratif et risque de sortir du Sous-domaine.
+
+Objectif :
+
+- éviter les doublons déguisés
+- protéger KEY_LEARNING_DIRECTION
+- garder les Sous-domaines comparables
+- garder les Sujets stables
+- garder les Idées Dominantes courtes
+- empêcher les variations artificielles de Sous-domaine
+- laisser Phase 1 développer la richesse dans les 7 cognitifs
+
+Rappel :
+
+KEY_LEARNING_DIRECTION est basé sur :
+
+Sujet + Idée Dominante
+
+Donc forbidden_rules doit empêcher les variations artificielles du Sous-domaine qui permettraient de réutiliser indirectement le même Sujet + Idée Dominante.
+
+Merci d’intégrer FORMAT_MINIMAL_IRREDUCTIBLE comme première règle officielle de forbidden_rules dans DepthContract.
