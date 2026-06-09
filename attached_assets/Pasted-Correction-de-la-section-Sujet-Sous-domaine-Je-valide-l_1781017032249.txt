@@ -1,0 +1,108 @@
+Correction de la section Sujet / Sous-domaine.
+
+Je valide le principe général :
+
+* subject_profile calibre le Sujet
+* knowledge_frequency calibre l'Idée Dominante
+* l'Idée Dominante doit rester cohérente avec le Sujet
+* le Sous-domaine doit pouvoir produire des Sujets compatibles avec le Depth demandé
+
+Par contre, je retire plusieurs règles ajoutées qui n'ont jamais été validées.
+
+──────────────────────────────
+CORRECTION 1
+──────────────────────────────
+
+Supprimer :
+
+"L'Idée Dominante ne peut pas être à plus d'un niveau de distance du niveau de spécialisation du Sujet."
+
+Cette règle est rejetée.
+
+Nous n'avons jamais défini :
+
+* une échelle numérique officielle de subject_profile
+* une notion de distance entre niveaux
+* une distance maximale autorisée
+
+Conserver uniquement :
+
+"L'Idée Dominante doit rester cohérente avec le niveau de spécialisation du Sujet."
+
+La méthode exacte d'évaluation pourra être définie plus tard.
+
+──────────────────────────────
+CORRECTION 2
+──────────────────────────────
+
+Supprimer les exemples du type :
+
+Depth 10
+→ Capitales
+→ incompatible
+→ rejeté
+
+Cette règle est rejetée.
+
+Un Sous-domaine n'est pas évalué uniquement par son nom.
+
+Un même Sous-domaine peut produire des Sujets de profondeur différente.
+
+Exemple :
+
+Sous-domaine :
+Capitales
+
+Peut produire :
+
+Paris
+Ouagadougou
+Astana
+Brasília
+
+et des Idées Dominantes de niveaux très différents.
+
+Le nom du Sous-domaine seul ne suffit donc pas à déterminer le Depth.
+
+──────────────────────────────
+CORRECTION 3
+──────────────────────────────
+
+Remplacer la règle actuelle par :
+
+Compatibilité Sous-domaine / Subject Profile
+
+Le Sous-domaine n'est jamais rejeté uniquement à cause de son nom.
+
+Taxonomy doit vérifier que ce Sous-domaine est capable de produire des Sujets compatibles avec le subject_profile demandé.
+
+Question à vérifier :
+
+"Ce Sous-domaine permet-il de générer des Sujets du niveau de spécialisation attendu ?"
+
+Si oui :
+→ Sous-domaine accepté.
+
+Si non :
+→ Sous-domaine rejeté.
+
+──────────────────────────────
+CORRECTION 4
+──────────────────────────────
+
+Ne pas ajouter pour l'instant :
+
+coherence_rules
+
+comme nouveau bloc officiel de DepthContract.
+
+Nous avons actuellement :
+
+DepthContract
+├─ knowledge_frequency
+├─ subject_profile
+└─ forbidden_rules
+
+Toute nouvelle catégorie racine doit être discutée et validée avant intégration.
+
+Pour le moment, les règles de cohérence restent des règles métier de Taxonomy et non un nouveau bloc officiel du DepthContract.
