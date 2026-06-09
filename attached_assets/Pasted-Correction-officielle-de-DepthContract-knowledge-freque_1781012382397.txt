@@ -1,0 +1,283 @@
+Correction officielle de DepthContract.
+
+knowledge_frequency et subject_profile doivent être des contraintes de construction Taxonomy.
+
+Taxonomy construit :
+
+Sous-domaine
+→ Sujet
+→ Idée Dominante
+
+Les descriptions doivent donc être centrées sur le territoire construit et non sur des personnes humaines.
+
+Les références humaines peuvent rester mais uniquement comme aide de calibration Gemini.
+
+──────────────────────────────
+DEPTH 2
+──────────────────────────────
+
+knowledge_frequency
+
+label :
+Très commune
+
+description :
+Territoire immédiatement reconnaissable.
+
+Sous-domaines :
+larges et universels.
+
+Sujets :
+très connus.
+
+Idées Dominantes :
+immédiatement accessibles.
+
+Trop simple :
+faits triviaux.
+
+Trop pointu :
+toute connaissance nécessitant une base dans le domaine.
+
+subject_profile
+
+label :
+Grand public
+
+description :
+Territoire accessible sans connaissance préalable.
+
+Sous-domaines :
+généraux.
+
+Sujets :
+enseignés ou connus largement.
+
+Idées :
+évidentes après identification du Sujet.
+
+Référence humaine :
+adolescent moyen ayant reçu une éducation générale.
+
+──────────────────────────────
+DEPTH 4
+──────────────────────────────
+
+knowledge_frequency
+
+label :
+Commune
+
+description :
+Territoire de culture générale.
+
+Sous-domaines :
+toujours larges mais plus ciblés.
+
+Sujets :
+connus d'une personne cultivée.
+
+Idées :
+moins immédiates que Depth 2.
+
+Trop simple :
+notoriété universelle.
+
+Trop pointu :
+connaissance nécessitant une spécialisation.
+
+subject_profile
+
+label :
+Culture générale
+
+description :
+Territoire accessible à une personne curieuse et cultivée.
+
+Référence humaine :
+fin d’adolescence, lecteur de vulgarisation ou documentaire.
+
+──────────────────────────────
+DEPTH 6
+──────────────────────────────
+
+knowledge_frequency
+
+label :
+Modérément connue
+
+description :
+Territoire nécessitant déjà un intérêt pour le domaine.
+
+Sous-domaines :
+plus spécialisés.
+
+Sujets :
+pas forcément connus du grand public.
+
+Idées :
+nécessitent déjà une compréhension du territoire.
+
+subject_profile
+
+label :
+Initié
+
+description :
+Territoire connu d'une personne ayant déjà exploré le domaine.
+
+Référence humaine :
+amateur novice du domaine.
+
+──────────────────────────────
+DEPTH 7
+──────────────────────────────
+
+knowledge_frequency
+
+label :
+Peu commune
+
+description :
+Territoire ciblé.
+
+Sous-domaines :
+spécialisés.
+
+Sujets :
+connus principalement des initiés.
+
+Idées :
+plus fines et moins visibles.
+
+subject_profile
+
+label :
+Initié avancé
+
+description :
+Territoire connu après exploration active du domaine.
+
+Référence humaine :
+personne investissant du temps dans le Domaine.
+
+──────────────────────────────
+DEPTH 8
+──────────────────────────────
+
+knowledge_frequency
+
+label :
+Rare
+
+description :
+Territoire spécialisé.
+
+Sous-domaines :
+fortement spécialisés.
+
+Sujets :
+peu connus hors du domaine.
+
+Idées :
+nécessitent une compréhension solide du sujet.
+
+subject_profile
+
+label :
+Spécialisé
+
+description :
+Territoire normalement reconnu par quelqu'un possédant une expertise réelle dans le domaine.
+
+Référence humaine :
+praticien confirmé du Domaine.
+
+──────────────────────────────
+DEPTH 9
+──────────────────────────────
+
+knowledge_frequency
+
+label :
+Très rare
+
+description :
+Territoire avancé.
+
+Sous-domaines :
+de niche.
+
+Sujets :
+peu rencontrés hors des cercles spécialisés.
+
+Idées :
+très ciblées mais toujours vérifiables.
+
+subject_profile
+
+label :
+Expert
+
+description :
+Territoire connu principalement des experts du domaine.
+
+Référence humaine :
+expert reconnu du domaine.
+
+──────────────────────────────
+DEPTH 10
+──────────────────────────────
+
+knowledge_frequency
+
+label :
+Extrêmement rare
+
+description :
+Territoire à la frontière supérieure du domaine.
+
+Sous-domaines :
+ultra spécialisés.
+
+Sujets :
+exceptionnellement ciblés.
+
+Idées :
+toujours vérifiables, exploitables et documentées.
+
+Aucune anecdote.
+Aucune curiosité obscure non exploitable.
+
+subject_profile
+
+label :
+Expert avancé
+
+description :
+Territoire réservé aux connaissances les plus avancées du domaine.
+
+Référence humaine :
+Qui est la référence, dans ce domaine.
+
+──────────────────────────────
+RÈGLE GLOBALE
+──────────────────────────────
+
+knowledge_frequency
+=
+niveau de fréquence du territoire.
+
+subject_profile
+=
+niveau intellectuel du territoire.
+
+La référence humaine sert uniquement à aider Gemini à calibrer le territoire.
+
+Taxonomy doit toujours raisonner d'abord sur :
+
+Sous-domaine
+→ Sujet
+→ Idée Dominante
+
+et ensuite seulement utiliser la référence humaine comme repère.
