@@ -1,0 +1,100 @@
+Correction DepthContract — knowledge_frequency doit être complet.
+
+knowledge_frequency n’est pas seulement une étiquette vague.
+
+Il doit définir précisément le niveau de fréquence de connaissance attendu pour chaque Depth.
+
+Échelle officielle :
+
+1 = très commune
+2 = commune
+3 = assez commune
+4 = un peu commune
+5 = peu commune
+6 = rare
+7 = pointue
+8 = très pointue
+
+Mapping officiel par Depth :
+
+Depth 2
+→ knowledge_frequency : 1 à 2
+→ savoir très commun / commun
+→ Taxonomy doit viser des Sous-domaines et Sujets immédiatement reconnaissables par le grand public.
+
+Depth 4
+→ knowledge_frequency : 2 à 3
+→ savoir commun / assez commun
+→ Taxonomy peut viser des Sujets de culture générale courante, mais pas spécialisés.
+
+Depth 6
+→ knowledge_frequency : 4
+→ savoir un peu commun
+→ Taxonomy vise des Sujets moins évidents, connus par quelqu’un qui a déjà un intérêt ou une base dans le Domaine.
+
+Depth 7
+→ knowledge_frequency : 5
+→ savoir peu commun
+→ Taxonomy vise des Sujets plus ciblés, moins rencontrés, mais encore accessibles.
+
+Depth 8
+→ knowledge_frequency : 6
+→ savoir rare
+→ Taxonomy vise des Sous-domaines et Sujets spécialisés.
+
+Depth 9
+→ knowledge_frequency : 7
+→ savoir pointu
+→ Taxonomy vise des Sujets pointus, souvent liés à une connaissance avancée du Domaine.
+
+Depth 10
+→ knowledge_frequency : 8
+→ savoir très pointu
+→ Taxonomy vise des Sujets très spécialisés, mais toujours vérifiables et exploitables.
+
+Règle importante :
+
+knowledge_frequency influence toute la branche Taxonomy :
+
+Domaine
+→ Sous-domaine
+→ Sujet
+→ Idée Dominante
+
+Il ne s’applique pas seulement au Sujet.
+
+Exemple :
+
+Domaine : Géographie
+
+Depth 2 :
+→ subject_profile grand public
+→ knowledge_frequency 1–2
+→ Sous-domaine possible : Capitales
+→ Sujet possible : Paris
+→ Idée Dominante possible : statut
+
+Depth 8 :
+→ subject_profile spécialisé
+→ knowledge_frequency 6
+→ Sous-domaine possible : Géopolitique
+→ Sujet possible : Délocalisation
+→ Idée Dominante possible : externalisation
+
+Interdit :
+
+Ne pas utiliser un Sous-domaine grand public pour un Depth élevé si le DepthContract demande un territoire spécialisé.
+
+Ne pas utiliser un Sujet très connu si knowledge_frequency demande un savoir rare ou pointu.
+
+Ne pas utiliser une Idée Dominante trop commune si le Depth demandé est élevé.
+
+Taxonomy doit toujours aligner :
+
+knowledge_frequency
++
+subject_profile
++
+forbidden_rules
+
+avant de proposer Sous-domaine / Sujet / Idée Dominante.
