@@ -1273,10 +1273,10 @@ body { background: var(--sb-bg); }
                     @if($ligueNotifications > 0)
                         <div class="sb-notif-badge" id="ligue-badge">{{ $ligueNotifications }}</div>
                     @endif
-                    <div class="sb-mode-img-wrap" style="height:105px;">
+                    <div class="sb-mode-img-wrap">
                         <img src="{{ asset('images/ligue_hero.png') }}" alt="Ligue"
                              onerror="this.parentElement.innerHTML='<div class=\'sb-mode-img-placeholder\'>🛡️</div>'"
-                             style="object-fit:cover; object-position:center top;">
+                             style="object-fit:cover; object-position:center 12%;">
                         <div class="sb-mode-title-overlay" style="color:#c4b5fd">LIGUE</div>
                     </div>
                     <div class="sb-mode-body">
