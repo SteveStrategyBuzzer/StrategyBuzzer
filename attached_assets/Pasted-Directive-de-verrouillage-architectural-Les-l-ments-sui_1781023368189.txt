@@ -1,0 +1,112 @@
+Directive de verrouillage architectural.
+
+Les éléments suivants sont maintenant considérés comme validés et deviennent la référence officielle pour Taxonomy et DepthContract.
+
+──────────────────────────────
+DEPTHCONTRACT
+──────────────────────────────
+
+Structure officielle :
+
+DepthContract
+├── subject_profile
+├── knowledge_frequency
+└── forbidden_rules
+
+Aucun nouveau bloc racine ne doit être ajouté sans validation explicite.
+
+Exemple :
+
+coherence_rules
+→ NON validé comme bloc racine.
+
+Les règles de cohérence demeurent des règles métier de Taxonomy.
+
+──────────────────────────────
+RESPONSABILITÉS OFFICIELLES
+──────────────────────────────
+
+subject_profile
+→ cadre le niveau de spécialisation du Sujet
+
+knowledge_frequency
+→ cadre le niveau de notoriété du savoir porté par l'Idée Dominante
+
+forbidden_rules
+→ protège la structure Taxonomy
+
+Le terme "filtre" n'est plus utilisé.
+
+Taxonomy est un moteur de construction guidée.
+
+DepthContract définit un espace de construction autorisé.
+
+Taxonomy construit à l'intérieur de cet espace.
+
+──────────────────────────────
+TAXONOMY
+──────────────────────────────
+
+Taxonomy construit :
+
+Sous-domaine
+→ Sujet
+→ Idée Dominante
+
+Le Sous-domaine est une catégorie.
+
+Le Sujet est l'élément exploré.
+
+L'Idée Dominante est le savoir principal porté par le Sujet.
+
+──────────────────────────────
+RÈGLES MÉTIER VALIDÉES
+──────────────────────────────
+
+Règle métier 1
+
+L'Idée Dominante doit rester cohérente avec le niveau de spécialisation du Sujet.
+
+La méthode exacte d'évaluation reste à définir.
+
+Règle métier 2
+
+Le Sous-domaine n'est pas directement cadré par subject_profile ou knowledge_frequency.
+
+Cependant, il doit permettre de produire des Sujets compatibles avec le subject_profile demandé.
+
+Le Sous-domaine hérite donc indirectement des contraintes du subject_profile via les Sujets qu'il peut produire.
+
+──────────────────────────────
+FORBIDDEN_RULES VALIDÉES
+──────────────────────────────
+
+FORMAT_MINIMAL_IRREDUCTIBLE
+
+Cible :
+
+* Sujet
+* Idée Dominante
+
+NO_SUBDOMAIN_EMBEDDED_SUBJECT
+
+Cible :
+
+* Sous-domaine
+* Sujet
+
+──────────────────────────────
+RÈGLE DE GOUVERNANCE
+──────────────────────────────
+
+Toute évolution future doit respecter :
+
+On part de ce qui est validé.
+
+On n'invente pas la couche suivante.
+
+Si une nouvelle règle, un nouveau bloc ou une nouvelle responsabilité est proposée :
+
+* la proposition doit être explicitement identifiée comme proposition
+* elle ne remplace pas la référence validée
+* elle ne devient pas officielle sans validation préalable
