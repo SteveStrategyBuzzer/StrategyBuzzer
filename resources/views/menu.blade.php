@@ -294,17 +294,25 @@ body { background: var(--sb-bg); }
     flex-shrink: 0;
 }
 
+.sb-topbar-spacer {
+    flex: 1 1 0;
+    min-width: 0;
+}
+
 .sb-topbar-logo {
     display: flex;
     flex-direction: column;
     align-items: center;
-    flex: 1;
+    flex: 1 1 0;
+    min-width: 0;
 }
 
 .sb-logo-title {
     display: flex;
     align-items: center;
     gap: 8px;
+    min-width: 0;
+    max-width: 100%;
 }
 
 .sb-logo-img {
@@ -321,6 +329,10 @@ body { background: var(--sb-bg); }
     -webkit-text-fill-color: transparent;
     background-clip: text;
     text-transform: uppercase;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
 }
 
 .sb-logo-tagline {
@@ -335,6 +347,7 @@ body { background: var(--sb-bg); }
     display: flex;
     align-items: center;
     gap: 10px;
+    flex-shrink: 0;
 }
 
 .sb-coin-display {
@@ -1150,7 +1163,7 @@ body { background: var(--sb-bg); }
 
         {{-- ── TOP BAR ── --}}
         <header class="sb-topbar">
-            <div class="sb-topbar-spacer" style="width:200px"></div>
+            <div class="sb-topbar-spacer"></div>
 
             <div class="sb-topbar-logo">
                 <div class="sb-logo-title">
