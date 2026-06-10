@@ -438,6 +438,85 @@ body {
 }
 </style>
 
+{{-- ── SPLASH INTRO ── --}}
+<div id="ligue-splash">
+    <img src="{{ asset('images/ligue_hero.png') }}" alt="Ligue" id="ligue-splash-img">
+    <div id="ligue-splash-overlay">
+        <div id="ligue-splash-title">LIGUE</div>
+        <div id="ligue-splash-sub">{{ __('Arène des Champions') }}</div>
+    </div>
+</div>
+
+<style>
+#ligue-splash {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    animation: splashExit 0.6s ease-in 2.6s forwards;
+    pointer-events: all;
+}
+#ligue-splash-img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center 12%;
+    animation: splashZoom 3.2s ease-out forwards;
+}
+#ligue-splash-overlay {
+    position: relative;
+    z-index: 2;
+    text-align: center;
+    animation: splashTextIn 0.8s ease-out 0.3s both;
+}
+#ligue-splash-title {
+    font-size: clamp(3rem, 12vw, 7rem);
+    font-weight: 900;
+    letter-spacing: 0.15em;
+    color: #fff;
+    text-shadow: 0 0 40px rgba(196,181,253,0.9), 0 4px 20px rgba(0,0,0,0.8);
+    text-transform: uppercase;
+}
+#ligue-splash-sub {
+    font-size: clamp(0.9rem, 3vw, 1.4rem);
+    font-weight: 500;
+    letter-spacing: 0.3em;
+    color: rgba(196,181,253,0.9);
+    text-transform: uppercase;
+    margin-top: 0.5rem;
+    text-shadow: 0 2px 10px rgba(0,0,0,0.7);
+}
+@keyframes splashZoom {
+    0%   { transform: scale(1.08); }
+    100% { transform: scale(1); }
+}
+@keyframes splashTextIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes splashExit {
+    0%   { opacity: 1; transform: translateY(0); }
+    100% { opacity: 0; transform: translateY(-30px); pointer-events: none; }
+}
+</style>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        var splash = document.getElementById('ligue-splash');
+        setTimeout(function () {
+            splash.style.pointerEvents = 'none';
+            setTimeout(function () {
+                splash.style.display = 'none';
+            }, 700);
+        }, 2600);
+    });
+</script>
+
 <a href="javascript:history.back()" class="header-menu" style="
   background: white;
   color: #003DA5;
