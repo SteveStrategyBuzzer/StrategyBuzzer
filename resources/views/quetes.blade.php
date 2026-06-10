@@ -191,6 +191,20 @@
         color: #aaa;
         padding: 40px;
     }
+
+    @media (max-width: 1023px) {
+        .quests-grid {
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+        }
+    }
+
+    @media (max-width: 639px) {
+        .quests-container { padding: 16px 12px; }
+        .quests-grid { grid-template-columns: 1fr; gap: 16px; }
+        .section-title { font-size: 1.4rem; }
+        .quest-reward { flex-wrap: wrap; gap: 10px; }
+        .empty-message { padding: 24px 12px; font-size: 1.05rem; }
+    }
 </style>
 
 <div class="quests-container">

@@ -306,6 +306,56 @@ $totalQuestions = $totalQuestions ?? 10;
        duo_result.blade.php line 963): this view has its own integrated score display
        so the shared header would create a duplicate "X/Y · Manche Z · Bot" sidebar. */
     #gameHeader { display: none !important; }
+
+    @media (max-width: 639px) {
+        .scoreboard-container {
+            gap: 14px;
+            padding: 14px;
+        }
+        .scoreboard-header {
+            padding: 16px;
+        }
+        .scoreboard-title {
+            font-size: 1.45rem;
+        }
+        .scores-battle {
+            gap: 12px;
+        }
+        .score-card {
+            padding: 16px 10px;
+        }
+        .score-value {
+            font-size: 2.2rem;
+        }
+        .result-badge {
+            font-size: 1.1rem;
+            padding: 13px;
+        }
+    }
+
+    @media (max-width: 400px) {
+        .scoreboard-title {
+            font-size: 1.2rem;
+        }
+        .scores-battle {
+            gap: 8px;
+        }
+        .score-card {
+            padding: 14px 6px;
+        }
+        .score-avatar {
+            width: 50px;
+            height: 50px;
+        }
+        .score-value {
+            font-size: 1.9rem;
+        }
+        .vs-separator {
+            width: 38px;
+            height: 38px;
+            font-size: 0.85rem;
+        }
+    }
 </style>
 
 @php

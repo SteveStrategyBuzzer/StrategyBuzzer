@@ -77,6 +77,13 @@
         }
         .pagination .info { color: var(--muted); margin-left: auto; font-size: 12px; }
         code.endpoint { font-size: 12px; color: var(--accent); }
+        .table-wrap { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        @media (max-width: 639px) {
+            body { padding: 12px; }
+            .panel { padding: 12px; }
+            h1 { font-size: 18px; }
+            .pagination .info { margin-left: 0; }
+        }
     </style>
 </head>
 <body>
@@ -127,6 +134,7 @@
         @if($rows->isEmpty())
             <div class="empty">{{ __('No records found') }}</div>
         @else
+            <div class="table-wrap">
             <table>
                 <thead>
                     <tr>
@@ -166,6 +174,7 @@
                     @endforeach
                 </tbody>
             </table>
+            </div>
 
             <div class="pagination">
                 {!! $rows->links() !!}

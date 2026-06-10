@@ -2,6 +2,7 @@
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ __('Forbidden') }}</title>
     <style>
         body { background:#0f1115; color:#e6e8ec; font:14px -apple-system,sans-serif; display:flex; align-items:center; justify-content:center; min-height:100vh; margin:0; }

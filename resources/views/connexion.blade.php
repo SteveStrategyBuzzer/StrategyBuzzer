@@ -89,5 +89,28 @@ h1 {
     background-color: #d4edda;
     color: #155724;
 }
+
+@media (max-width: 639px) {
+    .connexion-screen {
+        margin-top: 6vh;
+        padding: 0 16px;
+    }
+    h1 {
+        font-size: 2rem;
+    }
+    .auth-buttons {
+        gap: 12px;
+    }
+    .auth-buttons a {
+        width: 100%;
+        max-width: 320px;
+        padding: 14px 20px;
+        font-size: 1.05rem;
+    }
+    .alert {
+        width: 90%;
+        max-width: 400px;
+    }
+}
 </style>
 @endsection

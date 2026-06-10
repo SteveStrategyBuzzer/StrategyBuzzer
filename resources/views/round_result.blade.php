@@ -94,6 +94,47 @@
             font-size: 4rem;
             margin: 20px 0;
         }
+
+        @media (max-width: 600px) {
+            .result-container {
+                padding: 20px;
+            }
+
+            .round-title {
+                font-size: 1.6rem;
+                margin-bottom: 20px;
+            }
+
+            .score-display {
+                gap: 15px;
+                margin: 25px 0;
+            }
+
+            .score-card {
+                padding: 20px 25px;
+                font-size: 2.2rem;
+            }
+
+            .match-status {
+                font-size: 1.2rem;
+            }
+
+            .next-button {
+                padding: 16px 32px;
+                font-size: 1.1rem;
+            }
+        }
+
+        @media (max-width: 380px) {
+            .score-display {
+                gap: 10px;
+            }
+
+            .score-card {
+                padding: 16px 18px;
+                font-size: 1.8rem;
+            }
+        }
     </style>
 </head>
 <body>

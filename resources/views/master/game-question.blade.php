@@ -377,6 +377,12 @@ body {
         height: 100px;
         font-size: 1rem;
     }
+
+    .game-header { flex-wrap: wrap; gap: 0.5rem; }
+    .game-title { font-size: 1.2rem; }
+    .question-section { padding: 1.2rem; }
+    .question-text { font-size: 1.2rem; }
+    .leaderboard-section { overflow-x: auto; }
 }
 </style>
 

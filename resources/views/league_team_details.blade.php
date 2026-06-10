@@ -238,6 +238,12 @@
     margin-bottom: 1.5rem;
 }
 
+.radar-container canvas,
+.member-detail-card canvas {
+    max-width: 100%;
+    height: auto;
+}
+
 .strengths-summary {
     display: flex;
     flex-direction: column;

@@ -213,6 +213,12 @@
         font-style: italic;
     }
 
+    @media (max-width: 1023px) {
+        .quests-grid {
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+        }
+    }
+
     @media (max-width: 768px) {
         .timer-display {
             font-size: 2rem;
@@ -220,6 +226,13 @@
         .quest-emoji {
             font-size: 2.5rem;
         }
+    }
+
+    @media (max-width: 639px) {
+        .daily-quests-container { padding: 16px 12px; }
+        .quests-grid { grid-template-columns: 1fr; }
+        .quest-header { flex-wrap: wrap; gap: 8px; }
+        .section-header { font-size: 1.4rem; }
     }
 </style>
 

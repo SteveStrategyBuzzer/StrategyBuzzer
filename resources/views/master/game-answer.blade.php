@@ -340,6 +340,11 @@ body {
     .choices-grid {
         grid-template-columns: 1fr;
     }
+
+    .game-header { flex-wrap: wrap; gap: 0.5rem; }
+    .game-title { font-size: 1.2rem; }
+    .answer-section { padding: 1.2rem; }
+    .leaderboard-section { overflow-x: auto; }
 }
 </style>
 

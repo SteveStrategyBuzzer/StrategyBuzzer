@@ -2,6 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Privacy Policy - StrategyBuzzer</title>
 </head>
 <body style="font-family: Arial; max-width:800px; margin:auto; padding:40px">

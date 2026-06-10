@@ -68,6 +68,16 @@
     .solo-live-stats .sls-value { color: #FFD700; font-weight: 800; }
     .solo-live-stats .sls-eff   { color: #4ECDC4; }
     .solo-live-stats .sls-streak{ color: #FF8E53; }
+
+    @media (max-width: 639px) {
+        .question { padding: 16px; margin-bottom: 20px; }
+        .reponses { gap: 12px; }
+        .reponse-btn { padding: 13px; font-size: 1.05rem; }
+        .solo-live-stats { font-size: 0.85rem; padding: 8px 12px; gap: 8px 12px; }
+    }
+    @media (max-width: 400px) {
+        .reponses { grid-template-columns: 1fr; }
+    }
 </style>
 
 <div class="solo-live-stats" aria-label="{{ __('Stats en direct') }}">

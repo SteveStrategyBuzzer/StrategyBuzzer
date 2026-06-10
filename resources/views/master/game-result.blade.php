@@ -229,6 +229,17 @@ body {
     background: linear-gradient(135deg, #4CAF50, #2E7D32);
     color: #fff;
 }
+
+@media (max-width: 600px) {
+    body { padding: 12px; }
+    .game-container { padding: 0.5rem; }
+    .game-header { flex-wrap: wrap; gap: 0.5rem; }
+    .game-title { font-size: 1.2rem; }
+    .result-section { padding: 1.2rem; }
+    .result-title { font-size: 1.4rem; }
+    .round-points-section { padding: 1rem; }
+    .control-btn { padding: 0.8rem 1.4rem; }
+}
 </style>
 
 <div class="game-container">

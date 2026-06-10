@@ -158,6 +158,26 @@
         font-size: 2rem;
         font-weight: 900;
     }
+
+    @media (max-width: 639px) {
+        .bonus-header { padding: 16px; margin-bottom: 20px; }
+        .bonus-title { font-size: 1.8rem; }
+        .bonus-subtitle { font-size: 1rem; }
+        .timer-number { font-size: 2.2rem; }
+        .question-box { padding: 18px; margin-bottom: 20px; }
+        .question-text { font-size: 1.2rem; }
+        .score-display { gap: 14px; margin-bottom: 16px; }
+        .score-item { padding: 12px 18px; }
+        .score-value { font-size: 1.5rem; }
+        .answer-btn { padding: 16px; font-size: 1rem; }
+        .skip-btn { padding: 14px 30px; }
+    }
+
+    @media (max-width: 400px) {
+        .bonus-title { font-size: 1.5rem; }
+        .score-display { gap: 10px; }
+        .score-item { padding: 10px 14px; }
+    }
 </style>
 
 <div class="bonus-container">

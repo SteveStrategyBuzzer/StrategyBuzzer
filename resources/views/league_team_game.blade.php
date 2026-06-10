@@ -581,6 +581,16 @@
 }
 
 @media (max-width: 768px) {
+    .league-team-game-container {
+        padding: 12px;
+    }
+
+    .game-header {
+        flex-wrap: wrap;
+        gap: 8px;
+        font-size: 1em;
+    }
+
     .teams-display {
         flex-direction: column;
     }
@@ -589,11 +599,51 @@
         align-self: center;
         margin: 10px 0;
     }
+
+    .question-section {
+        padding: 20px;
+    }
+
+    .question-text {
+        font-size: 20px;
+    }
     
     .buzz-button {
         width: 150px;
         height: 150px;
         font-size: 24px;
+    }
+}
+
+@media (max-width: 480px) {
+    .league-team-game-container {
+        padding: 8px;
+    }
+
+    .game-header {
+        font-size: 0.85em;
+    }
+
+    .question-section {
+        padding: 16px;
+    }
+
+    .question-text {
+        font-size: 18px;
+    }
+
+    .answers-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .buzz-button {
+        width: 120px;
+        height: 120px;
+        font-size: 20px;
+    }
+
+    .team-score {
+        font-size: 36px;
     }
 }
 </style>
