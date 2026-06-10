@@ -1239,7 +1239,7 @@ body { background: var(--sb-bg); }
                     <div class="sb-mode-img-wrap">
                         <img src="{{ asset('images/solo_boss100.png') }}" alt="Solo"
                              onerror="this.parentElement.innerHTML='<div class=\'sb-mode-img-placeholder\'>🤖</div>'"
-                             style="object-fit:cover; object-position:center 50%;">
+                             style="object-fit:cover; object-position:center 55%;">
                         <div class="sb-mode-title-overlay" style="color:#60a5fa">SOLO</div>
                     </div>
                     <div class="sb-mode-body">
