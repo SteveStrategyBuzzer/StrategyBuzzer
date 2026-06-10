@@ -104,7 +104,7 @@ Route::middleware('auth')->group(function () {
 Route::post('/stripe/webhook', [App\Http\Controllers\StripeWebhookController::class, 'handle'])->name('stripe.webhook');
 
 /* ===== Menu / Auth ===== */
-Route::view('/menu', 'menu')->name('menu');
+Route::get('/menu', [MenuController::class, 'index'])->name('menu');
 Route::get('/api/notifications', [MenuController::class, 'notifications'])->name('api.notifications')->middleware('auth');
 Route::get('/api/now', function () {
     return response()->json([
