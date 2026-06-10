@@ -128,6 +128,10 @@
     }
     
     @media (max-width: 600px) {
+        .defeat-container {
+            padding: 24px 16px;
+        }
+        
         .defeat-title {
             font-size: 2.2rem;
         }

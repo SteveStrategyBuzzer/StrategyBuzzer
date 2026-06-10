@@ -88,6 +88,15 @@
         0%, 80%, 100% { transform: scale(0); }
         40% { transform: scale(1); }
     }
+
+    @media (max-width: 600px) {
+        body { padding: 12px; }
+        .title { font-size: 1.5rem; }
+        .status-card { padding: 24px 16px; }
+        .status-icon { font-size: 3rem; }
+        .status-text { font-size: 1.1rem; }
+        .opponent-status { font-size: 1rem; }
+    }
 </style>
 
 <div class="waiting-container">

@@ -46,6 +46,15 @@ $soloWarningMessage = $showSoloWarning ? $soloDisadvantagedAvatars[$currentStrat
     .grid-2 {
       grid-template-columns: repeat(2, 1fr);
     }
+    .container-solo { margin:24px auto; padding:0 12px; }
+    .box { padding:14px; }
+    .header-menu { top:10px; right:10px; padding:8px 14px; font-size:.9rem; }
+  }
+
+  @media (max-width: 400px) {
+    .grid-2 {
+      grid-template-columns: 1fr;
+    }
   }
 
   /* Popup avertissement avatar non-avantageux en Solo */

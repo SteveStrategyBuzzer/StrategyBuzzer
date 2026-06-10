@@ -149,6 +149,10 @@
     }
     
     @media (max-width: 600px) {
+        .victory-container {
+            padding: 24px 16px;
+        }
+        
         .victory-title {
             font-size: 2.2rem;
         }

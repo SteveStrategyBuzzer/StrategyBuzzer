@@ -50,6 +50,22 @@
         box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
         color: #fff;
     }
+
+    @media (max-width: 639px) {
+        .header-image {
+            margin-bottom: 20px;
+        }
+        .phone-container {
+            padding: 20px 16px;
+        }
+        .phone-container h1 {
+            font-size: 1.4rem;
+            margin-bottom: 20px;
+        }
+        .info-message {
+            padding: 16px;
+        }
+    }
 </style>
 
 <img src="{{ asset('images/strategybuzzer_header.png') }}" alt="StrategyBuzzer" class="header-image">

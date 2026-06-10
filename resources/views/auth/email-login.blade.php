@@ -143,6 +143,19 @@
         border: 1px solid rgba(220, 53, 69, 0.5);
         color: #ff6b6b;
     }
+
+    @media (max-width: 639px) {
+        .header-image {
+            margin-bottom: 20px;
+        }
+        .login-container {
+            padding: 20px 16px;
+        }
+        .login-container h1 {
+            font-size: 1.4rem;
+            margin-bottom: 20px;
+        }
+    }
 </style>
 
 <img src="{{ asset('images/strategybuzzer_header.png') }}" alt="StrategyBuzzer" class="header-image">

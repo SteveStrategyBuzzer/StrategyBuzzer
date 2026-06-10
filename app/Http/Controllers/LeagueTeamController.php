@@ -45,7 +45,88 @@ class LeagueTeamController extends Controller
             ->where('status', 'pending')
             ->get();
 
-        return view('ligue', compact('user', 'userTeams', 'pendingInvitations'));
+        // ── Identity / sidebar stats (consistent with the main menu) ──
+        $playerStats = \App\Models\PlayerDuoStat::where('user_id', $user->id)->first();
+
+        // ── Team efficiency = average member win_rate (batched query, no N+1) ──
+        $teamEfficiency = [];
+        try {
+            $memberIds = $userTeams->flatMap(fn($t) => $t->members->pluck('id'))
+                ->unique()->values()->all();
+            $statsByUser = !empty($memberIds)
+                ? \App\Models\PlayerDuoStat::whereIn('user_id', $memberIds)->get()->keyBy('user_id')
+                : collect();
+            foreach ($userTeams as $team) {
+                $sum = 0.0;
+                $count = $team->members->count();
+                foreach ($team->members as $member) {
+                    $stat = $statsByUser->get($member->id);
+                    $sum += $stat ? (float) $stat->win_rate : 0.0;
+                }
+                $teamEfficiency[$team->id] = $count > 0 ? (int) round($sum / $count) : 0;
+            }
+        } catch (\Throwable $e) {
+        }
+
+        // ── League Individual division, points & global position (real data) ──
+        $leagueDivision = \App\Models\PlayerDivision::where('user_id', $user->id)
+            ->where('mode', 'league_individual')
+            ->first();
+        $leaguePoints = $leagueDivision->points ?? 0;
+        $leaguePosition = null;
+        if ($leagueDivision) {
+            $leaguePosition = \App\Models\PlayerDivision::where('mode', 'league_individual')
+                ->where('points', '>', $leaguePoints)
+                ->count() + 1;
+        }
+
+        // ── Active season + the player's season standing (rewards / progression) ──
+        $season = \App\Models\Season::activeSeason('league_individual')
+            ?? \App\Models\Season::activeSeason('all');
+        $seasonInfo = ['active_season' => null];
+        try {
+            $seasonInfo = app(\App\Services\SeasonService::class)
+                ->getPlayerSeasonInfo($user, 'league_individual');
+        } catch (\Throwable $e) {
+        }
+
+        // ── Daily challenge (same source as the menu) ──
+        $dailyChallenge = null;
+        try {
+            $dailyQuests = app(\App\Services\DailyQuestService::class)
+                ->getOrAssignDailyQuests($user);
+            $dailyChallenge = !empty($dailyQuests) ? $dailyQuests[0] : null;
+        } catch (\Throwable $e) {
+        }
+
+        // ── World ranking : top teams by points ──
+        $topTeams = collect();
+        try {
+            $topTeams = Team::orderByDesc('points')
+                ->orderByDesc('matches_won')
+                ->limit(5)
+                ->get();
+        } catch (\Throwable $e) {
+        }
+
+        // ── Live activity (real counts where a source exists, null otherwise) ──
+        $liveActivity = [
+            'matches_in_progress' => null,
+            'active_teams'        => null,
+            'online_players'      => null,
+            'tournaments_today'   => null,
+        ];
+        try {
+            $liveActivity['matches_in_progress'] = LeagueTeamMatch::where('status', 'playing')->count();
+            $liveActivity['active_teams']        = Team::count();
+        } catch (\Throwable $e) {
+        }
+
+        return view('ligue', compact(
+            'user', 'userTeams', 'pendingInvitations', 'teamEfficiency',
+            'playerStats', 'leagueDivision', 'leaguePoints', 'leaguePosition',
+            'season', 'seasonInfo', 'dailyChallenge', 'topTeams', 'liveActivity'
+        ));
     }
 
     public function showLeagueEntry()

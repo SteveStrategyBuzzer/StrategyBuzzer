@@ -90,6 +90,20 @@
         color: rgba(255, 255, 255, 0.6);
         padding: 0 10px;
     }
+
+    @media (max-width: 639px) {
+        .header-image {
+            margin-bottom: 20px;
+        }
+        .auth-buttons {
+            padding: 0 8px;
+        }
+        .auth-buttons .btn {
+            padding: 13px 16px;
+            font-size: 1rem;
+            margin: 12px 0;
+        }
+    }
 </style>
 
 <img src="{{ asset('images/strategybuzzer_header.png') }}" alt="StrategyBuzzer" class="header-image">
