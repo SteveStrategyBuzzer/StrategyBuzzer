@@ -1163,7 +1163,7 @@ body { background: var(--sb-bg); }
 
             <div class="sb-topbar-right">
                 <div class="sb-coin-display">
-                    <img class="sb-coin-icon" src="{{ asset('images/coin-intelligence.png') }}" alt="Intelligence" onerror="this.style.display='none'">
+                    <img class="sb-coin-icon" src="{{ asset('images/coin-intelligence.png') }}" alt="Intelligence" onerror="this.style.display='none'" style="object-fit:cover;">
                     <span class="sb-coin-value" id="topbar-intel">{{ number_format($intelligencePieces) }}</span>
                 </div>
                 <div class="sb-coin-display">
