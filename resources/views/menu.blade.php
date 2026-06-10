@@ -1237,9 +1237,9 @@ body { background: var(--sb-bg); }
                 {{-- SOLO --}}
                 <div class="sb-mode-card {{ $soloUnlocked ? '' : 'locked' }}">
                     <div class="sb-mode-img-wrap">
-                        <img src="{{ asset('images/brain.png') }}" alt="Solo"
+                        <img src="{{ asset('images/solo_boss100.png') }}" alt="Solo"
                              onerror="this.parentElement.innerHTML='<div class=\'sb-mode-img-placeholder\'>🤖</div>'"
-                             style="object-fit:contain; padding:10px; background: linear-gradient(180deg,#0a1e4a,#0e1535);">
+                             style="object-fit:cover; object-position:center 50%;">
                         <div class="sb-mode-title-overlay" style="color:#60a5fa">SOLO</div>
                     </div>
                     <div class="sb-mode-body">
