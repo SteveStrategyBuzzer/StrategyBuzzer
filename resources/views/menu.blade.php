@@ -919,37 +919,146 @@ body { background: var(--sb-bg); }
     border: 1.5px solid var(--sb-sidebar);
 }
 
+/* ── MOBILE BOTTOM NAV ────────────────────────── */
+.sb-mobile-nav {
+    display: none;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    background: #0b1230;
+    border-top: 1px solid rgba(100,140,255,0.18);
+    height: 60px;
+    align-items: stretch;
+    justify-content: space-around;
+    padding: 0;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    box-shadow: 0 -4px 20px rgba(0,0,0,0.5);
+}
+
+.sb-mn-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    flex: 1;
+    padding: 6px 2px;
+    text-decoration: none;
+    color: #6b84c4;
+    font-size: 0.48rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    position: relative;
+    transition: color 0.2s, background 0.2s;
+    border-top: 2px solid transparent;
+}
+
+.sb-mn-item:hover { color: #fff; background: rgba(255,255,255,0.04); }
+
+.sb-mn-item.active {
+    color: #fff;
+    border-top-color: #1a73e8;
+    background: rgba(26,115,232,0.1);
+}
+
+.sb-mn-item svg { width: 20px; height: 20px; flex-shrink: 0; }
+
+.sb-mn-notif {
+    position: absolute;
+    top: 6px;
+    right: calc(50% - 16px);
+    width: 7px;
+    height: 7px;
+    background: #ef4444;
+    border-radius: 50%;
+    border: 1.5px solid #0b1230;
+}
+
 /* ── RESPONSIVE ───────────────────────────────── */
+
+/* Large tablet: 2-column grids */
 @media (max-width: 1200px) {
-    .sb-row2, .sb-row3 {
-        grid-template-columns: repeat(2, 1fr);
-    }
+    .sb-row2, .sb-row3 { grid-template-columns: repeat(2, 1fr); }
 }
 
-@media (max-width: 768px) {
-    :root { --sidebar-w: 60px; }
-
+/* Tablet: icons-only sidebar */
+@media (max-width: 1023px) {
+    :root { --sidebar-w: 64px; }
     .sb-sidebar-name,
-    .sb-xp-bar-wrap,
-    .sb-nav-item span,
-    .sb-create-team-btn span { display: none; }
-
-    .sb-nav-item { width: 44px; padding: 8px 4px; }
-
-    .sb-topbar-logo .sb-logo-tagline { display: none; }
-    .sb-logo-text { font-size: 1rem; }
-
+    .sb-xp-bar-wrap { display: none; }
+    .sb-nav-item span { display: none; }
+    .sb-nav-item { width: 46px; padding: 9px 6px; }
+    .sb-create-team-btn { font-size: 0; line-height: 1.2; padding: 8px 4px; border-radius: 6px; }
+    .sb-create-team-btn::before { content: '+'; font-size: 1.1rem; font-weight: 900; }
     .sb-row1 { grid-template-columns: 1fr; }
-    .sb-row2 { grid-template-columns: repeat(2, 1fr); }
-    .sb-row3 { grid-template-columns: repeat(2, 1fr); }
-
-    .sb-bottom-ads { display: none; }
+    .sb-logo-text { font-size: 1.2rem; }
+    .sb-logo-tagline { display: none; }
 }
 
-@media (max-width: 480px) {
-    .sb-row2, .sb-row3 { grid-template-columns: 1fr; }
-    .sb-topbar-right .sb-topbar-icon { display: none; }
-    .sb-content { padding: 10px 10px; }
+/* Small tablet */
+@media (max-width: 860px) {
+    .sb-row3 { grid-template-columns: repeat(2, 1fr); }
+    .sb-content { padding: 12px 14px; }
+}
+
+/* Mobile: hide sidebar, show bottom nav */
+@media (max-width: 639px) {
+    /* Layout switches to vertical, sidebar hidden */
+    .sb-sidebar { display: none; }
+    .sb-layout { flex-direction: column; }
+    .sb-mobile-nav { display: flex; }
+
+    /* Content scrolls, bottom padding to clear fixed nav + safe-area */
+    .sb-content {
+        padding: 10px 10px calc(64px + env(safe-area-inset-bottom, 0px));
+        overflow-y: auto;
+    }
+
+    /* Compact topbar */
+    .sb-topbar { padding: 8px 12px; gap: 0; }
+    .sb-topbar-spacer { display: none; }
+    .sb-topbar-logo { align-items: center; }
+    .sb-logo-tagline { display: none; }
+    .sb-logo-text { font-size: 1rem; letter-spacing: 0.05em; }
+    .sb-logo-title span:first-child,
+    .sb-logo-title span:last-child { font-size: 1rem; }
+    .sb-topbar-right { gap: 6px; }
+    .sb-topbar-icon { width: 30px; height: 30px; border-radius: 6px; }
+    .sb-coin-display { padding: 4px 8px; gap: 4px; }
+    .sb-coin-value { font-size: 0.72rem; }
+    .sb-coin-icon { width: 16px; height: 16px; }
+    .sb-coin-add { width: 24px; height: 24px; font-size: 0.9rem; }
+
+    /* Bottom bar hidden on mobile (replaced by bottom nav) */
+    .sb-bottombar { display: none; }
+
+    /* Rows */
+    .sb-row1 { grid-template-columns: 1fr; gap: 8px; }
+    .sb-row2 { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+    .sb-row3 { grid-template-columns: 1fr; gap: 8px; }
+
+    /* Smaller game card images */
+    .sb-mode-img-wrap { height: 100px; }
+    .sb-mode-body { padding: 8px 10px 10px; gap: 6px; }
+    .sb-mode-btn { padding: 8px; font-size: 0.72rem; }
+
+    /* Compact panels */
+    .sb-panel { padding: 12px; gap: 8px; }
+}
+
+/* Very small phones (≤ 400px) */
+@media (max-width: 400px) {
+    .sb-logo-text { font-size: 0.85rem; }
+    .sb-topbar-icon { display: none; }
+    .sb-coin-add { display: none; }
+    .sb-row2 { grid-template-columns: 1fr; }
+    .sb-mode-img-wrap { height: 120px; }
+    .sb-season-card,
+    .sb-daily-card { flex-direction: column; align-items: flex-start; gap: 8px; }
+    .sb-daily-reward { flex-direction: row; align-self: flex-end; gap: 4px; }
 }
 </style>
 
@@ -1041,7 +1150,7 @@ body { background: var(--sb-bg); }
 
         {{-- ── TOP BAR ── --}}
         <header class="sb-topbar">
-            <div style="width:200px"></div>
+            <div class="sb-topbar-spacer" style="width:200px"></div>
 
             <div class="sb-topbar-logo">
                 <div class="sb-logo-title">
@@ -1329,6 +1438,51 @@ body { background: var(--sb-bg); }
         </footer>
 
     </div>{{-- /sb-main --}}
+
+    {{-- ══════════ MOBILE BOTTOM NAV (visible < 640px) ══════════ --}}
+    <nav class="sb-mobile-nav">
+
+        <a href="{{ route('menu') }}" class="sb-mn-item active">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+            <span>{{ __('Accueil') }}</span>
+        </a>
+
+        <a href="{{ route('duo.splash') }}" class="sb-mn-item" style="position:relative">
+            @if($duoNotifications > 0)
+                <div class="sb-mn-notif" id="mn-duo-dot"></div>
+            @endif
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+            <span>{{ __('Duo') }}</span>
+        </a>
+
+        <a href="{{ R::has('ligue') ? route('ligue') : url('/ligue') }}" class="sb-mn-item" style="position:relative">
+            @if($ligueNotifications > 0)
+                <div class="sb-mn-notif" id="mn-ligue-dot"></div>
+            @endif
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            <span>{{ __('Ligue') }}</span>
+        </a>
+
+        <a href="{{ R::has('quests.index') ? route('quests.index') : url('/quests') }}" class="sb-mn-item" style="position:relative">
+            @if($questsNotifications > 0 || $dailyQuestsNotifications > 0)
+                <div class="sb-mn-notif" id="mn-quest-dot"></div>
+            @endif
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            <span>{{ __('Quêtes') }}</span>
+        </a>
+
+        <a href="{{ R::has('boutique') ? route('boutique') : url('/boutique') }}" class="sb-mn-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61l1.6-8.39H6"/></svg>
+            <span>{{ __('Boutique') }}</span>
+        </a>
+
+        <a href="{{ R::has('profile') ? route('profile') : url('/profile') }}" class="sb-mn-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            <span>{{ __('Profil') }}</span>
+        </a>
+
+    </nav>
+
 </div>{{-- /sb-layout --}}
 
 <script>
