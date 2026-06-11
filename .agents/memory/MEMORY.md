@@ -4,3 +4,4 @@
 - [Ready_Bank growth spec](ready-bank-growth-spec.md) — Unité = noyau (7 cognitifs). Cibles par Depth (685K noyaux / 4.8M questions). Priorité prod : Depth 6→4→8→7→9→2→10. KernelNeedsCalculator pilote par kernel_count_complete, jamais par question_groups.
 - [Kernel pipeline architecture](kernel-pipeline-architecture.md) — Migration BankWorker → KernelPartialFiller. D1–D5 verrouillés. 7 variant_keys officiels. UNIQUE(question_intent_id, variant_key). 6 phases.
 - [Kernel Flow Official](kernel-flow-official.md) — Flow Blueprint First en 14 étapes. Source de vérité. DEPTH NEED MATRIX + DOMAIN CYCLE + TAXONOMY précèdent toute création. 7 cognitifs obligatoires. PHASE 3 TRADUCTION + PHASE 4 VALIDATION TRADUCTION absentes du code actuel.
+- [knowledge_frequency vs historique des paires](knowledge-frequency-vs-pair-history.md) — knowledge_frequency (DepthContract)=notoriété, jamais dedup ; historique des paires (KEY_LEARNING_DIRECTION)=anti-doublon pédagogique. Séparés.
