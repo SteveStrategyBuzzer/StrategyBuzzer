@@ -1,0 +1,94 @@
+Correction avant verrouillage.
+
+Je ne veux pas que les répétitions directes/inversées soient automatiquement des FAIL durs dans tous les cas.
+
+KEY_LEARNING_DIRECTION doit d’abord vérifier si le sous-domaine change réellement le contexte pédagogique.
+
+Règle corrigée :
+
+1. Si Sujet + Idée Dominante est identique ou inversé ET que le sous-domaine ne change pas le contexte :
+FAIL.
+
+2. Si Sujet + Idée Dominante est identique ou inversé MAIS que le sous-domaine change réellement le contexte d’exploitation :
+PASS possible.
+
+Donc le sous-domaine peut sauver une paire directe/inversée si le contexte pédagogique est réellement différent.
+
+Exemple :
+
+Sous-domaine : France
+Sujet : Paris
+Idée Dominante : Capitale
+
+vs
+
+Sous-domaine : Urbanisme
+Sujet : Paris
+Idée Dominante : Capitale
+
+Ici, il faut analyser si “Capitale” produit la même direction pédagogique ou une direction différente.
+
+KEY_LEARNING_DIRECTION ne doit pas être un simple anti-doublon lexical.
+Il doit être un garde anti-répétition pédagogique.
+
+Pour Q1 :
+Je refuse la règle simpliste :
+sub_domain différent = automatiquement contexte différent.
+
+Décision :
+sub_domain différent donne une possibilité de PASS, mais ne garantit pas PASS.
+
+Il faut une règle de contexte.
+
+Proposition :
+- même sub_domain + même paire/proche = FAIL
+- sub_domain différent + même paire/proche = CONTEXT_CHECK
+- si contexte pédagogique différent = PASS
+- si contexte pédagogique équivalent = FAIL
+
+Pour Q2 :
+Oui, equivalence_map doit être un dictionnaire métier contrôlé, maintenu par domaine/sous-domaine.
+
+Exemple :
+capitale ≈ statut
+chef-lieu ≈ capitale administrative
+métropole ≠ capitale dans certains contextes
+
+Pour Q3 :
+Oui, check déterministe.
+Pas d’IA.
+
+Principe :
+- normalisation
+- équivalences contrôlées
+- distance tokens
+- seuil paramétrable
+
+Seuil de départ :
+0.85
+
+Mais le résultat proche ne doit pas automatiquement FAIL si le sous-domaine change.
+Il doit déclencher CONTEXT_CHECK.
+
+Fail reasons corrigées proposées :
+- INVALID_MINIMAL_PAIR
+- DIRECT_PAIR_CONTEXT_DUPLICATE
+- REVERSED_PAIR_CONTEXT_DUPLICATE
+- CONCEPTUAL_COLLISION
+- PAIR_TOO_CLOSE_TO_EXISTING
+- CONTEXT_NOT_DISTINCT
+
+Sortie standard corrigée :
+status = PASS | FAIL | CONTEXT_CHECK
+
+Ou si on veut garder seulement PASS/FAIL :
+KLD doit faire le context check en interne et retourner seulement PASS/FAIL.
+
+Je préfère garder seulement PASS/FAIL en sortie, mais avec une reason plus précise.
+
+Conclusion :
+KEY_LEARNING_DIRECTION ne doit pas seulement comparer des mots.
+Il doit comparer :
+Sujet + Idée Dominante + contexte réel du Sous-domaine.
+
+Merci de corriger le contrat v3 avec cette nuance.

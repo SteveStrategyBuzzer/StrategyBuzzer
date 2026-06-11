@@ -26,4 +26,8 @@ Ne raisonne JAMAIS sur : QCM, V/F, Recognition, Reasoning, Deceptive Trap, répo
 
 **Why:** L'utilisateur a corrigé deux fois pour empêcher la confusion. KLD ne doit pas être contaminé par la couche question (variants/types) ni par la notoriété (DepthContract). C'est purement de l'anti-doublon sur la direction Sujet+Idée Dominante.
 
-**How to apply:** Le sub_domain est un discriminateur de contexte pour les correspondances PROCHES/équivalentes uniquement. Une répétition directe ou inversée EXACTE reste un FAIL dur (sous réserve de confirmation utilisateur). Les équivalences métier viennent d'un dictionnaire d'équivalences à définir.
+**How to apply:** Le sub_domain est un discriminateur de contexte pour TOUTES les correspondances, y compris directe/inversée EXACTE. Pas de FAIL dur automatique : si la paire (exacte/inversée/équivalente/proche) existe déjà, on regarde le sub_domain. Même sub_domain → FAIL. sub_domain différent → CONTEXT_CHECK interne (contexte pédagogique distinct → PASS ; équivalent → FAIL CONTEXT_NOT_DISTINCT). "sub_domain différent ≠ automatiquement contexte différent" : ça donne une POSSIBILITÉ de PASS, pas une garantie.
+
+**Déterministe, pas d'IA :** normalisation + equivalence_map (dictionnaire métier contrôlé par domaine/sous-domaine, ex. capitale≈statut, chef-lieu≈capitale administrative, métropole≠capitale selon contexte) + distance de tokens + seuil paramétrable (départ 0.85). Le résultat "proche" ne FAIL pas automatiquement si le sub_domain change → déclenche CONTEXT_CHECK. Le context check est résolu par un dictionnaire de contexte contrôlé (déclare les sous-domaines réellement distincts pour une idée dominante).
+
+**Sortie :** PASS | FAIL uniquement (CONTEXT_CHECK = interne). Reasons : INVALID_MINIMAL_PAIR, DIRECT_PAIR_CONTEXT_DUPLICATE, REVERSED_PAIR_CONTEXT_DUPLICATE, CONCEPTUAL_COLLISION, PAIR_TOO_CLOSE_TO_EXISTING, CONTEXT_NOT_DISTINCT.
