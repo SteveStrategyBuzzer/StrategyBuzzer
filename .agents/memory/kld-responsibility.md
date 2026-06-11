@@ -31,3 +31,13 @@ Ne raisonne JAMAIS sur : QCM, V/F, Recognition, Reasoning, Deceptive Trap, répo
 **Déterministe, pas d'IA :** normalisation + equivalence_map (dictionnaire métier contrôlé par domaine/sous-domaine, ex. capitale≈statut, chef-lieu≈capitale administrative, métropole≠capitale selon contexte) + distance de tokens + seuil paramétrable (départ 0.85). Le résultat "proche" ne FAIL pas automatiquement si le sub_domain change → déclenche CONTEXT_CHECK. Le context check est résolu par un dictionnaire de contexte contrôlé (déclare les sous-domaines réellement distincts pour une idée dominante).
 
 **Sortie :** PASS | FAIL uniquement (CONTEXT_CHECK = interne). Reasons : INVALID_MINIMAL_PAIR, DIRECT_PAIR_CONTEXT_DUPLICATE, REVERSED_PAIR_CONTEXT_DUPLICATE, CONCEPTUAL_COLLISION, PAIR_TOO_CLOSE_TO_EXISTING, CONTEXT_NOT_DISTINCT.
+
+## Contrat v3 — VERROUILLÉ (validé utilisateur)
+
+Défaut officiel : **context_map absent ou silencieux = FAIL CONTEXT_NOT_DISTINCT** (défaut conservateur). sub_domain différent ne donne JAMAIS PASS automatiquement — il ne fait qu'ouvrir le CONTEXT_CHECK. La réutilisation n'est autorisée que si le context_map déclare EXPLICITEMENT que les deux sous-domaines produisent un contexte pédagogique distinct.
+
+Résolution CONTEXT_CHECK (paire directe/inversée/équivalente/proche, sous-domaine différent) :
+- context_map déclare les 2 sous-domaines comme distincts pour cette idée dominante → PASS
+- sinon → FAIL CONTEXT_NOT_DISTINCT
+
+Récapitulatif verrouillé : KLD = garde anti-répétition de direction pédagogique ; travaille uniquement sur Sous-domaine + Sujet + Idée Dominante ; ne connaît ni question, ni réponse, ni Saviez-vous ; ne touche pas knowledge_frequency ; equivalence_map (équivalences métier) + context_map (arbitrage sous-domaines) ; 100% déterministe, sans IA ; sortie uniquement PASS/FAIL ; seuil proximité départ 0.85.
