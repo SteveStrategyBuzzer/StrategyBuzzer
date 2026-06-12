@@ -1,33 +1,41 @@
 ---
 name: KEY_STRUCTURE — responsabilité exacte
-description: Frontière verrouillée entre KEY_STRUCTURE (validation structurelle) et QuestionIntent (verrouillage/encodage/ks_hash).
+description: KEY_STRUCTURE = gardien de la qualité du matériau taxonomique. Valide + élague l'arbre produit par Taxonomy. Frontière avec QuestionIntent (ks_hash/encodage) et KLD.
 ---
 
 # KEY_STRUCTURE — responsabilité exacte
 
-KEY_STRUCTURE = **gardien de l'égrainage taxonomique**. VALIDATION SEULEMENT. Autorise ou refuse.
+KEY_STRUCTURE = **gardien de la qualité structurelle finale**. Il reçoit la **production de Taxonomy** (un arbre Sous-domaine → Sujets → 5 Idées Dominantes), la valide, et **élague** ce qui n'est pas conforme. Objectif : produire un **arbre propre et exploitable**, PAS reconstruire.
 
-## Ce qu'il valide (qualité structurelle)
-- Cohérence taxonomique (sous-domaine ∈ domaine, sujet ∈ sous-domaine, idée ∈ sujet, via taxonomy.json)
-- Progression : Domaine → Sous-domaine → Sujet → **5 Idées Dominantes**
-- Qualité de l'égrainage (FORMAT_MINIMAL_IRREDUCTIBLE : chaque niveau = unité de sens minimale, aucun niveau n'absorbe l'autre, pas de sous-domaine artificiel, idée ≠ phrase Phase 1)
-- Adéquation au Depth demandé (subject_profile du Sujet ↔ Depth ; knowledge_frequency de l'Idée ↔ bande du Depth — LECTURE seulement)
+## Séparation des deux gardiens (architecture propre)
+- **KLD (KEY_LEARNING_DIRECTION)** = qualité de la **direction pédagogique** (anti-répétition Sujet+Idée+contexte).
+- **KEY_STRUCTURE** = qualité du **matériau taxonomique** (cohérence, égrainage, Depth, progression, qualité des 5 idées).
 
-## Ce qu'il NE fait PAS
-- **Pas de ks_hash** (= QuestionIntent)
-- Pas d'encodage du noyau (= QuestionIntent)
-- Pas de création/remplissage (= Phase 1)
-- Pas de navigation (= TaxonomyReader sur refus)
-- Pas d'anti-doublon pédagogique (= KEY_LEARNING_DIRECTION, déjà passé avant)
-- Ne calcule pas knowledge_frequency (= donnée taxonomy/DepthContract)
+## Ce qu'il valide
+- Cohérence taxonomique (sub_domain ∈ domain, subject ∈ sub_domain, idée ∈ subject)
+- Égrainage / FORMAT_MINIMAL_IRREDUCTIBLE (chaque niveau = unité minimale, aucun niveau n'absorbe l'autre, pas de sous-domaine artificiel, idée ≠ phrase Phase 1)
+- Respect du Depth (subject_profile du Sujet ↔ Depth ; knowledge_frequency de l'Idée ↔ Depth — lecture seule)
+- Progression Domaine → Sous-domaine → Sujet
+- Qualité des **5 Idées Dominantes**
+
+## Ce qu'il fait / ne fait pas
+- IL ÉLAGUE : supprime les Sujets et Idées Dominantes non conformes.
+- IL NE RECONSTRUIT PAS : ne régénère pas, ne corrige pas, ne complète pas.
+- PAS de ks_hash, PAS d'encodage (= QuestionIntent).
+- PAS d'anti-doublon pédagogique (= KLD, déjà passé).
+- Ne calcule pas knowledge_frequency (donnée taxonomy/DepthContract).
+
+## Règle de sortie (seuil)
+Après élagage, **chaque Sous-domaine doit conserver un minimum de 20 à 25 Sujets valides**.
+- Seuil non atteint → **FAIL**
+- Sinon → **PASS** → QUESTIONINTENT
 
 ## Frontière verrouillée
 ```
-KEY_STRUCTURE   = validation (PASS/FAIL)
-QUESTIONINTENT  = verrouillage / encodage / ks_hash  → puis PHASE 1 CRÉATION
+KEY_STRUCTURE   = validation + élagage → arbre propre (PASS / FAIL)
+QUESTIONINTENT  = verrouillage / encodage / ks_hash → PHASE 1 CRÉATION
 ```
-Si KEY_STRUCTURE répond PASS, alors SEULEMENT QuestionIntent intervient. C'est QuestionIntent qui opère le ks_hash et encode le noyau pour qu'il parte en Phase 1.
 
-**Why:** L'utilisateur a explicitement retiré ks_hash de KEY_STRUCTURE. Mélanger validation et verrouillage casserait la causalité KEY_STRUCTURE → QuestionIntent (sens unique).
+**Why:** L'utilisateur a fixé KEY_STRUCTURE comme garde de la qualité du matériau taxonomique au niveau de l'arbre, avec droit d'élagage mais interdiction de reconstruire ; ks_hash explicitement retiré (= QuestionIntent). Confondre validation et reconstruction casserait la causalité Taxonomy → KEY_STRUCTURE → QuestionIntent.
 
-**How to apply:** Sortie KEY_STRUCTURE = PASS|FAIL + reason + identité validée, SANS ks_hash. Toute idempotence/unicité d'identité complète appartient à QuestionIntent, pas à KEY_STRUCTURE. (Contrat détaillé encore en cours : table Depth↔niveau et déclencheur des 2 stades à confirmer.)
+**How to apply:** Entrée = production Taxonomy (arbre). Sortie = arbre élagué + PASS/FAIL selon seuil 20-25 Sujets/Sous-domaine. Détails encore à confirmer : nombre exact du seuil (20 vs 25 vs band), critères précis d'élagage Sujet vs Idée (un Sujet reste-t-il valide avec <5 idées ?), portée d'une passe (par domaine+depth ?), et si FAIL = drop du sous-domaine vs échec du batch entier.
