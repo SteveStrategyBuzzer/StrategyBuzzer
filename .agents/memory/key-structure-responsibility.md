@@ -25,10 +25,21 @@ KEY_STRUCTURE = **gardien de la qualité structurelle finale**. Il reçoit la **
 - PAS d'anti-doublon pédagogique (= KLD, déjà passé).
 - Ne calcule pas knowledge_frequency (donnée taxonomy/DepthContract).
 
-## Règle de sortie (seuil)
-Après élagage, **chaque Sous-domaine doit conserver un minimum de 20 à 25 Sujets valides**.
-- Seuil non atteint → **FAIL**
-- Sinon → **PASS** → QUESTIONINTENT
+## Règle de sortie — modèle TAUX DE REJET + CIBLE PAR DEPTH (officiel, seuils exacts TBD)
+KEY_STRUCTURE mesure la QUALITÉ DE PRODUCTION Taxonomy, pas un PASS binaire mou.
+
+Cible « noyau plein » par Depth (le volume attendu DÉCROÎT quand Depth augmente) :
+- Depth 2-7 → ≈ 50 Sujets
+- Depth 8 → ≈ 40 Sujets
+- Depth 9 → ≈ 35 Sujets
+- Depth 10 → ≈ 30 Sujets
+
+Bandes de taux de rejet (rejetés / produits), mêmes bandes quel que soit le Depth :
+- < 5 % rejeté → NORMAL → PASS
+- 5 %–25 % rejeté → PASS mais signal RECADRAGE à Taxonomy (dérive légère, noyau encore exploitable)
+- > 25 % rejeté → PROBLÈME MAJEUR → **FAIL le noyau** + recadrage MAJEUR de Taxonomy
+
+KEY_STRUCTURE ne juge plus le volume brut aux Depth élevés : il juge cohérence + égrainage + qualité des Sujets + qualité des 5 Idées. Le minimum acceptable devient progressif selon le Depth.
 
 ## Frontière verrouillée
 ```

@@ -1,0 +1,111 @@
+Rôle de Key_Structure
+
+Nous ne sommes pas dans une logique :
+
+- PASS solide
+- PASS acceptable
+
+Nous sommes dans une logique de qualité de production Taxonomy.
+
+Référence :
+
+Taxonomy vise jusqu'à 50 Sujets par Sous-domaine.
+
+KEY_STRUCTURE mesure la qualité de cette production.
+
+Règle générale :
+
+Si KEY_STRUCTURE doit élaguer plus de 5 à 25 % de la production,
+il doit considérer qu'il existe un problème dans la construction du Sous-domaine.
+
+L'objectif n'est pas seulement de valider le résultat.
+L'objectif est aussi de détecter quand Taxonomy dérive.
+
+Exemple :
+
+50 Sujets produits
+
+48 valides
+2 rejetés
+
+→ normal <5%
+
+50 Sujets produits
+
+40 valides
+10 rejetés > 5% <25%
+
+→ KEY_STRUCTURE doit pouvoir recadrer Taxonomy
+
+50 Sujets produits
+
+20 valides
+30 rejetés >5% >25%
+
+→ problème majeur de construction = Fail le Noyau
+
+.→ KEY_STRUCTURE doit pouvoir recadrer de façon majeur Taxonomy
+
+Exception importante :
+
+Depth élevé.
+
+À partir des Depth 8 à 10,
+certains Sous-domaines deviennent naturellement plus rares et plus spécialisés.
+Depth 8 + 40 sujets = Noyau plein
+Depth 9 + 35 sujets = Noyau plein
+Depth 10 + 30 sujets = Noyau plein
+Dans ce cas :
+
+Taxonomy peut être incapable de produire 50 Sujets légitimes.
+
+KEY_STRUCTURE doit alors accepter une structure plus petite.
+
+Exemple :
+
+Depth 10
+
+Sous-domaine très spécialisé
+
+30 Sujets
+avec le même logique du 5%  à 25% rejeté
+peuvent faire un Noyau parfaitement valide.
+mais avec les mêmes recadrages et fail si plus de 25% rejeté
+Dans ce contexte :
+
+KEY_STRUCTURE ne juge plus le volume brut.
+
+Il juge :
+
+- la cohérence
+- l'égrainage
+- la qualité des Sujets
+- la qualité des 5 Idées Dominantes
+
+Le minimum attendu devient progressif selon le Depth.
+
+Proposition :
+
+Depth 2-7
+→ cible normale ≈ 50 Sujets
+
+Depth 8
+→ minimum réduit
+
+Depth 9
+→ minimum réduit davantage
+
+Depth 10
+→ minimum le plus faible autorisé
+
+Le seuil exact reste à définir.
+
+Mais la logique officielle est :
+
+Le volume attendu doit décroître progressivement
+quand le Depth augmente.
+
+KEY_STRUCTURE ne doit pas forcer artificiellement
+50 Sujets sur un Sous-domaine extrêmement spécialisé.
+
+Donne moi l’audit de la structure de recadrement que key_structure va utiliser et si il n’existe pas donne moi comment tu vois cette structure tout en précisant si elle existe ou si c’est ce que tu proposes 
