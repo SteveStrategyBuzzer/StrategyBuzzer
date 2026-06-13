@@ -47,6 +47,28 @@ Cibles NON figées : Depth 2-7 → ≈50 ; Depth 8-10 → décroissance progress
 
 Phrase de contrat : « KEY_STRUCTURE ne juge pas seulement le taux d'élagage ; il juge aussi si Taxonomy a produit une quantité de matière cohérente avec la capacité structurelle attendue du Sous-domaine. »
 
+## KEY_STRUCTURE_RECADRAGE_REPORT (BROUILLON — à valider)
+But : transformer un rejet en instruction exploitable pour Taxonomy. 1 rapport par Sous-domaine, émis si bande ≠ 🟢.
+
+Champs cœur (demandés) : `severity`, `dominant_failure_reason`, `target_zone`, `taxonomy_action`, `examples`.
+En-tête : domain, sub_domain, depth, metrics(4), deficits{production_deficit, quality_deficit}.
+Support optionnel : reason_distribution{reason:count}, secondary_actions[].
+
+severity : `RECADRAGE` (🟡 élagage 5-25% ou déficit prod modéré → PASS) | `RECADRAGE_MAJEUR` (🔴 élagage >25% ou déficit critique → FAIL).
+
+Catalogue reason → target_zone → taxonomy_action :
+- SUBJECTS_TOO_GENERIC → SUBJECT → INCREASE_SPECIALIZATION
+- SUBJECTS_TOO_SPECIFIC → SUB_DOMAIN → WIDEN_SUBDOMAIN
+- DOMINANT_IDEAS_TOO_CLOSE_TO_SUBJECT → DOMINANT_IDEA → INCREASE_GRAINING_DISTANCE
+- DOMINANT_IDEAS_TOO_SHALLOW → DOMINANT_IDEA → INCREASE_DEPTH_ALIGNMENT
+- FORMAT_NOT_MINIMAL → niveau fautif → ENFORCE_MINIMAL_FORMAT
+- INVALID_HIERARCHY → SUBJECT/DOMINANT_IDEA → REATTACH_TO_PARENT
+- DEPTH_PRECISION_MISMATCH → SUBJECT/DOMINANT_IDEA → ALIGN_TO_DEPTH_PROFILE
+- PRODUCTION_DEFICIT → SUB_DOMAIN → INCREASE_PRODUCTION_VOLUME
+- STRUCTURAL_COLLAPSE → SUB_DOMAIN → REBUILD_SUBDOMAIN
+
+À confirmer : 1 seule action dominante vs secondary_actions ; nommage severity ; cap des examples (≤5).
+
 ## Frontière verrouillée
 ```
 KEY_STRUCTURE   = validation + élagage → arbre propre (PASS / FAIL)
