@@ -1,0 +1,326 @@
+Oui. On doit maintenant définir 3 blocs de règles avant d’aller à QUESTIONINTENT :
+
+1. KEY_STRUCTURE_RULESET
+2. TAXONOMY_LEARNING_PROFILE
+3. KEY_LEARNING_DIRECTION_RULESET
+
+Voici une version propre à soumettre à Replit.
+
+1. KEY_STRUCTURE_RULESET
+
+Rôle :
+
+Dire sur quoi KEY_STRUCTURE se base pour valider, élaguer et recadrer Taxonomy.
+Règle KS-1 — Sujet instance du Sous-domaine
+
+Un Sujet doit être une instance réelle du Sous-domaine.
+
+Domaine : Géographie
+Sous-domaine : Capitales
+
+PASS :
+Paris
+Tokyo
+Ottawa
+
+FAIL :
+Ville européenne
+Capitale française
+Pays
+Europe
+
+Motif :
+
+SUBJECT_NOT_INSTANCE_OF_SUBDOMAIN
+Règle KS-2 — Sujet ni trop large ni trop étroit
+
+Le Sujet ne doit pas absorber le Sous-domaine ni être déjà une question déguisée.
+
+FAIL :
+Capitale de la France
+Ville la plus connue d’Europe
+Pays avec capitale célèbre
+
+Motif :
+
+SUBJECT_NOT_MINIMAL
+Règle KS-3 — Idée Dominante = axe minimal
+
+Une Idée Dominante doit être courte, stable, comparable.
+
+PASS :
+Centralisation
+Administration
+Rayonnement
+Statut
+
+FAIL :
+Capitale de la France
+Paris est une ville importante
+La ville est connue pour sa tour Eiffel
+
+Motif :
+
+DOMINANT_IDEA_NOT_MINIMAL
+Règle KS-4 — Idée Dominante non absorbée
+
+L’Idée Dominante ne doit pas être déjà contenue dans le Sous-domaine ou le Sujet.
+
+Sous-domaine : Capitales
+Sujet : Paris
+Idée : Capitale
+
+FAIL
+
+Motif :
+
+DOMINANT_IDEA_ABSORBED_BY_PARENT
+Règle KS-5 — Égrainage progressif
+
+Chaque niveau doit ajouter une précision réelle :
+
+Domaine
+→ Sous-domaine
+→ Sujet
+→ Idées Dominantes
+
+Exemple valide :
+
+Géographie
+→ Capitales
+→ Paris
+→ Centralisation
+
+Exemple faible :
+
+Géographie
+→ Capitales
+→ Paris
+→ Capitale
+
+Motif :
+
+INSUFFICIENT_GRAINING
+Règle KS-6 — Adéquation au Depth
+
+Plus le Depth est élevé, plus l’égrainage doit être précis.
+
+Depth 2 :
+Paris → Capitale peut passer.
+
+Depth 4 :
+Paris → Capitale échoue.
+
+Depth 8 :
+Paris → Centralisation peut être trop faible.
+Il faut un axe plus spécialisé.
+
+Motif :
+
+INSUFFICIENT_GRAINING_FOR_DEPTH
+Règle KS-7 — 5 Idées Dominantes valides
+
+Un Sujet actif doit avoir exactement :
+
+5 Idées Dominantes valides
+
+Sinon :
+
+Sujet non prêt pour QUESTIONINTENT
+
+Motif :
+
+INSUFFICIENT_VALID_DOMINANT_IDEAS
+Règle KS-8 — Capacité structurelle
+
+Taxonomy doit fournir :
+
+capacité_attendue
+capacité_produite
+
+KEY_STRUCTURE calcule :
+
+capacité_valide
+taux_élagage
+
+Si trop peu est produit ou trop est rejeté :
+
+recadrage Taxonomy
+
+Motifs :
+
+PRODUCTION_DEFICIT
+QUALITY_DEFICIT
+STRUCTURAL_COLLAPSE
+2. TAXONOMY_LEARNING_PROFILE
+
+Rôle :
+
+Permettre à Taxonomy d’apprendre des recadrages de KEY_STRUCTURE.
+
+Structure proposée :
+
+{
+  "domain": "Géographie",
+  "sub_domain": "Capitales",
+  "depth": 4,
+  "recadrage_history": [
+    {
+      "reason": "SUBJECTS_TOO_GENERIC",
+      "action": "INCREASE_SPECIALIZATION",
+      "count": 3
+    },
+    {
+      "reason": "DOMINANT_IDEAS_TOO_CLOSE_TO_SUBJECT",
+      "action": "INCREASE_GRAINING_DISTANCE",
+      "count": 2
+    }
+  ],
+  "last_taxonomy_instruction": "INCREASE_SPECIALIZATION"
+}
+Comment Taxonomy l’utilise
+
+Avant de produire un Sous-domaine déjà connu, Taxonomy lit son profil.
+
+Exemple :
+
+Historique :
+SUBJECTS_TOO_GENERIC x3
+
+Alors Taxonomy ajuste :
+
+éviter les sujets trop larges
+favoriser des entités précises
+forcer des sujets instances du sous-domaine
+Actions possibles
+INCREASE_SPECIALIZATION
+→ produire des Sujets plus précis
+
+WIDEN_SUBDOMAIN
+→ Sous-domaine trop étroit, élargir légèrement
+
+INCREASE_GRAINING_DISTANCE
+→ Idées Dominantes trop proches du Sujet
+
+ENFORCE_MINIMAL_FORMAT
+→ réduire les phrases, garder axes courts
+
+RECENTER_SUBDOMAIN_CONSTRUCTION
+→ Sous-domaine mal cadré
+
+ALIGN_TO_DEPTH_EXPECTATION
+→ égrainage pas assez profond pour le Depth
+3. KEY_LEARNING_DIRECTION_RULESET
+
+Rôle :
+
+Valider la direction pédagogique :
+Sous-domaine + Sujet + Idée Dominante
+Règle KLD-1 — Sujet ≠ Idée Dominante
+Sujet : Paris
+Idée : Paris
+
+FAIL
+
+Motif :
+
+INVALID_MINIMAL_PAIR
+Règle KLD-2 — Paire directe
+Paris + Capitale
+
+déjà utilisée dans le même contexte :
+
+FAIL
+
+Motif :
+
+DIRECT_PAIR_CONTEXT_DUPLICATE
+Règle KLD-3 — Paire inversée
+Capitale + Paris
+
+si équivalent à :
+
+Paris + Capitale
+
+Motif :
+
+REVERSED_PAIR_CONTEXT_DUPLICATE
+Règle KLD-4 — Équivalences métier
+Capitale ≈ Statut
+Chef-lieu ≈ Capitale administrative
+
+Donc :
+
+Paris + Capitale
+Paris + Statut
+
+peuvent entrer en collision selon le contexte.
+
+Motif :
+
+CONCEPTUAL_COLLISION
+Règle KLD-5 — Context map
+
+Si le Sous-domaine change, ce n’est pas automatiquement PASS.
+
+Sous-domaine A + Paris + Capitale
+Sous-domaine B + Paris + Capitale
+
+PASS seulement si :
+
+context_map déclare les contextes distincts
+
+Sinon :
+
+FAIL
+
+Motif :
+
+CONTEXT_NOT_DISTINCT
+Règle KLD-6 — Proximité trop forte
+
+Si la paire est trop proche d’une paire existante :
+
+PAIR_TOO_CLOSE_TO_EXISTING
+
+Seuil proposé :
+
+0.85
+
+mais configurable.
+
+Résumé à envoyer à Replit
+Avant QUESTIONINTENT, il manque trois règles officielles :
+
+1. KEY_STRUCTURE_RULESET
+Définit comment KEY_STRUCTURE valide et élague :
+- sujets instances du sous-domaine
+- sujets minimaux
+- idées dominantes minimales
+- idées non absorbées
+- égrainage progressif
+- adéquation au Depth
+- 5 idées valides par sujet actif
+- capacité structurelle
+
+2. TAXONOMY_LEARNING_PROFILE
+Permet à Taxonomy d’apprendre des recadrages :
+- raison dominante
+- action demandée
+- historique par domaine/sous-domaine/depth
+- ajustement de génération future
+
+3. KEY_LEARNING_DIRECTION_RULESET
+Définit les règles anti-répétition pédagogique :
+- sujet ≠ idée dominante
+- paire directe
+- paire inversée
+- équivalences métier
+- context_map
+- proximité trop forte
+
+Objectif :
+KEY_STRUCTURE ne doit jamais juger arbitrairement.
+Il doit appliquer un ruleset clair.
+Taxonomy ne doit jamais recevoir un simple FAIL.
+Il doit recevoir un recadrage actionnable.

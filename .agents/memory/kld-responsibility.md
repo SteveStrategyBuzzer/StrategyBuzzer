@@ -41,3 +41,12 @@ Résolution CONTEXT_CHECK (paire directe/inversée/équivalente/proche, sous-dom
 - sinon → FAIL CONTEXT_NOT_DISTINCT
 
 Récapitulatif verrouillé : KLD = garde anti-répétition de direction pédagogique ; travaille uniquement sur Sous-domaine + Sujet + Idée Dominante ; ne connaît ni question, ni réponse, ni Saviez-vous ; ne touche pas knowledge_frequency ; equivalence_map (équivalences métier) + context_map (arbitrage sous-domaines) ; 100% déterministe, sans IA ; sortie uniquement PASS/FAIL ; seuil proximité départ 0.85.
+
+## KEY_LEARNING_DIRECTION_RULESET (VALIDÉ — codifie les règles ci-dessus)
+- KLD-1 Sujet ≠ Idée Dominante (Paris+Paris✗). Motif INVALID_MINIMAL_PAIR.
+- KLD-2 Paire directe déjà utilisée dans le même contexte → Motif DIRECT_PAIR_CONTEXT_DUPLICATE.
+- KLD-3 Paire inversée équivalente à une existante → Motif REVERSED_PAIR_CONTEXT_DUPLICATE.
+- KLD-4 Équivalences métier (Capitale≈Statut, Chef-lieu≈Capitale administrative) → Motif CONCEPTUAL_COLLISION.
+- KLD-5 Sous-domaine différent ≠ PASS auto ; PASS seulement si context_map déclare les contextes distincts → sinon Motif CONTEXT_NOT_DISTINCT.
+- KLD-6 Proximité trop forte → Motif PAIR_TOO_CLOSE_TO_EXISTING. Seuil 0.85, configurable.
+Identique au contrat v3 verrouillé : ce ruleset ne fait que numéroter/expliciter les règles, sans rien changer.

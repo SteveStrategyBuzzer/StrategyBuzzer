@@ -71,6 +71,30 @@ Catalogue reason → target_zone → taxonomy_action :
 - PRODUCTION_DEFICIT → SUB_DOMAIN → INCREASE_PRODUCTION_VOLUME
 - STRUCTURAL_COLLAPSE → SUB_DOMAIN → RECENTER_SUBDOMAIN_CONSTRUCTION  (PAS de REBUILD)
 
+## KEY_STRUCTURE_RULESET (VALIDÉ — base de validation/élagage)
+But : KEY_STRUCTURE ne juge JAMAIS arbitrairement ; il applique ce ruleset. Chaque règle a un motif d'item.
+- KS-1 Sujet = instance réelle du Sous-domaine (Capitales→Paris✓ ; "Ville européenne"/"Pays"✗). Motif SUBJECT_NOT_INSTANCE_OF_SUBDOMAIN.
+- KS-2 Sujet ni trop large ni question déguisée ("Capitale de la France"✗). Motif SUBJECT_NOT_MINIMAL.
+- KS-3 Idée Dominante = axe minimal, court, stable, comparable (Centralisation✓ ; phrase✗). Motif DOMINANT_IDEA_NOT_MINIMAL.
+- KS-4 Idée Dominante non absorbée par parent (Capitales/Paris/Idée="Capitale"✗). Motif DOMINANT_IDEA_ABSORBED_BY_PARENT.
+- KS-5 Égrainage progressif : chaque niveau ajoute une précision réelle. Motif INSUFFICIENT_GRAINING.
+- KS-6 Adéquation au Depth : plus le Depth monte, plus l'égrainage doit être précis. Motif INSUFFICIENT_GRAINING_FOR_DEPTH.
+- KS-7 Sujet actif = EXACTEMENT 5 Idées Dominantes valides, sinon non prêt pour QUESTIONINTENT. Motif INSUFFICIENT_VALID_DOMINANT_IDEAS.
+- KS-8 Capacité structurelle (Taxonomy fournit attendue+produite ; KS calcule valide+taux_élagage). Motifs PRODUCTION_DEFICIT / QUALITY_DEFICIT / STRUCTURAL_COLLAPSE.
+
+Pont motif d'item KS → dominant_failure_reason du recadrage (à confirmer) :
+- SUBJECT_NOT_INSTANCE_OF_SUBDOMAIN / sujet trop large → SUBJECTS_TOO_GENERIC
+- SUBJECT_NOT_MINIMAL (question déguisée / trop étroit) → SUBJECTS_TOO_SPECIFIC ou FORMAT_NOT_MINIMAL
+- DOMINANT_IDEA_NOT_MINIMAL → FORMAT_NOT_MINIMAL (ENFORCE_MINIMAL_FORMAT)
+- DOMINANT_IDEA_ABSORBED_BY_PARENT / INSUFFICIENT_GRAINING → DOMINANT_IDEAS_TOO_CLOSE_TO_SUBJECT
+- INSUFFICIENT_GRAINING_FOR_DEPTH → DEPTH_PRECISION_MISMATCH / DOMINANT_IDEAS_TOO_SHALLOW
+- INSUFFICIENT_VALID_DOMINANT_IDEAS → bloque QUESTIONINTENT (sujet non prêt, pas un recadrage capacité)
+- PRODUCTION_DEFICIT / QUALITY_DEFICIT / STRUCTURAL_COLLAPSE → identiques côté recadrage capacité
+
+## INCOHÉRENCES DE NOMMAGE À TRANCHER (non figées)
+1. Action depth : recadrage catalog = `ALIGN_TO_DEPTH_PROFILE` ; TAXONOMY_LEARNING_PROFILE = `ALIGN_TO_DEPTH_EXPECTATION`. → choisir UN nom unique.
+2. Deux niveaux de motif coexistent : motifs d'item KS (granulaires) vs dominant_failure_reason du recadrage (agrégés). Le pont ci-dessus doit être validé pour éviter tout jugement flou.
+
 ## Frontière verrouillée
 ```
 KEY_STRUCTURE   = validation + élagage → arbre propre (PASS / FAIL)
