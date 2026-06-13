@@ -1,0 +1,62 @@
+Evaluating ruleset consistency (22 seconds)
+I need to review and integrate three rulesets that the user has provided—two for the key-structure file and one for the kld-responsibility file—and lock them into memory before proceeding.
+
+Now I'm checking these rulesets for consistency with the contracts already locked. The KEY_STRUCTURE_RULESET items KS-1 through KS-8 align with version 4, and KS-7's requirement for exactly 5 valid dominant ideas matches what we established earlier. But I'm noticing a naming inconsistency: the recadrage catalog uses ALIGN_TO_DEPTH_PROFILE, while the TAXONOMY_LEARNING_PROFILE actions reference ALIGN_TO_DEPTH_EXPECTATION, and there's also DEPTH_PRECISION_MISMATCH mapping to the same action. The new KS ruleset introduces motifs like INSUFFICIENT_GRAINING_FOR_DEPTH, so I need to clarify how these map together and resolve the terminology conflict.
+
+I'm seeing there are actually two layers of motif vocabulary here: the KS-rules generate granular per-item rejection motifs at validation time, while the recadrage report aggregates those into dominant failure reasons from the catalog. I need to establish the mapping between them—for instance, SUBJECT_NOT_INSTANCE_OF_SUBDOMAIN or overly broad subjects should map to SUBJECTS_TOO_GENERIC, and SUBJECT_NOT_MINIMAL cases like disguised questions should map to SUBJECTS_TOO_SPECIFIC. I'm flagging two naming inconsistencies that need alignment: ALIGN_TO_DEPTH_EXPECTATION versus ALIGN_TO_DEPTH_PROFILE should be unified, and I need to establish an explicit bridge between the KS per-item motifs and the recadrage dominant_failure_reasons. The KLD ruleset (KLD-1 through KLD-6) aligns with the locked v3 version, with KLD-1 now formally capturing the INVALID_MINIMAL_PAIR rule where Subject ≠ Dominant Idea. Rather than over-engineering, I'll lock these rulesets to memory and surface these two alignment points for the user to decide, then plan to integrate the rule codes into the KLD file and create documentation for the key structure responsibility and taxonomy learning profile.
+
+Bonne étape — ces 3 rulesets verrouillent le « comment » avant QUESTIONINTENT. Je vais les intégrer en mémoire, mais d'abord je relis les fichiers concernés pour brancher proprement et repérer les incohérences de nommage avec ce qui est déjà figé.
+
+
+Show less
+
+Opened kld-responsibility.md
+
+Opened MEMORY.md
+
+Analyzing ruleset naming inconsistencies (6 seconds)
+I'm loading the three rulesets into memory and noting a couple of naming inconsistencies I've spotted—one rule appears as ALIGN_TO_DEPTH_EXPECTATION in the taxonomy learning profile but ALIGN_TO_DEPTH_PROFILE in the recadrage catalog, and there's also an incomplete reference to KS per-item metrics that I need to clarify.
+
+Now I'm mapping the bridge between the IFS and recadrage dominant failure reasons, then planning my edits: I'll add the KS_RULESET codes (KS-1 through KS-8) with a motif-to-recadrage bridge in the key-structure file, create a new taxonomy-learning-profile.md file and update the index, and formalize the KLD_RULESET with explicit rule codes (KLD-1 through KLD-6). The KLD file already has all the reasons documented, so I'm mainly adding explicit numbering for traceability and inserting the ruleset block after the recadrage catalog section.
+
+Tout est cohérent avec les contrats déjà figés. J'intègre les 3 rulesets et je signale 2 incohérences de nommage à trancher. J'écris en mémoire.
+
+
+Show less
+
+Edited key-structure-responsibility.md
+
+Created taxonomy-learning-profile.md
+
+Edited kld-responsibility.md
+
+Updating MEMORY.md index
+I need to update the MEMORY.md index to include the new taxonomy-learning-profile.md file and modify the key-structure entries to reference rulesets.
+
+Reste à indexer le nouveau fichier en mémoire.
+
+
+Show less
+
+Edited MEMORY.md
+
+Deciding naming conventions for components
+All three rulesets are now integrated and saved. I should give the user a concise summary highlighting the two naming decisions that still need to be made, and since this is spec-only work, no code review is necessary.
+
+Les 3 rulesets sont figés et indexés en mémoire. Ils sont alignés avec les contrats déjà verrouillés (KLD v3, KEY_STRUCTURE v4, recadrage report).
+
+Ce que j'ai enregistré :
+
+Ruleset	Contenu	Statut
+KEY_STRUCTURE_RULESET	KS-1 → KS-8 (instance, minimal, idée minimale, non-absorption, égrainage, adéquation Depth, 5 idées exactes, capacité) + motif par règle	✅ figé
+TAXONOMY_LEARNING_PROFILE	mémoire longue (domain+sub_domain+depth), recadrage_history, last_taxonomy_instruction, actions d'ajustement	✅ figé (nouveau fichier)
+KEY_LEARNING_DIRECTION_RULESET	KLD-1 → KLD-6 — pure codification de la v3 déjà verrouillée, rien changé	✅ figé
+Principe respecté partout : KEY_STRUCTURE applique un ruleset clair (jamais de jugement arbitraire), et Taxonomy ne reçoit jamais un simple FAIL — toujours un recadrage actionnable.
+
+2 incohérences de nommage à trancher avant QUESTIONINTENT (j'ai laissé les deux noms en mémoire, marqués « à trancher ») :
+
+Action de profondeur — le catalogue de recadrage dit ALIGN_TO_DEPTH_PROFILE, mais le learning profile dit ALIGN_TO_DEPTH_EXPECTATION. Lequel on garde comme nom officiel unique ?
+
+Deux niveaux de motifs — les motifs d'item KS (granulaires : SUBJECT_NOT_INSTANCE_OF_SUBDOMAIN, DOMINANT_IDEA_ABSORBED_BY_PARENT…) vs les dominant_failure_reason agrégés du recadrage (SUBJECTS_TOO_GENERIC…). J'ai proposé un pont entre les deux (chaque motif item → reason de recadrage). Valides-tu ce pont tel quel, ou veux-tu l'ajuster ?
+
+Réponds à ces 2 points et tout le maillon taxonomique est totalement clos — ensuite on enchaîne sur QUESTIONINTENT quand tu dis go.
