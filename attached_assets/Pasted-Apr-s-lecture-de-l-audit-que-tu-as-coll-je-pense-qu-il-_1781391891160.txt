@@ -1,0 +1,229 @@
+Après lecture de l'audit que tu as collé , je pense qu'il y a 3 décisions à prendre immédiatement et 4 que je validerais telles quelles.
+
+Décision 1 — Nom officiel
+
+Je garderais :
+
+ALIGN_TO_DEPTH_EXPECTATION
+
+Pourquoi ?
+
+Parce que tout le système tourne autour de :
+
+Depth demandé
+↓
+niveau de précision attendu
+
+Pas autour d'un "profil" de Depth.
+
+Donc :
+
+ALIGN_TO_DEPTH_EXPECTATION
+
+est plus cohérent avec :
+
+INSUFFICIENT_GRAINING_FOR_DEPTH
+
+et avec le contrat de KEY_STRUCTURE.
+
+Décision 2 — KS-6
+
+Je ne garderais pas :
+
+DEPTH_PRECISION_MISMATCH
+
+comme reason principale.
+
+Je garderais :
+
+DOMINANT_IDEAS_TOO_SHALLOW
+
+Pourquoi ?
+
+Parce que c'est observable.
+
+Exemple :
+
+Depth 8
+
+Sujet : Paris
+
+Idée :
+Capitale
+
+Le problème visible est :
+
+Idée trop superficielle
+
+Pas :
+
+précision non alignée
+
+L'action devient :
+
+ALIGN_TO_DEPTH_EXPECTATION
+
+Donc :
+
+Reason :
+DOMINANT_IDEAS_TOO_SHALLOW
+
+Action :
+ALIGN_TO_DEPTH_EXPECTATION
+Décision 3 — KS-1 vs KS-2
+
+Je les séparerais clairement.
+
+KS-1
+SUBJECT_NOT_INSTANCE_OF_SUBDOMAIN
+
+Exemple :
+
+Sous-domaine : Capitales
+
+Sujet :
+Europe
+
+FAIL
+
+Car ce n'est pas une capitale.
+
+KS-2
+SUBJECT_NOT_MINIMAL
+
+Exemple :
+
+Sous-domaine : Capitales
+
+Sujet :
+Capitale de la France
+
+FAIL
+
+Car c'est déjà une affirmation.
+
+Donc :
+
+KS-1
+= mauvais type de sujet
+
+KS-2
+= sujet mal construit
+Finding 4
+
+Je valide.
+
+KS-4
+KS-5
+↓
+DOMINANT_IDEAS_TOO_CLOSE_TO_SUBJECT
+↓
+INCREASE_GRAINING_DISTANCE
+
+C'est cohérent.
+
+Finding 5
+
+Je valide fortement.
+
+QUALITY_DEFICIT
+
+ne doit jamais être un dominant_failure_reason.
+
+C'est un indicateur.
+
+Donc :
+
+{
+  "deficits": {
+    "quality_deficit": true
+  }
+}
+
+mais jamais :
+
+dominant_failure_reason = QUALITY_DEFICIT
+Finding 6
+
+Je valide.
+
+KS-7 n'est pas un problème Taxonomy.
+
+C'est un état.
+
+Sujet
+↓
+4 idées valides
+↓
+BLOCK
+
+Le vrai problème est déjà porté par :
+
+DOMINANT_IDEAS_TOO_SHALLOW
+DOMINANT_IDEA_ABSORBED_BY_PARENT
+...
+Finding 7
+
+Je valide le pont.
+
+Mais je veux qu'il soit explicite.
+
+Exemple :
+
+SUBJECT_NOT_INSTANCE_OF_SUBDOMAIN
+↓
+SUBJECTS_TOO_GENERIC
+
+SUBJECT_NOT_MINIMAL
+↓
+SUBJECTS_TOO_SPECIFIC
+
+DOMINANT_IDEA_ABSORBED_BY_PARENT
+↓
+DOMINANT_IDEAS_TOO_CLOSE_TO_SUBJECT
+
+INSUFFICIENT_GRAINING_FOR_DEPTH
+↓
+DOMINANT_IDEAS_TOO_SHALLOW
+
+Ainsi le moteur est totalement traçable.
+
+Conclusion
+
+Je répondrais à Replit :
+
+Je valide :
+
+- ALIGN_TO_DEPTH_EXPECTATION
+- DOMINANT_IDEAS_TOO_SHALLOW comme reason canonique KS-6
+- KS-1 = mauvais type de Sujet
+- KS-2 = Sujet mal construit
+- Finding 4 validé
+- Finding 5 validé
+- Finding 6 validé
+- Finding 7 validé
+
+Je veux maintenant figer officiellement :
+
+KEY_STRUCTURE_MOTIF_BRIDGE
+
+qui mappe :
+
+motif KS
+→ dominant_failure_reason
+→ taxonomy_action
+
+afin que toute la chaîne soit entièrement déterministe et traçable.
+
+Une fois ce bridge figé :
+
+KEY_STRUCTURE_RULESET
+→ KEY_STRUCTURE_EVALUATOR
+→ KS_DIAGNOSTICS
+→ KEY_STRUCTURE_MOTIF_BRIDGE
+→ KEY_STRUCTURE_RECADRAGE_REPORT
+→ TAXONOMY_LEARNING_PROFILE
+
+sera considéré comme verrouillé.
+
+Je considère que KEY_STRUCTURE_MOTIF_BRIDGE est la dernière pièce manquante avant de passer à QUESTIONINTENT.

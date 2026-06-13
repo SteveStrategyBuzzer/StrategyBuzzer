@@ -32,8 +32,6 @@ Ex. historique SUBJECTS_TOO_GENERIC x3 → éviter sujets trop larges, favoriser
 - INCREASE_GRAINING_DISTANCE → Idées Dominantes trop proches du Sujet
 - ENFORCE_MINIMAL_FORMAT → réduire les phrases, garder axes courts
 - RECENTER_SUBDOMAIN_CONSTRUCTION → Sous-domaine mal cadré (JAMAIS reconstruire)
-- ALIGN_TO_DEPTH_* → égrainage pas assez profond pour le Depth
-
-INCOHÉRENCE À TRANCHER : ici l'action depth est nommée `ALIGN_TO_DEPTH_EXPECTATION`, mais le recadrage catalog (KEY_STRUCTURE) utilise `ALIGN_TO_DEPTH_PROFILE`. Unifier sur UN seul nom.
+- ALIGN_TO_DEPTH_EXPECTATION → égrainage pas assez profond pour le Depth (nom officiel UNIQUE, verrouillé ; ALIGN_TO_DEPTH_PROFILE supprimé)
 
 **Why:** Le ruleset existe pour que Taxonomy ne reçoive jamais un simple FAIL mais un recadrage actionnable ré-exploitable dans le temps. Le profil est la mémoire longue de cette boucle KEY_STRUCTURE→Taxonomy.

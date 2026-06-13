@@ -60,21 +60,20 @@ Q1 tranché : action principale (dominant_failure_reason + taxonomy_action) = OB
 
 Q3 tranché — examples : max 5 total ; ≥3 pour la cause dominante si possible ; 1-2 secondaires seulement si utiles. Priorité à la cause dominante.
 
-Catalogue reason → target_zone → taxonomy_action :
+Catalogue reason → target_zone → taxonomy_action (canonique, aligné sur le BRIDGE) :
 - SUBJECTS_TOO_GENERIC → SUBJECT → INCREASE_SPECIALIZATION
 - SUBJECTS_TOO_SPECIFIC → SUB_DOMAIN → WIDEN_SUBDOMAIN
+- FORMAT_NOT_MINIMAL → DOMINANT_IDEA → ENFORCE_MINIMAL_FORMAT
 - DOMINANT_IDEAS_TOO_CLOSE_TO_SUBJECT → DOMINANT_IDEA → INCREASE_GRAINING_DISTANCE
-- DOMINANT_IDEAS_TOO_SHALLOW → DOMINANT_IDEA → INCREASE_DEPTH_ALIGNMENT
-- FORMAT_NOT_MINIMAL → niveau fautif → ENFORCE_MINIMAL_FORMAT
-- INVALID_HIERARCHY → SUBJECT/DOMINANT_IDEA → REATTACH_TO_PARENT
-- DEPTH_PRECISION_MISMATCH → SUBJECT/DOMINANT_IDEA → ALIGN_TO_DEPTH_PROFILE
+- DOMINANT_IDEAS_TOO_SHALLOW → DOMINANT_IDEA → ALIGN_TO_DEPTH_EXPECTATION
 - PRODUCTION_DEFICIT → SUB_DOMAIN → INCREASE_PRODUCTION_VOLUME
 - STRUCTURAL_COLLAPSE → SUB_DOMAIN → RECENTER_SUBDOMAIN_CONSTRUCTION  (PAS de REBUILD)
+Supprimés : INVALID_HIERARCHY/REATTACH_TO_PARENT (aucune règle KS ne les produit) ; DEPTH_PRECISION_MISMATCH (remplacé par DOMINANT_IDEAS_TOO_SHALLOW). QUALITY_DEFICIT = flag deficits{} uniquement ; KS-7 = BLOCK readiness (ni reason ni action).
 
 ## KEY_STRUCTURE_RULESET (VALIDÉ — base de validation/élagage)
 But : KEY_STRUCTURE ne juge JAMAIS arbitrairement ; il applique ce ruleset. Chaque règle a un motif d'item.
 - KS-1 Sujet = instance réelle du Sous-domaine (Capitales→Paris✓ ; "Ville européenne"/"Pays"✗). Motif SUBJECT_NOT_INSTANCE_OF_SUBDOMAIN.
-- KS-2 Sujet ni trop large ni question déguisée ("Capitale de la France"✗). Motif SUBJECT_NOT_MINIMAL.
+- KS-2 Sujet MAL CONSTRUIT = déjà une affirmation/question déguisée ("Capitale de la France"✗). KS-1 = mauvais TYPE de sujet ; KS-2 = mauvaise CONSTRUCTION. Motif SUBJECT_NOT_MINIMAL.
 - KS-3 Idée Dominante = axe minimal, court, stable, comparable (Centralisation✓ ; phrase✗). Motif DOMINANT_IDEA_NOT_MINIMAL.
 - KS-4 Idée Dominante non absorbée par parent (Capitales/Paris/Idée="Capitale"✗). Motif DOMINANT_IDEA_ABSORBED_BY_PARENT.
 - KS-5 Égrainage progressif : chaque niveau ajoute une précision réelle. Motif INSUFFICIENT_GRAINING.
@@ -82,14 +81,20 @@ But : KEY_STRUCTURE ne juge JAMAIS arbitrairement ; il applique ce ruleset. Chaq
 - KS-7 Sujet actif = EXACTEMENT 5 Idées Dominantes valides, sinon non prêt pour QUESTIONINTENT. Motif INSUFFICIENT_VALID_DOMINANT_IDEAS.
 - KS-8 Capacité structurelle (Taxonomy fournit attendue+produite ; KS calcule valide+taux_élagage). Motifs PRODUCTION_DEFICIT / QUALITY_DEFICIT / STRUCTURAL_COLLAPSE.
 
-Pont motif d'item KS → dominant_failure_reason du recadrage (à confirmer) :
-- SUBJECT_NOT_INSTANCE_OF_SUBDOMAIN / sujet trop large → SUBJECTS_TOO_GENERIC
-- SUBJECT_NOT_MINIMAL (question déguisée / trop étroit) → SUBJECTS_TOO_SPECIFIC ou FORMAT_NOT_MINIMAL
-- DOMINANT_IDEA_NOT_MINIMAL → FORMAT_NOT_MINIMAL (ENFORCE_MINIMAL_FORMAT)
-- DOMINANT_IDEA_ABSORBED_BY_PARENT / INSUFFICIENT_GRAINING → DOMINANT_IDEAS_TOO_CLOSE_TO_SUBJECT
-- INSUFFICIENT_GRAINING_FOR_DEPTH → DEPTH_PRECISION_MISMATCH / DOMINANT_IDEAS_TOO_SHALLOW
-- INSUFFICIENT_VALID_DOMINANT_IDEAS → bloque QUESTIONINTENT (sujet non prêt, pas un recadrage capacité)
-- PRODUCTION_DEFICIT / QUALITY_DEFICIT / STRUCTURAL_COLLAPSE → identiques côté recadrage capacité
+## KEY_STRUCTURE_MOTIF_BRIDGE (VERROUILLÉ — map déterministe motif KS → reason → action)
+Dernière pièce avant QUESTIONINTENT. Map 1↔1, chaîne entièrement traçable :
+- SUBJECT_NOT_INSTANCE_OF_SUBDOMAIN (KS-1) → SUBJECTS_TOO_GENERIC → INCREASE_SPECIALIZATION
+- SUBJECT_NOT_MINIMAL (KS-2) → SUBJECTS_TOO_SPECIFIC → WIDEN_SUBDOMAIN
+- DOMINANT_IDEA_NOT_MINIMAL (KS-3) → FORMAT_NOT_MINIMAL → ENFORCE_MINIMAL_FORMAT
+- DOMINANT_IDEA_ABSORBED_BY_PARENT (KS-4) → DOMINANT_IDEAS_TOO_CLOSE_TO_SUBJECT → INCREASE_GRAINING_DISTANCE
+- INSUFFICIENT_GRAINING (KS-5) → DOMINANT_IDEAS_TOO_CLOSE_TO_SUBJECT → INCREASE_GRAINING_DISTANCE
+- INSUFFICIENT_GRAINING_FOR_DEPTH (KS-6) → DOMINANT_IDEAS_TOO_SHALLOW → ALIGN_TO_DEPTH_EXPECTATION
+- PRODUCTION_DEFICIT (KS-8) → PRODUCTION_DEFICIT → INCREASE_PRODUCTION_VOLUME
+- STRUCTURAL_COLLAPSE (KS-8) → STRUCTURAL_COLLAPSE → RECENTER_SUBDOMAIN_CONSTRUCTION
+NON mappés (volontaire) :
+- INSUFFICIENT_VALID_DOMINANT_IDEAS (KS-7) → BLOCK readiness, AUCUNE action Taxonomy (déjà porté par KS-3..6).
+- QUALITY_DEFICIT (KS-8) → FLAG deficits{} uniquement, jamais reason/action.
+Chaîne verrouillée : RULESET → EVALUATOR → KS_DIAGNOSTICS → MOTIF_BRIDGE → RECADRAGE_REPORT → TAXONOMY_LEARNING_PROFILE.
 
 ## KEY_STRUCTURE_EVALUATOR (VALIDÉ — couche à implanter, n'existe pas en code)
 Gouvernance : couche DÉFINIE maintenant, implantée plus tard. Chaîne officielle :
@@ -113,14 +118,14 @@ Priorisation multi-motifs sur un même élément → 1 motif PRIMAIRE (le plus f
 - Sujet : KS-1 (instance) → KS-2 (minimal)
 - Idée : KS-3 (format) → KS-4 (absorption) → KS-5 (égrainage) → KS-6 (égrainage/Depth)
 
-## AUDIT CHAÎNE + INCOHÉRENCES À TRANCHER (non figées)
-1. Action depth : recadrage catalog = `ALIGN_TO_DEPTH_PROFILE` ; TAXONOMY_LEARNING_PROFILE = `ALIGN_TO_DEPTH_EXPECTATION`. → choisir UN nom unique.
-2. KS-6 mappe vers DEUX reasons possibles (DEPTH_PRECISION_MISMATCH vs DOMINANT_IDEAS_TOO_SHALLOW) → choisir 1 reason + 1 action canonique.
-3. KS-2 (SUBJECT_NOT_MINIMAL) couvre 2 dérives opposées : "trop large" (≈KS-1 generic) vs "question déguisée/trop spécifique" → clarifier frontière KS-1/KS-2 ; "trop spécifique" → SUBJECTS_TOO_SPECIFIC (WIDEN_SUBDOMAIN).
-4. KS-4 et KS-5 collapsent sur la même reason DOMINANT_IDEAS_TOO_CLOSE_TO_SUBJECT / INCREASE_GRAINING_DISTANCE (OK, à confirmer comme voulu).
-5. QUALITY_DEFICIT n'est PAS un dominant_failure_reason : c'est un FLAG dans deficits{} du report ; la reason réelle = motif per-item dominant. À ne pas mettre dans le catalogue d'actions.
-6. KS-7 (INSUFFICIENT_VALID_DOMINANT_IDEAS) = porte de READINESS (BLOCK), pas un recadrage Taxonomy autonome : les idées manquantes viennent déjà des REJECT KS-3..6 déjà recadrés. Conséquence dérivée, pas une action séparée.
-7. Deux niveaux de motif coexistent volontairement : motifs d'item KS (granulaires, evaluator) vs dominant_failure_reason (agrégés, report). Pont à valider (section pont ci-dessus).
+## AUDIT CHAÎNE — RÉSOLU (7 décisions verrouillées)
+1. Action depth → `ALIGN_TO_DEPTH_EXPECTATION` (nom unique). `ALIGN_TO_DEPTH_PROFILE` supprimé.
+2. KS-6 → reason canonique `DOMINANT_IDEAS_TOO_SHALLOW`, action `ALIGN_TO_DEPTH_EXPECTATION`. `DEPTH_PRECISION_MISMATCH` supprimé.
+3. KS-1 = mauvais TYPE de Sujet (→ SUBJECTS_TOO_GENERIC) ; KS-2 = Sujet MAL CONSTRUIT/affirmation (→ SUBJECTS_TOO_SPECIFIC → WIDEN_SUBDOMAIN). Séparés.
+4. KS-4 + KS-5 → DOMINANT_IDEAS_TOO_CLOSE_TO_SUBJECT → INCREASE_GRAINING_DISTANCE. Validé.
+5. QUALITY_DEFICIT = flag deficits{} uniquement, jamais dominant_failure_reason. Validé.
+6. KS-7 = état BLOCK (readiness), jamais une action Taxonomy. Validé.
+7. Pont rendu explicite et figé → KEY_STRUCTURE_MOTIF_BRIDGE (section ci-dessus).
 
 ## Frontière verrouillée
 ```
