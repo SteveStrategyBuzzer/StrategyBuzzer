@@ -1,0 +1,167 @@
+Je corrigerais plusieurs choses dans ce que Replit propose.
+
+Q1 — Le plancher absolu existe
+
+Je ne supprimerais pas le plancher.
+
+Parce qu'un cas comme :
+
+Depth 4
+Taxonomy produit 15 Sujets
+KEY_STRUCTURE rejette 0
+Taux rejet = 0 %
+
+ne peut pas être considéré comme sain.
+
+Le problème n'est pas le rejet.
+
+Le problème est :
+
+Taxonomy n'a pas produit assez de matière.
+
+Donc il faut deux contrôles séparés :
+
+1. Capacité structurelle attendue
+2. Taux d'élagage
+Q2 — Les cibles 50 / 40 / 35 / 30
+
+Je ne les figerais pas encore.
+
+Parce que tu viens justement d'introduire :
+
+Capacité structurelle du Sous-domaine
+
+et certains Depth 10 pourraient légitimement produire :
+
+22 Sujets
+
+alors qu'un autre pourrait produire :
+
+34 Sujets
+
+Donc pour l'instant je laisserais :
+
+Depth 2-7
+→ cible ≈ 50
+
+Depth 8-10
+→ décroissance progressive
+
+sans verrouiller les chiffres exacts.
+
+Q3 — Portée
+
+Je pense que c'est clair :
+
+1 passe KEY_STRUCTURE
+=
+1 Sous-domaine
+
+Parce que toute sa logique :
+
+Sujets
+Idées Dominantes
+Capacité
+Élagage
+
+est attachée à un Sous-domaine.
+
+Q4 — FAIL
+
+Je répondrais :
+
+Seulement le Sous-domaine concerné.
+
+Pas le batch complet.
+
+Sinon un mauvais Sous-domaine bloquerait tout un Domaine.
+
+Correction majeure
+
+Je pense que la structure doit être :
+
+Taxonomy
+↓
+Production brute
+
+50 Sujets visés
+ou capacité maximale du Sous-domaine
+
+↓
+
+KEY_STRUCTURE
+
+Puis KEY_STRUCTURE mesure :
+
+capacité_attendue
+capacité_produite
+capacité_valide
+taux_élagage
+
+Exemple :
+
+Sous-domaine : Capitales
+
+capacité_attendue = 50
+produits = 50
+valides = 47
+élagués = 3
+
+PASS
+
+Autre exemple :
+
+Sous-domaine : Capitales
+
+attendue = 50
+produits = 50
+valides = 32
+élagués = 18
+
+FAIL
++
+recadrage Taxonomy
+
+Depth 10
+
+Sous-domaine très spécialisé
+
+capacité_attendue = 22
+produits = 22
+valides = 21
+élagués = 1
+
+
+PASS
+
+---
+
+Donc je pense que la vraie métrique n'est pas :
+
+```text
+nombre fixe de Sujets
+
+mais :
+
+capacité attendue du Sous-domaine
+
+qui dépend :
+
+Depth
++
+Domaine
++
+Sous-domaine
+
+Et ça, c'est probablement une information que Taxonomy devra lui fournir.
+
+La phrase que j'ajouterais au contrat est :
+
+KEY_STRUCTURE ne juge pas seulement
+le taux d'élagage.
+
+Il juge également si Taxonomy a produit
+une quantité de matière cohérente avec
+la capacité structurelle attendue du Sous-domaine.
+
+C'est plus robuste que de figer dès maintenant des nombres fixes pour tous les Sous-domaines de Depth 8 à 10.

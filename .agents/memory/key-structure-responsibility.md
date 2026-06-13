@@ -25,21 +25,22 @@ KEY_STRUCTURE = **gardien de la qualité structurelle finale**. Il reçoit la **
 - PAS d'anti-doublon pédagogique (= KLD, déjà passé).
 - Ne calcule pas knowledge_frequency (donnée taxonomy/DepthContract).
 
-## Règle de sortie — modèle TAUX DE REJET + CIBLE PAR DEPTH (officiel, seuils exacts TBD)
-KEY_STRUCTURE mesure la QUALITÉ DE PRODUCTION Taxonomy, pas un PASS binaire mou.
+## Règle de sortie — DEUX CONTRÔLES SÉPARÉS (officiel, seuils exacts TBD)
+Portée : **1 passe KEY_STRUCTURE = 1 Sous-domaine**. Un FAIL ne rejette QUE ce Sous-domaine, jamais le batch/domaine entier.
 
-Cible « noyau plein » par Depth (le volume attendu DÉCROÎT quand Depth augmente) :
-- Depth 2-7 → ≈ 50 Sujets
-- Depth 8 → ≈ 40 Sujets
-- Depth 9 → ≈ 35 Sujets
-- Depth 10 → ≈ 30 Sujets
+KEY_STRUCTURE calcule 4 métriques par Sous-domaine :
+- `capacité_attendue` — fournie par TAXONOMY, dépend de (Depth + Domaine + Sous-domaine). PAS un nombre fixe.
+- `capacité_produite` — ce que Taxonomy a réellement sorti.
+- `capacité_valide` — après élagage.
+- `taux_élagage` = élagués / produits.
 
-Bandes de taux de rejet (rejetés / produits), mêmes bandes quel que soit le Depth :
-- < 5 % rejeté → NORMAL → PASS
-- 5 %–25 % rejeté → PASS mais signal RECADRAGE à Taxonomy (dérive légère, noyau encore exploitable)
-- > 25 % rejeté → PROBLÈME MAJEUR → **FAIL le noyau** + recadrage MAJEUR de Taxonomy
+**Contrôle 1 — capacité structurelle (plancher, NON supprimé).** Taxonomy a-t-elle produit assez de matière vs `capacité_attendue` ? Ex. Depth 4, 15 produits, 0 rejet = NON sain (pas assez de matière) → FAIL/recadrage même si taux_élagage = 0.
 
-KEY_STRUCTURE ne juge plus le volume brut aux Depth élevés : il juge cohérence + égrainage + qualité des Sujets + qualité des 5 Idées. Le minimum acceptable devient progressif selon le Depth.
+**Contrôle 2 — taux d'élagage.** Bandes : <5% PASS · 5-25% PASS+signal recadrage · >25% FAIL+recadrage majeur. (Ex. 50 produits / 32 valides / 18 élagués = 36% → FAIL.)
+
+Cibles NON figées : Depth 2-7 → ≈50 ; Depth 8-10 → décroissance progressive (un Depth 10 peut légitimement valoir 22 ou 34). Ne jamais forcer 50 sur un sous-domaine ultra-spécialisé.
+
+Phrase de contrat : « KEY_STRUCTURE ne juge pas seulement le taux d'élagage ; il juge aussi si Taxonomy a produit une quantité de matière cohérente avec la capacité structurelle attendue du Sous-domaine. »
 
 ## Frontière verrouillée
 ```
