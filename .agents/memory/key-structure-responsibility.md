@@ -91,9 +91,36 @@ Pont motif d'item KS → dominant_failure_reason du recadrage (à confirmer) :
 - INSUFFICIENT_VALID_DOMINANT_IDEAS → bloque QUESTIONINTENT (sujet non prêt, pas un recadrage capacité)
 - PRODUCTION_DEFICIT / QUALITY_DEFICIT / STRUCTURAL_COLLAPSE → identiques côté recadrage capacité
 
-## INCOHÉRENCES DE NOMMAGE À TRANCHER (non figées)
+## KEY_STRUCTURE_EVALUATOR (VALIDÉ — couche à implanter, n'existe pas en code)
+Gouvernance : couche DÉFINIE maintenant, implantée plus tard. Chaîne officielle :
+KEY_STRUCTURE_RULESET → KEY_STRUCTURE_EVALUATOR → KS_DIAGNOSTICS[] → KEY_STRUCTURE_RECADRAGE_REPORT → TAXONOMY_LEARNING_PROFILE.
+
+Rôle : pur détecteur/normaliseur. Applique le RULESET, produit des motifs KS standardisés. NE produit PAS dominant_failure_reason ni taxonomy_action, n'écrit PAS le profil, ne reconstruit pas, n'élague pas lui-même (l'élagage = conséquence des REJECT). Portée 1 passe = 1 Sous-domaine. Déterministe, sans IA.
+
+Entrée : { depth, domain, sub_domain, subjects_produced[{value, dominant_ideas[]}], capacité_attendue (fournie par Taxonomy, requise KS-8), ruleset }.
+
+Sortie :
+- ks_diagnostics[] : { level, subject?(si DOMINANT_IDEA), value, rule:"KS-x", motif, severity, also?[] }
+- production_summary { capacité_attendue, capacité_produite, capacité_valide, taux_élagage }
+
+level : SUB_DOMAIN | SUBJECT | DOMINANT_IDEA (aligné sur target_zone du report).
+severity (niveau DIAGNOSTIC, distinct du report RECADRAGE/RECADRAGE_MAJEUR) :
+- REJECT → élément élagué (KS-1..KS-6)
+- BLOCK → Sujet non prêt QUESTIONINTENT (KS-7, <5 idées valides)
+- DEFICIT → Sous-domaine, capacité (KS-8)
+
+Priorisation multi-motifs sur un même élément → 1 motif PRIMAIRE (le plus fondamental) + reste dans also[] :
+- Sujet : KS-1 (instance) → KS-2 (minimal)
+- Idée : KS-3 (format) → KS-4 (absorption) → KS-5 (égrainage) → KS-6 (égrainage/Depth)
+
+## AUDIT CHAÎNE + INCOHÉRENCES À TRANCHER (non figées)
 1. Action depth : recadrage catalog = `ALIGN_TO_DEPTH_PROFILE` ; TAXONOMY_LEARNING_PROFILE = `ALIGN_TO_DEPTH_EXPECTATION`. → choisir UN nom unique.
-2. Deux niveaux de motif coexistent : motifs d'item KS (granulaires) vs dominant_failure_reason du recadrage (agrégés). Le pont ci-dessus doit être validé pour éviter tout jugement flou.
+2. KS-6 mappe vers DEUX reasons possibles (DEPTH_PRECISION_MISMATCH vs DOMINANT_IDEAS_TOO_SHALLOW) → choisir 1 reason + 1 action canonique.
+3. KS-2 (SUBJECT_NOT_MINIMAL) couvre 2 dérives opposées : "trop large" (≈KS-1 generic) vs "question déguisée/trop spécifique" → clarifier frontière KS-1/KS-2 ; "trop spécifique" → SUBJECTS_TOO_SPECIFIC (WIDEN_SUBDOMAIN).
+4. KS-4 et KS-5 collapsent sur la même reason DOMINANT_IDEAS_TOO_CLOSE_TO_SUBJECT / INCREASE_GRAINING_DISTANCE (OK, à confirmer comme voulu).
+5. QUALITY_DEFICIT n'est PAS un dominant_failure_reason : c'est un FLAG dans deficits{} du report ; la reason réelle = motif per-item dominant. À ne pas mettre dans le catalogue d'actions.
+6. KS-7 (INSUFFICIENT_VALID_DOMINANT_IDEAS) = porte de READINESS (BLOCK), pas un recadrage Taxonomy autonome : les idées manquantes viennent déjà des REJECT KS-3..6 déjà recadrés. Conséquence dérivée, pas une action séparée.
+7. Deux niveaux de motif coexistent volontairement : motifs d'item KS (granulaires, evaluator) vs dominant_failure_reason (agrégés, report). Pont à valider (section pont ci-dessus).
 
 ## Frontière verrouillée
 ```
