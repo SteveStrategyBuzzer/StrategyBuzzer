@@ -47,14 +47,18 @@ Cibles NON figées : Depth 2-7 → ≈50 ; Depth 8-10 → décroissance progress
 
 Phrase de contrat : « KEY_STRUCTURE ne juge pas seulement le taux d'élagage ; il juge aussi si Taxonomy a produit une quantité de matière cohérente avec la capacité structurelle attendue du Sous-domaine. »
 
-## KEY_STRUCTURE_RECADRAGE_REPORT (BROUILLON — à valider)
+## KEY_STRUCTURE_RECADRAGE_REPORT (VALIDÉ)
 But : transformer un rejet en instruction exploitable pour Taxonomy. 1 rapport par Sous-domaine, émis si bande ≠ 🟢.
+RÈGLE D'OR : KEY_STRUCTURE ne reconstruit JAMAIS et n'ordonne JAMAIS de reconstruction. Il donne un diagnostic actionnable ; Taxonomy reste le constructeur. → aucune action de type "REBUILD".
 
-Champs cœur (demandés) : `severity`, `dominant_failure_reason`, `target_zone`, `taxonomy_action`, `examples`.
+Champs (7, tous figés) : `severity`, `dominant_failure_reason`, `target_zone`, `taxonomy_action`, `examples`, `reason_distribution`, `secondary_actions[]`.
 En-tête : domain, sub_domain, depth, metrics(4), deficits{production_deficit, quality_deficit}.
-Support optionnel : reason_distribution{reason:count}, secondary_actions[].
 
-severity : `RECADRAGE` (🟡 élagage 5-25% ou déficit prod modéré → PASS) | `RECADRAGE_MAJEUR` (🔴 élagage >25% ou déficit critique → FAIL).
+severity (vocabulaire FR conservé) : `RECADRAGE` (🟡 élagage 5-25% ou déficit prod modéré → PASS) | `RECADRAGE_MAJEUR` (🔴 élagage >25% ou déficit critique → FAIL).
+
+Q1 tranché : action principale (dominant_failure_reason + taxonomy_action) = OBLIGATOIRE ; `secondary_actions[]` = optionnel mais RECOMMANDÉ si plusieurs dérives (Taxonomy corrige le principal d'abord, voit les secondaires pour ne pas répéter la dérive).
+
+Q3 tranché — examples : max 5 total ; ≥3 pour la cause dominante si possible ; 1-2 secondaires seulement si utiles. Priorité à la cause dominante.
 
 Catalogue reason → target_zone → taxonomy_action :
 - SUBJECTS_TOO_GENERIC → SUBJECT → INCREASE_SPECIALIZATION
@@ -65,9 +69,7 @@ Catalogue reason → target_zone → taxonomy_action :
 - INVALID_HIERARCHY → SUBJECT/DOMINANT_IDEA → REATTACH_TO_PARENT
 - DEPTH_PRECISION_MISMATCH → SUBJECT/DOMINANT_IDEA → ALIGN_TO_DEPTH_PROFILE
 - PRODUCTION_DEFICIT → SUB_DOMAIN → INCREASE_PRODUCTION_VOLUME
-- STRUCTURAL_COLLAPSE → SUB_DOMAIN → REBUILD_SUBDOMAIN
-
-À confirmer : 1 seule action dominante vs secondary_actions ; nommage severity ; cap des examples (≤5).
+- STRUCTURAL_COLLAPSE → SUB_DOMAIN → RECENTER_SUBDOMAIN_CONSTRUCTION  (PAS de REBUILD)
 
 ## Frontière verrouillée
 ```
