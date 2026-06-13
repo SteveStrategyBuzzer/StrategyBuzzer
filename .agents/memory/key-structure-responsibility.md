@@ -25,7 +25,7 @@ KEY_STRUCTURE = **gardien de la qualité structurelle finale**. Il reçoit la **
 - PAS d'anti-doublon pédagogique (= KLD, déjà passé).
 - Ne calcule pas knowledge_frequency (donnée taxonomy/DepthContract).
 
-## Règle de sortie — DEUX CONTRÔLES SÉPARÉS (officiel, seuils exacts TBD)
+## Règle de sortie — DEUX CONTRÔLES SÉPARÉS (v4 VALIDÉE, seuils de capacité ouverts)
 Portée : **1 passe KEY_STRUCTURE = 1 Sous-domaine**. Un FAIL ne rejette QUE ce Sous-domaine, jamais le batch/domaine entier.
 
 KEY_STRUCTURE calcule 4 métriques par Sous-domaine :
@@ -34,9 +34,14 @@ KEY_STRUCTURE calcule 4 métriques par Sous-domaine :
 - `capacité_valide` — après élagage.
 - `taux_élagage` = élagués / produits.
 
-**Contrôle 1 — capacité structurelle (plancher, NON supprimé).** Taxonomy a-t-elle produit assez de matière vs `capacité_attendue` ? Ex. Depth 4, 15 produits, 0 rejet = NON sain (pas assez de matière) → FAIL/recadrage même si taux_élagage = 0.
+**Contrôle 1 — capacité structurelle (plancher, NON supprimé).** Regarde LES DEUX comparaisons (S2) :
+- `capacité_produite` vs `capacité_attendue` → **déficit de PRODUCTION** (Taxonomy a-t-elle produit assez ?). Ex. attendue 50 / produite 20 / valide 20 = qualité propre mais pas assez produit.
+- `capacité_valide` vs `capacité_attendue` → **déficit de QUALITÉ après élagage**. Ex. attendue 50 / produite 50 / valide 32 = assez produit mais mauvaise qualité.
+Les deux déficits sont distincts et peuvent déclencher des recadrages Taxonomy différents.
 
 **Contrôle 2 — taux d'élagage.** Bandes : <5% PASS · 5-25% PASS+signal recadrage · >25% FAIL+recadrage majeur. (Ex. 50 produits / 32 valides / 18 élagués = 36% → FAIL.)
+
+**S1 (seuils de capacité) — OUVERTS, non figés.** Logique conservée sans chiffres définitifs : sous-production trop forte = recadrage Taxonomy ; sous-production critique = FAIL du Sous-domaine.
 
 Cibles NON figées : Depth 2-7 → ≈50 ; Depth 8-10 → décroissance progressive (un Depth 10 peut légitimement valoir 22 ou 34). Ne jamais forcer 50 sur un sous-domaine ultra-spécialisé.
 
