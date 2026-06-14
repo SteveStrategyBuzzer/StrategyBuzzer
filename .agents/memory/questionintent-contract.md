@@ -8,8 +8,8 @@ description: Contrat verrouillé de QUESTIONINTENT — PUR ENCODEUR (zéro contr
 Position : `… → KEY_STRUCTURE (PASS) → QUESTIONINTENT → Phase 1 (7 cognitifs)`.
 Causalité verrouillée (sens unique) : KEY_STRUCTURE autorise → QUESTIONINTENT encode/pose la puce → Phase 1 remplit. INTERDIT : QUESTIONINTENT dépend de lui-même ; KEY_STRUCTURE dépend de QUESTIONINTENT.
 
-## Rôle OFFICIEL — PUR ENCODEUR
-QUESTIONINTENT est UNIQUEMENT un encodeur. Il REÇOIT un noyau DÉJÀ VALIDÉ et produit son encodage officiel pour : PHASE 1, gameplay, retour des corrections, traçabilité.
+## Rôle OFFICIEL — PUR ENCODEUR DU FICHIER NOYAU COMPLET
+QUESTIONINTENT est UNIQUEMENT un encodeur. Il REÇOIT un noyau DÉJÀ VALIDÉ et encode le FICHIER NOYAU COMPLET (le conteneur entier, slots VIDES inclus) pour : PHASE 1, gameplay, retour des corrections, traçabilité.
 
 INTERDICTIONS (gouvernance) :
 - PAS de QUESTIONINTENT_RULESET. Cette couche ne doit pas exister.
@@ -42,6 +42,26 @@ Calculé et POSSÉDÉ par QUESTIONINTENT, JAMAIS par KEY_STRUCTURE. Hash déterm
 
 ## kernel_print
 Empreinte/encodage canonique normalisé du noyau (forme officielle sérialisée) servant la traçabilité et le retour des corrections. Produit par l'encodeur, pas un contrôle.
+
+## Le FICHIER NOYAU COMPLET encodé par QUESTIONINTENT
+QUESTIONINTENT encode le noyau comme un FICHIER/conteneur complet. À l'encodage, les slots de contenu sont VIDES (ils seront remplis/vérifiés par les Phases). Contenu du noyau :
+- identité structurelle (question_intent_id, ks_hash, kernel_print, depth, domain, sub_domain, subject, dominant_idea, kld_hash, knowledge_frequency, source, status=CREATION_READY)
+- règles (les règles applicables au noyau)
+- mécanismes (mécaniques de jeu/génération)
+- slots Questions
+- slots Réponses
+- slots Saviez-vous
+- slots Traductions
+QUESTIONINTENT ne remplit AUCUN slot (pur encodeur) ; il pose le conteneur prêt à travailler.
+
+## Phases de travail/vérification SUR le noyau (remplissage + contrôle)
+Après l'encodage, ce ne sont plus des décisions sur le noyau mais des PHASES de travail + vérification qui remplissent et valident les slots, avec des "opens" pour les slots NON CONFORMES et une traçabilité pour le retour des prints corrigés :
+- PHASE 1 : création (remplit les slots Questions / Réponses / Saviez-vous — les 7 cognitifs).
+- PHASE 2 : vérification de PHASE 1 — traçabilité ; slot non conforme → "Quarantaine" → vérification humaine → corrections (prints corrigés réinjectés).
+- PHASE 3 : traduction (remplit les slots Traductions).
+- PHASE 4 : vérification de PHASE 3 — traçabilité ; non conforme → même boucle Quarantaine → vérification humaine → corrections.
+- Sortie finale conforme → stockage dans READY_BANK.
+Boucle de correction (aligne Phase 6 Quarantaine + Phase 7 Correction du flow officiel) : WARNING/non-conforme → Quarantaine → humain → correction → re-vérification. Le partiel reste accepté (D5) ; un WARNING ne bloque pas les slots VALIDATED_OK.
 
 ## Transmission Phase 1
 Chaque puce (status=CREATION_READY) → Phase 1 génère les 7 cognitifs (variant_keys) :
