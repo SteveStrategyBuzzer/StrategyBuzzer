@@ -78,6 +78,16 @@ Cycle par slot :
   - si encore WARNING : NOYAU_MERE inchangé → slots restent ouverts → gameplay ne les utilise pas.
 Règle : la quarantaine travaille sur un clone complet, mais ne remplace dans le noyau mère QUE les slots corrigés ET revalidés.
 
+## RÈGLE OFFICIELLE — WARNING création bloque AUSSI la traduction
+Un slot création en WARNING est triplement qualifié :
+- WARNING création = NON utilisable gameplay
+- WARNING création = NON traduisible (PHASE 3 l'ignore totalement)
+- WARNING création = ouvert pour QUARANTAINE (correction requise)
+Quand PHASE 2 met un slot création en WARNING : le slot RESTE dans le NOYAU_MERE (le noyau continue d'exister), gameplay l'ignore, ET PHASE 3 l'ignore. La traduction ne fait RIEN sur un slot création WARNING.
+PRÉ-REQUIS PHASE 3 : un slot création doit être VALIDATED_OK par PHASE 2 AVANT que PHASE 3 puisse le traduire. PHASE 3 ne travaille QUE sur du contenu création déjà validé.
+Flux propre : PHASE 2 détecte WARNING → slot reste dans NOYAU_MERE (ni gameplay ni traduction) → QUARANTAINE corrige → retour PHASE 2 → si VALIDATED_OK → PHASE 3 autorisée à traduire → PHASE 4 vérifie traduction → READY_BANK / gameplay.
+Récap : WARNING création = non gameplay + non traduction + correction requise ; VALIDATED_OK création = gameplay possible + traduction possible.
+
 ## Transmission Phase 1
 Chaque puce (status=CREATION_READY) → Phase 1 génère les 7 cognitifs (variant_keys) :
 qcm_recognition, qcm_reasoning, qcm_deceptive_trap, tf_recognition_true, tf_recognition_false, tf_reasoning_true, tf_reasoning_false.
