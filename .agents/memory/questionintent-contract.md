@@ -63,6 +63,21 @@ Après l'encodage, ce ne sont plus des décisions sur le noyau mais des PHASES d
 - Sortie finale conforme → stockage dans READY_BANK.
 Boucle de correction (aligne Phase 6 Quarantaine + Phase 7 Correction du flow officiel) : WARNING/non-conforme → Quarantaine → humain → correction → re-vérification. Le partiel reste accepté (D5) ; un WARNING ne bloque pas les slots VALIDATED_OK.
 
+## QUARANTAINE — règle officielle (copie du NOYAU MÈRE, pas du slot)
+CORRECTION CLÉ : la quarantaine ne reçoit JAMAIS une copie isolée d'un slot. Elle reçoit une COPIE COMPLÈTE du noyau mère, avec indication explicite des slots WARNING à corriger.
+POURQUOI : un slot WARNING dépend du contexte complet du noyau (identité structurelle, sujet, idée dominante, autres cognitifs, réponses, Saviez-vous, traductions, trace des validations). La correction doit donc se faire dans un clone complet, jamais dans un slot isolé.
+
+Deux entités officielles :
+- NOYAU_MERE : référence officielle. Contient les slots VALIDATED_OK ET WARNING. SEULS les slots VALIDATED_OK sont utilisables en gameplay.
+- QUARANTAINE_KERNEL_COPY : copie complète du NOYAU_MERE. Contient `warning_slots[]`. Sert à corriger les slots ouverts. Conserve la traçabilité.
+
+Cycle par slot :
+- Slot OK → VALIDATED_OK → slot fermé → READY_BANK → gameplay utilisable.
+- Slot WARNING → slot ouvert → NON utilisable gameplay → copie complète vers QUARANTAINE_KERNEL_COPY (+ liste warning_slots) → correction dans le clone → revalidation :
+  - si VALIDATED_OK : les slots corrigés REMPLACENT les slots WARNING correspondants DANS le NOYAU_MERE → slots fermés → READY_BANK mis à jour → gameplay autorisé.
+  - si encore WARNING : NOYAU_MERE inchangé → slots restent ouverts → gameplay ne les utilise pas.
+Règle : la quarantaine travaille sur un clone complet, mais ne remplace dans le noyau mère QUE les slots corrigés ET revalidés.
+
 ## Transmission Phase 1
 Chaque puce (status=CREATION_READY) → Phase 1 génère les 7 cognitifs (variant_keys) :
 qcm_recognition, qcm_reasoning, qcm_deceptive_trap, tf_recognition_true, tf_recognition_false, tf_reasoning_true, tf_reasoning_false.
