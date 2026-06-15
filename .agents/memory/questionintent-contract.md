@@ -78,6 +78,15 @@ Cycle par slot :
   - si encore WARNING : NOYAU_MERE inchangé → slots restent ouverts → gameplay ne les utilise pas.
 Règle : la quarantaine travaille sur un clone complet, mais ne remplace dans le noyau mère QUE les slots corrigés ET revalidés.
 
+## STATUTS DE SLOT — vivent DANS le noyau, pas dans READY_BANK
+Distinction officielle : le NOYAU porte les STATUTS ; READY_BANK porte les NOYAUX. Un statut (EMPTY / VALIDATED_OK / WARNING) est un ATTRIBUT d'un slot du noyau, jamais un élément de READY_BANK.
+Exemple : NOYAU_MERE { slot A=VALIDATED_OK, slot B=VALIDATED_OK, slot C=WARNING, slot D=VALIDATED_OK, slot E=WARNING }.
+Définitions :
+- EMPTY = slot non rempli (selon les règles autorisées, ex. noyau partiel D5).
+- VALIDATED_OK = slot conforme ; utilisable par les phases aval ; utilisable gameplay si applicable.
+- WARNING = slot non conforme ; bloqué pour les phases aval ; bloqué gameplay ; ouvert à correction via Quarantaine.
+READY_BANK : ne contient PAS de "WARNING" comme entrée. Il contient seulement des noyaux exploitables ; à l'intérieur d'un noyau, certains slots peuvent rester WARNING — ils sont simplement IGNORÉS par gameplay et par traduction jusqu'à correction. READY_BANK ne porte pas les statuts lui-même : c'est le noyau qui les porte.
+
 ## RÈGLE OFFICIELLE — WARNING création bloque AUSSI la traduction
 Un slot création en WARNING est triplement qualifié :
 - WARNING création = NON utilisable gameplay
