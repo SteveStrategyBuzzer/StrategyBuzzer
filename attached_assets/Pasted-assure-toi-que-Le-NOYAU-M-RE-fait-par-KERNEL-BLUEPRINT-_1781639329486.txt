@@ -1,0 +1,159 @@
+assure toi que Le NOYAU MÈRE fait par “KERNEL BLUEPRINT”  porte :
+
+1. Contexte intellectuel
+- depth
+- domain
+- sub_domain
+
+- subjects[1..50]
+   - subject
+   - dominant_ideas[1..5]
+
+2. Cognitifs préinscrits
+- qcm_recognition
+- qcm_reasoning
+- qcm_deceptive_trap
+- tf_recognition_true
+- tf_recognition_false
+- tf_reasoning_true
+- tf_reasoning_false
+
+3. Slots de chaque cognitif
+Questions
+Réponses
+Saviez-vous
+Traductions
+
+4. Règles et mécanismes de chaque slot
+Pour chaque slot :
+- rules
+- mechanisms
+concernant notamment :
+- le mécanisme cognitif attendu
+- les contraintes cognitives
+- les contraintes gameplay
+- les contraintes de Depth
+- les contraintes de validation
+- les contraintes de traduction
+
+5. Statuts des slots
+EMPTY
+VALIDATED_OK
+WARNING
+avec la règle :
+EMPTY
+↓
+travail
+↓
+VALIDATED_OK
+
+ou
+
+EMPTY
+↓
+travail
+↓
+WARNING
+
+6. Trace par slot
+Chaque slot possède sa propre trace :
+- trace_creation
+- trace_validation
+- trace_translation
+- trace_translation_validation
+- trace_correction
+- trace_replacement
+
+Les vérificateurs externes
+Ils ne font pas partie du noyau.
+Ils travaillent sur le noyau.
+
+KEY_LEARNING_DIRECTION
+Entrée :
+Sujet actif
++
+Idée dominante active
+
+Rôle :
+Vérifier la paire Sujet / Idée dominante.
+
+KEY_STRUCTURE
+Entrée :
+NOYAU MÈRE
+
+Rôle :
+Vérifier la structure complète du noyau.
+Notamment :
+- Depth
+- Cohérence structurelle de;
+- Égrainage naturel de;
+- Domaine
+- Sous-domaine
+- Sujets
+- Idées dominantes
+
+
+QUESTIONINTENT
+QUESTIONINTENT
+↓
+encode le NOYAU MÈRE
+↓
+produit son identité exploitable.
+Il ne :
+- valide pas
+- corrige pas
+- choisit pas
+- remplit pas
+Il encode.
+
+PHASES
+PHASE 1
+Travaille le noyau.
+Remplit :
+- Questions
+- Réponses
+- Saviez-vous
+et écrit :
+trace_creation
+
+PHASE 2
+Vérifie le travail de PHASE 1.
+Elle :
+- valide
+ou
+- met WARNING
+et écrit :
+trace_validation
+
+PHASE 3
+Travaille le noyau.
+Remplit :
+- Traductions
+uniquement pour les slots création VALIDATED_OK.
+Elle écrit :
+trace_translation
+
+PHASE 4
+Vérifie le travail de PHASE 3.
+Elle :
+- valide
+ou
+- met WARNING
+et écrit :
+trace_translation_validation
+
+QUARANTAINE
+QUARANTAINE est un environnement transversal.
+Elle :
+- clone le noyau mère complet
+- identifie les slots WARNING
+- corrige
+- garde les traces de correction
+- renvoie les slots corrigés
+Elle écrit :
+trace_correction
+trace_replacement
+
+Définition officielle verrouillée
+Le NOYAU MÈRE est un conteneur intelligent préstructuré qui porte son identité, son contexte intellectuel, ses cognitifs, ses slots, les règles et mécanismes associés, les statuts et les traces propres à chaque slot. KEY_LEARNING_DIRECTION et KEY_STRUCTURE travaillent sur lui. QUESTIONINTENT l'encode. PHASES 1 et 3 produisent le travail, PHASES 2 et 4 vérifient ce travail, et QUARANTAINE corrige les anomalies sans briser le pipeline.
+Je pense que cette formulation est la plus fidèle à ce que nous avons verrouillé ensemble jusqu'à maintenant.

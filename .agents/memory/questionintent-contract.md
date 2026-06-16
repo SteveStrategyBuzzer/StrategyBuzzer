@@ -103,3 +103,9 @@ qcm_recognition, qcm_reasoning, qcm_deceptive_trap, tf_recognition_true, tf_reco
 Contrainte UNIQUE(question_intent_id, variant_key). Phase 1 ne modifie JAMAIS key/subject/idee_dominante.
 
 **Why:** QUESTIONINTENT est strictement un encodeur : séparation des responsabilités stricte (toute la logique de validation est en amont — KLD + chaîne KEY_STRUCTURE). Option A (fan-out) préserve la définition de noyau déjà figée (1 idée = 1 noyau) et UNIQUE(question_intent_id, variant_key).
+
+## Réconciliation NOYAU MÈRE ↔ PUCE (voir noyau-mere-structure.md)
+Vocabulaire aligné le 2026-06-15 :
+- **NOYAU MÈRE** = conteneur produit par KERNEL BLUEPRINT = **1 sous-domaine** (depth + domain + sub_domain + subjects[1..50] × dominant_ideas[1..5]). C'est l'entrée de KEY_STRUCTURE (« 1 passe = 1 sous-domaine »). Les slots cognitifs (7 × 4) vivent par paire (subject × idée) dans ce conteneur, chacun avec rules/mechanisms (6 catégories), statut (EMPTY/VALIDATED_OK/WARNING) et 6 traces (trace_creation, trace_validation, trace_translation, trace_translation_validation, trace_correction, trace_replacement).
+- **PUCE = question_intent** = encodage QUESTIONINTENT d'**une** paire (subject, idée). Ici, « 1 noyau = 1 Sujet + 1 Idée Dominante » désigne la PUCE (tranche du noyau mère), pas le noyau mère. Le fan-out (5 idées → 5 puces) est inchangé.
+- Dans la section QUARANTAINE ci-dessus, « copie complète du NOYAU_MERE » = clone du contexte complet nécessaire à la correction du slot ; les statuts/traces restent portés au niveau slot.
