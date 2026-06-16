@@ -1,12 +1,12 @@
 ---
 name: QUESTIONINTENT contract (official)
-description: Contrat verrouillé de QUESTIONINTENT — PUR ENCODEUR (zéro contrôle métier, pas de ruleset). Reçoit un noyau déjà validé, produit son encodage officiel. Fan-out Option A (1 idée = 1 noyau).
+description: Contrat verrouillé de QUESTIONINTENT — PUR ENCODEUR (zéro contrôle métier, pas de ruleset). Reçoit le NOYAU MÈRE complet déjà validé et produit son encodage officiel. Le NOYAU MÈRE est UNE entité complète indivisible — pas de fan-out, pas de puces, pas de découpage sujet/idée.
 ---
 
 # QUESTIONINTENT — contrat officiel (VERROUILLÉ)
 
 Position : `… → KEY_STRUCTURE (PASS) → QUESTIONINTENT → Phase 1 (7 cognitifs)`.
-Causalité verrouillée (sens unique) : KEY_STRUCTURE autorise → QUESTIONINTENT encode/pose la puce → Phase 1 remplit. INTERDIT : QUESTIONINTENT dépend de lui-même ; KEY_STRUCTURE dépend de QUESTIONINTENT.
+Causalité verrouillée (sens unique) : KEY_STRUCTURE autorise → QUESTIONINTENT encode le NOYAU MÈRE complet → Phase 1 remplit. INTERDIT : QUESTIONINTENT dépend de lui-même ; KEY_STRUCTURE dépend de QUESTIONINTENT.
 
 ## Rôle OFFICIEL — PUR ENCODEUR DU FICHIER NOYAU COMPLET
 QUESTIONINTENT est UNIQUEMENT un encodeur. Il REÇOIT un noyau DÉJÀ VALIDÉ et encode le FICHIER NOYAU COMPLET (le conteneur entier, slots VIDES inclus) pour : PHASE 1, gameplay, retour des corrections, traçabilité.
@@ -36,32 +36,31 @@ Formule officielle : `QUESTIONINTENT → crée une identité exploitable` (et **
 
 Non-contradiction clé : « ✗ ne produit pas de statistiques » (QUESTIONINTENT) et « Analytique → produire des statistiques » coexistent car l'encodage rend la mesure POSSIBLE ; c'est un AUTRE composant qui mesure. Idem pour cloner/corriger/référencer : QUESTIONINTENT rend l'action possible, Quarantaine/Ready_Bank l'exécutent.
 
-## Comportement OFFICIEL — Option A FAN-OUT (verrouillé)
-Éclatement mécanique (encodage, pas un jugement) :
-- KEY_STRUCTURE valide les 5 Idées Dominantes EN LOT. QUESTIONINTENT les ÉCLATE en 5 noyaux indépendants.
-- 1 Sujet actif validé (5 Idées Dominantes) → QUESTIONINTENT produit **5 question_intents distincts**.
-- 1 noyau = 1 Sujet + 1 Idée Dominante (jamais 1 puce portant 5 idées).
-- Chaque question_intent reçoit son PROPRE encodage (id, ks_hash, kernel_print).
-- Comptage : 1 Sujet × 5 Idées Dominantes × 7 cognitifs = 35 créations potentielles.
-- Phase 1 travaille TOUJOURS sur 1 noyau = 1 Sujet + 1 Idée Dominante.
+## Comportement OFFICIEL — encodage d'UNE entité complète (VERROUILLÉ 2026-06-16 — REMPLACE l'ancien « fan-out »)
+CORRECTION MAJEURE : l'ancien modèle « fan-out / 5 puces / 1 idée = 1 noyau » est ABANDONNÉ. Le NOYAU MÈRE est UNE entité complète et indivisible :
+- il n'existe PAS plusieurs noyaux dérivés ;
+- il n'existe PAS de puces indépendantes ;
+- il n'existe PAS de découpage sujet/idée.
+QUESTIONINTENT encode le NOYAU MÈRE COMPLET comme UNE seule identité (un seul objet encodé), pas 5. Les subjects[1..50] et dominant_ideas[1..5] sont la STRUCTURE INTERNE du noyau, jamais des objets séparés.
+Phase 1 travaille sur le noyau mère complet (tous ses cognitifs internes), pas sur une puce.
 
-## Ce que QUESTIONINTENT GÉNÈRE (par puce)
+## Ce que QUESTIONINTENT GÉNÈRE (pour le NOYAU MÈRE)
 - question_intent_id
 - ks_hash
 - kernel_print
 - status = CREATION_READY
 
-Plus la charge du noyau reçue telle quelle (aligné flow verrouillé) : domain, sub_domain, subject, idee_dominante, difficulty_depth, knowledge_frequency, kld_hash, source='rotation', frame_status=NULL.
+Plus la charge du noyau reçue telle quelle (aligné flow verrouillé) : depth, domain, sub_domain, subjects[1..50]×dominant_ideas[1..5], knowledge_frequency, kld_hash, source='rotation', frame_status=NULL.
 
 ## ks_hash
-Calculé et POSSÉDÉ par QUESTIONINTENT, JAMAIS par KEY_STRUCTURE. Hash déterministe normalisé de (Depth + Domaine + Sous-domaine + Sujet + Idée Dominante). Sceau : identité + dedup persistante. Distinct par puce (5 ks_hash pour un Sujet à 5 idées).
+Calculé et POSSÉDÉ par QUESTIONINTENT, JAMAIS par KEY_STRUCTURE. Identifie le NOYAU MÈRE complet : hash déterministe normalisé de (Depth + Domaine + Sous-domaine). Sceau : identité + dedup persistante du noyau (UN ks_hash par noyau mère, plus de « 5 ks_hash »). ⚠️ OUVERT (décision utilisateur) : la granularité d'identité INTERNE (sujet/idée/cognitif) dont le gameplay a besoin pour « éviter les répétitions » et savoir quelle question précise a été jouée — voir note de réconciliation en bas.
 
 ## kernel_print
 Empreinte/encodage canonique normalisé du noyau (forme officielle sérialisée) servant la traçabilité et le retour des corrections. Produit par l'encodeur, pas un contrôle.
 
 ## Le FICHIER NOYAU COMPLET encodé par QUESTIONINTENT
 QUESTIONINTENT encode le noyau comme un FICHIER/conteneur complet. À l'encodage, les slots de contenu sont VIDES (ils seront remplis/vérifiés par les Phases). Contenu du noyau :
-- identité structurelle (question_intent_id, ks_hash, kernel_print, depth, domain, sub_domain, subject, dominant_idea, kld_hash, knowledge_frequency, source, status=CREATION_READY)
+- identité structurelle (question_intent_id, ks_hash, kernel_print, depth, domain, sub_domain, subjects[1..50]×dominant_ideas[1..5], kld_hash, knowledge_frequency, source, status=CREATION_READY)
 - règles (les règles applicables au noyau)
 - mécanismes (mécaniques de jeu/génération)
 - slots Questions
@@ -114,14 +113,16 @@ Flux propre : PHASE 2 détecte WARNING → slot reste dans NOYAU_MERE (ni gamepl
 Récap : WARNING création = non gameplay + non traduction + correction requise ; VALIDATED_OK création = gameplay possible + traduction possible.
 
 ## Transmission Phase 1
-Chaque puce (status=CREATION_READY) → Phase 1 génère les 7 cognitifs (variant_keys) :
+Le NOYAU MÈRE (status=CREATION_READY) → Phase 1 génère, pour chaque (subject × idée dominante) INTERNE, les 7 cognitifs (variant_keys) :
 qcm_recognition, qcm_reasoning, qcm_deceptive_trap, tf_recognition_true, tf_recognition_false, tf_reasoning_true, tf_reasoning_false.
-Contrainte UNIQUE(question_intent_id, variant_key). Phase 1 ne modifie JAMAIS key/subject/idee_dominante.
+Phase 1 ne modifie JAMAIS la structure (subjects/idées/cognitifs). ⚠️ L'unicité historique UNIQUE(question_intent_id, variant_key) supposait 1 puce = 1 (subject,idée) ; avec le noyau-entité elle doit devenir UNIQUE(noyau, subject, idée, variant_key) — à confirmer.
 
-**Why:** QUESTIONINTENT est strictement un encodeur : séparation des responsabilités stricte (toute la logique de validation est en amont — KLD + chaîne KEY_STRUCTURE). Option A (fan-out) préserve la définition de noyau déjà figée (1 idée = 1 noyau) et UNIQUE(question_intent_id, variant_key).
+**Why:** QUESTIONINTENT est strictement un encodeur : séparation des responsabilités stricte (toute la logique de validation est en amont — KLD + chaîne KEY_STRUCTURE). CORRECTION 2026-06-16 : le NOYAU MÈRE est UNE entité complète indivisible (pas de fan-out, pas de puces, pas de découpage sujet/idée) ; l'ancien « Option A fan-out » est ABANDONNÉ.
 
-## Réconciliation NOYAU MÈRE ↔ PUCE (voir noyau-mere-structure.md)
-Vocabulaire aligné le 2026-06-15 :
-- **NOYAU MÈRE** = conteneur produit par KERNEL BLUEPRINT = **1 sous-domaine** (depth + domain + sub_domain + subjects[1..50] × dominant_ideas[1..5]). C'est l'entrée de KEY_STRUCTURE (« 1 passe = 1 sous-domaine »). Les slots cognitifs (7 × 4) vivent par paire (subject × idée) dans ce conteneur, chacun avec rules/mechanisms (6 catégories), statut (EMPTY/VALIDATED_OK/WARNING) et 6 traces (trace_creation, trace_validation, trace_translation, trace_translation_validation, trace_correction, trace_replacement).
-- **PUCE = question_intent** = encodage QUESTIONINTENT d'**une** paire (subject, idée). Ici, « 1 noyau = 1 Sujet + 1 Idée Dominante » désigne la PUCE (tranche du noyau mère), pas le noyau mère. Le fan-out (5 idées → 5 puces) est inchangé.
-- Dans la section QUARANTAINE ci-dessus, « copie complète du NOYAU_MERE » = clone du contexte complet nécessaire à la correction du slot ; les statuts/traces restent portés au niveau slot.
+## NOYAU MÈRE = entité complète (correctif 2026-06-16, voir noyau-mere-structure.md)
+Le NOYAU MÈRE est UNE entité complète indivisible. Il n'existe PAS de « puce », PAS de noyau dérivé, PAS de découpage sujet/idée. Les subjects[1..50] × dominant_ideas[1..5] (+ 7 cognitifs × 4 slots, rules/mechanisms/constraints, statuts, traces) sont la STRUCTURE INTERNE d'un SEUL noyau. QUESTIONINTENT l'encode comme un seul objet. La « copie complète du NOYAU_MERE » en Quarantaine = clone de ce noyau complet.
+
+⚠️ CONSÉQUENCES À RÉCONCILIER (décisions utilisateur requises) :
+1. **Identité/dedup gameplay** : si 1 noyau = 1 sous-domaine entier, il faut une clé INTERNE (sujet/idée/cognitif) pour que le gameplay « évite les répétitions » et sache quelle question précise a été jouée. Quelle granularité d'identité interne ?
+2. **Unité de comptage Ready_Bank** : ready-bank-growth-spec dit « Unité = noyau (7 cognitifs) » et vise 685K noyaux / 4.8M questions — ce calcul supposait noyau = 1 (sujet,idée). Avec noyau = sous-domaine, l'unité et les cibles changent. À recalibrer.
+3. **Clé d'unicité** : UNIQUE(question_intent_id, variant_key) (cf. kernel-pipeline-architecture.md) doit probablement devenir UNIQUE(noyau, subject, idée, variant_key).

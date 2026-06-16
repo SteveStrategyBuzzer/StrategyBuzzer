@@ -10,15 +10,12 @@ Il porte son identité, son contexte intellectuel, ses cognitifs, ses slots, les
 associés, les statuts et les traces propres à chaque slot. Les vérificateurs externes (KLD,
 KEY_STRUCTURE, QUESTIONINTENT) **travaillent sur lui** mais n'en font **pas partie**.
 
-## Granularité (réconciliation terminologique — IMPORTANT)
-- **1 NOYAU MÈRE = 1 SOUS-DOMAINE.** Cohérent avec « 1 passe KEY_STRUCTURE = 1 sous-domaine »
-  (KEY_STRUCTURE a pour entrée le NOYAU MÈRE complet).
-- Le noyau mère porte `subjects[1..50]`, chacun avec `dominant_ideas[1..5]`.
-- Les structures cognitives (7 cognitifs × 4 slots) existent **par paire (subject × dominant_idea)** À L'INTÉRIEUR du noyau mère.
-- **PUCE = question_intent** = encodage QUESTIONINTENT d'**UNE** paire (subject, idée dominante).
-  C'est l'unité de travail de PHASE 1. L'« Option A fan-out » (« 1 noyau = 1 subject + 1 idée »)
-  désigne la PUCE, pas le noyau mère : 1 sujet actif (5 idées valides) → 5 puces.
-- Donc : NOYAU MÈRE = conteneur (sous-domaine) ; PUCE = tranche (subject, idée) encodée et adressable.
+## NOYAU MÈRE = UNE ENTITÉ COMPLÈTE (VERROUILLÉ 2026-06-16 — corrige l'ancienne notion de « puce »)
+- **1 NOYAU MÈRE = 1 SOUS-DOMAINE = UNE entité complète indivisible.** Cohérent avec « 1 passe KEY_STRUCTURE = 1 sous-domaine » (entrée de KEY_STRUCTURE = le NOYAU MÈRE complet).
+- **Il n'existe PAS** plusieurs noyaux dérivés. **PAS** de puces indépendantes. **PAS** de découpage sujet/idée.
+- `subjects[1..50]` × `dominant_ideas[1..5]` + les 7 cognitifs × 4 slots sont la **STRUCTURE INTERNE** d'un SEUL noyau, jamais des objets séparés.
+- QUESTIONINTENT encode ce noyau mère comme **UN seul objet** (une seule identité). L'ancien modèle « fan-out / 5 puces / 1 idée = 1 noyau » est ABANDONNÉ.
+- Conséquences à réconcilier (granularité d'identité gameplay + unité de comptage Ready_Bank + clé d'unicité) : voir questionintent-contract.md.
 
 ## 1. Contexte intellectuel
 - `depth`, `domain`, `sub_domain`
@@ -31,8 +28,8 @@ KEY_STRUCTURE, QUESTIONINTENT) **travaillent sur lui** mais n'en font **pas part
 ## 3. Slots de chaque cognitif (4)
 `Questions`, `Réponses`, `Saviez-vous`, `Traductions`
 
-## 4. Règles & mécanismes PAR SLOT (6 catégories) — NOUVEAU vs anciens contrats (était au niveau noyau)
-Chaque slot porte `rules` + `mechanisms` couvrant explicitement :
+## 4. Règles, Mécanismes & Contraintes PAR SLOT
+Chaque slot porte `rules`, `mechanisms` et `constraints`. Les contraintes couvrent explicitement (6 catégories) :
 - mécanisme cognitif attendu
 - contraintes cognitives
 - contraintes gameplay
@@ -59,7 +56,7 @@ Chaque slot possède SES propres traces :
 ## Vérificateurs externes (travaillent SUR le noyau, n'en font pas partie)
 - **KEY_LEARNING_DIRECTION** — entrée : sujet actif + idée dominante active → vérifie la paire (anti-répétition de direction).
 - **KEY_STRUCTURE** — entrée : NOYAU MÈRE → vérifie la structure complète : Depth, cohérence structurelle, égrainage naturel, domaine, sous-domaine, sujets, idées dominantes.
-- **QUESTIONINTENT** — encode le NOYAU MÈRE → produit son identité exploitable (puces). Il **ne valide pas, ne corrige pas, ne choisit pas, ne remplit pas** : il encode.
+- **QUESTIONINTENT** — encode le NOYAU MÈRE COMPLET comme UN seul objet → produit son identité exploitable (pas de puces, pas de fan-out). Il **ne valide pas, ne corrige pas, ne choisit pas, ne remplit pas** : il encode.
 
 ## Phases — qui écrit quelle trace
 - **PHASE 1** (travail) : remplit Questions / Réponses / Saviez-vous → écrit `trace_creation`.
@@ -75,8 +72,9 @@ propres à chaque slot. KEY_LEARNING_DIRECTION et KEY_STRUCTURE travaillent sur 
 l'encode. PHASES 1 et 3 produisent le travail, PHASES 2 et 4 vérifient ce travail, et QUARANTAINE
 corrige les anomalies sans briser le pipeline. »
 
-**Why:** Verrouillé avec l'utilisateur le 2026-06-15. Fixe le NOYAU MÈRE comme conteneur de
-sous-domaine (≤50 sujets) avec règles/mécanismes ET traces AU NIVEAU SLOT (pas au niveau noyau),
-ce qui rend chaque slot auditável de bout en bout (création → validation → traduction → correction).
-La PUCE (question_intent) reste l'unité Phase 1 (1 subject + 1 idée) : le fan-out QUESTIONINTENT
-n'est pas remis en cause, il est resitué comme tranche du noyau mère.
+**Why:** Verrouillé avec l'utilisateur le 2026-06-15, corrigé le 2026-06-16. Fixe le NOYAU MÈRE
+comme conteneur de sous-domaine (≤50 sujets) avec règles/mécanismes/contraintes ET traces AU NIVEAU
+SLOT (pas au niveau noyau), ce qui rend chaque slot auditable de bout en bout (création → validation
+→ traduction → correction). CORRECTION 2026-06-16 : le NOYAU MÈRE est UNE entité complète indivisible
+— pas de puce, pas de fan-out, pas de découpage sujet/idée. Les subjects/idées/cognitifs sont la
+structure INTERNE d'un seul noyau, jamais des objets séparés.
