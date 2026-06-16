@@ -20,6 +20,22 @@ Toutes les règles appartiennent À L'AMONT et nulle part ailleurs :
 KLD → KEY_STRUCTURE_RULESET → KEY_STRUCTURE_EVALUATOR → KEY_STRUCTURE_MOTIF_BRIDGE → KEY_STRUCTURE_RECADRAGE_REPORT.
 Quand le noyau arrive à QUESTIONINTENT, il est DÉJÀ propre/validé (KEY_STRUCTURE PASS). QUESTIONINTENT NE re-vérifie RIEN (pas de garde amont/emplacement/aval de son côté — ces conditions sont garanties par l'amont, jamais contrôlées ici).
 
+## PRINCIPE DE RESPONSABILITÉ — facilitateur passif (VERROUILLÉ 2026-06-16)
+QUESTIONINTENT n'est **pas un acteur** du système. C'est un **facilitateur passif** qui rend le NOYAU MÈRE reconnaissable, retrouvable et manipulable par le reste de l'écosystème.
+
+CE QU'IL FAIT (✓) : encode · identifie · rend traçable · rend clonable · rend remplaçable · rend référençable.
+CE QU'IL NE FAIT PAS (✗) : ne calcule pas · n'analyse pas · ne détecte pas · ne décide pas · ne produit pas de statistiques · ne corrige pas · ne valide pas.
+
+Formule officielle : `QUESTIONINTENT → crée une identité exploitable` (et **jamais** `QUESTIONINTENT → exploite lui-même cette identité`).
+
+### Ce que l'encodage PERMET (à d'AUTRES composants — pas à QUESTIONINTENT)
+- **Gameplay** : identifier les questions jouées ; éviter les répétitions ; retrouver l'historique d'un joueur ; savoir quel noyau a été utilisé.
+- **Quarantaine** : retrouver le noyau concerné ; cloner le bon noyau ; réinjecter les corrections ; remplacer les WARNING.
+- **Ready_Bank** : référencer les noyaux ; maintenir une source de vérité stable ; mettre à jour un noyau sans le recréer.
+- **Analytique** : produire des statistiques ; mesurer la fréquence d'utilisation ; détecter des tendances ; identifier les noyaux problématiques ; alimenter l'amélioration continue.
+
+Non-contradiction clé : « ✗ ne produit pas de statistiques » (QUESTIONINTENT) et « Analytique → produire des statistiques » coexistent car l'encodage rend la mesure POSSIBLE ; c'est un AUTRE composant qui mesure. Idem pour cloner/corriger/référencer : QUESTIONINTENT rend l'action possible, Quarantaine/Ready_Bank l'exécutent.
+
 ## Comportement OFFICIEL — Option A FAN-OUT (verrouillé)
 Éclatement mécanique (encodage, pas un jugement) :
 - KEY_STRUCTURE valide les 5 Idées Dominantes EN LOT. QUESTIONINTENT les ÉCLATE en 5 noyaux indépendants.
