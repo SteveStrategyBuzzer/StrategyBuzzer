@@ -122,7 +122,7 @@ Phase 1 ne modifie JAMAIS la structure (subjects/idées/cognitifs). ⚠️ L'uni
 ## NOYAU MÈRE = entité complète (correctif 2026-06-16, voir noyau-mere-structure.md)
 Le NOYAU MÈRE est UNE entité complète indivisible. Il n'existe PAS de « puce », PAS de noyau dérivé, PAS de découpage sujet/idée. Les subjects[1..50] × dominant_ideas[1..5] (+ 7 cognitifs × 4 slots, rules/mechanisms/constraints, statuts, traces) sont la STRUCTURE INTERNE d'un SEUL noyau. QUESTIONINTENT l'encode comme un seul objet. La « copie complète du NOYAU_MERE » en Quarantaine = clone de ce noyau complet.
 
-⚠️ CONSÉQUENCES À RÉCONCILIER (décisions utilisateur requises) :
-1. **Identité/dedup gameplay** : si 1 noyau = 1 sous-domaine entier, il faut une clé INTERNE (sujet/idée/cognitif) pour que le gameplay « évite les répétitions » et sache quelle question précise a été jouée. Quelle granularité d'identité interne ?
-2. **Unité de comptage Ready_Bank** : ready-bank-growth-spec dit « Unité = noyau (7 cognitifs) » et vise 685K noyaux / 4.8M questions — ce calcul supposait noyau = 1 (sujet,idée). Avec noyau = sous-domaine, l'unité et les cibles changent. À recalibrer.
-3. **Clé d'unicité** : UNIQUE(question_intent_id, variant_key) (cf. kernel-pipeline-architecture.md) doit probablement devenir UNIQUE(noyau, subject, idée, variant_key).
+CONSÉQUENCES :
+1. ✅ **RÉSOLU (2026-06-16)** — Identité/dedup gameplay : l'unité CONSOMMÉE par le gameplay est le **COGNITIF** (le noyau reste l'unité centrale). Le suivi anti-répétition se fait par **(joueur × noyau × cognitif/famille)**. Détail complet : gameplay-consumption-model.md.
+2. ⚠️ **DIFFÉRÉ (analyse plus tard)** — Unité de comptage Ready_Bank : ready-bank-growth-spec dit « Unité = noyau (7 cognitifs) » et vise 685K noyaux / 4.8M questions — ce calcul supposait noyau = 1 (sujet,idée). La taille effective dépend désormais du nombre de cognitifs exploitables par noyau (voir « Point à analyser plus tard » dans gameplay-consumption-model.md). À recalibrer.
+3. ⚠️ **À CONFIRMER** — Clé d'unicité : UNIQUE(question_intent_id, variant_key) (cf. kernel-pipeline-architecture.md) doit probablement devenir UNIQUE(noyau, subject, idée, variant_key=cognitif).

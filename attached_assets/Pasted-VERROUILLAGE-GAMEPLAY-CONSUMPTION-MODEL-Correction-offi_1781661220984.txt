@@ -1,0 +1,173 @@
+VERROUILLAGE — GAMEPLAY CONSUMPTION MODEL
+
+Correction officielle.
+
+Le Gameplay ne consomme pas un NOYAU MÈRE complet d’un coup.
+
+Le Gameplay consomme :
+1 ou plusieurs cognitifs d’un NOYAU MÈRE X.
+
+Le NOYAU MÈRE reste l’unité centrale.
+Le COGNITIF devient l’unité consommée par le Gameplay.
+
+────────────────────────
+1. Demande Gameplay à READY_BANK
+────────────────────────
+
+Le Gameplay demande :
+
+- Domaine X
+- Depth Y
+
+READY_BANK retourne :
+
+tous les NOYAUX MÈRES ENCODÉS
+avec ce Depth et ce Domaine.
+
+Ces noyaux deviennent disponibles pour sélection.
+
+────────────────────────
+2. Expérience minimale recherchée par noyau
+────────────────────────
+
+Pour un joueur, on veut ouvrir la possibilité de vivre au minimum 3 familles cognitives d’un même noyau :
+
+1. Recognition
+   - QCM Recognition
+   OU
+   - TF Recognition True/False
+
+2. Reasoning
+   - QCM Reasoning
+   OU
+   - TF Reasoning True/False
+
+3. Deceptive Trap
+
+Donc la cible minimale par noyau est :
+
+Recognition + Reasoning + Deceptive Trap
+
+────────────────────────
+3. Décalage par partie
+────────────────────────
+
+Le Gameplay ne doit pas toujours donner la même forme.
+
+Il doit faire un décalage d’une partie à l’autre.
+
+Exemple :
+
+Partie A :
+- QCM Recognition
+- TF Reasoning True
+- Deceptive Trap
+
+Partie B :
+- TF Recognition False
+- QCM Reasoning
+- Deceptive Trap
+
+Le joueur peut éventuellement passer au travers des 7 cognitifs d’un noyau, mais on essaie de l’éviter autant que possible.
+
+────────────────────────
+4. Banque de suivi joueur
+────────────────────────
+
+Chaque joueur doit avoir un suivi indiquant, pour chaque NOYAU MÈRE :
+
+- quels cognitifs ont été joués
+- quelles formes ont été jouées
+- quelles familles ont été consommées :
+  - Recognition
+  - Reasoning
+  - Deceptive Trap
+
+────────────────────────
+5. Classement des noyaux côté Gameplay
+────────────────────────
+
+Niveau 1 — 100 % vierge
+
+Noyaux jamais touchés par le joueur.
+
+Priorité maximale.
+
+Niveau 2 — touchés mais exploitables
+
+Noyaux déjà touchés,
+mais avec des cognitifs/familles encore non utilisés.
+
+Le Gameplay peut comparer avec les autres joueurs pour distinguer les meilleurs noyaux disponibles.
+
+Niveau 3 — back_support
+
+Un noyau passe en back_support pour un joueur quand les 3 familles minimales ont été utilisées :
+
+Recognition utilisée
++
+Reasoning utilisée
++
+Deceptive Trap utilisée
+
+= back_support
+
+────────────────────────
+6. Ordre officiel de sélection
+────────────────────────
+
+Le Gameplay doit sélectionner dans cet ordre :
+
+1. Noyaux 100 % vierges
+2. Si pas assez : noyaux touchés mais encore exploitables
+3. Si pas assez : noyaux back_support
+
+────────────────────────
+7. Impacts verrouillés
+────────────────────────
+
+Ce modèle verrouille :
+
+- anti-répétition :
+  basé sur les cognitifs/familles déjà consommés dans chaque noyau par joueur
+
+- progression :
+  un joueur progresse à travers les familles cognitives du noyau, pas forcément à travers tout le noyau d’un coup
+
+- statistiques :
+  doivent pouvoir mesurer par joueur :
+  noyaux vus, cognitifs vus, familles consommées, back_support atteint
+
+- historiques :
+  doivent conserver :
+  noyau_id, joueur_id, cognitif joué, famille, forme, date, mode, résultat
+
+- taille effective de READY_BANK :
+  la taille brute vient des noyaux produits par Rotation,
+  mais la capacité effective dépend du nombre de cognitifs exploitables par noyau
+
+- besoins analytiques :
+  mesurer combien de questions/cognitifs sortent réellement par noyau,
+  surtout pour combler les besoins en Deceptive Trap
+
+Point à analyser plus tard :
+combien de questions effectives sortent par NOYAU MÈRE selon :
+- disponibilité Recognition
+- disponibilité Reasoning
+- disponibilité Deceptive Trap
+- taux de WARNING
+- taux de back_support
+- besoins par mode
+
+────────────────────────
+8. Règle finale
+────────────────────────
+
+READY_BANK contient des NOYAUX MÈRES ENCODÉS.
+
+Gameplay demande Depth + Domaine.
+
+Gameplay consomme des cognitifs internes du noyau.
+
+Le noyau reste l’unité centrale.
+Le cognitif est l’unité consommée.
