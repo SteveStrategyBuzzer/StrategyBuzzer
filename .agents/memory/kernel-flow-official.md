@@ -1,6 +1,6 @@
 ---
 name: Kernel Flow Official
-description: Flow officiel "Blueprint First" — 14 étapes + causalité KEY_STRUCTURE→QuestionIntent verrouillée. Source de vérité pour toute implémentation kernel/rotation.
+description: Flow officiel "Blueprint First". Source de vérité pour toute implémentation kernel/rotation. CORRIGÉ 2026-06-19 — QUESTIONINTENT encode l'identité DANS Rotation (après Depth+Domaine), AVANT KLD/KEY_STRUCTURE.
 ---
 
 # Flow officiel Kernel — Blueprint First
@@ -10,12 +10,15 @@ Document de référence validé. Remplace toutes les interprétations précéden
 ## Séquence principale
 
 ```
-KernelBlueprint → BankTarget → DepthNeedMatrix → DomainCycle
+KernelBlueprint → NOYAU MÈRE VIDE
+→ ROTATION { BankTarget ; DepthNeedMatrix→Depth ; DomainCycle→Domaine ; QuestionIntent→encode l'identité }
+→ NOYAU MÈRE IDENTIFIÉ/ENCODÉ
 → TaxonomyReader → KEY_LEARNING_DIRECTION → KEY_STRUCTURE
-→ QuestionIntent (puce) → Phase 1 Création → Phase 2 Validation
+→ Phase 1 Création → Phase 2 Validation
 → Phase 3 Traduction → Phase 4 Validation Traduction
 → Ready_Bank → Gameplay
 ```
+⚠️ CORRECTION 2026-06-19 : QuestionIntent est un mécanisme d'encodage APPELÉ DANS Rotation (après que Depth + Domaine sont inscrits), pas une étape après KEY_STRUCTURE. KLD et KEY_STRUCTURE travaillent donc SUR un noyau DÉJÀ identifié. Raison : pouvoir reprendre le même noyau plus tard (sujet suivant, sujets restants, idées utilisées, anti-doublon, remplissage progressif, correction Quarantaine, identité stable en Ready_Bank).
 
 ## Branche parallèle (quarantaine)
 
@@ -27,13 +30,16 @@ WARNING → Phase 6 Quarantaine → Phase 7 Correction
 ## Causalité verrouillée — sens unique
 
 ```
-KEY_STRUCTURE → autorise le verrouillage
-QuestionIntent → pose la puce persistante (conséquence de KEY_STRUCTURE)
-Phase 1 → remplit le noyau pucé
+ROTATION inscrit Depth + Domaine
+QuestionIntent → encode l'identité du noyau (DANS Rotation, après Depth+Domaine)
+KLD → contrôle pédagogique SUR le noyau identifié
+KEY_STRUCTURE → contrôle structurel SUR le noyau identifié
+Phase 1 → remplit le noyau identifié
 
-INTERDIT : QuestionIntent dépend de lui-même pour être créé
-INTERDIT : KEY_STRUCTURE dépend de QuestionIntent
+INTERDIT : QuestionIntent choisit/valide/crée du contenu (il encode SEULEMENT)
+INTERDIT : KLD/KEY_STRUCTURE travaillent sur un noyau non identifié
 ```
+ANCIEN (ABANDONNÉ) : « KEY_STRUCTURE autorise → QuestionIntent pose la puce ». Causalité inversée : QuestionIntent encode AVANT KLD/KEY_STRUCTURE.
 
 ## Responsabilités officielles
 
@@ -46,7 +52,7 @@ INTERDIT : KEY_STRUCTURE dépend de QuestionIntent
 | TaxonomyReader | Propose sub_domain+subject+idee_dominante + navigation fallback sur exclusions | Ne décide pas la production globale |
 | KEY_LEARNING_DIRECTION | Détecte doublon pédagogique hash(subject+idee_dominante) → retour TaxonomyReader | Ne crée pas, ne navigue pas |
 | KEY_STRUCTURE | Garde structurel hash(depth+domain+sub_domain+subject+idee_dominante) — autorise ou refuse | Ne crée pas, ne remplit pas, ne décide pas |
-| QuestionIntent | Pose la puce persistante APRÈS autorisation KEY_STRUCTURE | Ne valide rien, ne choisit rien, ne décide rien |
+| QuestionIntent | Encode l'identité du noyau DANS Rotation (après Depth+Domaine), AVANT KLD/KEY_STRUCTURE | Ne valide rien, ne choisit rien, ne décide rien, ne crée aucun contenu |
 | Phase 1 | Génère les 7 cognitifs sur le noyau pucé | Ne modifie JAMAIS key/subject/idee_dominante |
 | Phase 2 | Valide chaque variant → VALIDATED_OK ou WARNING | |
 | Phase 3 | Traduit UNIQUEMENT les VALIDATED_OK | |
@@ -90,7 +96,7 @@ Si exhausted: true → KernelRotationPlanner → DomainCycle avance
 QuestionIntent permet la dissociation/réassociation entre :
   KernelBlueprint, variants, traductions, quarantaine, correction, Ready_Bank, gameplay
 
-Créé APRÈS KEY_STRUCTURE { ok: true }
+Encodé DANS Rotation, après Depth + Domaine (AVANT KLD/KEY_STRUCTURE)
 Contient : domain, sub_domain, subject, idee_dominante, difficulty_depth,
            knowledge_frequency, ks_hash, kld_hash, source='rotation', frame_status=NULL
 ```

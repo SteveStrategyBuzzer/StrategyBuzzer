@@ -1,0 +1,90 @@
+Correction architecture importante.
+
+QUESTIONINTENT ne doit plus être vu comme une étape séparée après KEY_STRUCTURE.
+
+QUESTIONINTENT est un mécanisme d’encodage appelé dans le cheminement de ROTATION.
+
+Flux corrigé :
+
+KERNEL BLUEPRINT
+↓
+NOYAU MÈRE VIDE
+↓
+ROTATION
+   ├─ BANK TARGET
+   ├─ DEPTH NEED MATRIX → inscrit Depth
+   ├─ DOMAIN CYCLE → inscrit Domaine
+   └─ QUESTIONINTENT → encode l’identité du noyau
+↓
+NOYAU MÈRE IDENTIFIÉ / ENCODÉ
+↓
+TAXONOMY
+↓
+KEY_LEARNING_DIRECTION
+↓
+KEY_STRUCTURE
+↓
+PHASE 1
+↓
+PHASE 2
+↓
+PHASE 3
+↓
+PHASE 4
+↓
+READY_BANK
+
+Règle :
+QUESTIONINTENT ne choisit rien.
+QUESTIONINTENT ne valide rien.
+QUESTIONINTENT ne crée pas de contenu.
+QUESTIONINTENT encode seulement le noyau après que ROTATION ait inscrit Depth + Domaine.
+
+Pourquoi :
+KLD et KEY_STRUCTURE doivent pouvoir travailler sur un noyau déjà identifiable.
+
+Cela permet de reprendre le même noyau plus tard pour :
+- activer le prochain sujet
+- voir les sujets restants
+- voir les idées déjà utilisées
+- éviter les doublons Sujet / Idée
+- poursuivre le remplissage progressif du noyau
+- corriger via Quarantaine
+- garder la même identité dans READY_BANK
+
+Maintenant, avant d’aller plus loin, je veux savoir comment KLD et KEY_STRUCTURE fonctionnent réellement dans le code actuel.
+
+Audit demandé, sans patch :
+
+1. GREP sur :
+- KEY_LEARNING_DIRECTION
+- KLD
+- kld_hash
+- pair
+- dominant_idea
+- KEY_STRUCTURE
+- KS
+- ks_hash
+- taxonomy
+- question_intent
+- QUESTIONINTENT
+- kernel_print
+
+2. Montrer les fichiers trouvés.
+
+3. Pour chaque fichier pertinent, donner un slice réel avec lignes visibles.
+
+4. Répondre clairement :
+- Est-ce que KLD existe réellement en code ?
+- Est-ce que KEY_STRUCTURE existe réellement en code ?
+- Est-ce que QUESTIONINTENT existe réellement en code ?
+- Où sont stockés kld_hash, ks_hash, kernel_print ?
+- Est-ce que Taxonomy travaille déjà sur un noyau identifié ?
+- Est-ce que Rotation existe réellement ou seulement simulée ?
+- Est-ce que le noyau mère existe comme structure complète ou seulement comme sortie simulée ?
+
+Important :
+Ne pas coder.
+Ne pas créer de composant.
+Ne pas patcher.
+Je veux seulement l’audit réel du code actuel avec grep + slices.

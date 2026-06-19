@@ -5,8 +5,11 @@ description: Contrat verrouillé de QUESTIONINTENT — PUR ENCODEUR (zéro contr
 
 # QUESTIONINTENT — contrat officiel (VERROUILLÉ)
 
-Position : `… → KEY_STRUCTURE (PASS) → QUESTIONINTENT → Phase 1 (7 cognitifs)`.
-Causalité verrouillée (sens unique) : KEY_STRUCTURE autorise → QUESTIONINTENT encode le NOYAU MÈRE complet → Phase 1 remplit. INTERDIT : QUESTIONINTENT dépend de lui-même ; KEY_STRUCTURE dépend de QUESTIONINTENT.
+Position (CORRIGÉ 2026-06-19) : QUESTIONINTENT n'est PLUS une étape après KEY_STRUCTURE. C'est un **mécanisme d'encodage APPELÉ DANS ROTATION**, après que ROTATION a inscrit Depth + Domaine.
+Flux officiel : `KERNEL BLUEPRINT → NOYAU MÈRE VIDE → ROTATION { BANK TARGET ; DEPTH NEED MATRIX → inscrit Depth ; DOMAIN CYCLE → inscrit Domaine ; QUESTIONINTENT → encode l'identité du noyau } → NOYAU MÈRE IDENTIFIÉ/ENCODÉ → TAXONOMY → KEY_LEARNING_DIRECTION → KEY_STRUCTURE → PHASE 1 → PHASE 2 → PHASE 3 → PHASE 4 → READY_BANK`.
+Causalité (CORRIGÉ) : ROTATION inscrit Depth + Domaine → QUESTIONINTENT encode l'identité → noyau IDENTIFIABLE → KLD puis KEY_STRUCTURE travaillent SUR un noyau déjà identifié → Phases 1-4 remplissent/valident → READY_BANK. QUESTIONINTENT ne choisit rien, ne valide rien, ne crée aucun contenu : il encode SEULEMENT l'identité, une fois Depth + Domaine inscrits.
+POURQUOI : KLD et KEY_STRUCTURE ont besoin d'un noyau DÉJÀ identifiable pour pouvoir reprendre le même noyau plus tard — activer le sujet suivant, voir les sujets restants, voir les idées déjà utilisées, éviter les doublons Sujet/Idée, poursuivre le remplissage progressif, corriger via Quarantaine, garder la même identité dans READY_BANK.
+ANCIEN (ABANDONNÉ) : `KEY_STRUCTURE (PASS) → QUESTIONINTENT → Phase 1` avec « KEY_STRUCTURE autorise → QUESTIONINTENT encode ». La causalité KEY_STRUCTURE→QUESTIONINTENT est REMPLACÉE : QUESTIONINTENT encode l'identité AVANT KLD/KEY_STRUCTURE. La nature « pur encodeur » de QUESTIONINTENT (zéro contrôle métier) reste inchangée — seule sa POSITION dans le flux change.
 
 ## Rôle OFFICIEL — PUR ENCODEUR DU FICHIER NOYAU COMPLET
 QUESTIONINTENT est UNIQUEMENT un encodeur. Il REÇOIT un noyau DÉJÀ VALIDÉ et encode le FICHIER NOYAU COMPLET (le conteneur entier, slots VIDES inclus) pour : PHASE 1, gameplay, retour des corrections, traçabilité.
@@ -18,7 +21,7 @@ INTERDICTIONS (gouvernance) :
 
 Toutes les règles appartiennent À L'AMONT et nulle part ailleurs :
 KLD → KEY_STRUCTURE_RULESET → KEY_STRUCTURE_EVALUATOR → KEY_STRUCTURE_MOTIF_BRIDGE → KEY_STRUCTURE_RECADRAGE_REPORT.
-Quand le noyau arrive à QUESTIONINTENT, il est DÉJÀ propre/validé (KEY_STRUCTURE PASS). QUESTIONINTENT NE re-vérifie RIEN (pas de garde amont/emplacement/aval de son côté — ces conditions sont garanties par l'amont, jamais contrôlées ici).
+⚠️ MAJ 2026-06-19 (position corrigée) : QUESTIONINTENT encode l'identité AVANT KLD/KEY_STRUCTURE. À l'encodage, le noyau n'est donc PAS encore validé par KEY_STRUCTURE — il vient juste d'être identifié par Rotation (Depth + Domaine inscrits). QUESTIONINTENT NE vérifie/valide quand même RIEN (zéro contrôle métier) : il encode seulement l'identité. La validation pédagogique (KLD) et structurelle (KEY_STRUCTURE) s'exécutent APRÈS, sur ce noyau déjà identifié.
 
 ## PRINCIPE DE RESPONSABILITÉ — facilitateur passif (VERROUILLÉ 2026-06-16)
 QUESTIONINTENT n'est **pas un acteur** du système. C'est un **facilitateur passif** qui rend le NOYAU MÈRE reconnaissable, retrouvable et manipulable par le reste de l'écosystème.
