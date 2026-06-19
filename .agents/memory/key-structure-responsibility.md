@@ -5,6 +5,8 @@ description: KEY_STRUCTURE = gardien de la qualité du matériau taxonomique. Va
 
 # KEY_STRUCTURE — responsabilité exacte
 
+⚠️ MAJ 2026-06-19 (voir `rotation-par-noyau-complet.md`) : ORDRE CHANGÉ — **KEY_STRUCTURE intervient AVANT KLD**. Rôle élargi : construit/vérifie le **pré-code** `yy-xx-xxx-xxx-xxx-zz` (yy=Depth, xx=Domaine [Rotation] ; sous-domaine/sujet/idée [Taxonomy] ; zz=variante de collision), détecte les collisions structurelles, compare les `zz` existants, et **appelle KLD** pour arbitrer une collision (FAIL=même sujet+idée → avancer ; PASS=différent → KEY_STRUCTURE attribue un `zz`). Le scope « garde qualité + élagage du matériau taxonomique » ci-dessous reste valable et s'ajoute à ce rôle de pré-code.
+
 KEY_STRUCTURE = **gardien de la qualité structurelle finale**. Il reçoit la **production de Taxonomy** (un arbre Sous-domaine → Sujets → 5 Idées Dominantes), la valide, et **élague** ce qui n'est pas conforme. Objectif : produire un **arbre propre et exploitable**, PAS reconstruire.
 
 ## Séparation des deux gardiens (architecture propre)

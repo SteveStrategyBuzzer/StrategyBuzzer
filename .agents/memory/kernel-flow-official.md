@@ -11,14 +11,17 @@ Document de référence validé. Remplace toutes les interprétations précéden
 
 ```
 KernelBlueprint → NOYAU MÈRE VIDE
-→ ROTATION { BankTarget ; DepthNeedMatrix→Depth ; DomainCycle→Domaine ; QuestionIntent→encode l'identité }
-→ NOYAU MÈRE IDENTIFIÉ/ENCODÉ
-→ TaxonomyReader → KEY_LEARNING_DIRECTION → KEY_STRUCTURE
+→ ROTATION PAR NOYAU COMPLET { BankTarget ; DepthNeedMatrix→Depth ; DomainCycle→Domaine ; QuestionIntent→encode l'identité ; PROGRESSION DU NOYAU }
+→ TaxonomyReader → KEY_STRUCTURE → KEY_LEARNING_DIRECTION (KLD)
 → Phase 1 Création → Phase 2 Validation
 → Phase 3 Traduction → Phase 4 Validation Traduction
 → Ready_Bank → Gameplay
 ```
-⚠️ CORRECTION 2026-06-19 : QuestionIntent est un mécanisme d'encodage APPELÉ DANS Rotation (après que Depth + Domaine sont inscrits), pas une étape après KEY_STRUCTURE. KLD et KEY_STRUCTURE travaillent donc SUR un noyau DÉJÀ identifié. Raison : pouvoir reprendre le même noyau plus tard (sujet suivant, sujets restants, idées utilisées, anti-doublon, remplissage progressif, correction Quarantaine, identité stable en Ready_Bank).
+⚠️ CORRECTION 2026-06-19 (ROTATION PAR NOYAU COMPLET — détail dans `rotation-par-noyau-complet.md`) :
+1. QuestionIntent encode l'identité DANS Rotation (après Depth+Domaine), pas après KEY_STRUCTURE.
+2. Rotation est l'orchestrateur DÉTERMINISTE de progression des noyaux (Depth→Domaine→sous-domaine→sujet actif→idées 1-5→sujet suivant→sous-domaine suivant). AUCUN hasard.
+3. **KEY_STRUCTURE intervient AVANT KLD** (réordre : auparavant KLD→KEY_STRUCTURE). KEY_STRUCTURE construit/vérifie le pré-code `yy-xx-xxx-xxx-xxx-zz`, détecte les collisions, gère `zz` ; quand collision sur `yy-xx-xxx-xxx-xxx` il APPELLE KLD pour trancher (même sujet+idée = FAIL → idée/sujet/sous-domaine suivant ; différent = PASS → `zz`).
+Raison : reprendre le même noyau plus tard (sujet suivant, sujets restants, idées utilisées, anti-doublon, remplissage progressif, correction Quarantaine, identité stable en Ready_Bank).
 
 ## Branche parallèle (quarantaine)
 
@@ -30,16 +33,18 @@ WARNING → Phase 6 Quarantaine → Phase 7 Correction
 ## Causalité verrouillée — sens unique
 
 ```
-ROTATION inscrit Depth + Domaine
+ROTATION inscrit Depth + Domaine (progression déterministe)
 QuestionIntent → encode l'identité du noyau (DANS Rotation, après Depth+Domaine)
-KLD → contrôle pédagogique SUR le noyau identifié
-KEY_STRUCTURE → contrôle structurel SUR le noyau identifié
+Taxonomy → fournit sous-domaine + sujet actif + 5 idées (matière, ne décide pas la progression)
+KEY_STRUCTURE → pré-code yy-xx-xxx-xxx-xxx-zz + détection collision + gestion zz ; appelle KLD si collision
+KLD → arbitre la collision intellectuelle (même sujet+idée = FAIL ; différent = PASS+zz) ; signale sous-domaine épuisé
 Phase 1 → remplit le noyau identifié
 
 INTERDIT : QuestionIntent choisit/valide/crée du contenu (il encode SEULEMENT)
-INTERDIT : KLD/KEY_STRUCTURE travaillent sur un noyau non identifié
+INTERDIT : Rotation pige au hasard (progression méthodique obligatoire)
+INTERDIT : Taxonomy décide quand avancer idée/sujet/sous-domaine
 ```
-ANCIEN (ABANDONNÉ) : « KEY_STRUCTURE autorise → QuestionIntent pose la puce ». Causalité inversée : QuestionIntent encode AVANT KLD/KEY_STRUCTURE.
+ANCIEN (ABANDONNÉ) : « KEY_STRUCTURE autorise → QuestionIntent pose la puce » ET l'ordre « KLD → KEY_STRUCTURE ». Nouveau : QuestionIntent encode dans Rotation ; KEY_STRUCTURE AVANT KLD.
 
 ## Responsabilités officielles
 
@@ -50,8 +55,8 @@ ANCIEN (ABANDONNÉ) : « KEY_STRUCTURE autorise → QuestionIntent pose la puce 
 | DepthNeedMatrix | Choisit le Depth ONLY — rotation 2×8/4×8/6×8/7×8/8×8/9×8/10×8 | Ne choisit jamais le domaine |
 | DomainCycle | Choisit le Domaine ONLY — Géographie→Histoire→Faune→Art→Sport→Cinéma→Cuisine→Général | Ne choisit pas le depth |
 | TaxonomyReader | Propose sub_domain+subject+idee_dominante + navigation fallback sur exclusions | Ne décide pas la production globale |
-| KEY_LEARNING_DIRECTION | Détecte doublon pédagogique hash(subject+idee_dominante) → retour TaxonomyReader | Ne crée pas, ne navigue pas |
-| KEY_STRUCTURE | Garde structurel hash(depth+domain+sub_domain+subject+idee_dominante) — autorise ou refuse | Ne crée pas, ne remplit pas, ne décide pas |
+| KEY_STRUCTURE (AVANT KLD) | Construit/vérifie le pré-code `yy-xx-xxx-xxx-xxx-zz`, détecte collisions, gère `zz` ; appelle KLD si collision | Ne crée pas le contenu, ne tranche pas la collision intellectuelle |
+| KEY_LEARNING_DIRECTION (KLD) | Arbitre la collision : même sujet+idée = FAIL (idée/sujet/sous-domaine suivant) ; différent = PASS+zz ; signale sous-domaine épuisé | Ne construit pas la structure, ne fait pas le pré-code |
 | QuestionIntent | Encode l'identité du noyau DANS Rotation (après Depth+Domaine), AVANT KLD/KEY_STRUCTURE | Ne valide rien, ne choisit rien, ne décide rien, ne crée aucun contenu |
 | Phase 1 | Génère les 7 cognitifs sur le noyau pucé | Ne modifie JAMAIS key/subject/idee_dominante |
 | Phase 2 | Valide chaque variant → VALIDATED_OK ou WARNING | |

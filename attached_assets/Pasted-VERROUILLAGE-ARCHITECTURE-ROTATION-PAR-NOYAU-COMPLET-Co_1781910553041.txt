@@ -1,0 +1,276 @@
+VERROUILLAGE ARCHITECTURE — ROTATION PAR NOYAU COMPLET
+
+Correction importante.
+
+Avec la structure actuelle, Rotation ne doit pas être seulement un distributeur Depth/Domaine.
+
+Rotation devient l’orchestrateur de progression des NOYAUX MÈRES.
+
+Nom officiel :
+ROTATION PAR NOYAU COMPLET
+
+────────────────────────
+1. Flux officiel
+────────────────────────
+
+KERNEL BLUEPRINT
+↓
+ROTATION PAR NOYAU COMPLET
+   ├─ BANK TARGET
+   ├─ DEPTH NEED MATRIX
+   ├─ DOMAIN CYCLE
+   ├─ QUESTIONINTENT
+   └─ PROGRESSION DU NOYAU
+↓
+TAXONOMY
+↓
+KEY_STRUCTURE
+↓
+KLD
+↓
+PHASE 1
+↓
+PHASE 2
+↓
+PHASE 3
+↓
+PHASE 4
+↓
+READY_BANK
+↓
+GAMEPLAY
+
+────────────────────────
+2. Rôle réel de Rotation
+────────────────────────
+
+Rotation doit déterminer :
+
+- Quel Depth ?
+- Quel Domaine ?
+- Quel noyau est actif ?
+- Quel sous-domaine est actif ?
+- Quel sujet est actif ?
+- Quelle idée dominante est active ?
+- Quand avancer l’idée ?
+- Quand avancer le sujet ?
+- Quand changer de sous-domaine ?
+
+Rotation ne pige pas au hasard.
+
+Rotation fait progresser méthodiquement les noyaux.
+
+────────────────────────
+3. Logique de progression
+────────────────────────
+
+Pour un Depth donné, Rotation traverse les Domaines.
+
+Exemple :
+
+Depth 2
+Domaine 1 → Sujet actif → Idée 1
+Domaine 2 → Sujet actif → Idée 1
+Domaine 3 → Sujet actif → Idée 1
+...
+Domaine 8 → Sujet actif → Idée 1
+
+Ensuite :
+
+Domaine 1 → même Sujet actif → Idée 2
+Domaine 2 → même Sujet actif → Idée 2
+...
+Domaine 8 → même Sujet actif → Idée 2
+
+Puis :
+
+Idée 3
+Idée 4
+Idée 5
+
+Quand les 5 idées dominantes du sujet actif sont exploitées :
+
+Rotation passe au sujet suivant du même noyau.
+
+Taxonomy génère alors les 5 idées dominantes du nouveau sujet actif.
+
+Quand tous les sujets du sous-domaine sont utilisés :
+
+KLD indique sous-domaine épuisé.
+
+Taxonomy change de sous-domaine pour ce domaine.
+
+Les autres domaines qui ont encore des sujets exploitables continuent leur progression.
+
+────────────────────────
+4. Rôle de Taxonomy
+────────────────────────
+
+Taxonomy fournit la matière intellectuelle :
+
+- sous-domaines
+- jusqu’à 50 sujets
+- 5 idées dominantes du sujet actif
+
+Taxonomy ne décide pas la progression.
+
+Taxonomy ne choisit pas quand avancer idée/sujet/sous-domaine.
+
+Elle répond aux besoins de Rotation.
+
+────────────────────────
+5. Rôle de QUESTIONINTENT
+────────────────────────
+
+QUESTIONINTENT est appelé dans le cheminement de Rotation.
+
+Il intervient quand Rotation a inscrit :
+
+- Depth
+- Domaine
+
+Il encode l’identité stable du NOYAU MÈRE.
+
+Important :
+
+QUESTIONINTENT ne choisit rien.
+QUESTIONINTENT ne valide rien.
+QUESTIONINTENT ne crée pas de contenu.
+QUESTIONINTENT encode seulement.
+
+L’objectif est que Taxonomy, KEY_STRUCTURE, KLD, PHASES, Quarantaine, Ready_Bank et Gameplay travaillent toujours sur le même noyau identifiable.
+
+────────────────────────
+6. Rôle de KEY_STRUCTURE
+────────────────────────
+
+KEY_STRUCTURE doit intervenir avant KLD.
+
+KEY_STRUCTURE :
+
+- vérifie que les composantes nécessaires au code existent
+- construit / vérifie le pré-code
+- détecte les collisions structurelles
+- compare les variantes zz existantes
+- gère le différenciateur zz quand la collision est acceptée
+
+Code conceptuel :
+
+yy-xx-xxx-xxx-xxx-zz
+
+où :
+
+yy  = Depth
+xx  = Domaine
+xxx = Sous-domaine
+xxx = Sujet actif
+xxx = Idée dominante active
+zz  = variante de collision acceptée
+
+Attention :
+
+Taxonomy ne génère pas tout le code.
+Taxonomy fournit seulement la matière intellectuelle et une partie du pré-code :
+
+- sous-domaine
+- sujet
+- idée dominante
+
+Depth et Domaine viennent de Rotation.
+
+zz vient de KEY_STRUCTURE / KLD après analyse de collision.
+
+────────────────────────
+7. Rôle de KLD
+────────────────────────
+
+KLD ne fait pas la structure.
+
+KLD tranche les collisions intellectuelles.
+
+Quand KEY_STRUCTURE détecte un même pré-code :
+
+yy-xx-xxx-xxx-xxx
+
+KEY_STRUCTURE appelle KLD.
+
+KLD vérifie si c’est réellement :
+
+- même sujet
+- même idée dominante
+
+Cas A :
+même sujet + même idée dominante
+
+→ FAIL intellectuel
+→ KLD demande la prochaine idée dominante disponible du même sujet
+
+Si les 5 idées du sujet sont utilisées :
+→ KLD demande le prochain sujet
+
+Si tous les sujets sont utilisés :
+→ KLD indique changement de sous-domaine
+
+Cas B :
+même pré-code, mais sujet ou idée réellement différent
+
+→ PASS
+→ KEY_STRUCTURE attribue une variante zz différente
+exemple : 00, B4, C7, etc.
+
+────────────────────────
+8. Source de vérité interne
+────────────────────────
+
+La structure intellectuelle du noyau est la source de vérité interne.
+
+Elle contient :
+
+- slot code yy-xx-xxx-xxx-xxx-zz
+- slot Depth
+- slot Domaine
+- slot Sous-domaine
+- slots 50 Sujets
+- slots 5 Idées dominantes
+- 7 cognitifs
+- Questions
+- Réponses
+- SV
+- Traductions
+- règles
+- mécanismes
+- contraintes
+- statuts
+- traces
+
+KernelRotationPlanner / Rotation, Taxonomy, KEY_STRUCTURE, KLD et les Phases utilisent cette structure pour créer, vérifier, corriger et exploiter le noyau.
+
+────────────────────────
+9. Résumé officiel
+────────────────────────
+
+Le noyau mère reste l’unité centrale.
+
+Rotation par noyau complet assure que les noyaux progressent méthodiquement :
+
+Depth
+→ Domaine
+→ Sous-domaine
+→ Sujet actif
+→ Idée 1 à 5
+→ Sujet suivant
+→ Sous-domaine suivant si épuisé
+
+Le hasard ne doit pas décider quels sujets ou idées seront exploités.
+
+Objectif :
+
+- aucun sujet oublié
+- aucune idée dominante oubliée
+- progression équilibrée entre domaines
+- exploitation complète des noyaux
+- cohérence avec Gameplay, Ready_Bank, Quarantaine et Analytique
+
+Ne pas coder maintenant.
+
+Je veux d’abord que tu confirmes si cette architecture est cohérente avec le code actuel, et que tu identifies les composants existants ou manquants nécessaires pour supporter cette ROTATION PAR NOYAU COMPLET.

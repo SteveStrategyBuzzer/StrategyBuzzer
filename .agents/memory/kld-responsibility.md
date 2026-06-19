@@ -5,6 +5,8 @@ description: Scope verrouillé de KEY_LEARNING_DIRECTION dans le pipeline noyau 
 
 # KEY_LEARNING_DIRECTION — responsabilité exacte (verrouillée)
 
+⚠️ MAJ 2026-06-19 (voir `rotation-par-noyau-complet.md`) : ORDRE CHANGÉ — **KEY_STRUCTURE intervient AVANT KLD** (auparavant KLD→KEY_STRUCTURE). KLD n'est plus la première garde : c'est KEY_STRUCTURE qui détecte une collision de pré-code `yy-xx-xxx-xxx-xxx` puis APPELLE KLD pour trancher (même sujet+idée = FAIL → idée/sujet/sous-domaine suivant ; sujet/idée réellement différent = PASS → KEY_STRUCTURE attribue un `zz`). KLD signale aussi « sous-domaine épuisé ». Le reste de ce fichier (scope anti-répétition pédagogique) reste valable mais s'exécute APRÈS KEY_STRUCTURE.
+
 KLD est un **garde anti-répétition de direction pédagogique**, PAS un garde anti-question.
 
 ## Stade du pipeline
