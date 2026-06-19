@@ -39,12 +39,12 @@ Fournit la matière : sous-domaines, jusqu'à 50 sujets, 5 idées dominantes du 
 ## 5. Rôle de QUESTIONINTENT
 Appelé DANS Rotation, quand Depth + Domaine sont inscrits. Encode l'identité STABLE du noyau mère. Ne choisit rien, ne valide rien, ne crée aucun contenu — encode seulement. But : que Taxonomy, KEY_STRUCTURE, KLD, Phases, Quarantaine, Ready_Bank, Gameplay travaillent toujours sur le MÊME noyau identifiable.
 
-## 6. Rôle de KEY_STRUCTURE (AVANT KLD)
-- Vérifie que les composantes nécessaires au code existent.
-- Construit / vérifie le **pré-code**.
-- Détecte les collisions structurelles.
-- Compare les variantes `zz` existantes.
-- Gère le différenciateur `zz` quand la collision est acceptée.
+## 6. Rôle de KEY_STRUCTURE (AVANT KLD) — pilier du moteur intellectuel
+KEY_STRUCTURE n'est PLUS un simple validateur final. Rôle DOUBLE :
+
+**6A. ÉGRAINAGE INTELLECTUEL (nouveau).** Vérifie que la cascade Depth→Domaine→Sous-domaine→Sujet→Idée est NATURELLE : l'idée découle-t-elle du sujet ? le sujet du sous-domaine ? le sous-domaine du domaine ? le domaine respecte-t-il le Depth ? aucun niveau n'en absorbe un autre ? Peut REFUSER un mauvais égrainage MÊME SANS collision. Ex : Géographie→Montagnes→Everest→Mort = PASS ; Everest→Frontière = FAIL (ne découle pas naturellement). ⚠️ jugement sémantique = risque de non-déterminisme/coût IA (voir Risques).
+
+**6B. PRÉ-CODE.** Construit/vérifie le code, détecte les collisions structurelles, compare les `zz` existants, gère le différenciateur `zz`.
 
 **Code conceptuel** : `yy-xx-xxx-xxx-xxx-zz`
 - `yy` = Depth (de Rotation)
@@ -62,7 +62,10 @@ KLD ne fait PAS la structure. KLD tranche les collisions. Quand KEY_STRUCTURE d�
 - **Cas B — même pré-code mais sujet/idée réellement différent** → PASS → KEY_STRUCTURE attribue un `zz` différent (00, B4, C7, …).
 
 ## 8. Source de vérité interne (structure intellectuelle du noyau)
-Contient : slot code `yy-xx-xxx-xxx-xxx-zz`, slot Depth, slot Domaine, slot Sous-domaine, 50 slots Sujets, 5 slots Idées dominantes, 7 cognitifs, Questions, Réponses, SV, Traductions, règles, mécanismes, contraintes, statuts, traces. Rotation/KernelRotationPlanner, Taxonomy, KEY_STRUCTURE, KLD et les Phases utilisent cette structure pour créer/vérifier/corriger/exploiter le noyau.
+Contient : slot code `yy-xx-xxx-xxx-xxx-zz`, slot Depth, slot Domaine, slot Sous-domaine, 50 slots Sujets, 5 slots Idées dominantes, **7 cognitifs**, + par cognitif : Questions/Réponses/Saviez-vous/Traductions, + par slot : règles/mécanismes/contraintes/statuts/traces.
+
+**Les 7 cognitifs officiels** (= les « 7 variant_key values » de `kernel-pipeline-architecture.md`, identiques) :
+`qcm_recognition, qcm_reasoning, qcm_deceptive_trap, tf_recognition_true, tf_recognition_false, tf_reasoning_true, tf_reasoning_false`. (QCM = 3 ; V/F splité par polarité TRUE/FALSE = 4 ; `tf_deceptive_trap` EXCLU.) `zz = 00` si pas de collision. Rotation/KernelRotationPlanner, Taxonomy, KEY_STRUCTURE, KLD et les Phases utilisent cette structure pour créer/vérifier/corriger/exploiter le noyau.
 
 ## 9. Objectif
 Aucun sujet oublié, aucune idée dominante oubliée, progression équilibrée entre domaines, exploitation complète des noyaux, cohérence avec Gameplay/Ready_Bank/Quarantaine/Analytique.
@@ -74,6 +77,7 @@ Aucun sujet oublié, aucune idée dominante oubliée, progression équilibrée e
 - **taxonomy.json sous-dimensionné** : aujourd'hui 4 sous-domaines × 4 sujets × 5 idées par domaine — PAS « jusqu'à 50 sujets ».
 - **Composants Rotation manquants** : KernelRotationPlanner, DepthNeedMatrix, DomainCycle, KEY_STRUCTURE, KLD, générateur de pré-code `yy-xx-xxx-xxx-xxx-zz`, différenciateur `zz` — AUCUN n'existe (commentaires seulement).
 - **QUESTIONINTENT** : modèle+table existent mais créés tardivement (Phase0/dialyse), pas « encodés pendant la progression Rotation ».
-- **7 cognitifs vs 5 variantes** : la spec dit 7 cognitifs ; le code `QuestionIntent::targetVariants()` cible 5 variantes. Divergence non tranchée.
+- **7 cognitifs — RÉSOLU/clarifié 2026-06-19** : le code a DEUX modèles cohabitants. (1) LEGACY : `QuestionIntent::targetVariants()` = 5 (`question_type/cognitive_type`, sans polarité). (2) NOUVEAU/officiel : `polarity` existe (`question_groups.polarity` NULL pour QCM) et `KernelContentBuilder`/`VariantAlignmentChecker`/`QuestionsKernelFillContentCommand` gèrent bien les **7** (split V/F TRUE/FALSE). Le 7 est l'officiel (= lock + DB) ; le 5 (`targetVariants`) est legacy à retirer/aligner.
+- **KEY_STRUCTURE égrainage intellectuel (§6A) = jugement sémantique** : aucune implémentation ; impose un appel IA par slot (déterminisme/coût/faux FAIL) — voir critique.
 
 **Why:** capturer fidèlement la cible (déterministe, par noyau complet) ET l'état réel (aléatoire, déficit-driven) pour éviter de re-confondre les deux lors de l'implémentation.

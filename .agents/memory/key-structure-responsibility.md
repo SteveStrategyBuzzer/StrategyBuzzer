@@ -5,7 +5,7 @@ description: KEY_STRUCTURE = gardien de la qualité du matériau taxonomique. Va
 
 # KEY_STRUCTURE — responsabilité exacte
 
-⚠️ MAJ 2026-06-19 (voir `rotation-par-noyau-complet.md`) : ORDRE CHANGÉ — **KEY_STRUCTURE intervient AVANT KLD**. Rôle élargi : construit/vérifie le **pré-code** `yy-xx-xxx-xxx-xxx-zz` (yy=Depth, xx=Domaine [Rotation] ; sous-domaine/sujet/idée [Taxonomy] ; zz=variante de collision), détecte les collisions structurelles, compare les `zz` existants, et **appelle KLD** pour arbitrer une collision (FAIL=même sujet+idée → avancer ; PASS=différent → KEY_STRUCTURE attribue un `zz`). Le scope « garde qualité + élagage du matériau taxonomique » ci-dessous reste valable et s'ajoute à ce rôle de pré-code.
+⚠️ MAJ 2026-06-19 (voir `rotation-par-noyau-complet.md`) : ORDRE CHANGÉ — **KEY_STRUCTURE intervient AVANT KLD**. Rôle DOUBLE et élargi : (6A) **ÉGRAINAGE INTELLECTUEL** — vérifie que la cascade Depth→Domaine→Sous-domaine→Sujet→Idée est NATURELLE et peut REFUSER même sans collision (Everest→Mort PASS ; Everest→Frontière FAIL) ; (6B) **PRÉ-CODE** `yy-xx-xxx-xxx-xxx-zz` (yy=Depth, xx=Domaine [Rotation] ; sous-domaine/sujet/idée [Taxonomy] ; zz=collision, `00` si aucune), détecte les collisions structurelles, compare les `zz`, et **appelle KLD** pour arbitrer (FAIL=même sujet+idée → avancer ; PASS=différent → `zz` différent). Le scope « garde qualité + élagage du matériau taxonomique » ci-dessous reste valable et s'ajoute.
 
 KEY_STRUCTURE = **gardien de la qualité structurelle finale**. Il reçoit la **production de Taxonomy** (un arbre Sous-domaine → Sujets → 5 Idées Dominantes), la valide, et **élague** ce qui n'est pas conforme. Objectif : produire un **arbre propre et exploitable**, PAS reconstruire.
 

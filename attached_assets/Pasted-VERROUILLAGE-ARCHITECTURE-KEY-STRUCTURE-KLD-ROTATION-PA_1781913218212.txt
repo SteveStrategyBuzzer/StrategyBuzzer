@@ -1,0 +1,419 @@
+VERROUILLAGE ARCHITECTURE — KEY_STRUCTURE / KLD / ROTATION PAR NOYAU COMPLET
+
+Correction importante.
+
+Je veux que tu oublies le rôle simpliste de KEY_STRUCTURE comme simple validateur de structure.
+
+Avec la nouvelle architecture, KEY_STRUCTURE devient l'un des piliers du moteur intellectuel.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. OBJECTIF GÉNÉRAL
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Nous ne voulons plus produire les noyaux :
+
+- au hasard,
+- par simple déficit,
+- ni par tirage aléatoire.
+
+Nous voulons exploiter progressivement les NOYAUX MÈRES jusqu'à maturité intellectuelle.
+
+Le noyau devient une unité de progression intellectuelle.
+
+La rotation devient :
+
+ROTATION PAR NOYAU COMPLET.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2. STRUCTURE INTELLECTUELLE DU NOYAU
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Le KERNEL BLUEPRINT définit dès le départ la structure intellectuelle complète du noyau.
+
+Elle contient :
+
+slot_code : yy-xx-xxx-xxx-xxx-zz
+
+slot_depth
+slot_domaine
+slot_sous_domaine
+
+slots_50_sujets
+
+slots_5_idées_dominantes
+
+7 cognitifs :
+
+- qcm_recognition
+- qcm_reasoning
+- qcm_deceptive_trap
+- tf_recognition_true
+- tf_recognition_false
+- tf_reasoning_true
+- tf_reasoning_false
+
+Pour chaque cognitif :
+
+- Questions
+- Réponses
+- Saviez-vous
+- Traductions
+
+Pour chaque slot :
+
+- règles
+- mécanismes
+- contraintes
+- statuts
+- traces
+
+Cette structure est la source de vérité interne.
+
+Tous les moteurs travaillent dessus.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+3. ROTATION PAR NOYAU COMPLET
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Rotation n'est plus un distributeur.
+
+Rotation devient l'orchestrateur de progression.
+
+Elle détermine :
+
+- Depth actif
+- Domaine actif
+- Sous-domaine actif
+- Sujet actif
+- Idée dominante active
+
+Elle sait :
+
+où en est rendu chaque noyau.
+
+Rotation doit faire progresser les noyaux méthodiquement.
+
+Exemple :
+
+Depth 2
+
+Domaine 1 :
+Sujet 1
+Idée 1
+
+Domaine 2 :
+Sujet 1
+Idée 1
+
+...
+
+Domaine 8 :
+Sujet 1
+Idée 1
+
+Puis :
+
+Idée 2
+pour les 8 domaines
+
+Puis :
+
+Idée 3
+
+Puis :
+
+Idée 4
+
+Puis :
+
+Idée 5
+
+Quand les 5 idées du sujet sont exploitées :
+
+Rotation passe au sujet suivant.
+
+Quand tous les sujets sont exploités :
+
+Rotation passe au sous-domaine suivant.
+
+Le hasard ne décide plus.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+4. QUESTIONINTENT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+QUESTIONINTENT est appelé dans le cheminement de Rotation.
+
+Il intervient après que Rotation ait inscrit :
+
+- Depth
+- Domaine
+
+QUESTIONINTENT :
+
+- encode l'identité stable du noyau,
+- ne valide rien,
+- ne choisit rien,
+- ne crée aucun contenu.
+
+Il permet simplement que tous les composants travaillent sur le même noyau identifiable.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+5. TAXONOMY
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Taxonomy fournit la matière intellectuelle.
+
+Elle fournit :
+
+- Sous-domaines
+- Sujets
+- Idées dominantes
+
+Taxonomy ne décide jamais :
+
+- quand avancer,
+- quel sujet choisir ensuite,
+- quelle idée utiliser ensuite.
+
+Taxonomy répond aux besoins de Rotation.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+6. NOUVEAU RÔLE DE KEY_STRUCTURE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+KEY_STRUCTURE n'est PAS un simple validateur final.
+
+KEY_STRUCTURE devient :
+
+le gardien de la cohérence intellectuelle et structurelle du noyau.
+
+Il intervient AVANT KLD.
+
+Son rôle est double.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+6A. ÉGRAINAGE INTELLECTUEL
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+KEY_STRUCTURE doit vérifier l'égrainage complet du noyau :
+
+Depth
+↓
+Domaine
+↓
+Sous-domaine
+↓
+Sujet
+↓
+Idée dominante
+
+Il doit répondre :
+
+Le cheminement est-il naturel ?
+
+L'idée dominante découle-t-elle réellement du sujet ?
+
+Le sujet découle-t-il réellement du sous-domaine ?
+
+Le sous-domaine découle-t-il réellement du domaine ?
+
+Le domaine respecte-t-il le depth demandé ?
+
+Aucun niveau n'absorbe-t-il un autre ?
+
+Exemples :
+
+Géographie
+↓
+Montagnes
+↓
+Everest
+↓
+Mort
+
+PASS
+
+Géographie
+↓
+Montagnes
+↓
+Everest
+↓
+Frontière
+
+FAIL
+
+car "Frontière" ne découle pas naturellement du sujet Everest.
+
+KEY_STRUCTURE doit pouvoir refuser un mauvais égrainage même sans collision.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+6B. PRÉ-CODE STRUCTUREL
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+KEY_STRUCTURE doit aussi construire et vérifier :
+
+yy-xx-xxx-xxx-xxx-zz
+
+avec :
+
+yy
+= Depth
+
+xx
+= Domaine
+
+xxx
+= Sous-domaine
+
+xxx
+= Sujet
+
+xxx
+= Idée dominante
+
+zz
+= différenciateur de collision acceptée
+
+Taxonomy ne construit qu'une partie du pré-code :
+
+- sous-domaine
+- sujet
+- idée dominante
+
+Rotation fournit :
+
+- depth
+- domaine
+
+KEY_STRUCTURE assemble l'ensemble.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+6C. COLLISIONS STRUCTURELLES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+KEY_STRUCTURE vérifie :
+
+Existe-t-il déjà un pré-code :
+
+yy-xx-xxx-xxx-xxx
+
+dans la base ?
+
+Si NON :
+
+PASS
+
+zz = 00
+
+Si OUI :
+
+KEY_STRUCTURE appelle KLD.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+7. NOUVEAU RÔLE DE KLD
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+KLD ne vérifie plus la structure.
+
+KLD tranche les collisions intellectuelles.
+
+Il répond :
+
+S'agit-il réellement du même apprentissage ?
+
+Exemple :
+
+Everest
++
+Mort
+
+contre
+
+Everest
++
+Mort
+
+FAIL intellectuel.
+
+KLD demande alors :
+
+prochaine idée dominante du même sujet.
+
+Si les 5 idées sont utilisées :
+
+KLD demande :
+
+prochain sujet.
+
+Si tous les sujets sont utilisés :
+
+KLD demande :
+
+changement de sous-domaine.
+
+Autre cas :
+
+Même pré-code détecté,
+mais après vérification :
+
+Sujet ou idée réellement différents.
+
+PASS.
+
+KEY_STRUCTURE attribue alors :
+
+zz différent.
+
+Exemple :
+
+00
+B4
+C7
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+8. RESPONSABILITÉS FINALES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Rotation :
+gère la progression.
+
+Taxonomy :
+fournit la matière intellectuelle.
+
+QUESTIONINTENT :
+donne une identité stable.
+
+KEY_STRUCTURE :
+- vérifie l'égrainage Depth → Idée dominante,
+- construit le pré-code,
+- détecte les collisions structurelles,
+- gère zz.
+
+KLD :
+- tranche les collisions intellectuelles,
+- demande prochaine idée,
+- demande prochain sujet,
+- demande prochain sous-domaine.
+
+PHASES :
+créent, vérifient, traduisent et valident le contenu.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+9. POINT IMPORTANT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Je veux ton avis critique sur cette architecture.
+
+Je veux savoir :
+
+- ce qui est cohérent avec le code actuel,
+- ce qui peut être réutilisé,
+- ce qui manque,
+- les risques potentiels,
+- les contradictions éventuelles.
+
+Je ne veux AUCUN code.
+Je ne veux AUCUN patch.
+Je veux uniquement une analyse architecturale honnête et critique.
