@@ -1,0 +1,123 @@
+CORRECTION IMPORTANTE — CONSOMMATION PAR JOUEUR, PAS GLOBALE
+
+Quand on dit que Gameplay expose/consomme les cognitifs VALIDATED_OK à l’intérieur d’un noyau, il ne faut jamais rendre ce cognitif inaccessible globalement.
+
+La consommation est STRICTEMENT par joueur.
+
+Un cognitif consommé par un joueur :
+- reste dans READY_BANK ;
+- reste VALIDATED_OK ;
+- reste disponible pour les autres joueurs ;
+- est seulement marqué comme consommé dans l’historique de CE joueur.
+
+Donc le suivi doit être :
+
+player_id
++
+kernel_id / kernel_code
++
+cognitive_key
+
+et non :
+
+kernel_id
++
+cognitive_key global.
+
+Exemple :
+
+Joueur A :
+noyau X / qcm_recognition = consommé
+
+Joueur B :
+noyau X / qcm_recognition = encore disponible
+
+Joueur C :
+noyau X / qcm_recognition = encore disponible
+
+Règle :
+
+READY_BANK ne change pas parce qu’un joueur consomme un cognitif.
+
+Seule la banque de suivi du joueur change.
+
+────────────────────────
+IMPACT SUR LA SÉLECTION GAMEPLAY
+────────────────────────
+
+Gameplay doit diminuer l’impact de consommation du noyau en tenant compte uniquement de l’historique du joueur.
+
+Pour chaque joueur, Gameplay classe les noyaux :
+
+1. VIERGE pour ce joueur
+   = aucun cognitif du noyau consommé par ce joueur
+
+2. TOUCHÉ pour ce joueur
+   = au moins un cognitif du noyau consommé par ce joueur,
+     mais les 3 familles minimales ne sont pas toutes consommées
+
+3. BACK_SUPPORT pour ce joueur
+   = Recognition + Reasoning + Deceptive Trap consommés par ce joueur
+
+Important :
+
+Ces statuts sont PER-PLAYER.
+
+Un même noyau peut être :
+
+- BACK_SUPPORT pour Joueur A
+- TOUCHÉ pour Joueur B
+- VIERGE pour Joueur C
+
+────────────────────────
+FONCTIONNEMENT MÉCANIQUE
+────────────────────────
+
+Gameplay doit d’abord chercher :
+
+1. des noyaux VIERGES pour ce joueur
+2. sinon des noyaux TOUCHÉS avec cognitifs disponibles pour ce joueur
+3. sinon des noyaux BACK_SUPPORT pour ce joueur
+
+Le but est de diminuer l’impact de consommation du noyau.
+
+On n’épuise jamais un noyau globalement.
+
+On adapte seulement son accessibilité selon chaque joueur.
+
+────────────────────────
+STRUCTURE DE SUIVI MINIMALE
+────────────────────────
+
+Il faut stocker :
+
+player_id
+kernel_id ou kernel_code
+cognitive_key
+cognitive_family
+cognitive_form
+question_group_id
+match_id
+mode
+result
+played_at
+
+Cette table ne doit pas remplacer READY_BANK.
+
+Elle sert uniquement à savoir ce que CE joueur a déjà consommé.
+
+────────────────────────
+RÈGLE FINALE
+────────────────────────
+
+READY_BANK = source des noyaux disponibles globalement.
+
+player_kernel_cognitive_usage = mémoire individuelle de consommation.
+
+Gameplay combine les deux :
+
+READY_BANK
++
+historique du joueur
+↓
+sélection intelligente du prochain cognitif.

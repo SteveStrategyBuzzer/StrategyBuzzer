@@ -1,0 +1,222 @@
+OBJECTIF — INTÉGRER LA LOGIQUE GAMEPLAY DE CONSOMMATION DES COGNITIFS
+
+Architecture cible verrouillée :
+
+READY_BANK = banque de NOYAUX MÈRES ENCODÉS.
+GAMEPLAY ne consomme pas un noyau complet.
+GAMEPLAY consomme des cognitifs VALIDATED_OK à l’intérieur d’un noyau.
+
+Le noyau reste l’unité centrale.
+Le cognitif est l’unité consommée.
+
+────────────────────────
+1. AUDIT AVANT PATCH
+────────────────────────
+
+Avant de coder, fais GREP + SLICES sur :
+
+- QuestionBankPicker
+- pickOne
+- randomCognitiveTypeFor
+- QuestionBankRepository
+- ready_bank
+- VALIDATED_OK
+- usage_count
+- player_question_history
+- player_progress
+- match_answers
+- answered_questions
+- player_stats
+- cognitive_type
+- question_type
+- polarity
+
+Objectif :
+identifier où le gameplay choisit actuellement :
+- la question
+- le cognitif
+- le niveau/depth
+- le domaine
+- l’historique joueur s’il existe
+
+Ne pas patcher avant d’avoir montré les slices.
+
+────────────────────────
+2. LOGIQUE CIBLE À INCORPORER
+────────────────────────
+
+Le gameplay doit fonctionner mécaniquement ainsi :
+
+READY_BANK
+↓
+getAvailableKernels(player_id, depth, domain)
+↓
+classifyKernelForPlayer(player_id, kernel_id)
+↓
+selectKernelForGameplay(player_id, depth, domain)
+↓
+getAvailableCognitives(player_id, kernel_id)
+↓
+chooseNextCognitive(player_id, kernel_id)
+↓
+jouer la question
+↓
+markCognitiveConsumed(player_id, kernel_id, cognitive_key, match_id, result)
+↓
+updateKernelPlayerStatus(player_id, kernel_id)
+
+────────────────────────
+3. FONCTIONS MÉCANIQUES À INTÉGRER
+────────────────────────
+
+Créer ou intégrer l’équivalent de :
+
+getAvailableKernels(player_id, depth, domain)
+- retourne les NOYAUX MÈRES ENCODÉS de READY_BANK pour depth + domain.
+
+classifyKernelForPlayer(player_id, kernel_id)
+- retourne :
+  VIERGE
+  TOUCHÉ
+  BACK_SUPPORT
+
+getConsumedCognitives(player_id, kernel_id)
+- retourne les cognitifs déjà joués par ce joueur dans ce noyau.
+
+getAvailableCognitives(player_id, kernel_id)
+- prend les cognitifs VALIDATED_OK du noyau
+- retire ceux déjà consommés par le joueur.
+
+chooseNextCognitive(player_id, kernel_id)
+Priorité :
+1. Recognition non consommée
+2. Reasoning non consommée
+3. Deceptive Trap non consommé
+4. formes restantes si nécessaire
+
+markCognitiveConsumed(player_id, kernel_id, cognitive_key, match_id, result)
+- écrit l’historique dès qu’un cognitif est joué.
+
+updateKernelPlayerStatus(player_id, kernel_id)
+- VIERGE si aucun cognitif consommé
+- TOUCHÉ si au moins un cognitif consommé
+- BACK_SUPPORT si Recognition + Reasoning + Deceptive Trap consommés
+
+────────────────────────
+4. STRUCTURE DE SUIVI JOUEUR / NOYAU
+────────────────────────
+
+Il faut une persistance durable, pas Redis.
+
+Redis = cache/lock seulement.
+
+Prévoir une table ou structure équivalente :
+
+player_kernel_cognitive_usage
+
+Champs minimum :
+
+- id
+- player_id
+- kernel_id ou question_intent_id
+- kernel_code
+- depth
+- domain
+- sub_domain
+- cognitive_key
+- cognitive_family
+- cognitive_form
+- question_group_id
+- match_id
+- mode
+- result
+- played_at
+- created_at
+- updated_at
+
+cognitive_family :
+- recognition
+- reasoning
+- deceptive_trap
+
+cognitive_form :
+- qcm
+- tf_true
+- tf_false
+- trap
+
+────────────────────────
+5. RÈGLES DE CONSOMMATION
+────────────────────────
+
+Un cognitif est consommé si :
+
+player_id + kernel_id + cognitive_key existe dans l’historique.
+
+Une famille est consommée si :
+
+player_id + kernel_id + cognitive_family existe dans l’historique.
+
+Un noyau est TOUCHÉ si :
+
+au moins un cognitif de ce noyau a été consommé.
+
+Un noyau est BACK_SUPPORT si :
+
+Recognition consommée
++
+Reasoning consommée
++
+Deceptive Trap consommé
+
+BACK_SUPPORT ne veut pas dire noyau épuisé.
+BACK_SUPPORT veut dire :
+le joueur a vécu l’expérience pédagogique minimale du noyau.
+
+────────────────────────
+6. PRIORITÉ DE SÉLECTION GAMEPLAY
+────────────────────────
+
+Quand Gameplay reçoit depth + domain :
+
+1. chercher les noyaux VIERGES
+2. sinon chercher les noyaux TOUCHÉS avec cognitifs disponibles
+3. sinon utiliser BACK_SUPPORT
+
+Ne pas choisir au hasard avant d’avoir appliqué cette priorité.
+
+Le hasard peut rester seulement comme tie-breaker entre plusieurs choix équivalents.
+
+────────────────────────
+7. CONTRAINTES IMPORTANTES
+────────────────────────
+
+Ne pas transformer READY_BANK en banque de cognitifs.
+
+READY_BANK stocke des NOYAUX MÈRES ENCODÉS.
+
+Gameplay expose/consomme les cognitifs VALIDATED_OK à l’intérieur du noyau.
+
+Ne pas casser :
+- Solo
+- Duo
+- MJ
+- Ligue
+
+Le suivi doit être compatible multi-mode.
+
+────────────────────────
+8. LIVRABLE ATTENDU AVANT PATCH
+────────────────────────
+
+Avant de modifier le code, donne :
+
+1. Les fichiers exacts à modifier.
+2. Les slices réels.
+3. Les tables existantes réutilisables.
+4. Les migrations nécessaires si aucune table existante ne couvre le besoin.
+5. Le plan de patch par étapes.
+6. Les risques.
+7. La validation minimale.
+
+Aucun patch tant que je n’ai pas validé le plan.
