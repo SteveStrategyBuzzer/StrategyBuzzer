@@ -54,10 +54,11 @@ Pour chaque joueur ET chaque NOYAU MÈRE, suivre :
 
 **Point à analyser plus tard** : combien de questions effectives sortent par NOYAU MÈRE selon — disponibilité Recognition / Reasoning / Deceptive Trap, taux de WARNING, taux de back_support, besoins par mode. (Recoupe le point OUVERT n°2 du contrat QUESTIONINTENT : recalibrage du comptage Ready_Bank.)
 
-## 8. Règle finale
-- READY_BANK contient des NOYAUX MÈRES ENCODÉS.
+## 8. Règle finale (RÉAFFIRMÉ 2026-06-19)
+- **READY_BANK = banque de NOYAUX. Ready_Bank STOCKE les noyaux mères encodés.**
+- **GAMEPLAY expose/consomme les cognitifs `VALIDATED_OK` internes au noyau.**
 - Gameplay demande Depth + Domaine.
-- Gameplay consomme des cognitifs internes du noyau.
 - Le noyau reste l'unité centrale ; le cognitif est l'unité consommée.
+- ⛔ NE JAMAIS reformuler en « Ready_Bank devient une banque de cognitifs » ni « Ready_Bank compte/stocke au grain cognitif ». Ready_Bank stocke des NOYAUX ; l'exposition au grain cognitif `VALIDATED_OK` se fait À L'INTÉRIEUR du noyau, côté gameplay.
 
 **Why:** Verrouillé avec l'utilisateur le 2026-06-16, juste après la fixation du NOYAU MÈRE comme entité complète indivisible. Cohérent avec le modèle entité : on ne fragmente PAS le noyau en stockage, mais le gameplay LE LIT à granularité cognitif/famille, par joueur. C'est ce qui rend possible anti-répétition, progression et back_support sans découper le noyau lui-même.
