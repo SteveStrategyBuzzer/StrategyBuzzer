@@ -28,15 +28,33 @@ Le Gameplay prépare la partie **dès le lobby**, pas au tirage question-par-que
 - **Bottleneck** : `initMatch($userId)` ne reçoit qu'**UN** user (L74) ; `PlayerMemoryService::getForPlan($this->userId)` L688 = mono-joueur. `buildPlan()` n'a ni roster ni historique collectif → sélection player-agnostic (quotas + RANDOM global via `repo->pickOne`).
 - Aucune table `player × noyau × cognitif` câblée (`player_question_history` existe mais sans appelant).
 
+## Architecture immuable (CORRECTION 2026-06-20 — verrouillée)
+Laravel = rendu/API/persistance · Node+Socket.IO = autorité gameplay/orchestration · Redis = état live · Firebase = présence/WebRTC SEULEMENT · Blade = passif.
+Flux cible : LOBBY Laravel → roster → init Node → GameOrchestrator → LOBBY_KERNEL_MATCHING_MATRIX → PLAN → Redis (live) → gameplay Node-authoritative → Laravel persistance après résolution.
+**Why:** le transport roster n'est PAS un choix libre — l'arch dicte que Node orchestre/possède le plan, Laravel sert les données + persiste.
+
+## Transport roster — EXISTE DÉJÀ (ne pas réinventer)
+- `LobbyService::startGame()` L888-901 écrit déjà `gs_room_users:{roomId}` (JSON [user_id...], TTL 24h) en Redis.
+- Déjà consommé par `recordPlayerMemory(roomId,mode)` (Node) → `PlayerMemoryController::record` L73 lit `gs_room_users:{roomId}` pour résoudre le roster. C'est le pattern officiel « Node envoie roomId+mode, Laravel résout depuis ses données ».
+- GAP réel : `/init` (`GameServerController::init` L19-43) ne passe qu'**un seul `userId`** (L27) → plan mono-joueur. Fix = `initMatch` lit `gs_room_users:{roomId}` (même pattern), pas de nouveau canal.
+
+## ⚠️ Nuance DB-bound (point D — à confirmer par user)
+La matrice a besoin de READY_BANK (Postgres) + historique per-player (Postgres) = lisibles SEULEMENT par Laravel. Node (TS) n'a pas d'accès Postgres et ne doit pas en avoir.
+Réconciliation : calcul matrice = **API interne Laravel** (DB-bound) ; Node **déclenche + possède le plan en Redis** + pilote. « Node monte le plan » = Node orchestre/possède, le calcul reste servi par Laravel. Alternative rejetée (expédier READY_BANK+historique en TS) = lourd/duplication.
+
 ## Points d'insertion futurs (non patchés)
-- Transmettre roster lobby→pipeline : payload `/init` OU relire lobby cache via `roomId` (moins invasif).
-- Nouveau `app/Services/QuestionBank/Lobby/LobbyKernelMatchingMatrix.php`.
-- Étendre `PlayerMemoryService::getForPlan` au multi-joueur (ou service collectif).
-- Solo : matcher à l'entrée de partie (`SoloController` + `QuestionService`).
+- `GameServerController::init` L19-43 : exploiter roster (lecture `gs_room_users` ou payload) au lieu du seul `userId`.
+- `GameServerQuestionPipeline::initMatch` L60 / `buildMatchPlanFor` L663 : passer roster + historique collectif au planner.
+- `MatchQuestionPlanner::buildPlan` L54 : appliquer la matrice.
+- Service matrice DB-bound (Laravel) invoqué par l'init ; plan possédé par Node/Redis.
+- `GameOrchestrator.ts` + `InternalLaravelClient.ts` : Node déclenche init avec roster, possède le plan Redis ; jamais Postgres.
+- `PlayerMemoryController` + `recordPlayerMemory` : étendre pour écrire consommation per-player cognitive (tous exposés).
+- Solo : matcher à l'entrée (`SoloController` + `QuestionService`), roster=1 joueur.
 - MJ : aucune matrice ; seulement écriture consommation post-exposition.
 
 ## Décisions OUVERTES (non tranchées)
-1. Transport roster : payload /init vs relecture cache lobby.
+1. ✅ RÉSOLU — Transport roster = `gs_room_users:{roomId}` déjà en Redis ; `initMatch` doit le lire (pattern `recordPlayerMemory`). Orchestration = Node.
 2. Per-player history : nouvelle table `player_kernel_cognitive_usage` vs extension `player_question_history`.
 3. « Exposé » = a vu question + résolution (à confirmer).
 4. Solo : la matrice couvre-t-elle aussi le choix des IA adverses ?
+5. NOUVEAU — confirmer : calcul matrice = API Laravel (DB-bound), plan possédé/orchestré par Node en Redis, Node ne lit jamais Postgres.
