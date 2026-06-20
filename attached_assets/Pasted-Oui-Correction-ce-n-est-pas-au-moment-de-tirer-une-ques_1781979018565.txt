@@ -1,0 +1,207 @@
+Oui. Correction : ce n’est pas au moment de tirer une question seulement. Le Gameplay doit préparer la partie dès le lobby.
+
+Verrouillage mécanique :
+
+LOBBY_READY
+↓
+Gameplay lit les joueurs participants
+↓
+Gameplay charge l’historique player × noyau × cognitif
+↓
+Gameplay compare avec READY_BANK depth + domaine
+↓
+Gameplay construit un PLAN DE PARTIE
+
+La structure correcte :
+
+LOBBY_KERNEL_MATCHING_MATRIX
+
+Rôle :
+
+Préparer, avant le début de partie,
+les noyaux et cognitifs les moins consommés collectivement.
+
+Ordre de sélection multijoueur :
+
+1. Chercher des noyaux vierges pour tous les joueurs.
+2. Si pas assez :
+   chercher les mêmes noyaux déjà TOUCHÉS par certains joueurs,
+   mais PAS BACK_SUPPORT.
+3. Dans ces noyaux touchés :
+   aligner les historiques des joueurs
+   et choisir le cognitif le moins touché collectivement.
+4. Utiliser les BACK_SUPPORT seulement en dernier recours.
+
+Exemple :
+
+Lobby Ligue 5v5
+↓
+10 joueurs connectés
+↓
+Depth 4 / Géographie
+↓
+READY_BANK donne 100 noyaux
+↓
+Gameplay compare les 10 historiques
+↓
+Il prépare 10 questions avec :
+- noyaux vierges d’abord
+- puis noyaux touchés non back_support
+- cognitifs non vus collectivement
+- back_support seulement si nécessaire
+
+Donc la phrase officielle devient :
+
+En multijoueur, Gameplay ne choisit pas question par question au hasard.
+Il prépare une correspondance collective des noyaux dès le lobby.
+
+Et surtout :
+
+BACK_SUPPORT n’est jamais utilisé automatiquement dès qu’un noyau est touché.
+BACK_SUPPORT est seulement le dernier bassin de secours.
+
+Directive à Replit :
+
+CORRECTION — MATCHING GAMEPLAY DÈS LE LOBBY
+
+Le Gameplay doit préparer la partie dès le lobby, pas seulement au moment de tirer une question.
+
+Quand les joueurs sont connus dans le lobby :
+- Solo : 1 joueur
+- Duo : 2 joueurs
+- MJ/Ligue : plusieurs joueurs
+
+Gameplay doit :
+
+1. recevoir la liste des participants actifs ;
+2. recevoir le Depth et le Domaine demandés ;
+3. charger READY_BANK pour ce Depth + Domaine ;
+4. charger l’historique player × noyau × cognitif de chaque joueur ;
+5. construire une matrice de correspondance collective ;
+6. préparer les noyaux/cognitifs qui monteront la partie.
+
+Nom fonctionnel :
+LOBBY_KERNEL_MATCHING_MATRIX
+
+Objectif :
+voir ce qui reste dans READY_BANK comme noyaux non touchés par le groupe,
+puis, si tous les noyaux sont touchés,
+utiliser les noyaux touchés mais pas BACK_SUPPORT,
+en choisissant les cognitifs les moins touchés collectivement.
+
+Règles :
+
+1.
+Si un noyau est vierge pour tous les joueurs :
+priorité maximale.
+
+2.
+Si aucun noyau vierge collectif n’est disponible :
+Gameplay regarde les noyaux TOUCHÉS par certains joueurs mais NON BACK_SUPPORT.
+
+3.
+Dans ces noyaux touchés :
+Gameplay aligne les historiques des joueurs
+et cherche quel cognitif/famille est le moins consommé collectivement.
+
+4.
+Les noyaux BACK_SUPPORT sont exclus tant qu’il existe des noyaux non-back_support exploitables.
+
+5.
+Les BACK_SUPPORT sont utilisés seulement en dernier recours.
+
+6.
+La consommation reste PER-PLAYER :
+un cognitif vu par Joueur A reste disponible pour Joueur B,
+mais le matching collectif cherche à maximiser la nouveauté pour le groupe.
+
+7.
+Une fois la partie montée :
+le plan de partie garde les noyaux/cognitifs choisis,
+puis après résolution des questions,
+les consommations sont écrites pour tous les participants actifs qui ont vu la question + résolution.
+
+Important :
+READY_BANK ne change pas.
+READY_BANK stocke des NOYAUX MÈRES ENCODÉS.
+La matrice lobby sert seulement à construire la partie selon les historiques des joueurs.
+Aucun patch sans audit des fichiers lobby/gameplay concernés.
+- MJ/Ligue : plusieurs joueurs= MJ est un mode que le quiz est déjà fait bien avant la connaissance des joueurs ce mode ne correspond pas à se système
+
+Exact. Correction importante :
+
+MJ ≠ matching lobby par joueurs
+
+Le mode MJ est différent parce que :
+
+le quiz est préparé avant de connaître les joueurs.
+
+Donc la matrice collective lobby s’applique à :
+
+Solo
+Duo
+Ligue
+
+mais pas au MJ.
+
+Pour MJ :
+
+READY_BANK
+↓
+MJ prépare un quiz
+↓
+quiz figé
+↓
+joueurs arrivent ensuite
+↓
+la consommation est enregistrée après visionnement/résolution
+
+Règle MJ :
+
+Le MJ ne sélectionne pas selon l’historique des joueurs présents.
+Il sélectionne selon les paramètres du quiz.
+
+Mais après la partie :
+
+tous les joueurs actifs qui ont vu question + résolution
+ont ce cognitif marqué consommé pour eux.
+
+Directive corrigée à Replit :
+
+CORRECTION — MJ EXCLU DU LOBBY_KERNEL_MATCHING_MATRIX
+
+Le LOBBY_KERNEL_MATCHING_MATRIX ne s’applique pas au mode MJ.
+
+Modes concernés par la matrice lobby :
+- Solo
+- Duo
+- Ligue
+
+Mode exclu :
+- Maître du Jeu / MJ
+
+Pourquoi :
+En MJ, le quiz peut être préparé bien avant de connaître les joueurs.
+Donc il est impossible de sélectionner les noyaux selon l’historique collectif des participants.
+
+Pour MJ :
+- le quiz est construit selon les paramètres du MJ ;
+- READY_BANK fournit les noyaux/cognitifs selon ces paramètres ;
+- le quiz est figé ;
+- les joueurs arrivent ensuite ;
+- après visionnement + résolution, la consommation est enregistrée pour tous les joueurs actifs qui ont vu la question.
+
+Donc :
+MJ ne fait pas de matching collectif avant sélection.
+MJ fait seulement un enregistrement de consommation après diffusion.
+
+Important :
+READY_BANK reste inchangé.
+La consommation reste PER-PLAYER.
+Le mode MJ écrit l’historique après coup pour les participants exposés à la question/résolution.
+
+Donc verrouillage :
+
+Solo = matching individuel
+Duo/Ligue = matching collectif lobby
+MJ = quiz préconstruit + consommation enregistrée après exposition
