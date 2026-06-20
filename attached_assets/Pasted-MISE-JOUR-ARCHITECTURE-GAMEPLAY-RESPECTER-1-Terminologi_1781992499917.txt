@@ -1,0 +1,332 @@
+MISE À JOUR ARCHITECTURE GAMEPLAY — À RESPECTER
+1. Terminologie officielle
+CRÉATION (banque)
+
+Le mot construire est réservé à la fabrication du contenu.
+
+Exemples :
+
+Construire un noyau.
+Construire un cognitif.
+Construire une question.
+Construire les réponses.
+Construire le Saviez-vous.
+Construire les traductions.
+
+Cela concerne :
+
+KERNEL BLUEPRINT
+Rotation
+Taxonomy
+KEY_STRUCTURE
+KLD
+PHASES 1 à 4
+READY_BANK
+GAMEPLAY
+
+Le Gameplay ne construit plus le contenu.
+
+READY_BANK contient déjà :
+
+Noyaux encodés
+↓
+Cognitifs VALIDATED_OK
+↓
+Questions
+Réponses
+SV
+Traductions
+
+Le Gameplay fait uniquement :
+
+Sélectionner
+Préparer
+Bufferiser
+Orchestrer
+
+Jamais :
+
+Construire.
+2. Architecture immuable
+
+Respecter strictement :
+
+Replit = source de vérité
+GitHub = miroir officiel
+VM = production
+
+Architecture :
+
+Laravel
+- API
+- persistance
+- exposition des données métier
+
+Node + Socket.IO
+- autorité gameplay
+- orchestration
+- phases
+- buzz
+- score live
+- stats live
+
+Redis
+- état live des matchs
+- buffers opérationnels
+
+Firebase
+- présence
+- WebRTC uniquement
+
+Blade
+- affichage passif
+3. READY_BANK
+
+READY_BANK est une banque de :
+
+NOYAUX MÈRES ENCODÉS
+
+Elle n'est pas :
+
+une banque de cognitifs.
+
+Chaque noyau contient déjà :
+
+Questions
+Réponses
+SV
+Traductions
+VALIDATED_OK
+4. Historique joueur
+
+Chaque joueur possède un historique basé sur les noyaux.
+
+Structure logique :
+
+PLAYER
+↓
+Depth
+↓
+Domaine
+↓
+Noyaux touchés
+↓
+État des cognitifs
+
+Exemple :
+
+Noyau X
+
+Recognition
+- QCM
+- TF_TRUE
+- TF_FALSE
+
+Reasoning
+- QCM
+- TF_TRUE
+- TF_FALSE
+
+Deceptive Trap
+
+Statuts :
+
+VIERGE
+TOUCHÉ
+BACK_SUPPORT
+5. Consommation
+
+Une question est consommée lorsque le joueur a vu :
+
+Question
++
+Bonne réponse
++
+SV
+
+Donc :
+
+Question vue + résolution
+=
+consommée.
+
+Question simplement envoyée :
+
+≠ consommée.
+
+Déconnexion avant résolution :
+
+≠ consommée.
+6. Consommation multi-joueurs
+
+Duo / Ligue :
+
+Si les participants actifs voient :
+
+Question
++
+Résolution
+
+alors :
+
+la question est consommée
+pour tous les participants exposés.
+7. MJ
+
+MJ ne suit pas le matching collectif.
+
+Le quiz est :
+
+préparé indépendamment des joueurs.
+
+Ensuite :
+
+diffusé.
+
+Puis :
+
+consommation enregistrée
+pour les joueurs exposés.
+8. Matching Gameplay
+
+Gameplay ne doit PAS faire :
+
+Player
+↓
+As-tu déjà vu ce noyau ?
+
+Gameplay doit partir de :
+
+READY_BANK
+↓
+Depth demandé
+↓
+Domaine demandé
+
+Puis charger les historiques joueurs correspondant :
+
+Depth
++
+Domaine
+9. KERNEL_AVAILABILITY_MAP
+
+Gameplay construit une seule structure :
+
+READY_BANK
++
+historiques des joueurs
+↓
+KERNEL_AVAILABILITY_MAP
+
+Chaque noyau contient déjà :
+
+kernel_code
+depth
+domain
+
+état des joueurs
+
+cognitifs consommés
+
+collective_status
+
+collective_available_cognitives
+
+Les BACK_SUPPORT ne sont jamais exclus.
+
+Ils apparaissent naturellement dans cette map.
+
+10. Priorité de sélection
+
+Gameplay sélectionne selon :
+
+SOLO
+READY_BANK
+↓
+retirer les noyaux touchés du joueur
+↓
+noyaux vierges
+↓
+sinon noyaux touchés non-back_support
+↓
+sinon back_support
+DUO / LIGUE
+READY_BANK
+↓
+KERNEL_AVAILABILITY_MAP
+↓
+priorité aux noyaux vierges collectifs
+↓
+sinon noyaux touchés non-back_support
+↓
+alignement des cognitifs disponibles
+↓
+sinon back_support
+11. Buffer progressif
+
+Le quiz n'est pas entièrement préparé d'avance.
+
+La logique officielle est :
+
+Solo
+INTRO
+↓
+Node sélectionne et prépare Q1
+↓
+Q1 prête
+↓
+GAMEPLAY
+↓
+Node sélectionne/prépare/bufferise Q2...Qn
+pendant que le joueur joue.
+Duo / Ligue
+
+Même logique.
+
+READY / INTRO
+↓
+Node sélectionne et prépare Q1
+↓
+Q1 prête
+↓
+GAMEPLAY
+↓
+Node sélectionne/prépare/bufferise progressivement
+Q2...Qn pendant la partie.
+
+On utilise le temps naturel entre les questions.
+
+MJ
+
+MJ reste :
+
+Quiz préconstruit
+↓
+Diffusion
+12. Rôle de Node avec READY_BANK
+
+Node ne construit plus les questions.
+
+Node :
+
+Sélectionne
+Prépare
+Bufferise
+Orchestre
+
+à partir de READY_BANK.
+
+13. Formule finale
+CRÉATION
+Construire
+Valider
+Traduire
+READY_BANK
+GAMEPLAY
+Sélectionner
+Préparer
+Bufferiser
+Orchestrer
+Persister
+
+Je considère maintenant ces éléments comme verrouillés. Replit ne doit plus proposer d'alternative métier à ces points ; son rôle est désormais de déterminer comment les implémenter techniquement dans le code existant, en respectant l'architecture immuable de StrategyBuzzer.
