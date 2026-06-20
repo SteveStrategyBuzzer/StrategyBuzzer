@@ -18,8 +18,14 @@ KEY_STRUCTURE, QUESTIONINTENT) **travaillent sur lui** mais n'en font **pas part
 - Conséquences à réconcilier (granularité d'identité gameplay + unité de comptage Ready_Bank + clé d'unicité) : voir questionintent-contract.md.
 
 ## 1. Contexte intellectuel
-- `depth`, `domain`, `sub_domain`
+- `depth`, `domain`, `sub_domain` (UN sous-domaine ACTIF, pas tout le domaine)
 - `subjects[1..50]` → `{ subject, dominant_ideas[1..5] }`
+
+### Granularité ACTIVE + génération LAZY (VERROUILLÉ 2026-06-19)
+- Le noyau = 1 domaine + **1 sous-domaine actif** + jusqu'à **50 sujets** (coquilles) + **5 idées dominantes uniquement pour le SUJET ACTIF**.
+- Les autres sujets EXISTENT dans le noyau mais leurs `dominant_ideas[1..5]` restent **EMPTY** jusqu'à activation.
+- Quand le sujet actif est terminé → Rotation/KLD active le sujet suivant → Taxonomy génère SES 5 idées. Tous sujets épuisés → KLD demande changement de sous-domaine.
+- ⚠️ ÉCART CODE : `resources/rotation/taxonomy.json` est aujourd'hui EAGER et sous-dimensionné (8 domaines × 4 sous-domaines × 4 sujets × 5 idées, toutes pré-remplies). La cible est LAZY (idées générées à l'activation) et ≤50 sujets par sous-domaine.
 
 ## 2. Cognitifs préinscrits (7) — instanciés par (subject × dominant_idea)
 `qcm_recognition`, `qcm_reasoning`, `qcm_deceptive_trap`,
