@@ -474,9 +474,149 @@ body {
         margin-bottom: 0.6rem;
     }
 }
+
+/* ===== MJV-1 — Coquille cockpit premium (DNA style Ligue) ===== */
+:root {
+    --mj-bg-1: #04102e;
+    --mj-bg-2: #0b1f4d;
+    --mj-sidebar: #0b1230;
+    --mj-border: rgba(255, 255, 255, 0.08);
+}
+
+body {
+    background:
+        radial-gradient(1200px 600px at 18% -12%, #123a8a 0%, transparent 60%),
+        radial-gradient(900px 500px at 110% 0%, #1b3a7a 0%, transparent 55%),
+        linear-gradient(160deg, var(--mj-bg-1), var(--mj-bg-2));
+    padding: 0;
+}
+
+.sb-layout {
+    display: flex;
+    min-height: 100vh;
+    width: 100%;
+}
+
+.sb-sidebar {
+    width: 72px;
+    flex-shrink: 0;
+    background: var(--mj-sidebar);
+    border-right: 1px solid var(--mj-border);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 16px 0;
+}
+
+.sb-nav {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+}
+
+.sb-nav-item {
+    width: 46px;
+    height: 46px;
+    border-radius: 13px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #cdd6f4;
+    text-decoration: none;
+    font-size: 1.3rem;
+    background: rgba(255, 255, 255, 0.04);
+    transition: background .2s, transform .2s;
+}
+
+.sb-nav-item:hover {
+    background: rgba(58, 123, 213, 0.25);
+    transform: translateY(-1px);
+}
+
+.sb-nav-item.active {
+    background: rgba(255, 215, 0, 0.16);
+    box-shadow: inset 0 0 0 1px rgba(255, 215, 0, 0.4);
+}
+
+.sb-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.sb-topbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 18px;
+    background: var(--mj-sidebar);
+    border-bottom: 1px solid var(--mj-border);
+}
+
+.sb-topbar .header-back {
+    margin: 0;
+    flex-shrink: 0;
+}
+
+.sb-topbar-logo {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    min-width: 0;
+}
+
+.sb-topbar-title {
+    font-weight: 900;
+    color: #FFD700;
+    font-size: 1.15rem;
+    letter-spacing: .5px;
+    white-space: nowrap;
+}
+
+.sb-topbar-spacer {
+    width: 64px;
+    flex-shrink: 0;
+}
+
+.sb-content {
+    flex: 1;
+    padding: 18px 14px;
+    overflow-y: auto;
+}
+
+.sb-content .create-container {
+    max-width: 560px;
+}
+
+@media (max-width: 640px) {
+    .sb-sidebar { display: none; }
+    .sb-topbar-spacer { display: none; }
+    .sb-content { padding: 12px 10px; }
+}
 </style>
 
-<a href="{{ route('menu') }}" class="header-back">Menu</a>
+<div class="sb-layout">
+    <aside class="sb-sidebar">
+        <nav class="sb-nav">
+            <a href="{{ route('menu') }}" class="sb-nav-item"><span class="sb-nav-icon">🏠</span></a>
+            <span class="sb-nav-item active"><span class="sb-nav-icon">🎮</span></span>
+            <a href="{{ route('master.codes') }}" class="sb-nav-item"><span class="sb-nav-icon">📂</span></a>
+        </nav>
+    </aside>
+
+    <div class="sb-main">
+        <header class="sb-topbar">
+            <a href="{{ route('menu') }}" class="header-back">{{ __('Menu') }}</a>
+            <div class="sb-topbar-logo">
+                <span class="sb-topbar-title">🎮 {{ __('Maître du Jeu') }}</span>
+            </div>
+            <div class="sb-topbar-spacer"></div>
+        </header>
+
+        <section class="sb-content">
 
 <div class="create-container">
     <h1 class="create-title">Général</h1>
@@ -789,6 +929,9 @@ body {
         </div>
         <input type="hidden" name="creation_mode" id="creationModeInput" value="automatique">
     </form>
+</div>
+        </section>
+    </div>
 </div>
 
 <!-- Modal d'avertissement -->
