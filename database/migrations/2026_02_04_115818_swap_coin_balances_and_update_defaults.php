@@ -33,7 +33,11 @@ return new class extends Migration
             $table->unsignedInteger('coins')->default(25)->change();
         });
 
-        DB::statement('ALTER TABLE users ALTER COLUMN competence_coins SET DEFAULT 250');
+        // Garde-fou : SQLite ne supporte pas "ALTER COLUMN ... SET DEFAULT".
+        // Prod (pgsql/Neon) inchangé ; on saute uniquement cet ALTER en sqlite.
+        if (DB::connection()->getDriverName() !== 'sqlite') {
+            DB::statement('ALTER TABLE users ALTER COLUMN competence_coins SET DEFAULT 250');
+        }
     }
 
     /**
@@ -54,6 +58,9 @@ return new class extends Migration
             $table->unsignedInteger('coins')->default(0)->change();
         });
 
-        DB::statement('ALTER TABLE users ALTER COLUMN competence_coins SET DEFAULT 0');
+        // Même garde-fou qu'en up() : prod (pgsql) inchangé, sqlite sauté.
+        if (DB::connection()->getDriverName() !== 'sqlite') {
+            DB::statement('ALTER TABLE users ALTER COLUMN competence_coins SET DEFAULT 0');
+        }
     }
 };
