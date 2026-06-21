@@ -429,10 +429,6 @@ Route::prefix('internal/league/team')->name('internal.league.team.')->group(func
 Route::post('/internal/match/snapshot', [App\Http\Controllers\InternalMatchController::class, 'storeSnapshot'])
     ->name('internal.match.snapshot');
 
-/* Kernel cognitive consumption — Node game server → Laravel (S1, dormant). */
-Route::post('/internal/match/consume', [App\Http\Controllers\InternalMatchController::class, 'recordConsumption'])
-    ->name('internal.match.consume');
-
 Route::post('/internal/player-memory/record', [App\Http\Controllers\PlayerMemoryController::class, 'record'])
     ->name('internal.player-memory.record');
 
