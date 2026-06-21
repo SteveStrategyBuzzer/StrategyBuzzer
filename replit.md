@@ -6,6 +6,12 @@ StrategyBuzzer is a real-time quiz buzzer game application designed for an immer
 ### User Preferences
 Preferred communication style: Simple, everyday language.
 
+**Data Protection (ABSOLUTE — non négociable):**
+- Aucune correction, modification ou création ne doit JAMAIS supprimer les données joueurs/gameplay.
+- Les commandes destructrices (`migrate:fresh`, `migrate:refresh`, `migrate:reset`, `db:wipe`) sur la base Postgres de production sont bloquées de façon ABSOLUE, sans flag de bypass — même autorisées par erreur.
+- Les tests s'exécutent UNIQUEMENT sur sqlite in-memory ; `DATABASE_URL` ne doit jamais être actif en environnement de test.
+- Toute migration susceptible de détruire des données (drop/rename de colonne/table) impose un STOP + alerte explicite du user AVANT exécution. Les migrations purement additives restent autorisées.
+
 **Multi-language Requirement (CRITICAL):**
 - ALL user-facing text MUST be wrapped with `{{ __('text') }}` in Blade templates
 - ALL new text MUST be translated in all 10 language files: `resources/lang/{ar,de,el,en,es,fr,it,pt,ru,zh}.json`
@@ -86,6 +92,18 @@ The backend is built with Laravel 10, following an MVC pattern and integrated wi
 - Rate limiting: `throttle:5,1` on `POST /auth/email/login` and `POST /auth/email/register`; `throttle:10,1` on `POST /boutique/purchase`.
 - Stripe idempotency: `Session::create()` now receives `['idempotency_key' => ...]` (keyed on `purchaseIntentId` when available).
 - Security: `Cloud_SQL_Export_2025-09-05 (09:06:02).sql` (full DB dump) removed from repo root; `.gitignore` updated with `Cloud_SQL_Export*.sql`, `*_export.sql`, `*.dump.sql` patterns.
+
+### DB Protection — Anti-effacement absolu (2026-06-21, COMPLETE)
+
+**Cause racine du wipe historique :** la connexion `sqlite` de `config/database.php` portait `'url' => env('DATABASE_URL')`. En Laravel, une `url` écrase driver/host/base : `phpunit.xml` forçait `DB_CONNECTION=sqlite` mais `DATABASE_URL` (Neon) n'était pas neutralisé → la connexion « sqlite » des tests retombait sur la VRAIE base Neon, et `RefreshDatabase`/`migrate:fresh` la vidait.
+
+**Correctifs (3 couches, zéro bypass) :**
+- `phpunit.xml` : ajout de `<env name="DATABASE_URL" value=""/>` → neutralise l'override pendant les tests.
+- `config/database.php` : clé `url` retirée de la connexion `sqlite` → sqlite reste sqlite, même si `DATABASE_URL` est présent (défense en profondeur).
+- `App\Providers\AppServiceProvider::boot()` : écouteur `CommandStarting` qui lève une `RuntimeException` AVANT toute connexion DB si une commande destructrice (`migrate:fresh`/`migrate:refresh`/`migrate:reset`/`migrate:rollback`/`db:wipe`) cible une connexion non-sqlite (driver `!== 'sqlite'`). `migrate:rollback` est inclus car ses `down()` peuvent drop des tables/colonnes en prod. AUCUN flag de contournement : seule une modification volontaire du code le désactiverait.
+- Complète le garde-fou existant `Tests\TestCase::setUp()` (refuse de lancer la suite si la connexion par défaut n'est pas sqlite in-memory).
+
+**Tests :** `tests/Unit/DestructiveCommandGuardTest.php` (9 tests, sqlite in-memory, ne contacte jamais Neon) vérifie blocage sur pgsql (fresh/refresh/reset/rollback/db:wipe) + autorisation sur sqlite + non-blocage des commandes non destructrices.
 
 ### Future Feature — Anti Back Navigation (Gameplay)
 
