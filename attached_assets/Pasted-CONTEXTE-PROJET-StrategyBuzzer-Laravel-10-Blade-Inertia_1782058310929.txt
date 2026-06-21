@@ -1,0 +1,368 @@
+CONTEXTE PROJET — StrategyBuzzer (Laravel 10 + Blade/Inertia + Node Socket.IO)
+
+Langue de travail : FRANÇAIS simple.
+
+RÈGLE i18n CRITIQUE :
+Tout nouveau texte affiché dans Blade doit obligatoirement utiliser :
+
+{{ __('text') }}
+
+et être traduit dans les 10 langues :
+
+resources/lang/
+- ar
+- de
+- el
+- en
+- es
+- fr
+- it
+- pt
+- ru
+- zh
+
+====================================================================
+0) AVANT TOUTE ACTION — CONFIRMATION OBLIGATOIRE
+====================================================================
+
+Avant de commencer, tu dois confirmer explicitement :
+
+1. Que tu ne feras AUCUNE écriture dans la base réelle.
+2. Que tu ne lanceras AUCUNE commande destructive.
+3. Que tu travailleras UNIQUEMENT sur les fichiers Blade/CSS/JS du visuel MJ.
+4. Que tous les audits DB seront STRICTEMENT en lecture seule.
+5. Que tu t'arrêteras immédiatement si une action risque de toucher aux données joueurs.
+
+Si tu ne peux pas garantir ces 5 points :
+
+ARRÊT IMMÉDIAT.
+
+====================================================================
+1) ERREUR À NE PLUS JAMAIS REFAIRE — DONNÉES JOUEURS
+====================================================================
+
+Lors d'une session précédente, des validations ont été faites avec :
+
+- php artisan tinker
+- User::factory()->create()
+- ->delete()
+- DELETE de lignes de test
+
+Le user a perdu ses données joueurs à deux reprises.
+
+RÈGLE ABSOLUE :
+
+INTERDIT de toucher à la base réelle pour tester.
+
+INTERDIT :
+
+- php artisan tinker
+- php artisan migrate:fresh
+- php artisan migrate:refresh
+- php artisan db:wipe
+- php artisan db:seed
+- truncate
+- delete
+- DB::delete()
+- User::factory()
+- factory()->create()
+- ->delete()
+- Model::destroy()
+- suppression de lignes "temporaires"
+- nettoyage automatique
+- rollback de données
+- toute écriture "de validation"
+
+Tu ne crées AUCUNE donnée de test dans la vraie base.
+
+====================================================================
+2) TESTS AUTORISÉS
+====================================================================
+
+Tu peux utiliser UNIQUEMENT :
+
+- lecture seule
+- phpunit avec SQLite in-memory
+- transactions explicitement annulées
+- mocks
+- fakes
+- assertions sans écriture réelle
+
+Toute autre méthode nécessite une validation explicite du user.
+
+====================================================================
+3) BASE DE DONNÉES — PIÈGE IMPORTANT
+====================================================================
+
+DB_CONNECTION=sqlite est trompeur.
+
+DATABASE_URL PRIME.
+
+L'application utilise réellement :
+
+Neon PostgreSQL.
+
+Toujours vérifier AVANT toute conclusion :
+
+DB::connection()->getDriverName()
+DB::connection()->getDatabaseName()
+
+Ne jamais supposer qu'on est sur SQLite.
+
+====================================================================
+4) AUDIT LECTURE SEULE UNIQUEMENT
+====================================================================
+
+Si un audit est demandé :
+
+AUTORISÉ :
+
+SELECT
+COUNT
+EXPLAIN
+DESCRIBE
+SHOW
+lecture simple
+
+INTERDIT :
+
+INSERT
+UPDATE
+DELETE
+TRUNCATE
+
+====================================================================
+5) ÉTAT FEATURE EN COURS — À CONSERVER
+====================================================================
+
+Pipeline noyaux :
+
+S0 :
+Migration player_kernel_cognitive_usage
+→ FAIT
+
+S1 :
+KernelConsumptionService
+POST /internal/match/consume
+JWT purpose=internal_finalize
+→ FAIT
+
+Idempotence :
+
+(user_id,
+ kernel_code,
+ cognitive_family,
+ cognitive_form)
+
+Inserts indépendants hors transaction globale.
+
+S2 à S5 :
+
+PAS COMMENCÉS.
+
+RÈGLE :
+
+Aucune nouvelle slice sans validation explicite du user.
+
+MJ visuel :
+
+JAMAIS implémenté.
+
+Confirmé via git log.
+
+====================================================================
+6) TÂCHE ACTUELLE — UNIQUEMENT MJ VISUEL
+====================================================================
+
+Objectif :
+
+Refaire l'interface Maître du Jeu.
+
+UNIQUEMENT le visuel et le branchement des liens.
+
+AUCUN changement backend.
+
+AUCUNE modification du pipeline.
+
+AUCUNE modification Node.
+
+AUCUNE modification DB.
+
+====================================================================
+7) ZONES AUTORISÉES
+====================================================================
+
+Contrôleur :
+
+app/Http/Controllers/MasterGameController.php
+
+Vues :
+
+resources/views/master/
+
+- index
+- create
+- compose
+- edit-question
+- structure
+- teams
+- preview
+- codes
+- invite
+- player-join
+- transition
+- match-result
+- game-question
+- game-answer
+- game-result
+
+Layout partagé :
+
+resources/views/layouts/game.blade.php
+
+CSS
+JS liés au MJ
+
+====================================================================
+8) ROUTES OFFICIELLES — AUCUNE INVENTION
+====================================================================
+
+Préparation :
+
+master.index
+master.create
+master.store
+master.join
+master.compose
+
+master.question.edit
+master.question.save
+master.question.regenerate
+
+master.structure
+master.structure.save
+
+master.teams
+master.teams.save
+
+master.codes
+master.codes.show
+
+master.preview
+
+master.select
+
+master.destroy
+
+master.lobby
+
+master.invite
+master.invite.send
+
+master.join.form
+master.join.process
+
+Jeu temps réel :
+
+game.master.start
+game.master.resume
+game.master.question
+game.master.answer
+game.master.result
+game.master.fetch-question
+game.master.match-result
+
+Boutique :
+
+master.checkout
+master.success
+master.cancel
+
+AUCUNE route inventée.
+
+====================================================================
+9) CONTRAINTES VISUELLES
+====================================================================
+
+Le MJ doit reprendre l'identité visuelle validée du mockup :
+
+- même qualité visuelle que Ligue
+- même sidebar StrategyBuzzer
+- même topbar
+- cockpit MJ premium
+- responsive
+- orientation-aware
+- mobile
+- tablette
+- desktop
+
+Pas de pub.
+
+Node reste autorité gameplay.
+
+Le flux MJ existant ne doit PAS être cassé.
+
+====================================================================
+10) MÉTHODE OBLIGATOIRE
+====================================================================
+
+Toujours :
+
+GREP
+→ SLICE réel
+→ confirmation de la zone exacte
+→ PATCH DU BAS VERS LE HAUT
+→ validation
+
+Interdictions :
+
+- deviner le code
+- patch sans slice
+- patch massif
+- plusieurs responsabilités dans le même patch
+
+====================================================================
+11) VALIDATION APRÈS CHAQUE PATCH
+====================================================================
+
+PHP :
+php -l
+
+JS :
+build approprié
+
+Afficher :
+
+nl -ba + sed
+
+sur la zone modifiée.
+
+====================================================================
+12) OBJECTIF FINAL
+====================================================================
+
+Transformer le MJ en véritable cockpit premium StrategyBuzzer.
+
+Le résultat doit donner l'impression d'une régie d'animateur professionnelle.
+
+Même ADN visuel que :
+
+- Menu principal
+- Ligue
+
+mais avec une émotion différente :
+
+Menu :
+progression
+
+Ligue :
+compétition
+
+MJ :
+contrôle et spectacle
+
+Et surtout :
+
+AUCUNE PERTE DE DONNÉES.
+AUCUN TEST DESTRUCTIF.
+AUCUNE ÉCRITURE EN BASE RÉELLE.
