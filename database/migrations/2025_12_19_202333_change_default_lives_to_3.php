@@ -13,8 +13,13 @@ return new class extends Migration
     public function up(): void
     {
         // Change the default value for lives column from 5 to 3
-        DB::statement('ALTER TABLE users ALTER COLUMN lives SET DEFAULT 3');
-        
+        // Garde-fou : SQLite ne supporte pas "ALTER COLUMN ... SET DEFAULT".
+        // En prod (pgsql/Neon) le comportement est strictement inchangé ;
+        // on saute uniquement cet ALTER en sqlite (suite de tests in-memory).
+        if (DB::connection()->getDriverName() !== 'sqlite') {
+            DB::statement('ALTER TABLE users ALTER COLUMN lives SET DEFAULT 3');
+        }
+
         // Fix existing users who have more than 3 lives (cap at 3)
         DB::table('users')->where('lives', '>', 3)->update(['lives' => 3]);
     }
@@ -24,6 +29,9 @@ return new class extends Migration
      */
     public function down(): void
     {
-        DB::statement('ALTER TABLE users ALTER COLUMN lives SET DEFAULT 5');
+        // Même garde-fou qu'en up() : prod (pgsql) inchangé, sqlite sauté.
+        if (DB::connection()->getDriverName() !== 'sqlite') {
+            DB::statement('ALTER TABLE users ALTER COLUMN lives SET DEFAULT 5');
+        }
     }
 };
