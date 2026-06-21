@@ -78,6 +78,8 @@ attached_assets/Pasted-Je-travaille-sur-un-projet-appel-StrategyBuzzer-un-jeu-_1
 # backups
 *.save
 *.bak_*
+# Sauvegardes DB locales (pg_dump) — jamais commiter (données joueurs)
+database/backups/
 firebase/firebase-service-account.json
 dump.rdb
 

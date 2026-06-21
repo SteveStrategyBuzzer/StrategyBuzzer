@@ -1,3 +1,4 @@
+- [Test DB isolation & $_SERVER precedence](test-db-isolation-server-precedence.md) — phpunit `<env force>` n'écrase pas $_SERVER ; Laravel env() lit $_SERVER d'abord ; forcer AUSSI `<server>` sinon les tests touchent Neon. Runtime = DB_CONNECTION=pgsql.
 - [Trap prompt fix](trap-prompt-fix.md) — 5 nouveaux champs trap étaient dans PHP mais absents du prompt Node ; fix appliqué dans question-api.js.
 - [hasCausalConnector gaps](causal-connector-gaps.md) — "If", "Given", "As", "For", "suggests", "indicates" absents de la liste → cogIntegrity=0 sur raisonnements valides.
 - [Depth vs Adversary Personality](depth-vs-personality.md) — Depth = propriété question (complexité) ; Personnalité = propriété adversaire (buzz%, radar, style). Ne jamais confondre.

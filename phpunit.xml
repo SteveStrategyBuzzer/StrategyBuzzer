@@ -30,11 +30,23 @@
         <env name="TELESCOPE_ENABLED" value="false"/>
         <!-- CRITICAL: tests must NEVER touch the live Postgres DB.
              RefreshDatabase runs migrate:fresh which drops every table.
-             We force sqlite in-memory here so tests are sandboxed. -->
-        <env name="DB_CONNECTION" value="sqlite"/>
-        <env name="DB_DATABASE" value=":memory:"/>
+             We force sqlite in-memory here so tests are sandboxed.
+             force="true" est OBLIGATOIRE : sans lui, PHPUnit n'écrase PAS une
+             variable déjà présente dans l'environnement réel du process. Comme
+             DB_CONNECTION=pgsql et DATABASE_URL existent en runtime, l'override
+             serait ignoré et les tests retomberaient sur Neon. -->
+        <env name="DB_CONNECTION" value="sqlite" force="true"/>
+        <env name="DB_DATABASE" value=":memory:" force="true"/>
         <!-- CRITICAL: neutralise DATABASE_URL pour que la connexion sqlite ne soit
              jamais détournée vers la base Postgres Neon pendant les tests. -->
-        <env name="DATABASE_URL" value=""/>
+        <env name="DATABASE_URL" value="" force="true"/>
+        <!-- CRITICAL: Laravel lit env() via $_SERVER EN PREMIER. Comme DB_CONNECTION
+             et DATABASE_URL existent dans l'environnement réel du process (injectés
+             par Replit), ils sont présents dans $_SERVER et l'emportent sur les <env>
+             ci-dessus. On force donc AUSSI les superglobales $_SERVER, sinon les
+             tests retomberaient sur la base Postgres Neon de production. -->
+        <server name="DB_CONNECTION" value="sqlite" force="true"/>
+        <server name="DB_DATABASE" value=":memory:" force="true"/>
+        <server name="DATABASE_URL" value="" force="true"/>
     </php>
 </phpunit>

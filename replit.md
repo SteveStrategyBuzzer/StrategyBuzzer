@@ -105,6 +105,13 @@ The backend is built with Laravel 10, following an MVC pattern and integrated wi
 
 **Tests :** `tests/Unit/DestructiveCommandGuardTest.php` (9 tests, sqlite in-memory, ne contacte jamais Neon) vérifie blocage sur pgsql (fresh/refresh/reset/rollback/db:wipe) + autorisation sur sqlite + non-blocage des commandes non destructrices.
 
+**Runtime — connexion de l'app :** l'app en exécution DOIT utiliser la connexion `pgsql` (`DB_CONNECTION=pgsql`, qui lit `DATABASE_URL` → Neon). NE JAMAIS faire pointer le runtime sur la connexion `sqlite` détournée via une `url` Postgres : cela masquerait le driver réel (`config('database.connections.sqlite.driver')` resterait `'sqlite'`) et aveuglerait le garde-fou anti-effacement. La connexion `sqlite` est réservée aux tests (in-memory).
+
+**Sauvegarde & restauration (Step 5) :**
+- **Backup (lecture seule, sans risque) :** `bash scripts/db-backup.sh` → `pg_dump -Fc` vers `database/backups/strategybuzzer_<horodatage>.dump` (dossier gitignoré). `pg_dump` ne fait que LIRE la base.
+- **Restauration (sensible) :** `bash scripts/db-restore.sh <fichier.dump>` — exige une DOUBLE confirmation manuelle, jamais auto-exécuté. **Priorité : tenter d'ABORD la récupération Point-In-Time (PITR) de Neon** (console Neon/Replit) qui restaure sans perte vers un instant T, avant toute restauration par dump.
+- Toute restauration réelle sur la prod = STOP + alerte explicite du user AVANT exécution.
+
 ### Future Feature — Anti Back Navigation (Gameplay)
 
 **Objectif :** empêcher qu'un joueur puisse revenir sur une ancienne question/réponse, revoir des informations expirées, casser la synchro gameplay, ou exploiter la navigation Back/Forward du navigateur. Fonctionne sur ordinateur, mobile (Android, iPhone), tablette, swipe navigation et gestures navigateur.
