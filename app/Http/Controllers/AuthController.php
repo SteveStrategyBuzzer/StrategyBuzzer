@@ -9,7 +9,6 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Http\Request;
 use App\Models\User;
 use App\Services\CoinLedgerService;
-use App\Services\CurrencyDetectionService;
 use App\Traits\LogsCriticalAction;
 
 class AuthController extends Controller
@@ -26,18 +25,34 @@ class AuthController extends Controller
     }
 
     /**
-     * Détecte le pays via IP et le sauvegarde immédiatement dans profile_settings.
-     * Appelé lors de la création d'un nouveau compte.
+     * Détecte le pays depuis le navigateur (Accept-Language, ex: fr-CA → CA).
+     * Même source que la langue. Aucune détection IP ici.
+     * Retourne un code pays ISO-2 en majuscules, ou null si absent.
      */
-    private function saveInitialCountry(User $user): void
+    private function detectBrowserCountry(Request $request): ?string
+    {
+        foreach ($request->getLanguages() as $locale) {
+            if (preg_match('/[_-]([A-Za-z]{2})$/', $locale, $m)) {
+                return strtoupper($m[1]);
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Sauvegarde le pays détecté depuis le navigateur dans profile_settings.
+     * Appelé uniquement à la création d'un nouveau compte.
+     * L'IP n'est plus utilisée pour le pays du profil (réservée Stripe/devise/analytique).
+     */
+    private function saveInitialCountry(User $user, Request $request): void
     {
         try {
-            $countryCode = app(CurrencyDetectionService::class)->detectCountry();
+            $countryCode = $this->detectBrowserCountry($request);
             if (!$countryCode) return;
 
             $raw = $user->profile_settings ?? [];
             if (is_string($raw)) $raw = json_decode($raw, true) ?: [];
-            $raw['country'] = strtoupper($countryCode);
+            $raw['country'] = $countryCode;
             $user->profile_settings = $raw;
             $user->save();
         } catch (\Throwable $e) {
@@ -88,7 +103,7 @@ public function redirectToGoogle()
             if ($user->wasRecentlyCreated) {
                 $user->preferred_language = $this->detectBrowserLanguage($request);
                 $user->save();
-                $this->saveInitialCountry($user);
+                $this->saveInitialCountry($user, $request);
             }
 
             Auth::login($user);
@@ -145,7 +160,7 @@ public function redirectToGoogle()
             if ($user->wasRecentlyCreated) {
                 $user->preferred_language = $this->detectBrowserLanguage($request);
                 $user->save();
-                $this->saveInitialCountry($user);
+                $this->saveInitialCountry($user, $request);
             }
 
             Auth::login($user);
@@ -228,8 +243,8 @@ public function redirectToGoogle()
 
         $this->logAction('user_registered', ['method' => 'email', 'user_id' => $user->id]);
 
-        // Sauvegarder le pays détecté via IP
-        $this->saveInitialCountry($user);
+        // Sauvegarder le pays détecté depuis le navigateur (Accept-Language)
+        $this->saveInitialCountry($user, $request);
 
         Auth::login($user);
 

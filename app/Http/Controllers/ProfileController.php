@@ -8,7 +8,6 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Log;
 use App\Services\AvatarCatalog;
 use App\Services\DailyQuestService;
-use App\Services\CurrencyDetectionService;
 use App\Models\BotProfile;
 use App\Models\BotQualificationEvent;
 use App\Services\BotQualificationService;
@@ -76,8 +75,22 @@ class ProfileController extends Controller
         return $settings;
     }
 
+    /**
+     * Pays depuis le navigateur (Accept-Language, ex: fr-CA → CA).
+     * Même source que la langue. Aucune détection IP.
+     */
+    private function detectBrowserCountry(Request $request): ?string
+    {
+        foreach ($request->getLanguages() as $locale) {
+            if (preg_match('/[_-]([A-Za-z]{2})$/', $locale, $m)) {
+                return strtoupper($m[1]);
+            }
+        }
+        return null;
+    }
+
     /** Affichage profil */
-    public function show()
+    public function show(Request $request)
     {
         $settings = $this->buildSettings();
 
@@ -106,21 +119,12 @@ class ProfileController extends Controller
 
         $currentCountry = strtoupper((string) data_get($settings, 'country', ''));
 
-        // Auto-détection du pays via IP si non encore défini — sauvegarde immédiate
+        // Suggestion de pays depuis le navigateur (Accept-Language, ex: fr-CA → CA)
+        // si non encore défini. Aucune détection IP : l'IP est réservée à
+        // Stripe/devise/analytique. Le profil sauvegardé reste la vérité.
         $suggestedCountry = '';
         if ($currentCountry === '') {
-            $detectedCountry = app(CurrencyDetectionService::class)->detectCountry() ?? '';
-            if ($detectedCountry !== '') {
-                // Sauvegarder directement dans profile_settings
-                $user = Auth::user();
-                if ($user) {
-                    $settings['country'] = $detectedCountry;
-                    $user->profile_settings = $settings;
-                    $user->save();
-                }
-                $currentCountry    = $detectedCountry;
-                $suggestedCountry  = $detectedCountry;
-            }
+            $suggestedCountry = $this->detectBrowserCountry($request) ?? '';
         }
         
         // Récupérer le joueur pour afficher son code

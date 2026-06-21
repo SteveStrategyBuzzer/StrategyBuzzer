@@ -161,6 +161,20 @@ class User extends Authenticatable
         return $url;
     }
 
+    /**
+     * Pays du joueur, stocké dans profile_settings['country'].
+     * Permet d'écrire Auth::user()->country (ex: 'CA', 'FR').
+     */
+    public function getCountryAttribute(): ?string
+    {
+        $settings = is_string($this->profile_settings)
+            ? json_decode($this->profile_settings, true)
+            : ($this->profile_settings ?? []);
+
+        $code = strtoupper((string) ($settings['country'] ?? ''));
+        return $code !== '' ? $code : null;
+    }
+
     public function getDisplayNameAttribute()
     {
         if (!empty($this->name) && $this->name !== $this->email) {
