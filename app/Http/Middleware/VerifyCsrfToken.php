@@ -16,6 +16,7 @@ class VerifyCsrfToken extends Middleware
         'internal/duo/match/finalize',
         'internal/league/team/match/finalize',
         'internal/match/snapshot',
+        'internal/match/consume',
         'internal/player-memory/record',
         // Dev-only test-support endpoints (route group itself is gated by APP_ENV !== 'production').
         '__test/*',
