@@ -109,6 +109,28 @@ body { background: var(--sb-bg); }
     background-clip: text;
 }
 
+.sb-mobile-title {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    width: 100%;
+    padding: 5px 16px;
+    background: var(--sb-sidebar);
+    border-bottom: 1px solid var(--sb-border);
+    flex-shrink: 0;
+}
+.sb-mobile-title-text {
+    font-size: 0.75rem;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    background: linear-gradient(135deg, #fff 0%, var(--sb-gold) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
 .sb-sidebar-user {
     display: flex;
     flex-direction: column;
@@ -1069,6 +1091,9 @@ body { background: var(--sb-bg); }
     .sb-coin-icon { width: 16px; height: 16px; }
     .sb-coin-add { width: 24px; height: 24px; font-size: 0.9rem; }
 
+    /* Titre compact sous la topbar (remplace sidebar-logo absent sur mobile) */
+    .sb-mobile-title { display: flex; }
+
     /* Bottom bar hidden on mobile (replaced by bottom nav) */
     .sb-bottombar { display: none; }
 
@@ -1232,6 +1257,13 @@ body { background: var(--sb-bg); }
                 </a>
             </div>
         </header>
+
+        {{-- Titre compact mobile (≤639px — visible sous topbar quand menu latéral masqué) --}}
+        <div class="sb-mobile-title">
+            <span class="sb-sidebar-logo-flash">⚡</span>
+            <span class="sb-mobile-title-text">Strategy Buzzer</span>
+            <span class="sb-sidebar-logo-flash">⚡</span>
+        </div>
 
         {{-- ── CONTENT ── --}}
         <div class="sb-content">
