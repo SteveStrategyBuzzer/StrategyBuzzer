@@ -87,6 +87,28 @@ body { background: var(--sb-bg); }
     flex-shrink: 0;
 }
 
+.sb-sidebar-logo {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    width: 100%;
+    padding: 0 4px 12px;
+    text-align: center;
+}
+.sb-sidebar-logo-flash { font-size: 1.2rem; line-height: 1; }
+.sb-sidebar-logo-text {
+    font-size: 0.62rem;
+    font-weight: 900;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    line-height: 1.1;
+    background: linear-gradient(135deg, #fff 0%, var(--sb-gold) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
 .sb-sidebar-user {
     display: flex;
     flex-direction: column;
@@ -1009,6 +1031,8 @@ body { background: var(--sb-bg); }
     .sb-row1 { grid-template-columns: 1fr; }
     .sb-logo-text { font-size: 1.2rem; }
     .sb-logo-tagline { display: none; }
+    .sb-topbar-logo { display: none; }
+    .sb-sidebar-logo { display: flex; }
 }
 
 /* Small tablet */
@@ -1080,6 +1104,12 @@ body { background: var(--sb-bg); }
     {{-- ══════════ SIDEBAR ══════════ --}}
     <aside class="sb-sidebar">
 
+        {{-- Logo titre (affiché dans le menu latéral quand l'écran rétrécit — voir responsive) --}}
+        <div class="sb-sidebar-logo">
+            <span class="sb-sidebar-logo-flash">⚡</span>
+            <span class="sb-sidebar-logo-text">Strategy Buzzer</span>
+        </div>
+
         {{-- User block --}}
         <div class="sb-sidebar-user">
             <div class="sb-avatar-wrap">
@@ -1148,6 +1178,13 @@ body { background: var(--sb-bg); }
                 </div>
                 <span>{{ __('Ligues') }}</span>
             </a>
+
+            <a href="{{ R::has('profile') ? route('profile') : url('/profile') }}" class="sb-nav-item">
+                <div class="sb-nav-icon">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                </div>
+                <span>{{ __('Profil') }}</span>
+            </a>
         </nav>
 
         <div class="sb-sidebar-bottom">
@@ -1190,9 +1227,6 @@ body { background: var(--sb-bg); }
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
                 </a>
                 --}}
-                <a href="{{ R::has('profile') ? route('profile') : url('/profile') }}" class="sb-topbar-icon" title="{{ __('Profil') }}">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                </a>
                 <a href="{{ R::has('profile') ? route('profile') : url('/profile') }}" class="sb-topbar-icon" title="{{ __('Paramètres') }}">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
                 </a>
@@ -1220,7 +1254,7 @@ body { background: var(--sb-bg); }
                 </div>
 
                 {{-- Daily Challenge --}}
-                <div class="sb-daily-card">
+                <a href="{{ R::has('quetes-quotidiennes') ? route('quetes-quotidiennes') : url('/quetes-quotidiennes') }}" class="sb-daily-card" style="text-decoration:none; color:inherit;">
                     <div class="sb-daily-chest">🎁</div>
                     <div class="sb-daily-info">
                         <div class="sb-daily-label">{{ __('Défi quotidien') }}</div>
@@ -1242,7 +1276,7 @@ body { background: var(--sb-bg); }
                         <div class="sb-daily-reward-icon">⭐</div>
                         <div class="sb-daily-reward-value">{{ $challengeReward }}</div>
                     </div>
-                </div>
+                </a>
 
             </div>
 
@@ -1403,20 +1437,23 @@ body { background: var(--sb-bg); }
                         <div class="sb-eco-coin">SB</div>
                     </div>
                     <div class="sb-eco-links">
+                        <a href="{{ R::has('profile') ? route('profile') : url('/profile') }}" class="sb-eco-link">
+                            <span class="sb-eco-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span> {{ __('Profil') }}
+                        </a>
                         <a href="{{ R::has('avatar') ? route('avatar') : url('/avatar') }}" class="sb-eco-link">
-                            <span class="sb-eco-link-icon">🎭</span> {{ __('Avatars & personnalisation') }}
+                            <span class="sb-eco-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></span> {{ __('Avatars & personnalisation') }}
                         </a>
                         <a href="{{ R::has('boutique') ? route('boutique') : url('/boutique') }}" class="sb-eco-link">
-                            <span class="sb-eco-link-icon">🛒</span> {{ __('Boutique & items') }}
+                            <span class="sb-eco-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61l1.6-8.39H6"/></svg></span> {{ __('Boutique & items') }}
                         </a>
                         <a href="{{ R::has('quests.index') ? route('quests.index') : url('/quests') }}" class="sb-eco-link">
-                            <span class="sb-eco-link-icon">🎯</span> {{ __('Quêtes & récompenses') }}
+                            <span class="sb-eco-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></span> {{ __('Quêtes & récompenses') }}
                         </a>
-                        <a href="{{ R::has('quetes-quotidiennes') ? route('quetes-quotidiennes') : url('/quetes-quotidiennes') }}" class="sb-eco-link">
-                            <span class="sb-eco-link-icon">⭐</span> {{ __('Saisons & récompenses') }}
+                        <a href="{{ R::has('ligue') ? route('ligue') : url('/ligue') }}" class="sb-eco-link">
+                            <span class="sb-eco-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span> {{ __('Saisons & récompenses') }}
                         </a>
                         <a href="{{ url('/master') }}" class="sb-eco-link">
-                            <span class="sb-eco-link-icon">🏆</span> {{ __('Tournois & événements') }}
+                            <span class="sb-eco-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11"/></svg></span> {{ __('Tournois & événements') }}
                         </a>
                     </div>
                 </div>
