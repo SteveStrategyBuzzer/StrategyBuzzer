@@ -1,0 +1,299 @@
+# Correction du rapport d'architecture Gameplay commun
+
+**Aucun patch.**
+
+**Aucune DB.**
+
+**Aucun artisan.**
+
+**Aucun Node.**
+
+**Aucune modification gameplay.**
+
+**Rapport d'architecture uniquement.**
+
+---
+
+# Correction importante
+
+Le gameplay universel ne doit pas être défini seulement comme :
+
+* Question
+* Réponses
+* Résultat
+* Fin de manche
+* Fin de partie
+* Manche Ultime
+
+La **Manche Ultime** n'est **pas** un simple écran après Question/Réponses/Résultat.
+
+C'est une phase spéciale qui précède le dernier cycle gameplay.
+
+L'ordre officiel est :
+
+```
+Fin de manche
+↓
+Manche Ultime — choix des participants
+↓
+Manche Ultime — choix des joueurs
+↓
+Question
+↓
+Réponses
+↓
+Résultat
+↓
+Fin de match
+```
+
+La centralisation visuelle doit donc distinguer les **7 écrans universels** suivants :
+
+1. question
+2. answer
+3. result
+4. round-end
+5. ultimate-participant-choice
+6. ultimate-player-choice
+7. match-end
+
+Le visuel de la Manche Ultime doit être un écran de sélection/orchestration, pas une variante de l'écran Résultat.
+
+---
+
+# SOURCE DE VÉRITÉ VISUELLE
+
+Les écrans Solo constituent aujourd'hui la version la plus complète du gameplay.
+
+Les écrans :
+
+* question
+* answer
+* result
+* round-end
+* ultimate-participant-choice
+* ultimate-player-choice
+* match-end
+
+deviennent la **référence graphique officielle** de StrategyBuzzer.
+
+La centralisation **ne consiste pas** à créer un nouveau design.
+
+Elle consiste à :
+
+1. prendre les écrans Solo comme référence officielle ;
+2. extraire leur HTML/CSS en composants communs ;
+3. faire converger progressivement Duo, Ligue et MJ vers ces mêmes composants.
+
+Autrement dit :
+
+```
+Solo
+      │
+      ├── Question
+      ├── Réponses
+      ├── Résultat
+      ├── Fin de manche
+      ├── Manche Ultime
+      └── Fin de match
+            ▲
+            │
+      Duo ──┤
+      Ligue ┤
+      MJ ───┘
+```
+
+Les autres modes ne doivent pas recréer leur propre interface.
+
+Ils doivent progressivement utiliser exactement les mêmes composants visuels que Solo.
+
+---
+
+# Architecture souhaitée
+
+```
+resources/views/game/screens/
+```
+
+* question.blade.php
+* answer.blade.php
+* result.blade.php
+* round-end.blade.php
+* ultimate-participant-choice.blade.php
+* ultimate-player-choice.blade.php
+* match-end.blade.php
+
+Ces écrans doivent uniquement assembler des composants communs.
+
+```
+resources/views/game/components/
+```
+
+* header.blade.php
+* timer.blade.php
+* players.blade.php
+* question-card.blade.php
+* answer-grid.blade.php
+* scoreboard.blade.php
+* actions.blade.php
+* footer.blade.php
+
+Exemple :
+
+```
+Question Screen
+
+↓
+
+Header
+
+↓
+
+Timer
+
+↓
+
+Players
+
+↓
+
+QuestionCard
+
+↓
+
+AnswerGrid
+
+↓
+
+Scoreboard
+
+↓
+
+Actions
+
+↓
+
+Footer
+```
+
+Tous les modes utilisent exactement cette même structure.
+
+---
+
+# Contrat commun
+
+Créer un contrat unique :
+
+```
+GAME_SCREEN_CONTEXT
+```
+
+Il doit contenir au minimum :
+
+* gameMode
+* screenType
+* phase
+* timer
+* players
+* currentPlayer
+* question
+* answers
+* scoreboard
+* actions
+* roundStats
+* matchStats
+* ultimateRound
+
+Tous les modes alimentent exactement ce même contrat.
+
+---
+
+# Ce qui change selon le mode
+
+Uniquement :
+
+* source des données
+* nombre de joueurs
+* événements Socket.IO
+* logique Node
+* bots
+* actions disponibles
+* contrôle MJ
+
+---
+
+# Ce qui ne doit jamais changer
+
+* structure HTML
+* composants d'écran
+* rendu visuel
+* animations
+* transitions
+* header
+* timer
+* question
+* réponses
+* scoreboard
+* résultat
+* fin de manche
+* manche ultime
+* fin de match
+
+Le joueur doit retrouver exactement la même expérience visuelle, quel que soit le mode.
+
+---
+
+# Principe fondamental
+
+Le joueur ne pense jamais :
+
+> Je suis dans Solo.
+
+ou
+
+> Je suis dans Duo.
+
+Il pense :
+
+> Je réponds à une question.
+
+Le gameplay doit donc être construit autour des **écrans universels**, pas autour des modes de jeu.
+
+---
+
+# Ordre de migration recommandé
+
+Ne pas commencer par le CSS.
+
+Le CSS est une conséquence.
+
+L'ordre recommandé est :
+
+1. Définir officiellement les 7 écrans universels.
+2. Déclarer Solo comme référence graphique officielle.
+3. Extraire les composants communs à partir des écrans Solo.
+4. Définir GAME_SCREEN_CONTEXT.
+5. Brancher progressivement Solo sur les nouveaux composants (sans changement visuel).
+6. Brancher Duo sur ces mêmes composants sans modifier la logique Socket.IO.
+7. Brancher Ligue sans modifier son runtime.
+8. Brancher MJ en dernier.
+9. Une fois les quatre modes utilisant les mêmes composants, extraire et centraliser définitivement le CSS commun.
+10. Supprimer les duplications HTML/CSS uniquement après validation complète.
+
+---
+
+# Ce que je veux dans le rapport
+
+Je veux un rapport mis à jour qui présente :
+
+1. les 7 écrans universels ;
+2. Solo comme référence visuelle officielle ;
+3. les composants communs proposés ;
+4. le contrat GAME_SCREEN_CONTEXT ;
+5. la stratégie de migration progressive ;
+6. les risques éventuels de cette approche ;
+7. les avantages obtenus (maintenance, cohérence visuelle, évolutivité).
+
+Aucun patch.
+
+Rapport uniquement.
