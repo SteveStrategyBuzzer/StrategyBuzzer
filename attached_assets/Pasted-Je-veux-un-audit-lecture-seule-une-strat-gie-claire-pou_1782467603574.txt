@@ -1,0 +1,136 @@
+Je veux un audit lecture seule + une stratégie claire pour centraliser le visuel gameplay.
+
+Constat :
+Le visuel de gameplay devrait être commun entre Solo, Duo, Ligue et MJ.
+
+Les écrans concernés :
+- Question
+- Réponses
+- Résultat
+- Fin de manche
+- Fin de partie
+- Manche ultime
+
+Ce qui doit être commun :
+- layout général
+- header gameplay
+- zone question
+- zone réponses
+- chrono visuel
+- avatars/joueurs
+- scoreboard
+- animations
+- résultats
+- écran fin de partie
+
+Ce qui peut changer selon le mode :
+- source des données
+- nombre de joueurs
+- Socket.IO / Node
+- actions autorisées
+- phases
+- bots
+- MJ contrôle manuel/auto
+
+Objectif architectural :
+ne pas copier-coller le Solo dans Duo/Ligue/MJ.
+Créer un visuel commun réutilisable.
+
+Méthode correcte :
+
+1. Audit lecture seule
+Lister :
+- vues gameplay Solo
+- vues gameplay Duo
+- vues gameplay Ligue
+- vues gameplay MJ
+- layouts utilisés
+- partials utilisés
+- CSS utilisés
+- JS utilisés
+- ce qui est commun
+- ce qui est dupliqué
+
+2. Définir un layout commun
+Exemple :
+resources/views/layouts/game.blade.php
+
+Il doit contenir seulement :
+- structure générale
+- slots/zones communes
+- assets CSS/JS communs
+- aucun calcul gameplay
+
+3. Créer des partials communs
+Exemple :
+resources/views/game/partials/header.blade.php
+resources/views/game/partials/question.blade.php
+resources/views/game/partials/answers.blade.php
+resources/views/game/partials/players.blade.php
+resources/views/game/partials/timer.blade.php
+resources/views/game/partials/scoreboard.blade.php
+resources/views/game/partials/result.blade.php
+resources/views/game/partials/round-end.blade.php
+resources/views/game/partials/match-end.blade.php
+resources/views/game/partials/ultimate-round.blade.php
+
+4. Créer un contrat de données commun
+Chaque mode doit fournir le même genre de contexte visuel :
+
+gameMode
+phase
+question
+answers
+players
+currentPlayer
+timer
+scoreboard
+roundStats
+matchStats
+actionsAvailable
+
+Solo remplit ce contexte depuis Laravel.
+Duo remplit ce contexte depuis Node/Socket.IO.
+Ligue remplit ce contexte depuis Node/Socket.IO ou son runtime.
+MJ remplit ce contexte depuis son contrôleur + Node.
+
+5. Garder Node autorité gameplay
+Important :
+Le visuel commun ne doit jamais décider :
+- qui gagne
+- qui buzz
+- quelle phase commence
+- quel score appliquer
+- quand finir la manche
+
+Le client affiche seulement ce que Laravel/Node fournit.
+
+6. Migration progressive
+Ne pas tout refaire d’un coup.
+
+Ordre recommandé :
+A. Auditer les vues actuelles.
+B. Choisir Solo comme référence visuelle.
+C. Extraire seulement le HTML/CSS commun en partials.
+D. Brancher Solo sur ces partials.
+E. Brancher Duo sans changer sa logique Socket.IO.
+F. Brancher Ligue sans changer sa logique.
+G. Brancher MJ ensuite.
+H. Supprimer seulement après validation les anciens doublons.
+
+7. Interdictions
+- aucun patch maintenant
+- aucune DB
+- aucun artisan
+- aucun Node
+- aucun changement gameplay
+- aucun refactor massif
+- aucun copier-coller aveugle
+
+Je veux seulement le rapport :
+1. fichiers actuels par mode;
+2. différences visuelles;
+3. duplications;
+4. risques;
+5. proposition de structure commune;
+6. ordre de migration sécurisé.
