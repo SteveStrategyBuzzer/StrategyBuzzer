@@ -1,0 +1,214 @@
+Je veux corriger le rapport d’architecture Gameplay commun.
+
+Aucun patch.
+Aucune DB.
+Aucun artisan.
+Aucun Node.
+Aucune modification gameplay.
+Rapport d’architecture seulement.
+
+Le rapport précédent est bon à 95 %, mais il doit être corrigé avant toute implémentation.
+
+Décisions finales :
+
+1. Solo est la référence visuelle officielle.
+Les écrans Solo existants servent de base visuelle.
+Mais l’architecture ne doit pas être définie uniquement par le HTML actuel de Solo.
+Elle doit être définie par les concepts gameplay communs.
+
+2. Les 7 écrans universels officiels sont :
+
+- question
+- answer-reveal
+- player-result
+- round-end
+- ultimate-participant-choice
+- ultimate-player-choice
+- match-end
+
+Ne pas utiliser seulement “answer” et “result”.
+“answer-reveal” = écran de révélation des réponses.
+“player-result” = résultat de la question pour les joueurs.
+“match-end” = fin de partie.
+
+3. Manche Ultime est une phase spéciale avant le dernier cycle.
+
+Ordre exact :
+
+round-end
+↓
+ultimate-participant-choice
+↓
+ultimate-player-choice
+↓
+question
+↓
+answer-reveal
+↓
+player-result
+↓
+match-end
+
+Manche Ultime n’est pas une variante de résultat.
+
+4. Composants communs obligatoires :
+
+resources/views/game/components/
+
+- header.blade.php
+- timer.blade.php
+- players.blade.php
+- question-card.blade.php
+- answer-grid.blade.php
+- scoreboard.blade.php
+- actions.blade.php
+- footer.blade.php
+
+Composants optionnels :
+
+- skills-panel.blade.php
+- master-controls.blade.php
+- spectators.blade.php
+- voice-panel.blade.php
+- ultimate-selector.blade.php
+
+Important :
+skills-panel ne doit pas être obligatoire.
+Il est optionnel selon le mode.
+
+5. Screens communs :
+
+resources/views/game/screens/
+
+- question.blade.php
+- answer-reveal.blade.php
+- player-result.blade.php
+- round-end.blade.php
+- ultimate-participant-choice.blade.php
+- ultimate-player-choice.blade.php
+- match-end.blade.php
+
+Chaque screen assemble seulement les composants communs.
+Aucune logique gameplay dans les screens.
+
+6. Créer une couche conceptuelle :
+
+GameScreenRenderer
+
+Rôle :
+recevoir GAME_SCREEN_CONTEXT
+déterminer le screenType
+assembler le bon screen
+afficher les bons composants
+ne jamais calculer le score
+ne jamais décider des phases
+ne jamais remplacer Node
+
+Flux cible :
+
+GAME_SCREEN_CONTEXT
+↓
+GameScreenRenderer
+↓
+game/screens/{screenType}
+↓
+game/components/*
+
+7. Contrat commun GAME_SCREEN_CONTEXT
+
+Il doit contenir au minimum :
+
+- gameMode
+- matchType
+- screenType
+- phase
+- language
+- country
+- timer
+- players
+- currentPlayer
+- question
+- questionType
+- difficulty
+- answers
+- scoreboard
+- actions
+- stats
+- roundStats
+- matchStats
+- ultimateRound
+- isUltimateRound
+- remainingLives
+- coins
+
+Tous les modes alimentent ce même contrat.
+
+8. Ce qui change selon le mode :
+
+- source des données
+- nombre de joueurs
+- Socket.IO / Node
+- bots
+- actions disponibles
+- contrôle MJ
+- runtime utilisé
+
+9. Ce qui ne doit pas changer :
+
+- structure visuelle
+- composants
+- rendu question
+- rendu réponses
+- rendu résultat
+- rendu fin de manche
+- rendu fin de match
+- rendu Manche Ultime
+- animations de base
+- CSS final
+
+10. IDs HTML
+
+Les IDs/classes utilisés par GameplayRuntime, DuoSocketClient et les JS existants doivent être conservés ou mappés explicitement.
+
+Exemple :
+si un runtime lit #chronoTimer, #playerScore, #buzzContainer, ces IDs ne doivent pas disparaître sans adaptation validée.
+
+11. Ordre de migration officiel :
+
+1. Corriger le rapport d’architecture avec ces décisions.
+2. Définir les 7 screens universels.
+3. Définir les composants communs obligatoires/optionnels.
+4. Définir GAME_SCREEN_CONTEXT.
+5. Définir GameScreenRenderer.
+6. Brancher Solo en premier, car Solo est la référence visuelle.
+7. Brancher Duo ensuite sans casser Socket.IO.
+8. Brancher Ligue sans casser son runtime.
+9. Brancher MJ en dernier.
+10. Extraire le CSS commun seulement après validation des screens/components.
+11. Supprimer les duplications seulement après validation complète.
+
+12. Interdictions :
+
+- Ne pas commencer par le CSS.
+- Ne pas créer un nouveau design.
+- Ne pas copier-coller Solo dans chaque mode.
+- Ne pas modifier Node.
+- Ne pas modifier DB.
+- Ne pas modifier gameplay.
+- Ne pas patcher maintenant.
+- Ne pas faire de refactor massif.
+
+Je veux uniquement un rapport mis à jour avec :
+
+1. Les 7 screens officiels.
+2. Solo comme référence visuelle officielle.
+3. Les composants obligatoires et optionnels.
+4. GAME_SCREEN_CONTEXT complet.
+5. Le rôle de GameScreenRenderer.
+6. L’ordre de migration sécurisé.
+7. Les risques.
+8. Les validations minimales par mode.
+9. Ce qui est explicitement hors scope.
+
+Rapport seulement.
+Aucun patch.
