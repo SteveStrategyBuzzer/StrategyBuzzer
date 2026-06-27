@@ -1,0 +1,183 @@
+Les corrections que je ferais encore
+1. Les noms des écrans
+
+Je ne garderais pas :
+
+answer-reveal
+player-result
+
+Je les remplacerais par quelque chose qui correspond exactement à l'expérience du joueur.
+
+Par exemple :
+
+question
+answers
+result
+round-end
+ultimate-participant-choice
+ultimate-player-choice
+match-end
+
+Pourquoi ?
+
+Parce que le joueur ne voit jamais un écran appelé "answer reveal".
+
+Il voit :
+
+Question
+Réponses
+Résultat
+
+Le nom technique peut être interne, mais les concepts gameplay doivent rester simples.
+
+2. Les fichiers de référence Solo
+
+Je demanderais à Replit de préciser clairement que :
+
+les écrans Solo actuels sont la référence fonctionnelle ET visuelle.
+
+Ce n'est pas juste une inspiration.
+
+Autrement dit :
+
+question.blade.php
+
+=
+
+game_question.blade.php
+
+jusqu'à preuve du contraire.
+
+Même chose pour :
+
+answer
+
+↓
+
+game_answer.blade.php
+
+result
+
+↓
+
+game_result.blade.php
+
+Ce sont eux qui définissent le standard.
+
+3. Le GameScreenRenderer
+
+Je le simplifierais.
+
+Je ne veux pas un "mini framework".
+
+Je veux simplement :
+
+GAME_SCREEN_CONTEXT
+        ↓
+Renderer
+        ↓
+Screen
+        ↓
+Components
+
+Point.
+
+Le Renderer choisit uniquement quel écran afficher.
+
+Il ne fait absolument rien d'autre.
+
+4. GAME_SCREEN_CONTEXT
+
+Je séparerais les données en blocs.
+
+Par exemple :
+
+GAME_SCREEN_CONTEXT
+
+game
+screen
+question
+players
+answers
+timer
+actions
+stats
+ultimate
+ui
+
+au lieu d'un énorme objet plat.
+
+Ce sera beaucoup plus facile à maintenir.
+
+5. Les composants
+
+Je créerais deux familles.
+
+Toujours présents
+Header
+Timer
+Footer
+Players
+QuestionCard
+AnswerGrid
+Selon le mode
+Skills
+Voice
+MasterControls
+Spectators
+UltimateSelector
+
+Cette distinction est importante.
+
+6. La migration
+
+C'est probablement le point le plus important.
+
+Je demanderais explicitement :
+
+Les écrans Solo actuels servent de modèle de migration. On ne réinvente pas les écrans. On les extrait progressivement en composants sans modifier leur rendu.
+
+Ça évite que Replit reparte dans un redesign.
+
+Ce que j'ajouterais absolument
+
+Une règle que je considère essentielle :
+
+Toute amélioration visuelle est d'abord réalisée dans Solo. Une fois validée visuellement et fonctionnellement dans Solo, elle est propagée aux écrans universels, puis automatiquement disponible pour Duo, Ligue et MJ.
+
+Cette règle est très importante.
+
+Elle fait de Solo le laboratoire UI/UX du projet.
+
+Le flux devient :
+
+Nouvelle UI
+↓
+
+Solo
+
+↓
+
+Validation
+
+↓
+
+Extraction en composants
+
+↓
+
+Question universelle
+
+↓
+
+Duo
+
+↓
+
+Ligue
+
+↓
+
+MJ
+
+Ainsi, tu n'as jamais à développer quatre fois la même interface.
