@@ -1,0 +1,73 @@
+Correction importante.
+
+Je valide le principe : on ne garde pas d’anciens liens gameplay actifs vers du vieux code.
+
+Replit est la plateforme de changement.
+GitHub/checkpoints servent de récupération si nécessaire.
+La VM production ne doit pas être utilisée comme source de vérité.
+
+Objectif :
+supprimer progressivement les anciennes vues gameplay seulement quand les nouveaux écrans communs sont prêts et validés.
+
+Attention :
+ne rien supprimer maintenant.
+Rapport seulement.
+
+Clarification architecture :
+
+GAME_SCREEN_CONTEXT =
+les données + l’état :
+- game.mode : solo, duo, league, master
+- screen.type : question, answers, result, round-end, match-end, etc.
+- players
+- stats
+- timer
+- actions
+- ultimate
+
+Renderer =
+le distributeur d’affichage.
+Il lit GAME_SCREEN_CONTEXT et choisit le bon écran/schéma.
+
+Exemples :
+screen.type = round-end + game.mode = solo
+→ round-end schema solo
+
+screen.type = round-end + game.mode = duo
+→ round-end schema multijoueur
+
+screen.type = match-end + game.mode = league
+→ match-end schema ligue
+
+screen.type = ultimate-participant-choice + game.mode = master
+→ ultimate schema MJ
+
+Règle :
+Solo peut rester une référence visuelle.
+Mais les fins de manche, fins de partie et Manche Ultime doivent avoir des variantes :
+- solo
+- multiplayer
+- league
+- master
+
+Ne pas forcer Solo et multijoueur à être identiques sur ces écrans.
+
+Stratégie suppression :
+1. Créer les nouveaux screens/components.
+2. Brancher un mode.
+3. Valider.
+4. Vérifier qu’aucune route/vue n’appelle l’ancien fichier.
+5. Déprécier l’ancien fichier.
+6. Supprimer seulement après preuve grep + validation.
+
+Je veux un rapport mis à jour avec :
+- rôle exact de GAME_SCREEN_CONTEXT
+- rôle exact du Renderer
+- variantes de schema par mode
+- stratégie de suppression sécurisée des anciennes vues gameplay
+- liste des vues gameplay candidates à suppression future
+- ordre recommandé
+
+Aucun patch.
+Aucune suppression maintenant.
+Rapport seulement.
