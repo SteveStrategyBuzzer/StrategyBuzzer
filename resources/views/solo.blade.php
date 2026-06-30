@@ -16,11 +16,13 @@ $soloDisadvantagedAvatars = [
 $currentStrAvatarLower = strtolower($avatar_stratégique ?? 'aucun');
 $showSoloWarning   = isset($soloDisadvantagedAvatars[$currentStrAvatarLower]);
 $soloWarningMsg    = $showSoloWarning ? $soloDisadvantagedAvatars[$currentStrAvatarLower] : '';
+$tierColors        = ['Rare' => '#3b82f6','Épique' => '#a855f7','Légendaire' => '#f59e0b'];
 $selSlug           = $current_strategic_slug ?? '';
 $selAvatarData     = ($strategic_avatars ?? [])[$selSlug] ?? null;
 $selSkillsShort    = $selAvatarData['skills_short'] ?? [];
 $selAvatarName     = $selAvatarData ? strtoupper($selAvatarData['name'] ?? '') : strtoupper($avatar_stratégique ?? __('Aucun'));
-$tierColors        = ['Rare' => '#3b82f6','Épique' => '#a855f7','Légendaire' => '#f59e0b'];
+$selTier           = $selAvatarData['tier'] ?? '';
+$selTierColor      = $tierColors[$selTier] ?? '#ffffff';
 // Avatars débloqués en premier
 $avatarsSorted = collect($strategic_avatars ?? [])
     ->sortByDesc(fn($a) => $a['unlocked'] ? 1 : 0)
@@ -147,7 +149,7 @@ body { background: #030924; color: #fff; overflow-x: hidden; }
 }
 .sl-strat-label { display: flex; align-items: center; gap: 7px; font-size: 0.82rem; color: rgba(255,255,255,0.7); }
 .sl-strat-icon { font-size: 1rem; }
-.sl-strat-name { font-weight: 800; color: #f59e0b; font-size: 0.9rem; letter-spacing: 0.5px; }
+.sl-strat-name { font-weight: 800; font-size: 0.9rem; letter-spacing: 0.5px; }
 .sl-skills-badges { display: flex; gap: 6px; margin-left: auto; flex-wrap: wrap; }
 .sl-skill-badge {
   width: 30px; height: 30px; border-radius: 8px;
@@ -396,7 +398,8 @@ body { background: #030924; color: #fff; overflow-x: hidden; }
         </div>
 
         @if(!empty($selSlug) || ($avatar_stratégique && strtolower($avatar_stratégique) !== 'aucun'))
-          <span class="sl-strat-name" id="strat-name-display">{{ $selAvatarName }}</span>
+          <span class="sl-strat-name" id="strat-name-display"
+                style="color: {{ $selTierColor }}">{{ $selAvatarName }}</span>
           @if($is_stratege && !empty($selected_teammate))
             <div class="sl-teammate-wrap">
               <button type="button" class="sl-teammate-btn" id="teammate_dropdown_btn" onclick="toggleTeammateDropdown()">🔽</button>
@@ -426,14 +429,13 @@ body { background: #030924; color: #fff; overflow-x: hidden; }
         @endif
 
         {{-- Badges skills du stratégique sélectionné --}}
-        @if(!empty($selSkillsShort))
-          <div class="sl-skills-badges">
-            @foreach(array_slice($selSkillsShort,0,3) as $sk)
-              @php $emoji = preg_match('/^\p{So}|\p{Sm}|\p{Sk}|\p{L}/u', $sk, $m) ? mb_substr($sk,0,2) : '⚡'; @endphp
-              <div class="sl-skill-badge" title="{{ $sk }}" style="background:rgba(99,102,241,0.25);">{{ mb_substr($sk,0,2) }}</div>
-            @endforeach
-          </div>
-        @endif
+        <div class="sl-skills-badges" id="sl-skills-badges">
+          @foreach(array_slice($selSkillsShort,0,3) as $sk)
+            @php preg_match('/^\S+/u', $sk, $em); $emoji = $em[0] ?? '⚡'; @endphp
+            <div class="sl-skill-badge" title="{{ $sk }}"
+                 style="background:rgba(99,102,241,0.25); color:{{ $selTierColor }}; border-color:{{ $selTierColor }}40;">{{ $emoji }}</div>
+          @endforeach
+        </div>
       </div>
     </div>
 
@@ -457,6 +459,8 @@ body { background: #030924; color: #fff; overflow-x: hidden; }
                data-slug="{{ $slug }}"
                data-unlocked="{{ $isUnlocked ? '1' : '0' }}"
                data-name="{{ strtoupper($av['name'] ?? $slug) }}"
+               data-tier-color="{{ $tierColor }}"
+               data-skills="{{ htmlspecialchars(json_encode($av['skills_short'] ?? []), ENT_QUOTES) }}"
                title="{{ $isUnlocked ? ($av['name'] ?? $slug) : __('Verrouillé — achetez en boutique') }}"
                onclick="selectStrategicAvatar(this)">
             <img src="{{ asset($imgPath) }}" alt="{{ $av['name'] ?? $slug }}"
@@ -557,7 +561,9 @@ body { background: #030924; color: #fff; overflow-x: hidden; }
       window.location.href = '{{ route("boutique") }}?tab=avatars';
       return;
     }
-    const slug = el.dataset.slug;
+    const slug      = el.dataset.slug;
+    const wasSelected = el.classList.contains('selected');
+
     fetch(selectUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' },
@@ -565,20 +571,58 @@ body { background: #030924; color: #fff; overflow-x: hidden; }
     })
     .then(r => r.ok ? r.text() : null)
     .then(() => {
-      // Mettre à jour UI
+      // Retirer toutes les sélections
       document.querySelectorAll('.sl-av-portrait').forEach(p => {
         p.classList.remove('selected');
         const c = p.querySelector('.sl-av-check');
         if (c) c.remove();
       });
-      const isAlreadySelected = (slug === '{{ $selSlug }}') && el.classList.contains('selected');
-      if (!isAlreadySelected) {
+
+      const nameEl   = document.getElementById('strat-name-display');
+      const badgesEl = document.getElementById('sl-skills-badges');
+
+      if (!wasSelected) {
+        // — Sélectionner ce portrait
         el.classList.add('selected');
         const chk = document.createElement('div');
         chk.className = 'sl-av-check'; chk.textContent = '✓';
         el.appendChild(chk);
-        const nameEl = document.getElementById('strat-name-display');
-        if (nameEl) nameEl.textContent = el.dataset.name;
+
+        // Nom coloré selon le tier
+        const tierColor = el.dataset.tierColor || '#ffffff';
+        if (nameEl) {
+          nameEl.textContent   = el.dataset.name;
+          nameEl.style.color   = tierColor;
+          nameEl.style.fontWeight = '800';
+          nameEl.style.opacity = '1';
+        }
+
+        // Badges skills (emoji du début de chaque skill_short)
+        if (badgesEl) {
+          badgesEl.innerHTML = '';
+          let skills = [];
+          try { skills = JSON.parse(el.dataset.skills || '[]'); } catch(e) {}
+          skills.slice(0, 3).forEach(sk => {
+            const emojiMatch = sk.match(/^\S+/u);
+            const emoji = emojiMatch ? emojiMatch[0] : '⚡';
+            const badge = document.createElement('div');
+            badge.className  = 'sl-skill-badge';
+            badge.title      = sk;
+            badge.style.background  = 'rgba(99,102,241,0.25)';
+            badge.style.color       = tierColor;
+            badge.style.borderColor = tierColor + '40';
+            badge.textContent = emoji;
+            badgesEl.appendChild(badge);
+          });
+        }
+      } else {
+        // — Désélectionner : remettre l'état "Aucun"
+        if (nameEl) {
+          nameEl.textContent      = '{{ __("Aucun") }}';
+          nameEl.style.color      = 'rgba(255,255,255,0.35)';
+          nameEl.style.fontWeight = '500';
+        }
+        if (badgesEl) badgesEl.innerHTML = '';
       }
     })
     .catch(() => { window.location.reload(); });
