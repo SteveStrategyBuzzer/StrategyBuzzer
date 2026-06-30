@@ -669,7 +669,7 @@ body { background: #030924; color: #fff; overflow-x: hidden; }
   /* ====== AVATAR STRATÉGIQUE SELECTION ====== */
   const selectUrl       = '{{ route("avatars.select") }}';
   const csrfToken       = '{{ csrf_token() }}';
-  const SET_TEAMMATE_URL = '{{ route("set-teammate") }}';
+  const SET_TEAMMATE_URL = '{{ route("solo.set-teammate") }}';
   const RARE_AVATARS    = @json($rareAvatarsJs);
   let   currentTeammate = @json($selTeamSlug);
   let   currentTierColor = @json($selTierColor);
