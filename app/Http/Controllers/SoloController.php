@@ -91,6 +91,7 @@ class SoloController extends Controller
         }
         $strategicAvatarsGallery = [];
         foreach ($catalogStrategiques as $slug => $data) {
+            if (!is_array($data)) continue;
             $strategicAvatarsGallery[$slug] = array_merge($data, [
                 'unlocked' => in_array($slug, $userUnlocked),
             ]);

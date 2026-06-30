@@ -23,8 +23,12 @@ $selSkillsShort    = $selAvatarData['skills_short'] ?? [];
 $selSkillsFull     = $selAvatarData['skills'] ?? [];
 // Parse emoji + nom de skill depuis la forme "🤖 IA Assist : ..."
 $selSkillsParsed   = array_map(function($s) {
-    preg_match('/^(\S+)\s+(.+?)(?:\s*:.*)?$/u', $s, $m);
-    return ['emoji' => $m[1] ?? '⚡', 'name' => trim($m[2] ?? $s)];
+    // Lookahead sur ":" pour stopper exactement au nom (ex: "IA Assist")
+    if (preg_match('/^(\S+)\s+(.+?)(?=\s*:)/u', $s, $m)) {
+        return ['emoji' => $m[1], 'name' => trim($m[2])];
+    }
+    preg_match('/^(\S+)\s+(.+)$/u', $s, $m2);
+    return ['emoji' => $m2[1] ?? '⚡', 'name' => trim($m2[2] ?? $s)];
 }, array_slice($selSkillsFull, 0, 3));
 $selAvatarName     = $selAvatarData ? strtoupper($selAvatarData['name'] ?? '') : strtoupper($avatar_stratégique ?? __('Aucun'));
 $selTier           = $selAvatarData['tier'] ?? '';
@@ -184,7 +188,7 @@ body { background: #030924; color: #fff; overflow-x: hidden; }
 .sl-av-sub { font-size: 0.75rem; color: rgba(255,255,255,0.5); }
 
 .sl-av-gallery {
-  display: flex; gap: 14px; overflow-x: auto; padding-bottom: 8px;
+  display: flex; gap: 12px; overflow-x: auto; padding-bottom: 8px;
   scrollbar-width: thin; scrollbar-color: rgba(96,165,250,0.3) transparent;
 }
 .sl-av-gallery::-webkit-scrollbar { height: 4px; }
@@ -192,42 +196,58 @@ body { background: #030924; color: #fff; overflow-x: hidden; }
 .sl-av-gallery::-webkit-scrollbar-thumb { background: rgba(96,165,250,0.3); border-radius: 4px; }
 
 .sl-av-portrait {
-  position: relative; flex: 0 0 78px; cursor: pointer;
-  transition: transform .2s;
+  position: relative; flex: 0 0 88px; cursor: pointer;
+  transition: transform .2s, filter .2s;
+  display: flex; flex-direction: column; align-items: center; gap: 0;
 }
-.sl-av-portrait:hover { transform: translateY(-3px); }
-.sl-av-portrait.locked { opacity: 0.45; cursor: not-allowed; }
+.sl-av-portrait:hover { transform: translateY(-4px); }
+.sl-av-portrait.locked { opacity: 0.5; cursor: not-allowed; filter: grayscale(40%); }
 .sl-av-portrait.locked:hover { transform: none; }
 
-.sl-av-portrait img {
-  width: 78px; height: 78px; border-radius: 50%; object-fit: cover;
-  border: 2px solid rgba(255,255,255,0.15);
-  transition: border-color .2s;
+/* Card frame */
+.sl-av-frame {
+  width: 88px; height: 88px; border-radius: 16px; overflow: hidden;
+  position: relative;
+  border: 2px solid rgba(255,255,255,0.12);
+  transition: border-color .2s, box-shadow .2s;
+  background: rgba(10,20,60,0.8);
 }
-.sl-av-portrait.selected img { border-color: #3b82f6; border-width: 3px; }
-
+.sl-av-portrait.selected .sl-av-frame {
+  border-width: 2.5px;
+}
+.sl-av-portrait img {
+  width: 100%; height: 100%; object-fit: cover; display: block;
+}
+/* Gradient tier overlay at bottom of card */
+.sl-av-frame-overlay {
+  position: absolute; bottom: 0; left: 0; right: 0; height: 36px;
+  background: linear-gradient(to top, rgba(3,9,36,0.85) 0%, transparent 100%);
+  pointer-events: none;
+}
+/* Tier pill inside card */
+.sl-av-tier-pill {
+  position: absolute; bottom: 5px; left: 50%; transform: translateX(-50%);
+  font-size: 0.5rem; font-weight: 800; letter-spacing: 0.6px;
+  text-transform: uppercase; padding: 2px 7px; border-radius: 20px;
+  background: rgba(3,9,36,0.7); white-space: nowrap;
+  backdrop-filter: blur(4px);
+}
 .sl-av-check {
-  position: absolute; top: -2px; right: -2px;
-  width: 22px; height: 22px; border-radius: 50%;
-  background: #3b82f6; border: 2px solid #030924;
+  position: absolute; top: 6px; right: 6px;
+  width: 20px; height: 20px; border-radius: 50%;
+  border: 2px solid rgba(3,9,36,0.9);
   display: flex; align-items: center; justify-content: center;
-  font-size: 0.65rem; font-weight: 900; color: #fff;
+  font-size: 0.6rem; font-weight: 900; color: #fff;
 }
 .sl-av-lock {
-  position: absolute; bottom: 0; right: 0;
-  width: 22px; height: 22px; border-radius: 50%;
-  background: rgba(0,0,0,0.7); border: 1px solid rgba(255,255,255,0.2);
-  display: flex; align-items: center; justify-content: center; font-size: 0.65rem;
-}
-.sl-av-tier-dot {
-  position: absolute; bottom: 2px; left: 2px;
-  width: 13px; height: 13px; border-radius: 50%;
-  border: 2px solid #030924;
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.4rem; background: rgba(0,0,0,0.35); border-radius: 14px;
 }
 .sl-av-name {
-  text-align: center; font-size: 0.62rem; margin-top: 5px;
-  color: rgba(255,255,255,0.6); white-space: nowrap; overflow: hidden;
-  text-overflow: ellipsis; max-width: 78px;
+  text-align: center; font-size: 0.64rem; margin-top: 6px;
+  font-weight: 600; white-space: nowrap; overflow: hidden;
+  text-overflow: ellipsis; max-width: 88px; color: rgba(255,255,255,0.75);
 }
 
 /* ===== THEME GRID ===== */
@@ -490,12 +510,19 @@ body { background: #030924; color: #fff; overflow-x: hidden; }
                data-skills="{{ htmlspecialchars(json_encode($av['skills'] ?? []), ENT_QUOTES) }}"
                title="{{ $isUnlocked ? ($av['name'] ?? $slug) : __('Verrouillé — achetez en boutique') }}"
                onclick="selectStrategicAvatar(this)">
-            <img src="{{ asset($imgPath) }}" alt="{{ $av['name'] ?? $slug }}"
-                 onerror="this.src='{{ asset('images/avatars/default.png') }}'">
-            <div class="sl-av-tier-dot" style="background:{{ $tierColor }}"></div>
-            @if($isSelected)<div class="sl-av-check">✓</div>@endif
-            @if(!$isUnlocked)<div class="sl-av-lock">🔒</div>@endif
-            <div class="sl-av-name">{{ $av['name'] ?? $slug }}</div>
+            <div class="sl-av-frame"
+                 style="border-color:{{ $isSelected ? $tierColor : $tierColor.'26' }};
+                        {{ $isSelected ? 'box-shadow:0 0 16px '.$tierColor.'55;' : '' }}">
+              <img src="{{ asset($imgPath) }}" alt="{{ $av['name'] ?? $slug }}"
+                   onerror="this.src='{{ asset('images/avatars/default.png') }}'">
+              <div class="sl-av-frame-overlay"></div>
+              <div class="sl-av-tier-pill" style="color:{{ $tierColor }}; border:1px solid {{ $tierColor }}55;">{{ $tier }}</div>
+              @if($isSelected)
+                <div class="sl-av-check" style="background:{{ $tierColor }}">✓</div>
+              @endif
+              @if(!$isUnlocked)<div class="sl-av-lock">🔒</div>@endif
+            </div>
+            <div class="sl-av-name" style="{{ $isSelected ? 'color:'.$tierColor.';font-weight:800;' : '' }}">{{ $av['name'] ?? $slug }}</div>
           </div>
         @endforeach
       </div>
@@ -598,11 +625,19 @@ body { background: #030924; color: #fff; overflow-x: hidden; }
     })
     .then(r => r.ok ? r.text() : null)
     .then(() => {
-      // Retirer toutes les sélections
+      // Retirer toutes les sélections (frame border + check + nom)
       document.querySelectorAll('.sl-av-portrait').forEach(p => {
         p.classList.remove('selected');
         const c = p.querySelector('.sl-av-check');
         if (c) c.remove();
+        const frame = p.querySelector('.sl-av-frame');
+        if (frame) {
+          const tc = p.dataset.tierColor || '#ffffff';
+          frame.style.borderColor = tc + '26';
+          frame.style.boxShadow   = 'none';
+        }
+        const nm = p.querySelector('.sl-av-name');
+        if (nm) { nm.style.color = ''; nm.style.fontWeight = ''; }
       });
 
       const nameEl   = document.getElementById('strat-name-display');
@@ -611,17 +646,30 @@ body { background: #030924; color: #fff; overflow-x: hidden; }
       if (!wasSelected) {
         // — Sélectionner ce portrait
         el.classList.add('selected');
+        const tierColor = el.dataset.tierColor || '#ffffff';
+
+        // Frame : bordure + glow colorés
+        const frame = el.querySelector('.sl-av-frame');
+        if (frame) {
+          frame.style.borderColor = tierColor;
+          frame.style.boxShadow   = `0 0 16px ${tierColor}55`;
+        }
+        // Checkmark à l'intérieur de la frame
         const chk = document.createElement('div');
         chk.className = 'sl-av-check'; chk.textContent = '✓';
-        el.appendChild(chk);
+        chk.style.background = tierColor;
+        if (frame) frame.appendChild(chk); else el.appendChild(chk);
 
-        // Nom coloré selon le tier
-        const tierColor = el.dataset.tierColor || '#ffffff';
+        // Nom sous la card coloré
+        const nm = el.querySelector('.sl-av-name');
+        if (nm) { nm.style.color = tierColor; nm.style.fontWeight = '800'; }
+
+        // Nom dans la strat-row
         if (nameEl) {
-          nameEl.textContent   = el.dataset.name;
-          nameEl.style.color   = tierColor;
+          nameEl.textContent      = el.dataset.name;
+          nameEl.style.color      = tierColor;
           nameEl.style.fontWeight = '800';
-          nameEl.style.opacity = '1';
+          nameEl.style.opacity    = '1';
         }
 
         // Ability cards — emoji large + nom extrait (forme "🤖 IA Assist : ...")
@@ -630,9 +678,12 @@ body { background: #030924; color: #fff; overflow-x: hidden; }
           let skills = [];
           try { skills = JSON.parse(el.dataset.skills || '[]'); } catch(e) {}
           skills.slice(0, 3).forEach(sk => {
-            const emojiMatch = sk.match(/^(\S+)\s+(.+?)(?:\s*:.*)?$/u);
-            const emoji = emojiMatch ? emojiMatch[1] : '⚡';
-            const name  = emojiMatch ? emojiMatch[2].trim() : sk;
+            // Lookahead sur ":" pour stopper exactement au nom (ex: "IA Assist")
+            const withColon = sk.match(/^(\S+)\s+(.+?)(?=\s*:)/u);
+            const fallback  = sk.match(/^(\S+)\s+(.+)$/u);
+            const match = withColon || fallback;
+            const emoji = match ? match[1] : '⚡';
+            const name  = match ? match[2].trim() : sk;
 
             const card = document.createElement('div');
             card.className = 'sl-skill-card';
