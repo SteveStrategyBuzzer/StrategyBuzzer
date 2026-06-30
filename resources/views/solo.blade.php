@@ -171,11 +171,11 @@ body { background: #030924; color: #fff; overflow-x: hidden; }
 .sl-strat-row {
   border-top: 1px solid rgba(255,255,255,0.08);
   padding-top: 14px;
-  display: flex; flex-direction: column; gap: 10px;
+  display: flex; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 6px 14px;
 }
-.sl-strat-label { display: flex; align-items: center; gap: 7px; font-size: 0.82rem; color: rgba(255,255,255,0.7); }
+.sl-strat-label { display: flex; align-items: center; gap: 7px; font-size: 0.82rem; color: rgba(255,255,255,0.7); flex-shrink: 0; white-space: nowrap; }
 .sl-strat-icon { font-size: 1rem; }
-.sl-strat-bottom { display: flex; flex-direction: row; flex-wrap: nowrap; align-items: center; gap: 10px; min-width: 0; }
+.sl-strat-bottom { display: flex; flex-direction: row; flex-wrap: nowrap; align-items: center; gap: 10px; min-width: 0; flex: 1; }
 .sl-strat-name { font-weight: 800; font-size: 0.85rem; letter-spacing: 0.5px; flex-shrink: 0; white-space: nowrap; }
 /* ── Ability cards ── */
 .sl-skill-cards { display: flex; gap: 5px; flex-shrink: 0; }
