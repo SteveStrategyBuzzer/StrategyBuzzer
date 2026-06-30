@@ -220,11 +220,12 @@ class ProfileController extends Controller
             $user->profile_settings = $settings;
             
             // Vérifier que les champs obligatoires sont remplis avant de marquer comme complété
-            $hasAvatar = !empty(data_get($settings, 'avatar.url'));
+            $hasAvatar    = !empty(data_get($settings, 'avatar.url'));
             $hasPseudonym = !empty(trim((string) data_get($settings, 'pseudonym', '')));
-            
-            // Marquer comme complété uniquement si avatar ET pseudonym sont présents
-            $user->profile_completed = $hasAvatar && $hasPseudonym;
+            $hasCountry   = !empty(data_get($settings, 'country', ''));
+
+            // Marquer comme complété uniquement si avatar + pseudonyme + pays sont présents
+            $user->profile_completed = $hasAvatar && $hasPseudonym && $hasCountry;
             
             $user->save();
 

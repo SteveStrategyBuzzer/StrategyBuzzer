@@ -254,7 +254,8 @@ class AvatarController extends Controller
             // sans attendre l'auto-save du formulaire profil.
             $hasAvatar    = !empty(data_get($settings, 'avatar.url'));
             $hasPseudonym = !empty(trim((string) data_get($settings, 'pseudonym', '')));
-            $user->profile_completed = $hasAvatar && $hasPseudonym;
+            $hasCountry   = !empty(data_get($settings, 'country', ''));
+            $user->profile_completed = $hasAvatar && $hasPseudonym && $hasCountry;
             $user->save();
             $this->logAction('avatar_select', ['value' => $value, 'from' => $from]);
             session()->flash('avatar_updated', true);
