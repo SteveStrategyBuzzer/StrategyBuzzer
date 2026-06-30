@@ -145,12 +145,13 @@ body { background: #030924; color: #fff; overflow-x: hidden; }
 .sl-strat-row {
   border-top: 1px solid rgba(255,255,255,0.08);
   padding-top: 14px;
-  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  display: flex; flex-direction: column; gap: 10px;
 }
 .sl-strat-label { display: flex; align-items: center; gap: 7px; font-size: 0.82rem; color: rgba(255,255,255,0.7); }
 .sl-strat-icon { font-size: 1rem; }
-.sl-strat-name { font-weight: 800; font-size: 0.9rem; letter-spacing: 0.5px; }
-.sl-skills-badges { display: flex; gap: 6px; margin-left: auto; flex-wrap: wrap; }
+.sl-strat-bottom { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.sl-strat-name { font-weight: 800; font-size: 0.9rem; letter-spacing: 0.5px; flex-shrink: 0; }
+.sl-skills-badges { display: flex; gap: 6px; margin-left: auto; flex-shrink: 0; }
 .sl-skill-badge {
   width: 30px; height: 30px; border-radius: 8px;
   display: flex; align-items: center; justify-content: center;
@@ -397,44 +398,46 @@ body { background: #030924; color: #fff; overflow-x: hidden; }
           <span style="color:rgba(255,255,255,0.4);font-size:0.78rem">({{ __('optionnel') }})</span>
         </div>
 
-        @if(!empty($selSlug) || ($avatar_stratégique && strtolower($avatar_stratégique) !== 'aucun'))
-          <span class="sl-strat-name" id="strat-name-display"
-                style="color: {{ $selTierColor }}">{{ $selAvatarName }}</span>
-          @if($is_stratege && !empty($selected_teammate))
-            <div class="sl-teammate-wrap">
-              <button type="button" class="sl-teammate-btn" id="teammate_dropdown_btn" onclick="toggleTeammateDropdown()">🔽</button>
-              <div id="teammate_dropdown" class="sl-teammate-dropdown" style="display:none;">
-                <div class="sl-td-header">👥 {{ __('Sélectionner un coéquipier') }}</div>
-                <div class="sl-td-opt {{ empty($selected_teammate) ? 'selected' : '' }} unlocked" data-slug="" data-locked="0">
-                  <span class="sl-td-icon">❌</span>
-                  <div class="sl-td-info"><span class="sl-td-name">{{ __('Aucun coéquipier') }}</span></div>
-                  @if(empty($selected_teammate))<span class="sl-td-check">✓</span>@endif
-                </div>
-                @foreach($rare_avatars_data ?? [] as $slug => $ad)
-                  @php $isU=$ad['unlocked']??false; $isSel=($selected_teammate??'')===$slug; @endphp
-                  <div class="sl-td-opt {{ $isU?'unlocked':'locked' }} {{ $isSel?'selected':'' }}" data-slug="{{ $slug }}" data-locked="{{ $isU?'0':'1' }}">
-                    <span class="sl-td-icon">{{ $ad['icon']??'🎯' }}</span>
-                    <div class="sl-td-info">
-                      <span class="sl-td-name">{{ $ad['name'] }} @if(!$isU)🔒@endif</span>
-                      <span class="sl-td-skill">{{ ($ad['skills'][0]['icon']??'') }} {{ ($ad['skills'][0]['name']??'') }}</span>
-                    </div>
-                    @if($isSel)<span class="sl-td-check">✓</span>@endif
+        <div class="sl-strat-bottom">
+          @if(!empty($selSlug) || ($avatar_stratégique && strtolower($avatar_stratégique) !== 'aucun'))
+            <span class="sl-strat-name" id="strat-name-display"
+                  style="color: {{ $selTierColor }}">{{ $selAvatarName }}</span>
+            @if($is_stratege && !empty($selected_teammate))
+              <div class="sl-teammate-wrap">
+                <button type="button" class="sl-teammate-btn" id="teammate_dropdown_btn" onclick="toggleTeammateDropdown()">🔽</button>
+                <div id="teammate_dropdown" class="sl-teammate-dropdown" style="display:none;">
+                  <div class="sl-td-header">👥 {{ __('Sélectionner un coéquipier') }}</div>
+                  <div class="sl-td-opt {{ empty($selected_teammate) ? 'selected' : '' }} unlocked" data-slug="" data-locked="0">
+                    <span class="sl-td-icon">❌</span>
+                    <div class="sl-td-info"><span class="sl-td-name">{{ __('Aucun coéquipier') }}</span></div>
+                    @if(empty($selected_teammate))<span class="sl-td-check">✓</span>@endif
                   </div>
-                @endforeach
+                  @foreach($rare_avatars_data ?? [] as $slug => $ad)
+                    @php $isU=$ad['unlocked']??false; $isSel=($selected_teammate??'')===$slug; @endphp
+                    <div class="sl-td-opt {{ $isU?'unlocked':'locked' }} {{ $isSel?'selected':'' }}" data-slug="{{ $slug }}" data-locked="{{ $isU?'0':'1' }}">
+                      <span class="sl-td-icon">{{ $ad['icon']??'🎯' }}</span>
+                      <div class="sl-td-info">
+                        <span class="sl-td-name">{{ $ad['name'] }} @if(!$isU)🔒@endif</span>
+                        <span class="sl-td-skill">{{ ($ad['skills'][0]['icon']??'') }} {{ ($ad['skills'][0]['name']??'') }}</span>
+                      </div>
+                      @if($isSel)<span class="sl-td-check">✓</span>@endif
+                    </div>
+                  @endforeach
+                </div>
               </div>
-            </div>
+            @endif
+          @else
+            <span class="sl-strat-name" style="color:rgba(255,255,255,0.35);font-weight:500" id="strat-name-display">{{ __('Aucun') }}</span>
           @endif
-        @else
-          <span class="sl-strat-name" style="color:rgba(255,255,255,0.35);font-weight:500" id="strat-name-display">{{ __('Aucun') }}</span>
-        @endif
 
-        {{-- Badges skills du stratégique sélectionné --}}
-        <div class="sl-skills-badges" id="sl-skills-badges">
-          @foreach(array_slice($selSkillsShort,0,3) as $sk)
-            @php preg_match('/^\S+/u', $sk, $em); $emoji = $em[0] ?? '⚡'; @endphp
-            <div class="sl-skill-badge" title="{{ $sk }}"
-                 style="background:rgba(99,102,241,0.25); color:{{ $selTierColor }}; border-color:{{ $selTierColor }}40;">{{ $emoji }}</div>
-          @endforeach
+          {{-- Badges skills — toujours sur la même ligne que le nom --}}
+          <div class="sl-skills-badges" id="sl-skills-badges">
+            @foreach(array_slice($selSkillsShort,0,3) as $sk)
+              @php preg_match('/^\S+/u', $sk, $em); $emoji = $em[0] ?? '⚡'; @endphp
+              <div class="sl-skill-badge" title="{{ $sk }}"
+                   style="background:rgba(99,102,241,0.25); color:{{ $selTierColor }}; border-color:{{ $selTierColor }}40;">{{ $emoji }}</div>
+            @endforeach
+          </div>
         </div>
       </div>
     </div>
