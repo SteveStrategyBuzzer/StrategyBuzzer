@@ -1799,3 +1799,63 @@ id = "sZt4getG6HfoCk2x5JFN8"
 uri = "file://public/images/master-home-landscape.png"
 type = "image"
 title = "Maître du Jeu"
+
+[[outputs]]
+id = "G7uSFV7IYXLMjfgLaOYKP"
+uri = "file://public/images/avatars/bosses/le-sage.png"
+type = "image"
+title = "Le Sage"
+
+[[outputs]]
+id = "WddEms_JBTHleVJulgRW4"
+uri = "file://public/images/avatars/bosses/le-stratege.png"
+type = "image"
+title = "Le Stratège"
+
+[[outputs]]
+id = "LRM7JYUmFokT_eASywKCB"
+uri = "file://public/images/avatars/bosses/le-genie.png"
+type = "image"
+title = "Le Génie"
+
+[[outputs]]
+id = "x34E0l3E0lwh0HJ0fetiY"
+uri = "file://public/images/avatars/bosses/le-maitre.png"
+type = "image"
+title = "Le Maître"
+
+[[outputs]]
+id = "YfoaBoxQnyifOYIZ5k937"
+uri = "file://public/images/avatars/bosses/le-titan.png"
+type = "image"
+title = "Le Titan"
+
+[[outputs]]
+id = "tlwTzgV1-edcPYDAVQ18W"
+uri = "file://public/images/avatars/bosses/la-prodige.png"
+type = "image"
+title = "La Prodige"
+
+[[outputs]]
+id = "7iulj0PsaoAFCxzR4s-mW"
+uri = "file://public/images/avatars/bosses/la-virtuose.png"
+type = "image"
+title = "La Virtuose"
+
+[[outputs]]
+id = "K86yWYwvph5bH-vB-oyNR"
+uri = "file://public/images/avatars/bosses/la-championne.png"
+type = "image"
+title = "La Championne"
+
+[[outputs]]
+id = "249zhm9AJuBdzx0p9gbk-"
+uri = "file://public/images/avatars/bosses/la-legende.png"
+type = "image"
+title = "La Légende"
+
+[[outputs]]
+id = "rCkC1HIhyOlRMihLu8VWv"
+uri = "file://public/images/avatars/bosses/intelligence-ultime.png"
+type = "image"
+title = "Intelligence Ultime"
