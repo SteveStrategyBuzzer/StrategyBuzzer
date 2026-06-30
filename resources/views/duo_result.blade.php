@@ -1025,8 +1025,15 @@ $opponentEfficiency = $opponent_stats['efficiencyPercent'] ?? '—';
             <img src="{{ $playerAvatarPath ?? asset('images/avatars/standard/default.png') }}" alt="{{ __('Votre avatar') }}" class="player-avatar-small">
             <div class="score-label">{{ __('Vous') }}</div>
             <div class="score-number" id="playerScore" data-stat="score" data-player="self">{{ $playerScore ?? 0 }}</div>
-            <div class="score-efficiency-label">{{ __('Efficacité') }}</div>
-            <div class="score-efficiency" id="playerEfficiency" data-stat="efficiencyPercent" data-player="self">{{ $playerEfficiency }}%</div>
+            {{-- Brain widget joueur : remplace les labels efficacité cachés --}}
+            <div class="brain-widget brain-stage-frozen" aria-label="{{ __('Efficacité') }}">
+                <div class="brain-aura"></div>
+                <span class="brain-icon" role="img" aria-hidden="true">🧠</span>
+                <div class="brain-pct"><span id="playerEfficiency" data-stat="efficiencyPercent" data-player="self">{{ $playerEfficiency !== '—' ? $playerEfficiency . '%' : '0%' }}</span></div>
+            </div>
+            {{-- Labels cachés conservés (compatibilité CSS existante) --}}
+            <div class="score-efficiency-label" style="display:none;">{{ __('Efficacité') }}</div>
+            <div class="score-efficiency" style="display:none;" data-stat="efficiencyPercent" data-player="self">{{ $playerEfficiency }}</div>
         </div>
         
         <div class="vs-divider">VS</div>
@@ -1039,8 +1046,15 @@ $opponentEfficiency = $opponent_stats['efficiencyPercent'] ?? '—';
             @endif
             <div class="score-label">{{ $opponentName ?? __('Adversaire') }}</div>
             <div class="score-number" id="opponentScore" data-stat="score" data-player="opponent">{{ $opponentScore ?? 0 }}</div>
-            <div class="score-efficiency-label">{{ __('Efficacité') }}</div>
-            <div class="score-efficiency" id="opponentEfficiency" data-stat="efficiencyPercent" data-player="opponent">{{ $opponentEfficiency }}%</div>
+            {{-- Brain widget adversaire : remplace les labels efficacité cachés --}}
+            <div class="brain-widget brain-stage-frozen" aria-label="{{ __('Efficacité adversaire') }}">
+                <div class="brain-aura"></div>
+                <span class="brain-icon" role="img" aria-hidden="true">🧠</span>
+                <div class="brain-pct"><span id="opponentEfficiency" data-stat="efficiencyPercent" data-player="opponent">{{ $opponentEfficiency !== '—' ? $opponentEfficiency . '%' : '0%' }}</span></div>
+            </div>
+            {{-- Labels cachés conservés (compatibilité CSS existante) --}}
+            <div class="score-efficiency-label" style="display:none;">{{ __('Efficacité') }}</div>
+            <div class="score-efficiency" style="display:none;" data-stat="efficiencyPercent" data-player="opponent">{{ $opponentEfficiency }}</div>
         </div>
     </div>
     

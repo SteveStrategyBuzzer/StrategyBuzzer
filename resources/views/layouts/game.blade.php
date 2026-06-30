@@ -7,6 +7,7 @@
     <title>StrategyBuzzer</title>
     <link href="{{ asset('vendor/bootstrap/bootstrap.min.css') }}" rel="stylesheet">
     <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="{{ asset('css/brain-widget.css') }}">
     <link rel="icon" type="image/png" href="{{ asset('favicon.png') }}">
     <link rel="shortcut icon" href="{{ asset('favicon.png') }}">
     @stack('head')
@@ -313,6 +314,9 @@
 
 <!-- View-specific overlays (game-specific modals, sheets, etc.) -->
 @yield('overlay')
+
+<!-- Brain widget: visual efficiency indicator (pulsing brain stages) -->
+<script src="{{ asset('js/brain-widget.js') }}"></script>
 
 <!-- View-specific scripts -->
 @yield('scripts')

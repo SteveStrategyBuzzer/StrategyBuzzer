@@ -778,6 +778,12 @@ $mode = 'duo';
                 <div class="player-name">{{ $playerName ?? __('Vous') }}</div>
                 <div class="player-level">{{ __('Niveau') }} {{ $playerLevel ?? 0 }} {{ __('Duo') }}</div>
                 <div class="player-score" id="playerScore" data-stat="score" data-player="self">{{ $playerScore ?? 0 }}</div>
+                {{-- Brain widget : indicateur d'efficacité visuel pulsant --}}
+                <div class="brain-widget brain-stage-frozen" aria-label="{{ __('Efficacité') }}">
+                    <div class="brain-aura"></div>
+                    <span class="brain-icon" role="img" aria-hidden="true">🧠</span>
+                    <div class="brain-pct"><span data-stat="efficiencyPercent" data-player="self">0%</span></div>
+                </div>
                 {{-- Player live-stats row (efficiency / streak / avg buzz / correct/buzz) intentionally hidden:
                      same UX rationale as the opponent row below — the "0% · 0/0" badge is noise on the Question
                      page. DOM nodes are kept (display:none) so GameplayRuntime data-stat updates never throw
@@ -808,6 +814,12 @@ $mode = 'duo';
                 <div class="opponent-name">{{ $opponentName ?? __('Adversaire') }}</div>
                 <div class="opponent-level">{{ __('Niveau') }} {{ $opponentLevel ?? 0 }} {{ __('Duo') }}</div>
                 <div class="opponent-score" id="opponentScore" data-stat="score" data-player="opponent">{{ $opponentScore ?? 0 }}</div>
+                {{-- Brain widget adversaire : indicateur d'efficacité visuel pulsant --}}
+                <div class="brain-widget brain-stage-frozen" aria-label="{{ __('Efficacité adversaire') }}">
+                    <div class="brain-aura"></div>
+                    <span class="brain-icon" role="img" aria-hidden="true">🧠</span>
+                    <div class="brain-pct"><span data-stat="efficiencyPercent" data-player="opponent">0%</span></div>
+                </div>
                 {{-- Opponent live-stats row (efficiency %, streak, avg buzz ms, correct/buzz) intentionally hidden:
                      UX feedback considered the "17% / 1/7" badge confusing on the Question page. The DOM nodes
                      are kept (display:none) so GameplayRuntime data-stat updates don't throw and so we can

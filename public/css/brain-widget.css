@@ -1,0 +1,177 @@
+/* ─── Brain Widget — Efficacité visuelle ─────────────────────────────────────
+   7 stades CSS (frozen → ultimate) pilotés par brain-widget.js
+   via MutationObserver sur [data-stat="efficiencyPercent"]
+──────────────────────────────────────────────────────────────────────────── */
+
+.brain-widget {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    position: relative;
+    user-select: none;
+    flex-shrink: 0;
+}
+
+.brain-aura {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -62%);
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    pointer-events: none;
+    transition: box-shadow 0.8s ease, opacity 0.8s ease;
+    opacity: 0;
+    z-index: 0;
+}
+
+.brain-icon {
+    font-size: 2rem;
+    line-height: 1;
+    display: block;
+    position: relative;
+    z-index: 1;
+    transition: filter 0.8s ease;
+}
+
+.brain-pct {
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.4px;
+    transition: color 0.8s ease;
+    position: relative;
+    z-index: 1;
+    line-height: 1;
+}
+
+/* ── frozen (0–19%) : cerveau gelé, bleu-blanc, statique ── */
+.brain-stage-frozen .brain-icon {
+    filter: grayscale(0.55) sepia(0.85) hue-rotate(172deg) brightness(0.72) saturate(0.65);
+}
+.brain-stage-frozen .brain-aura { opacity: 0; }
+.brain-stage-frozen .brain-pct  { color: #89ccff; }
+
+/* ── awakening (20–34%) : premières synapses, violet très doux ── */
+.brain-stage-awakening .brain-icon {
+    filter: grayscale(0.28) hue-rotate(28deg) brightness(0.84) saturate(1.9);
+    animation: bw-pulse-slow 4s ease-in-out infinite;
+}
+.brain-stage-awakening .brain-aura {
+    opacity: 0.25;
+    box-shadow: 0 0 8px 4px rgba(180,100,255,0.28);
+    animation: bw-aura-grow 4s ease-in-out infinite;
+}
+.brain-stage-awakening .brain-pct { color: #c4a0ff; }
+
+/* ── synaptic (35–49%) : violet clair, faible lueur ── */
+.brain-stage-synaptic .brain-icon {
+    filter: hue-rotate(14deg) brightness(0.92) saturate(2.3);
+    animation: bw-pulse-slow 3s ease-in-out infinite;
+    text-shadow: 0 0 6px rgba(158,76,255,0.52);
+}
+.brain-stage-synaptic .brain-aura {
+    opacity: 0.4;
+    box-shadow: 0 0 12px 5px rgba(148,68,255,0.42);
+    animation: bw-aura-grow 3s ease-in-out infinite;
+}
+.brain-stage-synaptic .brain-pct { color: #b070ff; }
+
+/* ── aura (50–64%) : aura violette visible, pulse moyen ── */
+.brain-stage-aura .brain-icon {
+    filter: brightness(1.06) saturate(2.6) hue-rotate(4deg);
+    animation: bw-pulse-medium 2.5s ease-in-out infinite;
+    text-shadow: 0 0 10px rgba(138,58,255,0.78), 0 0 22px rgba(138,58,255,0.32);
+}
+.brain-stage-aura .brain-aura {
+    opacity: 0.58;
+    box-shadow: 0 0 18px 7px rgba(130,52,255,0.52);
+    animation: bw-aura-grow 2.5s ease-in-out infinite;
+}
+.brain-stage-aura .brain-pct { color: #9d55ff; }
+
+/* ── energized (65–79%) : aura vive, cycle de couleur ── */
+.brain-stage-energized .brain-icon {
+    filter: brightness(1.18) saturate(3.1) hue-rotate(-5deg);
+    animation: bw-pulse-fast 1.8s ease-in-out infinite, bw-color-shift 5s linear infinite;
+    text-shadow: 0 0 14px rgba(162,48,255,0.92), 0 0 30px rgba(100,100,255,0.48);
+}
+.brain-stage-energized .brain-aura {
+    opacity: 0.72;
+    box-shadow: 0 0 22px 9px rgba(142,48,255,0.65);
+    animation: bw-aura-grow 1.8s ease-in-out infinite, bw-aura-color 5s linear infinite;
+}
+.brain-stage-energized .brain-pct { color: #e060ff; }
+
+/* ── flames (80–89%) : flammes neuronales, violet-rose intense ── */
+.brain-stage-flames .brain-icon {
+    filter: brightness(1.28) saturate(3.6) hue-rotate(-22deg);
+    animation: bw-pulse-fast 1.4s ease-in-out infinite, bw-flames 0.9s ease-in-out alternate infinite;
+    text-shadow: 0 0 18px rgba(212,38,255,1), 0 0 40px rgba(255,80,200,0.62);
+}
+.brain-stage-flames .brain-aura {
+    width: 52px;
+    height: 52px;
+    opacity: 0.88;
+    box-shadow: 0 0 28px 10px rgba(202,38,255,0.76), 0 0 52px 5px rgba(255,80,200,0.32);
+    animation: bw-aura-grow 1.4s ease-in-out infinite;
+}
+.brain-stage-flames .brain-pct { color: #ff50ff; }
+
+/* ── ultimate (90–100%) : état ultime, or + violet, rotation ── */
+.brain-stage-ultimate .brain-icon {
+    filter: brightness(1.48) saturate(4.1) hue-rotate(-42deg) drop-shadow(0 0 6px rgba(255,200,48,0.9));
+    animation: bw-ultimate 1s ease-in-out infinite;
+    text-shadow: 0 0 22px rgba(255,162,38,1), 0 0 50px rgba(212,48,255,0.72);
+}
+.brain-stage-ultimate .brain-aura {
+    width: 58px;
+    height: 58px;
+    opacity: 1;
+    border: 2px solid rgba(255,200,48,0.58);
+    box-shadow: 0 0 30px 12px rgba(222,48,255,0.82), 0 0 62px 6px rgba(255,200,48,0.48);
+    animation: bw-aura-ultimate 1s ease-in-out infinite;
+}
+.brain-stage-ultimate .brain-pct { color: #ffd700; }
+
+/* ── Animations ─────────────────────────────────────────── */
+@keyframes bw-pulse-slow   { 0%,100%{transform:scale(1)}   50%{transform:scale(1.05)} }
+@keyframes bw-pulse-medium { 0%,100%{transform:scale(1)}   50%{transform:scale(1.08)} }
+@keyframes bw-pulse-fast   { 0%,100%{transform:scale(1)}   50%{transform:scale(1.12)} }
+
+@keyframes bw-flames {
+    0%   { transform: scale(1)    translateY(0); }
+    100% { transform: scale(1.1)  translateY(-2px); }
+}
+@keyframes bw-ultimate {
+    0%,100% { transform:scale(1); filter:brightness(1.48) saturate(4.1) hue-rotate(-42deg) drop-shadow(0 0 6px rgba(255,200,48,.9)); }
+    25%     { transform:scale(1.10) rotate(-2deg); filter:brightness(1.58) saturate(4.6) hue-rotate(-58deg) drop-shadow(0 0 12px rgba(255,200,48,1)); }
+    75%     { transform:scale(1.10) rotate(2deg);  filter:brightness(1.58) saturate(4.6) hue-rotate(-26deg) drop-shadow(0 0 12px rgba(255,200,48,1)); }
+}
+@keyframes bw-color-shift {
+    0%   { filter:brightness(1.18) saturate(3.1) hue-rotate(-5deg); }
+    33%  { filter:brightness(1.20) saturate(3.3) hue-rotate(16deg); }
+    66%  { filter:brightness(1.18) saturate(3.1) hue-rotate(-18deg); }
+    100% { filter:brightness(1.18) saturate(3.1) hue-rotate(-5deg); }
+}
+@keyframes bw-aura-grow {
+    0%,100% { transform:translate(-50%,-62%) scale(1); }
+    50%     { transform:translate(-50%,-62%) scale(1.14); }
+}
+@keyframes bw-aura-color {
+    0%   { box-shadow:0 0 22px 9px rgba(142,48,255,.65); }
+    50%  { box-shadow:0 0 22px 9px rgba(78,118,255,.65); }
+    100% { box-shadow:0 0 22px 9px rgba(142,48,255,.65); }
+}
+@keyframes bw-aura-ultimate {
+    0%,100% { transform:translate(-50%,-62%) scale(1);    box-shadow:0 0 30px 12px rgba(222,48,255,.82),0 0 62px 6px rgba(255,200,48,.48); }
+    50%     { transform:translate(-50%,-62%) scale(1.16); box-shadow:0 0 42px 16px rgba(222,48,255,.92),0 0 82px 10px rgba(255,200,48,.68); }
+}
+
+/* ── Variant : petite taille (header compact) ── */
+.brain-widget-sm .brain-icon { font-size: 1.45rem; }
+.brain-widget-sm .brain-pct  { font-size: 0.58rem; }
+.brain-widget-sm .brain-aura { width: 32px; height: 32px; }
+.brain-widget-sm.brain-stage-flames .brain-aura   { width: 38px; height: 38px; }
+.brain-widget-sm.brain-stage-ultimate .brain-aura { width: 44px; height: 44px; }

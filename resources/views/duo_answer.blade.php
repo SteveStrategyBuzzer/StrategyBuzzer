@@ -654,12 +654,21 @@ $shuffleQuestionsLeft = $shuffleQuestionsLeft ?? 0;
         <div class="question-label">{{ __('Question') }} #{{ $currentQuestion ?? 1 }}</div>
         <div class="potential-points points-2" id="potentialPoints">+2</div>
         <div class="score-display" id="scoreDisplay">{{ __('Score') }} <span id="playerScoreValue" data-stat="score" data-player="self">{{ $playerScore ?? 0 }}</span></div>
-        <div class="efficiency-display" id="efficiencyDisplay">⚡ <span id="efficiencyValue" data-stat="efficiencyPercent" data-player="self">—</span></div>
+        {{-- Brain widget joueur : remplace l'affichage texte ⚡ --}}
+        <div class="brain-widget brain-widget-sm brain-stage-frozen" id="efficiencyDisplay" aria-label="{{ __('Efficacité') }}">
+            <div class="brain-aura"></div>
+            <span class="brain-icon" role="img" aria-hidden="true">🧠</span>
+            <div class="brain-pct"><span id="efficiencyValue" data-stat="efficiencyPercent" data-player="self">0%</span></div>
+        </div>
         <div class="opponent-mini" aria-label="{{ __('Adversaire') }}">
             <span class="om-label">{{ __('Adv.') }}</span>
             <span class="om-value" data-stat="score" data-player="opponent">{{ $opponentScore ?? 0 }}</span>
-            <span class="om-label">⚡</span>
-            <span class="om-value" data-stat="efficiencyPercent" data-player="opponent">0%</span>
+            {{-- Brain widget adversaire compact --}}
+            <div class="brain-widget brain-widget-sm brain-stage-frozen" style="display:inline-flex;flex-direction:row;gap:3px;align-items:center;" aria-label="{{ __('Efficacité adversaire') }}">
+                <span class="brain-icon" role="img" aria-hidden="true" style="font-size:1rem;">🧠</span>
+                <span class="brain-pct" style="font-size:0.6rem;"><span data-stat="efficiencyPercent" data-player="opponent">0%</span></span>
+                <div class="brain-aura" style="display:none;"></div>
+            </div>
             <span class="om-label">·</span>
             <span class="om-label">{{ __('Série') }}</span>
             <span class="om-value" data-stat="currentStreak" data-player="opponent">0</span>
