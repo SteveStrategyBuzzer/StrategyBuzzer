@@ -20,7 +20,11 @@ $selSlug           = $current_strategic_slug ?? '';
 $selAvatarData     = ($strategic_avatars ?? [])[$selSlug] ?? null;
 $selSkillsShort    = $selAvatarData['skills_short'] ?? [];
 $selAvatarName     = $selAvatarData ? strtoupper($selAvatarData['name'] ?? '') : strtoupper($avatar_stratégique ?? __('Aucun'));
-$tierColors        = ['Rare' => '#f59e0b','Épique' => '#a855f7','Légendaire' => '#06b6d4'];
+$tierColors        = ['Rare' => '#3b82f6','Épique' => '#a855f7','Légendaire' => '#f59e0b'];
+// Avatars débloqués en premier
+$avatarsSorted = collect($strategic_avatars ?? [])
+    ->sortByDesc(fn($a) => $a['unlocked'] ? 1 : 0)
+    ->all();
 $themeList = [
     ['key'=>'general',    'emoji'=>'🧠','label'=>'Général',    'desc'=>'Culture générale'],
     ['key'=>'geographie', 'emoji'=>'🌐','label'=>'Géographie', 'desc'=>'Pays, villes, lieux'],
@@ -113,7 +117,8 @@ body { background: #030924; color: #fff; overflow-x: hidden; }
   border-radius: 10px; padding: 8px 12px;
   display: flex; align-items: center; justify-content: space-between;
 }
-.sl-level-display { display: flex; align-items: center; gap: 6px; font-size: 1.1rem; font-weight: 700; }
+.sl-level-display { display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 1.4rem; font-weight: 800; }
+.sl-brain-img { width: 38px; height: 38px; object-fit: contain; filter: drop-shadow(0 0 6px rgba(168,85,247,0.6)); }
 .sl-level-btn {
   background: rgba(255,255,255,0.1); border: none; color: rgba(255,255,255,0.7);
   width: 28px; height: 28px; border-radius: 7px; cursor: pointer;
@@ -362,7 +367,8 @@ body { background: #030924; color: #fff; overflow-x: hidden; }
           </div>
           <div class="sl-level-box">
             <div class="sl-level-display">
-              🧠 <span id="display-niveau">{{ $niveau_selectionne ?? $choix_niveau }}</span>
+              <img src="{{ asset('images/brain.png') }}" alt="🧠" class="sl-brain-img">
+              <span id="display-niveau">{{ $niveau_selectionne ?? $choix_niveau }}</span>
             </div>
             <button type="button" class="sl-level-btn" id="btn-niveau-moins"
                     {{ ($niveau_selectionne ?? $choix_niveau) <= 1 ? 'disabled' : '' }}>−</button>
@@ -439,7 +445,7 @@ body { background: #030924; color: #fff; overflow-x: hidden; }
       </div>
 
       <div class="sl-av-gallery" id="avatar-gallery">
-        @foreach($strategic_avatars ?? [] as $slug => $av)
+        @foreach($avatarsSorted as $slug => $av)
           @php
             $tier      = $av['tier'] ?? 'Rare';
             $tierColor = $tierColors[$tier] ?? '#f59e0b';
