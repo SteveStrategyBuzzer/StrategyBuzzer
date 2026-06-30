@@ -1,0 +1,319 @@
+Nous arrêtons les rapports d'architecture.
+
+Le rapport existe déjà.
+
+À partir de maintenant, je veux que tu mettes à jour TON modèle mental de StrategyBuzzer avant toute implémentation.
+
+Tu ne me rédiges pas un nouveau rapport.
+
+Tu ne proposes pas une nouvelle architecture.
+
+Tu ne reformules pas la précédente.
+
+Tu mets à jour la tienne.
+
+Nous avons fait évoluer l'architecture depuis le dernier rapport.
+
+Les changements sont les suivants.
+
+1. Node reste uniquement l'autorité gameplay.
+
+Node produit uniquement la vérité officielle du match.
+
+Il ne construit jamais une interface.
+
+Il ne choisit jamais un composant Blade.
+
+Il ne connaît jamais le HTML.
+
+Il produit uniquement GAME_MATCH_STATE.
+
+GAME_MATCH_STATE contient la totalité de la vérité officielle :
+
+* phase
+* nextPhase
+* scores
+* stats
+* timer
+* ready
+* buzz
+* answers
+* winner
+* ultimate
+* etc.
+
+2. GameplayFlowRuntime
+
+GameplayFlowRuntime lit uniquement GAME_MATCH_STATE.
+
+Il ne recalcule jamais le gameplay.
+
+Il ne décide jamais du gagnant.
+
+Il traduit simplement la vérité officielle en expérience utilisateur.
+
+Il produit exactement deux objets :
+
+* GAME_SCREEN_REQUEST
+* GAME_SCREEN_CONTEXT
+
+3. GAME_SCREEN_REQUEST
+
+GAME_SCREEN_REQUEST indique uniquement quel écran doit être affiché.
+
+Exemples :
+
+question
+
+answers
+
+result
+
+round-end
+
+ultimate-participant-choice
+
+ultimate-player-choice
+
+match-end
+
+Il contient également le mode (solo, duo, league, master).
+
+4. GAME_SCREEN_CONTEXT
+
+GAME_SCREEN_CONTEXT ne contient PAS toute la vérité du match.
+
+Il contient uniquement les données nécessaires à l'écran demandé.
+
+Il est construit à partir de GAME_MATCH_STATE.
+
+Exemple :
+
+Question :
+
+question
+answers
+timer
+players
+
+Round End :
+
+roundStats
+scoreboard
+readyState
+
+Match End :
+
+winner
+matchStats
+ranking
+rewards
+
+5. GAME_SCREEN_SCHEMA
+
+Le changement est important.
+
+GAME_SCREEN_SCHEMA n'est plus une description.
+
+GAME_SCREEN_SCHEMA est désormais le FRAME CANONIQUE OFFICIEL de l'écran.
+
+C'est lui qui impose :
+
+* la structure
+* les zones
+* les composants
+* les IDs obligatoires
+* les slots autorisés
+
+Tous les modes utilisent exactement le même frame.
+
+6. GAME_VISUAL_PROFILE
+
+Nouvelle brique.
+
+Chaque mode déclare uniquement son identité.
+
+Exemple :
+
+Solo
+
+* titre
+* niveau
+* depth
+* ambiance
+* couleurs
+* décor
+
+Duo
+
+* titre
+* division
+* depth
+* ambiance compétition
+
+Ligue
+
+* titre
+* saison
+* division
+* profondeur
+* ambiance ligue
+
+Master
+
+* titre
+* cockpit
+* ambiance spectacle
+
+Le mode ne construit jamais sa propre interface.
+
+Il déclare simplement son identité visuelle.
+
+7. Renderer
+
+Le Renderer devient extrêmement simple.
+
+Il assemble uniquement :
+
+GAME_SCREEN_SCHEMA
++
+GAME_SCREEN_CONTEXT
++
+GAME_VISUAL_PROFILE
+
+Puis il construit l'écran.
+
+Il ne fait jamais de gameplay.
+
+Il ne calcule jamais un score.
+
+Il ne décide jamais d'une phase.
+
+8. Les écrans universels
+
+Les écrans canoniques sont :
+
+question
+
+answers
+
+result
+
+round-end
+
+ultimate-participant-choice
+
+ultimate-player-choice
+
+match-end
+
+La Manche Ultime est une phase spéciale.
+
+Son ordre officiel est :
+
+round-end
+
+↓
+
+ultimate-participant-choice
+
+↓
+
+ultimate-player-choice
+
+↓
+
+question
+
+↓
+
+answers
+
+↓
+
+result
+
+↓
+
+match-end
+
+9. Canonisation
+
+Le point le plus important.
+
+Nous ne raisonnons plus en fichiers.
+
+Nous raisonnons en expérience joueur.
+
+Par exemple :
+
+Aujourd'hui il existe :
+
+duo_question.blade.php
+
+league_question.blade.php
+
+master/game-question.blade.php
+
+Ces vues ne représentent PAS une architecture.
+
+Elles représentent uniquement l'implémentation actuelle.
+
+L'écran canonique est :
+
+QUESTION
+
+Et aujourd'hui QUESTION est implémenté par plusieurs vues.
+
+Demain il sera implémenté par une seule structure canonique.
+
+Même chose pour :
+
+ANSWERS
+
+RESULT
+
+ROUND-END
+
+MATCH-END
+
+ULTIMATE
+
+Nous ne créons plus une architecture autour des fichiers existants.
+
+Nous créons une architecture canonique.
+
+Les fichiers actuels ne sont qu'une étape temporaire de migration.
+
+10. Règle absolue
+
+Un mode ne construit jamais son interface.
+
+Il déclare uniquement :
+
+* son identité
+* son ambiance
+* son niveau
+* son depth
+
+Toute l'interface est construite par :
+
+Renderer
+
+↓
+
+GAME_SCREEN_SCHEMA
+
+↓
+
+GAME_SCREEN_CONTEXT
+
+↓
+
+GAME_VISUAL_PROFILE
+
+Avant de continuer, je ne veux PAS un nouveau rapport.
+
+Je veux que tu m'expliques avec tes propres mots ce que tu comprends de cette architecture.
+
+Je veux vérifier que nous avons exactement la même compréhension avant toute implémentation.

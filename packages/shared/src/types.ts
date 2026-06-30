@@ -76,6 +76,7 @@ export type Player = {
   lives: number;
   pingMs?: number;
   isConnected: boolean;
+  isReady?: boolean;
   lastSeenMs: number;
   skills: Partial<Record<SkillId, SkillState>>;
   // ─── Live stats (additive, optional, server-authoritative) ─────────────────

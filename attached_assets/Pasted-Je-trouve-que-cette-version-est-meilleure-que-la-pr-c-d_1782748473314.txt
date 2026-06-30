@@ -1,0 +1,169 @@
+Je trouve que cette version est meilleure que la précédente, mais il lui reste encore une habitude qu'il doit casser définitivement. Le contenu est bien plus proche d'une cartographie, mais il glisse encore parfois vers une interprétation de l'existant.
+
+Je lui ferais les remarques suivantes.
+
+1. Il mélange encore "n'existe pas" et "pas dans cette structure"
+
+Exemple :
+
+nextPhase : Non
+
+En réalité, il ne peut pas conclure :
+
+"n'existe pas"
+
+Il peut seulement conclure :
+
+"je ne l'ai pas observé dans GameState."
+
+Parce que nextPhase peut très bien exister :
+
+dans GameOrchestrator,
+dans une variable locale,
+dans une transition,
+dans un événement,
+dans une autre structure.
+
+Une cartographie doit être extrêmement précise.
+
+Je voudrais plutôt voir :
+
+Élément	Observation
+nextPhase	Non observé dans GameState. À vérifier ailleurs.
+
+Tu vois la différence ?
+
+2. Il écrit encore des phrases comme :
+
+"Il est calculé implicitement..."
+
+Comment le sait-il ?
+
+Ça, c'est déjà une interprétation.
+
+Une cartographie devrait dire :
+
+Observé dans schedulePhaseTimeout().
+
+Ou :
+
+Observé dans handleRoundEnded().
+
+Ou :
+
+Non observé.
+
+Toujours basé sur une observation.
+
+Jamais sur une déduction.
+
+3. J'aimerais une colonne supplémentaire
+
+Aujourd'hui il a :
+
+Existe
+Où
+Responsabilité
+Confiance
+
+Moi j'ajouterais :
+
+Source observée
+
+Par exemple :
+
+Élément	Source
+phase	GameState.phase
+winnerId	RoundResult.winnerId
+buzzQueue	GameState.buzzQueue
+ready	GameOrchestrator.syncReadyMaps
+isReady	handlers.ts
+
+Comme ça, plus personne ne discute.
+
+On sait où ça a été vu.
+
+4. Il écrit encore :
+
+"Le mode de départage"
+
+Moi je veux qu'il soit extrêmement littéral.
+
+Une cartographie ne renomme rien.
+
+Si le champ s'appelle :
+
+tiebreakerMode
+
+La cartographie écrit :
+
+Nom observé :
+tiebreakerMode
+
+Pas :
+
+Mode de départage.
+
+Le renommage viendra plus tard.
+
+5. Il commence à faire de la conception ici
+
+Exemple :
+
+"version redactée — légitime"
+
+Ça, ce n'est plus de la cartographie.
+
+C'est déjà un jugement.
+
+Une cartographie devrait écrire :
+
+QUESTION_PUBLISHED
+
+Contient :
+
+text
+
+choices
+
+category
+
+difficulty
+
+Point.
+
+6. Il faudrait une règle d'or
+
+Je pense qu'il devrait écrire ceci au début de tous les futurs audits :
+
+Règle de cartographie : je décris uniquement ce que j'observe. Je n'interprète pas, je ne renomme pas, je ne propose pas, je ne juge pas. Toute évolution fera l'objet d'un document distinct.
+
+Cette phrase l'empêcherait de repartir dans la conception.
+
+Ce que je trouve remarquable
+
+En revanche, il a énormément progressé.
+
+Avant il écrivait :
+
+Voilà ce qu'il faut créer.
+
+Aujourd'hui il écrit :
+
+Voilà ce que j'ai observé.
+
+C'est exactement la discipline qu'un architecte doit avoir.
+
+L'étape suivante
+
+Je ne lui demanderais plus de continuer cette cartographie.
+
+Je lui demanderais un deuxième document complètement séparé :
+
+Cartographie (observation pure)
+Analyse d'écart (comparaison avec l'architecture cible)
+Plan de migration (comment passer de l'un à l'autre)
+
+Tant que ces trois documents restent séparés, il ne mélangera plus les rôles.
+
+À mon avis, c'est la dernière discipline méthodologique qu'il lui reste à acquérir. Une fois cela en place, il travaillera exactement comme un architecte logiciel : observer, analyser, puis concevoir, sans mélanger ces trois étapes.

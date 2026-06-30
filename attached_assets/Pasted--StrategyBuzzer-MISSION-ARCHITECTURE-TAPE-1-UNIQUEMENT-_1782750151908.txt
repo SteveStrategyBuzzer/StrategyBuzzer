@@ -1,0 +1,221 @@
+# StrategyBuzzer — MISSION ARCHITECTURE
+
+## ÉTAPE 1 UNIQUEMENT — CARTOGRAPHIE DU MODÈLE GAME_MATCH_STATE
+
+Aucun patch.
+
+Aucune modification.
+
+Aucune proposition.
+
+Aucun rapport d'architecture.
+
+Aucun plan de migration.
+
+Je veux uniquement une cartographie factuelle.
+
+---
+
+# OBJECTIF
+
+Mon hypothèse est la suivante :
+
+> GameState / room.state est probablement déjà la base de ce qui deviendra GAME_MATCH_STATE.
+
+Ta mission n'est pas de confirmer cette hypothèse.
+
+Ta mission est de découvrir la réalité actuelle du code.
+
+Même si elle contredit complètement cette hypothèse.
+
+---
+
+# PÉRIMÈTRE
+
+Tu cartographies uniquement le modèle de données GameState.
+
+Tu ne cartographies PAS :
+
+* GameOrchestrator
+* GameplayRuntime
+* Renderer
+* GAME_SCREEN_REQUEST
+* GAME_SCREEN_CONTEXT
+* GAME_SCREEN_SCHEMA
+* GAME_VISUAL_PROFILE
+* Blade
+* Laravel
+* Socket.IO
+* Redis
+* handlers.ts
+* les consommateurs
+* les producteurs
+
+Même si tu rencontres ces composants.
+
+Ils feront chacun l'objet d'une cartographie séparée.
+
+---
+
+# QUESTIONS AUXQUELLES TU DOIS RÉPONDRE
+
+Pour chaque propriété réellement présente dans GameState :
+
+## 1
+
+Nom exact observé dans le code.
+
+Aucun renommage.
+
+Aucune traduction.
+
+Utiliser le nom littéral.
+
+---
+
+## 2
+
+Type exact.
+
+Exemple :
+
+string
+
+number
+
+boolean
+
+Player[]
+
+Map<...>
+
+RoundResult
+
+etc.
+
+---
+
+## 3
+
+Source observée.
+
+Fichier.
+
+Interface.
+
+Classe.
+
+Ligne si pertinente.
+
+---
+
+## 4
+
+Responsabilité observée.
+
+Attention.
+
+Je ne veux pas :
+
+"sert probablement à..."
+
+Je veux uniquement :
+
+la responsabilité réellement observable.
+
+---
+
+## 5
+
+Type de preuve.
+
+Choisir une seule valeur :
+
+* CODE
+* RUNTIME
+* DOCUMENT
+* INFÉRENCE
+
+---
+
+## 6
+
+Niveau de confiance.
+
+Choisir une seule valeur :
+
+* Certain
+* Probable
+* Faible
+* À vérifier
+
+---
+
+# QUESTIONS AUXQUELLES TU N'AS PAS LE DROIT DE RÉPONDRE
+
+Tu ne réponds PAS :
+
+* qui remplit cette propriété ;
+* qui la modifie ;
+* qui la lit ;
+* où elle est utilisée ;
+* si elle devrait être différente ;
+* si un champ manque ;
+* si un champ devrait être ajouté ;
+* si l'architecture est bonne ;
+* si l'architecture est mauvaise ;
+* comment migrer ;
+* comment refactorer ;
+* comment la renommer.
+
+Toutes ces questions seront traitées plus tard.
+
+---
+
+# FORMAT OBLIGATOIRE
+
+Pour chaque propriété :
+
+* Nom exact
+* Type
+* Source observée
+* Responsabilité observée
+* Type de preuve
+* Niveau de confiance
+
+Rien d'autre.
+
+---
+
+# RÈGLES DE CARTOGRAPHIE
+
+Tu décris uniquement ce que tu observes.
+
+Tu n'interprètes pas.
+
+Tu ne renommes pas.
+
+Tu ne proposes rien.
+
+Tu ne juges rien.
+
+Une cartographie n'a pas pour objectif de confirmer une architecture cible.
+
+Elle a pour objectif de découvrir l'architecture réelle, même si elle contredit complètement l'architecture imaginée.
+
+---
+
+# POINT D'ARRÊT
+
+Lorsque la cartographie du modèle GameState est terminée :
+
+Tu t'arrêtes.
+
+Tu ne fais :
+
+* aucune conclusion ;
+* aucune analyse ;
+* aucune comparaison ;
+* aucune proposition.
+
+Tu attends simplement la mission suivante.

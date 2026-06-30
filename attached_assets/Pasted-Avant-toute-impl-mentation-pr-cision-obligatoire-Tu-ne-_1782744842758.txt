@@ -1,0 +1,268 @@
+Avant toute implémentation, précision obligatoire.
+
+Tu ne dois PAS inventer librement :
+
+* GAME_MATCH_STATE
+* GAME_SCREEN_REQUEST
+* GAME_SCREEN_CONTEXT
+* GAME_SCREEN_SCHEMA
+* GAME_VISUAL_PROFILE
+* Renderer
+
+Je veux d'abord que tu analyse si elles devraient être ailleurs, sinon où tu proposes de les placer dans l’architecture existante StrategyBuzzer, puis tu t’arrêtes.
+
+Aucun patch.
+Aucun fichier créé.
+Aucune DB.
+Aucun artisan.
+Aucun Node.
+Rapport de placement seulement.
+
+Définitions obligatoires :
+
+1. GAME_MATCH_STATE
+
+Source : Node.
+
+Rôle :
+vérité officielle du match.
+
+Contient :
+
+* phase
+* nextPhase
+* scores
+* stats
+* timer
+* readyState
+* buzzState
+* answerState
+* winner
+* roundWinner
+* matchWinner
+* ultimateState
+
+Interdit :
+
+* HTML
+* CSS
+* Blade
+* couleurs
+* labels d’interface
+* choix de composant
+
+Question à répondre :
+où ce state existe-t-il déjà aujourd’hui côté Node/Redis/Socket ?
+Quel fichier produit déjà l’équivalent ?
+Quel nom réel existe dans le code ?
+
+2. GameplayFlowRuntime
+
+Source : client/runtime.
+
+Rôle :
+lire GAME_MATCH_STATE et produire :
+
+* GAME_SCREEN_REQUEST
+* GAME_SCREEN_CONTEXT
+
+Il ne calcule pas :
+
+* score
+* stats
+* winner
+* phase
+* nextPhase
+
+Il traduit seulement l’état officiel en demande d’écran.
+
+Question à répondre :
+est-ce que public/js/GameplayRuntime.js joue déjà ce rôle ?
+Si oui, quoi manque ?
+Si non, quel fichier existant est le plus proche ?
+
+3. GAME_SCREEN_REQUEST
+
+Source : GameplayFlowRuntime.
+
+Rôle :
+petite demande d’écran.
+
+Format obligatoire minimal :
+
+{
+screen: "question|answers|result|round-end|ultimate-participant-choice|ultimate-player-choice|match-end",
+mode: "solo|duo|league|master",
+variant: "base|solo|multi|league|master",
+phase: "phase officielle reçue",
+reason: "phase_changed|initial_load|resume|manual"
+}
+
+Interdit :
+
+* scores complets
+* stats complètes
+* HTML
+* CSS
+* données de question complètes
+
+Question à répondre :
+où doit-il être construit dans le code actuel ?
+Côté JS runtime ?
+Côté Blade initial ?
+Les deux ?
+
+4. GAME_SCREEN_CONTEXT
+
+Source : GameplayFlowRuntime.
+
+Rôle :
+données utiles uniquement à l’écran demandé.
+
+Il est construit depuis GAME_MATCH_STATE.
+
+Exemple question :
+
+* question
+* answers
+* players
+* timer
+* actions
+
+Exemple round-end :
+
+* scoreboard
+* roundStats
+* readyState
+* nextPhase
+
+Exemple match-end :
+
+* winner
+* finalScore
+* matchStats
+* rewards
+
+Interdit :
+
+* données inutiles à l’écran courant
+* calcul gameplay
+* décision de victoire
+* décision de phase
+
+Question à répondre :
+quelles données existent déjà dans les vues actuelles ?
+quelles données viennent déjà de Node ?
+quelles données viennent encore de Laravel ?
+
+5. GAME_SCREEN_SCHEMA
+
+Source : Blade / structure visuelle.
+
+Rôle :
+frame canonique obligatoire.
+
+Il définit :
+
+* zones
+* ordre des zones
+* composants autorisés
+* slots optionnels
+* IDs/classes obligatoires
+
+Interdit :
+
+* calcul de score
+* logique de phase
+* Socket.IO
+* règles gameplay
+
+Question à répondre :
+dans quel dossier doit-il vivre ?
+resources/views/game/screens ?
+resources/views/game/components ?
+ou autre selon le code actuel ?
+
+6. GAME_VISUAL_PROFILE
+
+Source : mode.
+
+Rôle :
+identité visuelle du mode.
+
+Contient :
+
+* modeName
+* title
+* subtitle
+* levelName
+* depthRange
+* ambiance
+* colors
+* icons
+* background
+* visualIntensity
+
+Interdit :
+
+* changer le schema
+* décider les scores
+* décider les phases
+* créer une UI locale différente
+
+Question à répondre :
+où les modes déclarent-ils déjà leur identité visuelle ?
+Menu ?
+Vues gameplay ?
+Controllers ?
+Variables Blade ?
+CSS inline ?
+
+7. Renderer
+
+Source : client/Blade selon faisabilité.
+
+Rôle :
+assembler :
+
+GAME_SCREEN_SCHEMA
++
+GAME_SCREEN_CONTEXT
++
+GAME_VISUAL_PROFILE
+
+Puis afficher l’écran.
+
+Interdit :
+
+* calcul gameplay
+* Node logic
+* score
+* stats
+* winner
+* phase
+* socket authority
+
+Question à répondre :
+doit-il être un partial Blade ?
+un module JS ?
+ou un hybride Blade initial + JS runtime ?
+Quelle option est la plus compatible avec le code actuel ?
+
+Ce que je veux maintenant :
+
+Un rapport de placement technique, pas une nouvelle architecture.
+
+Réponds uniquement avec :
+
+1. ce qui existe déjà aujourd’hui ;
+2. quel fichier réel correspond le plus à chaque brique ;
+3. où chaque brique devrait vivre ;
+4. quels noms existants il faut réutiliser ;
+5. ce qui manque réellement ;
+6. risques de créer une nouvelle couche inutile ;
+7. proposition de première micro-étape sans patch.
+
+Aucun patch.
+Aucune création.
+Tu t’arrêtes après ce rapport.

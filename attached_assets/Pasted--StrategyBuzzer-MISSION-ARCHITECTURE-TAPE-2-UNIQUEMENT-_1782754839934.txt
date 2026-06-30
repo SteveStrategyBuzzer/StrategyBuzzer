@@ -1,0 +1,218 @@
+# StrategyBuzzer — MISSION ARCHITECTURE
+
+## ÉTAPE 2 UNIQUEMENT — ANALYSE D'ÉCART DU MODÈLE GAME_MATCH_STATE
+
+Aucun patch.
+
+Aucune modification.
+
+Aucun renommage.
+
+Aucune architecture.
+
+Aucun plan de migration.
+
+Je veux uniquement une analyse d'écart.
+
+---
+
+# POURQUOI JE TE DEMANDE CETTE ANALYSE
+
+La cartographie est maintenant terminée.
+
+Nous savons désormais exactement ce que contient aujourd'hui GameState.
+
+La question n'est plus :
+
+> "Que contient GameState ?"
+
+Nous connaissons déjà la réponse.
+
+La nouvelle question est :
+
+> **GameState contient-il déjà tout ce dont StrategyBuzzer aura besoin comme vérité officielle du gameplay ?**
+
+Autrement dit :
+
+Je ne cherche pas à créer un nouveau GAME_MATCH_STATE.
+
+Je cherche à savoir si GameState peut devenir directement notre GAME_MATCH_STATE canonique.
+
+Pour répondre à cette question, il faut comparer :
+
+* ce que GameState contient aujourd'hui ;
+* ce que GAME_MATCH_STATE devra représenter demain.
+
+---
+
+# CE QUE TU DOIS COMPARER
+
+Tu ne compares pas des fichiers.
+
+Tu ne compares pas des classes.
+
+Tu compares uniquement des **responsabilités métier**.
+
+Les responsabilités attendues sont :
+
+* identité du match
+* cycle de vie du match
+* configuration
+* joueurs
+* questions
+* buzz
+* réponses
+* scores
+* statistiques
+* manches
+* manche ultime (tiebreaker)
+* communication vocale
+* skills
+* versionnement
+
+---
+
+# POUR CHAQUE RESPONSABILITÉ
+
+Tu réponds exactement aux cinq questions suivantes.
+
+## Question 1
+
+Cette responsabilité est-elle couverte aujourd'hui ?
+
+Réponse possible uniquement :
+
+* Oui
+* Partiellement
+* Non
+
+---
+
+## Question 2
+
+Quels champs observés couvrent cette responsabilité ?
+
+Utilise uniquement les noms exacts du code.
+
+Exemple :
+
+phase
+
+players
+
+roundResults
+
+buzzQueue
+
+Aucun renommage.
+
+---
+
+## Question 3
+
+Quel est l'écart observé ?
+
+Attention.
+
+Je veux uniquement décrire le manque.
+
+Je ne veux pas de solution.
+
+Exemple :
+
+"Historique des manches observé.
+Aucun vainqueur global du match observé."
+
+C'est tout.
+
+---
+
+## Question 4
+
+Quel est l'impact si cet écart reste présent ?
+
+Réponse possible uniquement :
+
+* Critique
+* Important
+* Mineur
+
+Aucune justification.
+
+---
+
+## Question 5
+
+Niveau de confiance.
+
+Réponse possible uniquement :
+
+* Certain
+* Probable
+* Faible
+* À vérifier
+
+---
+
+# TU N'AS PAS LE DROIT DE RÉPONDRE À CES QUESTIONS
+
+Ne réponds pas :
+
+* quel champ ajouter ;
+* quel nom utiliser ;
+* quelle structure créer ;
+* quel fichier modifier ;
+* quelle classe modifier ;
+* comment migrer ;
+* comment corriger ;
+* comment implémenter ;
+* quelle architecture adopter.
+
+Ces décisions appartiennent aux étapes suivantes.
+
+---
+
+# FORMAT OBLIGATOIRE
+
+Pour chaque responsabilité :
+
+Responsabilité :
+
+Couverture :
+
+Champs observés :
+
+Écart observé :
+
+Impact :
+
+Confiance :
+
+---
+
+# CE QUE J'ATTENDS À LA FIN
+
+Je veux être capable de répondre à une seule question :
+
+> **GameState peut-il devenir directement GAME_MATCH_STATE, ou existe-t-il encore des responsabilités métier qui ne sont pas représentées ?**
+
+Je ne veux pas encore savoir comment les ajouter.
+
+Je veux uniquement savoir si elles existent ou non.
+
+---
+
+# POINT D'ARRÊT
+
+Quand toutes les responsabilités ont été analysées :
+
+Tu t'arrêtes immédiatement.
+
+Tu n'écris :
+
+* aucune conclusion ;
+* aucune architecture ;
+* aucun plan de migration ;
+* aucune proposition.
+
+Tu attends la mission suivante.

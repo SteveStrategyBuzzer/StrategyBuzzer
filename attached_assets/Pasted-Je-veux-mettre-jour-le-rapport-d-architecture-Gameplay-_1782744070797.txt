@@ -1,0 +1,310 @@
+Je veux mettre à jour le rapport d’architecture Gameplay universel avec la version finale.
+
+Aucun patch.
+Aucune DB.
+Aucun artisan.
+Aucun Node.
+Aucune modification gameplay.
+Rapport uniquement.
+
+Architecture finale :
+
+Node
+↓
+GAME_MATCH_STATE
+↓
+GameplayFlowRuntime
+↓
+GAME_SCREEN_REQUEST
+↓
+Renderer
+↓
+GAME_SCREEN_SCHEMA
++ GAME_SCREEN_CONTEXT
++ GAME_VISUAL_PROFILE
+↓
+Écran affiché
+
+Rôles officiels :
+
+1. Node
+Node est l’autorité gameplay.
+Il décide uniquement :
+- phase officielle
+- score officiel
+- stats officielles
+- chrono officiel
+- gagnant de manche
+- gagnant du match
+- besoin d’une manche suivante
+- besoin d’une Manche Ultime
+- ready/buzz/réponse
+- nextPhase
+
+Node ne décide jamais :
+- design
+- couleur
+- position des éléments
+- composant Blade
+- structure HTML
+- ambiance visuelle
+
+2. GAME_MATCH_STATE
+C’est la vérité officielle produite par Node.
+Il contient 100 % de l’état gameplay réel :
+- phase
+- players
+- scores
+- stats
+- timer
+- winner
+- nextPhase
+- readyState
+- buzzState
+- answerState
+- ultimateState
+
+3. GameplayFlowRuntime
+Il lit GAME_MATCH_STATE.
+Il ne calcule pas le score.
+Il ne décide pas le gagnant.
+Il traduit l’état officiel en écran à afficher.
+
+Il produit :
+- GAME_SCREEN_REQUEST
+- GAME_SCREEN_CONTEXT
+
+4. GAME_SCREEN_REQUEST
+C’est une petite demande d’écran.
+
+Exemples :
+- screen = question
+- screen = answers
+- screen = result
+- screen = round-end
+- screen = ultimate-participant-choice
+- screen = ultimate-player-choice
+- screen = match-end
+
+Il contient aussi :
+- mode
+- variant si nécessaire
+
+5. GAME_SCREEN_CONTEXT
+Ce sont seulement les données utiles à l’écran demandé.
+
+Exemple question :
+- question
+- answers
+- players
+- timer
+- actions
+
+Exemple round-end :
+- players
+- scoreboard
+- roundStats
+- readyState
+- nextPhase
+
+Exemple match-end :
+- winner
+- finalScore
+- matchStats
+- rewards
+- rankings
+
+Le contexte est construit depuis GAME_MATCH_STATE.
+
+6. GAME_SCREEN_SCHEMA
+C’est le frame obligatoire de l’écran.
+
+Il définit :
+- zones obligatoires
+- ordre des zones
+- composants autorisés
+- slots optionnels
+- variantes permises
+- IDs/classes obligatoires à conserver
+
+Exemple QUESTION_SCHEMA :
+- Header
+- Timer
+- Players
+- QuestionCard
+- AnswerGrid
+- Actions
+- Footer
+
+Exemple ROUND_END_MULTI_SCHEMA :
+- Header
+- Players
+- RoundStats
+- Scoreboard
+- ReadyPanel
+- Footer
+
+7. GAME_VISUAL_PROFILE
+C’est l’identité visuelle du mode.
+
+Chaque mode déclare :
+- modeName
+- title
+- subtitle
+- levelName si applicable
+- depthRange si applicable
+- theme
+- colors
+- icons
+- background
+- ambiance
+- visualIntensity
+
+Exemples :
+
+Duo :
+- title = Duo
+- ambiance = compétition 1v1
+- levelName = division/rang
+- depthRange = selon niveau
+
+Ligue :
+- title = Ligue
+- ambiance = saison/classement
+- levelName = division ligue
+- depthRange = selon niveau ligue
+
+MJ :
+- title = Maître du Jeu
+- ambiance = cockpit/spectacle
+- levelName = aucun ou événement
+- depthRange = choisi par hôte
+
+Solo :
+- title = Solo
+- ambiance = progression personnelle
+- levelName = niveau solo
+- depthRange = selon progression
+
+8. Renderer
+Le Renderer assemble uniquement :
+
+GAME_SCREEN_SCHEMA
++
+GAME_SCREEN_CONTEXT
++
+GAME_VISUAL_PROFILE
+
+Il produit l’écran affiché.
+
+Il ne calcule jamais :
+- score
+- stats
+- phase
+- gagnant
+- Manche Ultime
+- ready
+- buzz
+- réponse
+
+Règle centrale :
+
+QUESTION / ANSWERS / RESULT gardent la même mise en page dans tous les modes.
+
+Ce qui peut changer :
+- titre
+- ambiance
+- couleurs
+- icônes
+- niveau affiché
+- depth affiché
+- nombre de joueurs
+- actions disponibles
+
+Ce qui ne doit pas changer :
+- structure de base
+- position des blocs
+- logique visuelle commune
+- composants communs
+- IDs nécessaires aux runtimes
+
+Écrans universels officiels :
+
+1. question
+2. answers
+3. result
+4. round-end
+5. ultimate-participant-choice
+6. ultimate-player-choice
+7. match-end
+
+Important Manche Ultime :
+
+La Manche Ultime n’est pas une variante de result.
+
+Flux exact :
+round-end
+↓
+ultimate-participant-choice
+↓
+ultimate-player-choice
+↓
+question
+↓
+answers
+↓
+result
+↓
+match-end
+
+Variantes autorisées :
+
+QUESTION / ANSWERS / RESULT :
+structure commune entre Solo, Duo, Ligue, MJ.
+
+ROUND-END / MATCH-END / ULTIMATE :
+même ADN visuel, mais variantes de schema autorisées selon le gameplay :
+- solo
+- multiplayer
+- league
+- master
+
+Une variante est autorisée seulement si le gameplay l’impose.
+Jamais pour une préférence esthétique locale.
+
+Règle d’or UI :
+
+Aucune amélioration visuelle locale directement dans Duo, Ligue ou MJ.
+
+Toute évolution visuelle passe par :
+Solo
+↓
+validation
+↓
+canonisation
+↓
+propagation vers les screens universels
+↓
+Duo / Ligue / MJ
+
+Solo reste le laboratoire UI/UX.
+Les autres modes ne recréent pas l’interface.
+
+Objectif du rapport :
+
+Mettre à jour l’architecture officielle avec :
+1. rôle exact de Node
+2. rôle exact de GAME_MATCH_STATE
+3. rôle exact de GameplayFlowRuntime
+4. rôle exact de GAME_SCREEN_REQUEST
+5. rôle exact de GAME_SCREEN_CONTEXT
+6. rôle exact de GAME_SCREEN_SCHEMA
+7. rôle exact de GAME_VISUAL_PROFILE
+8. rôle exact du Renderer
+9. les 7 écrans universels
+10. les variantes autorisées
+11. les interdictions
+12. l’ordre de migration sécurisé
+
+Aucun patch.
+Rapport seulement.
