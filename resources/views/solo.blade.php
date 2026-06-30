@@ -610,113 +610,96 @@ body { background: #030924; color: #fff; overflow-x: hidden; }
   const selectUrl  = '{{ route("avatars.select") }}';
   const csrfToken  = '{{ csrf_token() }}';
 
+  /* ── Helpers ── */
+  function buildSkillCards(badgesEl, tierColor, skills) {
+    badgesEl.innerHTML = '';
+    skills.slice(0, 3).forEach(sk => {
+      const withColon = sk.match(/^(\S+)\s+(.+?)(?=\s*:)/u);
+      const fallback  = sk.match(/^(\S+)\s+(.+)$/u);
+      const m = withColon || fallback;
+      const emoji = m ? m[1] : '⚡';
+      const name  = m ? m[2].trim() : sk;
+
+      const card  = document.createElement('div');
+      card.className = 'sl-skill-card';
+      card.title = name;
+
+      const icon = document.createElement('div');
+      icon.className = 'sl-skill-icon';
+      icon.style.cssText = `background:linear-gradient(135deg,${tierColor}33 0%,${tierColor}0d 100%);border-color:${tierColor}99;box-shadow:0 4px 14px ${tierColor}40`;
+      icon.textContent = emoji;
+
+      const lbl = document.createElement('div');
+      lbl.className = 'sl-skill-name';
+      lbl.style.color = tierColor;
+      lbl.textContent = name;
+
+      card.appendChild(icon);
+      card.appendChild(lbl);
+      badgesEl.appendChild(card);
+    });
+  }
+
+  function applyAvatarUI(el, select) {
+    const tierColor = el.dataset.tierColor || '#ffffff';
+    const frame     = el.querySelector('.sl-av-frame');
+    const nm        = el.querySelector('.sl-av-name');
+    const nameEl    = document.getElementById('strat-name-display');
+    const badgesEl  = document.getElementById('sl-skills-badges');
+
+    // Reset ALL portraits first
+    document.querySelectorAll('.sl-av-portrait').forEach(p => {
+      p.classList.remove('selected');
+      const c = p.querySelector('.sl-av-check');
+      if (c) c.remove();
+      const f = p.querySelector('.sl-av-frame');
+      if (f) { const tc = p.dataset.tierColor || '#fff'; f.style.borderColor = tc + '26'; f.style.boxShadow = 'none'; }
+      const n = p.querySelector('.sl-av-name');
+      if (n) { n.style.color = ''; n.style.fontWeight = ''; }
+    });
+
+    if (select) {
+      el.classList.add('selected');
+      if (frame) { frame.style.borderColor = tierColor; frame.style.boxShadow = `0 0 16px ${tierColor}55`; }
+      // Checkmark dans la frame
+      const chk = document.createElement('div');
+      chk.className = 'sl-av-check'; chk.textContent = '✓'; chk.style.background = tierColor;
+      if (frame) frame.appendChild(chk); else el.appendChild(chk);
+      // Nom portrait coloré
+      if (nm) { nm.style.color = tierColor; nm.style.fontWeight = '800'; }
+      // Nom strat-row
+      if (nameEl) { nameEl.textContent = el.dataset.name; nameEl.style.color = tierColor; nameEl.style.fontWeight = '800'; nameEl.style.opacity = '1'; }
+      // Skills
+      if (badgesEl) {
+        let skills = [];
+        try { skills = JSON.parse(el.dataset.skills || '[]'); } catch(e) {}
+        buildSkillCards(badgesEl, tierColor, skills);
+      }
+    } else {
+      // Désélection
+      if (nameEl) { nameEl.textContent = '{{ __("Aucun") }}'; nameEl.style.color = 'rgba(255,255,255,0.35)'; nameEl.style.fontWeight = '500'; }
+      if (badgesEl) badgesEl.innerHTML = '';
+    }
+  }
+
   window.selectStrategicAvatar = function (el) {
     if (el.dataset.unlocked === '0') {
       window.location.href = '{{ route("boutique") }}?tab=avatars';
       return;
     }
-    const slug      = el.dataset.slug;
+    const slug        = el.dataset.slug;
     const wasSelected = el.classList.contains('selected');
 
+    // ① Mise à jour UI IMMÉDIATE (optimiste) — n'attend pas le serveur
+    applyAvatarUI(el, !wasSelected);
+
+    // ② Sauvegarde en arrière-plan — le résultat n'impacte pas l'UI
     fetch(selectUrl, {
-      method: 'POST',
+      method:  'POST',
+      redirect: 'manual',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' },
-      body: new URLSearchParams({ _token: csrfToken, avatar: slug, from: 'solo' })
-    })
-    .then(r => r.ok ? r.text() : null)
-    .then(() => {
-      // Retirer toutes les sélections (frame border + check + nom)
-      document.querySelectorAll('.sl-av-portrait').forEach(p => {
-        p.classList.remove('selected');
-        const c = p.querySelector('.sl-av-check');
-        if (c) c.remove();
-        const frame = p.querySelector('.sl-av-frame');
-        if (frame) {
-          const tc = p.dataset.tierColor || '#ffffff';
-          frame.style.borderColor = tc + '26';
-          frame.style.boxShadow   = 'none';
-        }
-        const nm = p.querySelector('.sl-av-name');
-        if (nm) { nm.style.color = ''; nm.style.fontWeight = ''; }
-      });
-
-      const nameEl   = document.getElementById('strat-name-display');
-      const badgesEl = document.getElementById('sl-skills-badges');
-
-      if (!wasSelected) {
-        // — Sélectionner ce portrait
-        el.classList.add('selected');
-        const tierColor = el.dataset.tierColor || '#ffffff';
-
-        // Frame : bordure + glow colorés
-        const frame = el.querySelector('.sl-av-frame');
-        if (frame) {
-          frame.style.borderColor = tierColor;
-          frame.style.boxShadow   = `0 0 16px ${tierColor}55`;
-        }
-        // Checkmark à l'intérieur de la frame
-        const chk = document.createElement('div');
-        chk.className = 'sl-av-check'; chk.textContent = '✓';
-        chk.style.background = tierColor;
-        if (frame) frame.appendChild(chk); else el.appendChild(chk);
-
-        // Nom sous la card coloré
-        const nm = el.querySelector('.sl-av-name');
-        if (nm) { nm.style.color = tierColor; nm.style.fontWeight = '800'; }
-
-        // Nom dans la strat-row
-        if (nameEl) {
-          nameEl.textContent      = el.dataset.name;
-          nameEl.style.color      = tierColor;
-          nameEl.style.fontWeight = '800';
-          nameEl.style.opacity    = '1';
-        }
-
-        // Ability cards — emoji large + nom extrait (forme "🤖 IA Assist : ...")
-        if (badgesEl) {
-          badgesEl.innerHTML = '';
-          let skills = [];
-          try { skills = JSON.parse(el.dataset.skills || '[]'); } catch(e) {}
-          skills.slice(0, 3).forEach(sk => {
-            // Lookahead sur ":" pour stopper exactement au nom (ex: "IA Assist")
-            const withColon = sk.match(/^(\S+)\s+(.+?)(?=\s*:)/u);
-            const fallback  = sk.match(/^(\S+)\s+(.+)$/u);
-            const match = withColon || fallback;
-            const emoji = match ? match[1] : '⚡';
-            const name  = match ? match[2].trim() : sk;
-
-            const card = document.createElement('div');
-            card.className = 'sl-skill-card';
-            card.title = emoji + ' ' + name;
-
-            const icon = document.createElement('div');
-            icon.className = 'sl-skill-icon';
-            icon.style.background  = `linear-gradient(135deg,${tierColor}33 0%,${tierColor}0d 100%)`;
-            icon.style.borderColor = tierColor + '99';
-            icon.style.boxShadow   = `0 4px 14px ${tierColor}40`;
-            icon.textContent = emoji;
-
-            const label = document.createElement('div');
-            label.className = 'sl-skill-name';
-            label.style.color = tierColor;
-            label.textContent = name;
-
-            card.appendChild(icon);
-            card.appendChild(label);
-            badgesEl.appendChild(card);
-          });
-        }
-      } else {
-        // — Désélectionner : remettre l'état "Aucun"
-        if (nameEl) {
-          nameEl.textContent      = '{{ __("Aucun") }}';
-          nameEl.style.color      = 'rgba(255,255,255,0.35)';
-          nameEl.style.fontWeight = '500';
-        }
-        if (badgesEl) badgesEl.innerHTML = '';
-      }
-    })
-    .catch(() => { window.location.reload(); });
+      body:    new URLSearchParams({ _token: csrfToken, avatar: slug, from: 'solo' })
+    }).catch(() => { /* échec silencieux — l'UI est déjà mise à jour */ });
   };
 
   /* ====== TEAMMATE DROPDOWN ====== */
