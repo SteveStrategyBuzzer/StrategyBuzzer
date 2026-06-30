@@ -20,6 +20,12 @@ $tierColors        = ['Rare' => '#3b82f6','Épique' => '#a855f7','Légendaire' =
 $selSlug           = $current_strategic_slug ?? '';
 $selAvatarData     = ($strategic_avatars ?? [])[$selSlug] ?? null;
 $selSkillsShort    = $selAvatarData['skills_short'] ?? [];
+$selSkillsFull     = $selAvatarData['skills'] ?? [];
+// Parse emoji + nom de skill depuis la forme "🤖 IA Assist : ..."
+$selSkillsParsed   = array_map(function($s) {
+    preg_match('/^(\S+)\s+(.+?)(?:\s*:.*)?$/u', $s, $m);
+    return ['emoji' => $m[1] ?? '⚡', 'name' => trim($m[2] ?? $s)];
+}, array_slice($selSkillsFull, 0, 3));
 $selAvatarName     = $selAvatarData ? strtoupper($selAvatarData['name'] ?? '') : strtoupper($avatar_stratégique ?? __('Aucun'));
 $selTier           = $selAvatarData['tier'] ?? '';
 $selTierColor      = $tierColors[$selTier] ?? '#ffffff';
@@ -149,14 +155,27 @@ body { background: #030924; color: #fff; overflow-x: hidden; }
 }
 .sl-strat-label { display: flex; align-items: center; gap: 7px; font-size: 0.82rem; color: rgba(255,255,255,0.7); }
 .sl-strat-icon { font-size: 1rem; }
-.sl-strat-bottom { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.sl-strat-bottom { display: flex; align-items: center; gap: 12px; min-width: 0; }
 .sl-strat-name { font-weight: 800; font-size: 0.9rem; letter-spacing: 0.5px; flex-shrink: 0; }
-.sl-skills-badges { display: flex; gap: 6px; margin-left: auto; flex-shrink: 0; }
-.sl-skill-badge {
-  width: 30px; height: 30px; border-radius: 8px;
+/* ── Ability cards ── */
+.sl-skill-cards { display: flex; gap: 8px; margin-left: auto; flex-shrink: 0; }
+.sl-skill-card {
+  display: flex; flex-direction: column; align-items: center; gap: 5px;
+  width: 62px; cursor: default;
+}
+.sl-skill-icon {
+  width: 48px; height: 48px; border-radius: 14px; flex-shrink: 0;
   display: flex; align-items: center; justify-content: center;
-  font-size: 0.9rem; border: 1px solid rgba(255,255,255,0.15);
-  cursor: default;
+  font-size: 1.45rem;
+  border: 2px solid;
+  backdrop-filter: blur(6px);
+  transition: transform .15s, box-shadow .15s;
+}
+.sl-skill-icon:hover { transform: translateY(-2px); }
+.sl-skill-name {
+  font-size: 0.6rem; font-weight: 700; text-align: center; line-height: 1.25;
+  color: rgba(255,255,255,0.8); text-transform: uppercase; letter-spacing: 0.4px;
+  max-width: 62px;
 }
 
 /* ===== AVATAR GALLERY CARD ===== */
@@ -430,12 +449,17 @@ body { background: #030924; color: #fff; overflow-x: hidden; }
             <span class="sl-strat-name" style="color:rgba(255,255,255,0.35);font-weight:500" id="strat-name-display">{{ __('Aucun') }}</span>
           @endif
 
-          {{-- Badges skills — toujours sur la même ligne que le nom --}}
-          <div class="sl-skills-badges" id="sl-skills-badges">
-            @foreach(array_slice($selSkillsShort,0,3) as $sk)
-              @php preg_match('/^\S+/u', $sk, $em); $emoji = $em[0] ?? '⚡'; @endphp
-              <div class="sl-skill-badge" title="{{ $sk }}"
-                   style="background:rgba(99,102,241,0.25); color:{{ $selTierColor }}; border-color:{{ $selTierColor }}40;">{{ $emoji }}</div>
+          {{-- Ability cards — icône large + nom extrait --}}
+          <div class="sl-skill-cards" id="sl-skills-badges">
+            @foreach($selSkillsParsed as $sk)
+              <div class="sl-skill-card" title="{{ $sk['emoji'] }} {{ $sk['name'] }}"
+                   style="--tc:{{ $selTierColor }}">
+                <div class="sl-skill-icon"
+                     style="background:linear-gradient(135deg,{{ $selTierColor }}33 0%,{{ $selTierColor }}0d 100%);
+                            border-color:{{ $selTierColor }}99;
+                            box-shadow:0 4px 14px {{ $selTierColor }}40;">{{ $sk['emoji'] }}</div>
+                <div class="sl-skill-name" style="color:{{ $selTierColor }}">{{ $sk['name'] }}</div>
+              </div>
             @endforeach
           </div>
         </div>
@@ -463,7 +487,7 @@ body { background: #030924; color: #fff; overflow-x: hidden; }
                data-unlocked="{{ $isUnlocked ? '1' : '0' }}"
                data-name="{{ strtoupper($av['name'] ?? $slug) }}"
                data-tier-color="{{ $tierColor }}"
-               data-skills="{{ htmlspecialchars(json_encode($av['skills_short'] ?? []), ENT_QUOTES) }}"
+               data-skills="{{ htmlspecialchars(json_encode($av['skills'] ?? []), ENT_QUOTES) }}"
                title="{{ $isUnlocked ? ($av['name'] ?? $slug) : __('Verrouillé — achetez en boutique') }}"
                onclick="selectStrategicAvatar(this)">
             <img src="{{ asset($imgPath) }}" alt="{{ $av['name'] ?? $slug }}"
@@ -600,22 +624,35 @@ body { background: #030924; color: #fff; overflow-x: hidden; }
           nameEl.style.opacity = '1';
         }
 
-        // Badges skills (emoji du début de chaque skill_short)
+        // Ability cards — emoji large + nom extrait (forme "🤖 IA Assist : ...")
         if (badgesEl) {
           badgesEl.innerHTML = '';
           let skills = [];
           try { skills = JSON.parse(el.dataset.skills || '[]'); } catch(e) {}
           skills.slice(0, 3).forEach(sk => {
-            const emojiMatch = sk.match(/^\S+/u);
-            const emoji = emojiMatch ? emojiMatch[0] : '⚡';
-            const badge = document.createElement('div');
-            badge.className  = 'sl-skill-badge';
-            badge.title      = sk;
-            badge.style.background  = 'rgba(99,102,241,0.25)';
-            badge.style.color       = tierColor;
-            badge.style.borderColor = tierColor + '40';
-            badge.textContent = emoji;
-            badgesEl.appendChild(badge);
+            const emojiMatch = sk.match(/^(\S+)\s+(.+?)(?:\s*:.*)?$/u);
+            const emoji = emojiMatch ? emojiMatch[1] : '⚡';
+            const name  = emojiMatch ? emojiMatch[2].trim() : sk;
+
+            const card = document.createElement('div');
+            card.className = 'sl-skill-card';
+            card.title = emoji + ' ' + name;
+
+            const icon = document.createElement('div');
+            icon.className = 'sl-skill-icon';
+            icon.style.background  = `linear-gradient(135deg,${tierColor}33 0%,${tierColor}0d 100%)`;
+            icon.style.borderColor = tierColor + '99';
+            icon.style.boxShadow   = `0 4px 14px ${tierColor}40`;
+            icon.textContent = emoji;
+
+            const label = document.createElement('div');
+            label.className = 'sl-skill-name';
+            label.style.color = tierColor;
+            label.textContent = name;
+
+            card.appendChild(icon);
+            card.appendChild(label);
+            badgesEl.appendChild(card);
           });
         }
       } else {
