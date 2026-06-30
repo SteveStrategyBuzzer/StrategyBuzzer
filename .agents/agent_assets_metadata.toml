@@ -1859,3 +1859,9 @@ id = "rCkC1HIhyOlRMihLu8VWv"
 uri = "file://public/images/avatars/bosses/intelligence-ultime.png"
 type = "image"
 title = "Intelligence Ultime"
+
+[[outputs]]
+id = "UlFp_dSezIMmz37uHSpsg"
+uri = "file://public/images/coin-intelligence.png"
+type = "image"
+title = "Pièce d'Intelligence"
