@@ -79,14 +79,36 @@ class SoloController extends Controller
         
         $selectedTeammate = session('stratege_teammate', null);
 
+        // Galerie avatars stratégiques pour le nouveau lobby UX
+        $catalogStrategiques = \App\Services\AvatarCatalog::get()['stratégiques'] ?? [];
+        $userUnlocked = [];
+        if ($user) {
+            $s = (array) ($user->profile_settings ?? []);
+            $userUnlocked = array_unique(array_merge(
+                (array) ($s['unlocked_avatars'] ?? []),
+                (array) ($s['unlocked'] ?? [])
+            ));
+        }
+        $strategicAvatarsGallery = [];
+        foreach ($catalogStrategiques as $slug => $data) {
+            $strategicAvatarsGallery[$slug] = array_merge($data, [
+                'unlocked' => in_array($slug, $userUnlocked),
+            ]);
+        }
+        $currentStrategicSlug = $user
+            ? (string) data_get((array)($user->profile_settings ?? []), 'strategic_avatar.id', '')
+            : '';
+
         return view('solo', [
-            'choix_niveau'       => $choix_niveau,
-            'niveau_selectionne' => $niveau_selectionne,
+            'choix_niveau'            => $choix_niveau,
+            'niveau_selectionne'      => $niveau_selectionne,
             'avatar_stratégique'      => $avatar,
-            'nb_questions'       => $nb_questions,
-            'is_stratege'        => $isStratege,
-            'rare_avatars_data'  => $rareAvatarsData,
-            'selected_teammate'  => $selectedTeammate,
+            'nb_questions'            => $nb_questions,
+            'is_stratege'             => $isStratege,
+            'rare_avatars_data'       => $rareAvatarsData,
+            'selected_teammate'       => $selectedTeammate,
+            'strategic_avatars'       => $strategicAvatarsGallery,
+            'current_strategic_slug'  => $currentStrategicSlug,
         ]);
     }
 

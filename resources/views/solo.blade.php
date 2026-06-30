@@ -7,490 +7,633 @@
     'playerName' => auth()->user()->name ?? 'Joueur',
 ])
 @php
-// Avatars non-avantageux en mode Solo (skills orientés multijoueur)
 $soloDisadvantagedAvatars = [
-    'défenseur' => 'Cet avatar ne sera pas nécessaire en mode Solo car il n\'y aura pas d\'attaque des joueurs adverses.',
-    'defenseur' => 'Cet avatar ne sera pas nécessaire en mode Solo car il n\'y aura pas d\'attaque des joueurs adverses.',
-    'comédienne' => 'Cet avatar ne vous sera pas avantageux en mode Solo car ses skills affectent les adversaires humains.',
-    'comedienne' => 'Cet avatar ne vous sera pas avantageux en mode Solo car ses skills affectent les adversaires humains.',
+    'défenseur'  => "Cet avatar ne sera pas nécessaire en mode Solo car il n'y aura pas d'attaque des joueurs adverses.",
+    'defenseur'  => "Cet avatar ne sera pas nécessaire en mode Solo car il n'y aura pas d'attaque des joueurs adverses.",
+    'comédienne' => "Cet avatar ne vous sera pas avantageux en mode Solo car ses skills affectent les adversaires humains.",
+    'comedienne' => "Cet avatar ne vous sera pas avantageux en mode Solo car ses skills affectent les adversaires humains.",
 ];
-$currentStrategicAvatar = strtolower($avatar_stratégique ?? 'aucun');
-$showSoloWarning = isset($soloDisadvantagedAvatars[$currentStrategicAvatar]);
-$soloWarningMessage = $showSoloWarning ? $soloDisadvantagedAvatars[$currentStrategicAvatar] : '';
+$currentStrAvatarLower = strtolower($avatar_stratégique ?? 'aucun');
+$showSoloWarning   = isset($soloDisadvantagedAvatars[$currentStrAvatarLower]);
+$soloWarningMsg    = $showSoloWarning ? $soloDisadvantagedAvatars[$currentStrAvatarLower] : '';
+$selSlug           = $current_strategic_slug ?? '';
+$selAvatarData     = ($strategic_avatars ?? [])[$selSlug] ?? null;
+$selSkillsShort    = $selAvatarData['skills_short'] ?? [];
+$selAvatarName     = $selAvatarData ? strtoupper($selAvatarData['name'] ?? '') : strtoupper($avatar_stratégique ?? __('Aucun'));
+$tierColors        = ['Rare' => '#f59e0b','Épique' => '#a855f7','Légendaire' => '#06b6d4'];
+$themeList = [
+    ['key'=>'general',    'emoji'=>'🧠','label'=>'Général',    'desc'=>'Culture générale'],
+    ['key'=>'geographie', 'emoji'=>'🌐','label'=>'Géographie', 'desc'=>'Pays, villes, lieux'],
+    ['key'=>'histoire',   'emoji'=>'📜','label'=>'Histoire',   'desc'=>'Époques et événements'],
+    ['key'=>'art',        'emoji'=>'🎨','label'=>'Art',        'desc'=>'Peinture, sculpture, etc.'],
+    ['key'=>'cinema',     'emoji'=>'🎬','label'=>'Cinéma',     'desc'=>'Films, acteurs, réalisateurs'],
+    ['key'=>'sport',      'emoji'=>'🏅','label'=>'Sport',      'desc'=>'Sports et athlètes'],
+    ['key'=>'faune',      'emoji'=>'🦁','label'=>'Faune',      'desc'=>'Animaux et espèces'],
+    ['key'=>'cuisine',    'emoji'=>'🍳','label'=>'Cuisine',    'desc'=>'Recettes et gastronomie'],
+    ['key'=>'sciences',   'emoji'=>'🔬','label'=>'Sciences',   'desc'=>'Découvertes et savoirs'],
+];
 @endphp
 
 <style>
-  .container-solo{ overflow-x:hidden; overflow-y:visible; }
-  *, *::before, *::after { box-sizing: border-box; }
-  body{ background:#003DA5; color:#fff;  overflow-x:hidden; }
-  .container-solo{ max-width:980px; margin:40px auto;  padding:0 16px; overflow-x:hidden; overflow-y:visible; }
-  .grid-2{ display:grid; grid-template-columns: repeat(3, 1fr); gap:12px; width: 100%; }
-  .btn-theme{ display:block; width:100%; padding:14px 16px; border-radius:10px; background:#1E90FF; color:#fff; border:0; cursor:pointer;  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .btn-theme:disabled{ opacity:.4; cursor:not-allowed; }
-  .box{ background:rgba(0,0,0,.15); padding:18px; border-radius:12px; margin-bottom:16px; }
-  .lbl{ font-weight:600; margin-right:8px; }
-  select, .form-select{ color:#000; }
-/* UNIFORM BTN THEME v3 */
-  .btn-theme{display:flex;align-items:center;justify-content:center;gap:10px;min-height:58px;box-shadow:2px 2px 6px rgba(0,0,0,.3);} 
-  .btn-theme:hover{transform:translateY(-1px);} 
-  .btn-theme:active{transform:translateY(0);} 
-  .grid-2{overflow:hidden;} 
-  .header-menu {
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    z-index: 1000;
-  }
-  
-  @media (max-width: 600px) {
-    .grid-2 {
-      grid-template-columns: repeat(2, 1fr);
-    }
-    .container-solo { margin:24px auto; padding:0 12px; }
-    .box { padding:14px; }
-    .header-menu { top:10px; right:10px; padding:8px 14px; font-size:.9rem; }
-  }
+/* ===== BASE ===== */
+body { background: #030924; color: #fff; overflow-x: hidden; }
+*, *::before, *::after { box-sizing: border-box; }
 
-  @media (max-width: 400px) {
-    .grid-2 {
-      grid-template-columns: 1fr;
-    }
-  }
+/* ===== LAYOUT ===== */
+.sl-wrap { max-width: 900px; margin: 0 auto; padding: 20px 16px 40px; }
 
-  /* Popup avertissement avatar non-avantageux en Solo */
-  .solo-warning-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0,0,0,0.7);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 9999;
-    animation: fadeInWarning 0.3s ease;
-  }
+/* ===== HEADER ===== */
+.sl-menu-btn {
+  position: fixed; top: 18px; right: 18px; z-index: 200;
+  display: inline-flex; align-items: center; gap: 7px;
+  background: rgba(255,255,255,0.95); color: #030924;
+  padding: 10px 20px; border-radius: 10px; font-weight: 700;
+  font-size: 0.95rem; text-decoration: none; border: none; cursor: pointer;
+  transition: transform .15s, box-shadow .15s;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+}
+.sl-menu-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.4); color: #030924; }
 
-  .solo-warning-popup {
-    background: linear-gradient(145deg, #2d1f3d, #1a1a2e);
-    border: 2px solid #f39c12;
-    border-radius: 20px;
-    padding: 30px;
-    max-width: 400px;
-    margin: 20px;
-    position: relative;
-    box-shadow: 0 0 40px rgba(243, 156, 18, 0.3);
-    animation: scaleInWarning 0.3s ease;
-  }
+.sl-header { text-align: center; padding: 28px 0 20px; }
+.sl-title {
+  font-size: 2.8rem; font-weight: 900; letter-spacing: 2px;
+  text-transform: uppercase; margin: 0 0 12px;
+}
+.sl-level-badge {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-size: 1rem; color: rgba(255,255,255,0.75);
+}
+.sl-level-num {
+  background: #1d4ed8; color: #fff;
+  border-radius: 50%; width: 30px; height: 30px;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-weight: 800; font-size: 1rem;
+}
 
-  .solo-warning-close {
-    position: absolute;
-    top: 10px;
-    right: 15px;
-    font-size: 1.8rem;
-    cursor: pointer;
-    color: rgba(255,255,255,0.6);
-    transition: color 0.2s, transform 0.2s;
-    background: none;
-    border: none;
-  }
+/* ===== OPTIONS CARD ===== */
+.sl-card {
+  background: rgba(10, 25, 80, 0.75);
+  border: 1px solid rgba(96, 165, 250, 0.18);
+  border-radius: 16px; padding: 22px 20px 18px;
+  margin-bottom: 14px; backdrop-filter: blur(4px);
+}
+.sl-card-title {
+  text-align: center; font-weight: 600; font-size: 0.95rem;
+  color: rgba(255,255,255,0.85); margin-bottom: 18px;
+}
 
-  .solo-warning-close:hover {
-    color: #fff;
-    transform: scale(1.2);
-  }
+/* Options 3-col */
+.sl-opts-row {
+  display: grid; grid-template-columns: 1fr 1fr 1fr;
+  gap: 14px; margin-bottom: 18px;
+}
+.sl-opt { display: flex; flex-direction: column; gap: 8px; }
+.sl-opt-label {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 0.8rem; color: rgba(255,255,255,0.65); font-weight: 500;
+}
+.sl-opt-label .sl-opt-icon {
+  width: 28px; height: 28px; border-radius: 8px;
+  background: rgba(99,102,241,0.25);
+  display: flex; align-items: center; justify-content: center; font-size: 0.9rem;
+}
+.sl-select {
+  background: rgba(5,15,60,0.8); border: 1px solid rgba(96,165,250,0.3);
+  color: #fff; border-radius: 10px; padding: 10px 12px;
+  font-size: 0.9rem; width: 100%; appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2393c5fd' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 12px center;
+  cursor: pointer;
+}
+.sl-select:focus { outline: none; border-color: #60a5fa; }
 
-  .solo-warning-icon {
-    font-size: 3rem;
-    text-align: center;
-    margin-bottom: 15px;
-  }
+/* Niveau stepper */
+.sl-level-box {
+  background: rgba(5,15,60,0.8); border: 1px solid rgba(96,165,250,0.3);
+  border-radius: 10px; padding: 8px 12px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.sl-level-display { display: flex; align-items: center; gap: 6px; font-size: 1.1rem; font-weight: 700; }
+.sl-level-btn {
+  background: rgba(255,255,255,0.1); border: none; color: rgba(255,255,255,0.7);
+  width: 28px; height: 28px; border-radius: 7px; cursor: pointer;
+  font-size: 1.1rem; display: flex; align-items: center; justify-content: center;
+  transition: background .15s;
+}
+.sl-level-btn:hover { background: rgba(255,255,255,0.2); color: #fff; }
+.sl-level-btn:disabled { opacity: 0.3; cursor: not-allowed; }
 
-  .solo-warning-title {
-    font-size: 1.3rem;
-    font-weight: 700;
-    text-align: center;
-    margin-bottom: 15px;
-    color: #f39c12;
-  }
+/* Adversaire button */
+.sl-adv-btn {
+  background: linear-gradient(135deg, #7c3aed, #4f46e5);
+  color: #fff; border: none; border-radius: 10px; padding: 11px 12px;
+  font-size: 0.85rem; font-weight: 700; cursor: pointer; width: 100%;
+  text-decoration: none; display: flex; align-items: center; justify-content: center;
+  transition: transform .15s, box-shadow .15s;
+  box-shadow: 0 3px 12px rgba(124,58,237,0.4);
+}
+.sl-adv-btn:hover { transform: translateY(-1px); box-shadow: 0 5px 16px rgba(124,58,237,0.5); color: #fff; }
 
-  .solo-warning-message {
-    font-size: 1rem;
-    line-height: 1.5;
-    text-align: center;
-    color: rgba(255,255,255,0.85);
-  }
+/* Avatar stratégique row */
+.sl-strat-row {
+  border-top: 1px solid rgba(255,255,255,0.08);
+  padding-top: 14px;
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+}
+.sl-strat-label { display: flex; align-items: center; gap: 7px; font-size: 0.82rem; color: rgba(255,255,255,0.7); }
+.sl-strat-icon { font-size: 1rem; }
+.sl-strat-name { font-weight: 800; color: #f59e0b; font-size: 0.9rem; letter-spacing: 0.5px; }
+.sl-skills-badges { display: flex; gap: 6px; margin-left: auto; flex-wrap: wrap; }
+.sl-skill-badge {
+  width: 30px; height: 30px; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.9rem; border: 1px solid rgba(255,255,255,0.15);
+  cursor: default;
+}
 
-  @keyframes fadeInWarning {
-    from { opacity: 0; }
-    to { opacity: 1; }
-  }
+/* ===== AVATAR GALLERY CARD ===== */
+.sl-av-header { display: flex; flex-direction: column; gap: 2px; margin-bottom: 14px; }
+.sl-av-title { font-size: 1.05rem; font-weight: 700; }
+.sl-av-sub { font-size: 0.75rem; color: rgba(255,255,255,0.5); }
 
-  @keyframes scaleInWarning {
-    from { opacity: 0; transform: scale(0.8); }
-    to { opacity: 1; transform: scale(1); }
-  }
+.sl-av-gallery {
+  display: flex; gap: 14px; overflow-x: auto; padding-bottom: 8px;
+  scrollbar-width: thin; scrollbar-color: rgba(96,165,250,0.3) transparent;
+}
+.sl-av-gallery::-webkit-scrollbar { height: 4px; }
+.sl-av-gallery::-webkit-scrollbar-track { background: transparent; }
+.sl-av-gallery::-webkit-scrollbar-thumb { background: rgba(96,165,250,0.3); border-radius: 4px; }
 
-  @keyframes fadeOutWarning {
-    from { opacity: 1; }
-    to { opacity: 0; }
-  }
+.sl-av-portrait {
+  position: relative; flex: 0 0 78px; cursor: pointer;
+  transition: transform .2s;
+}
+.sl-av-portrait:hover { transform: translateY(-3px); }
+.sl-av-portrait.locked { opacity: 0.45; cursor: not-allowed; }
+.sl-av-portrait.locked:hover { transform: none; }
 
-  /* Teammate Dropdown Styles */
-  .teammate-dropdown-btn {
-    background: transparent;
-    border: none;
-    cursor: pointer;
-    font-size: 1rem;
-    padding: 2px 8px;
-    margin-left: 4px;
-    transition: transform 0.2s ease;
-  }
-  .teammate-dropdown-btn:hover {
-    transform: scale(1.2);
-  }
-  .teammate-dropdown-btn.open {
-    transform: rotate(180deg);
-  }
-  
-  .teammate-dropdown {
-    position: absolute;
-    top: 100%;
-    left: 50%;
-    transform: translateX(-50%);
-    background: linear-gradient(145deg, #1a3a6e, #0d2347);
-    border: 2px solid rgba(255,255,255,0.3);
-    border-radius: 12px;
-    min-width: 280px;
-    max-width: 320px;
-    box-shadow: 0 10px 40px rgba(0,0,0,0.4);
-    z-index: 1000;
-    overflow: hidden;
-    animation: dropdownSlide 0.2s ease;
-  }
-  
-  @keyframes dropdownSlide {
-    from { opacity: 0; transform: translateX(-50%) translateY(-10px); }
-    to { opacity: 1; transform: translateX(-50%) translateY(0); }
-  }
-  
-  .teammate-dropdown-header {
-    background: rgba(255,255,255,0.1);
-    padding: 10px 14px;
-    font-weight: 700;
-    font-size: 0.9rem;
-    border-bottom: 1px solid rgba(255,255,255,0.2);
-  }
-  
-  .teammate-option {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 12px 14px;
-    cursor: pointer;
-    transition: background 0.2s ease;
-    border-bottom: 1px solid rgba(255,255,255,0.1);
-  }
-  
-  .teammate-option:last-child {
-    border-bottom: none;
-  }
-  
-  .teammate-option.unlocked:hover {
-    background: rgba(255,255,255,0.15);
-  }
-  
-  .teammate-option.locked {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-  
-  .teammate-option.selected {
-    background: rgba(46, 204, 113, 0.25);
-    border-left: 3px solid #2ecc71;
-  }
-  
-  .teammate-icon {
-    font-size: 1.5rem;
-    width: 40px;
-    height: 40px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: rgba(255,255,255,0.1);
-    border-radius: 50%;
-  }
-  
-  .teammate-info {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-  }
-  
-  .teammate-name {
-    font-weight: 700;
-    font-size: 0.95rem;
-  }
-  
-  .teammate-skill {
-    font-size: 0.8rem;
-    color: rgba(255,255,255,0.7);
-    margin-top: 2px;
-  }
-  
-  .teammate-check {
-    color: #2ecc71;
-    font-size: 1.2rem;
-    font-weight: bold;
-  }
+.sl-av-portrait img {
+  width: 78px; height: 78px; border-radius: 50%; object-fit: cover;
+  border: 2px solid rgba(255,255,255,0.15);
+  transition: border-color .2s;
+}
+.sl-av-portrait.selected img { border-color: #3b82f6; border-width: 3px; }
 
+.sl-av-check {
+  position: absolute; top: -2px; right: -2px;
+  width: 22px; height: 22px; border-radius: 50%;
+  background: #3b82f6; border: 2px solid #030924;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.65rem; font-weight: 900; color: #fff;
+}
+.sl-av-lock {
+  position: absolute; bottom: 0; right: 0;
+  width: 22px; height: 22px; border-radius: 50%;
+  background: rgba(0,0,0,0.7); border: 1px solid rgba(255,255,255,0.2);
+  display: flex; align-items: center; justify-content: center; font-size: 0.65rem;
+}
+.sl-av-tier-dot {
+  position: absolute; bottom: 2px; left: 2px;
+  width: 13px; height: 13px; border-radius: 50%;
+  border: 2px solid #030924;
+}
+.sl-av-name {
+  text-align: center; font-size: 0.62rem; margin-top: 5px;
+  color: rgba(255,255,255,0.6); white-space: nowrap; overflow: hidden;
+  text-overflow: ellipsis; max-width: 78px;
+}
+
+/* ===== THEME GRID ===== */
+.sl-theme-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
+  margin-bottom: 14px;
+}
+.sl-theme-btn {
+  display: flex; align-items: center; gap: 12px;
+  background: rgba(10, 25, 80, 0.75); border: 1px solid rgba(96,165,250,0.15);
+  border-radius: 13px; padding: 14px 14px; cursor: pointer; width: 100%;
+  text-align: left; color: #fff; transition: background .15s, border-color .2s, transform .12s;
+  text-decoration: none;
+}
+.sl-theme-btn:hover {
+  background: rgba(20, 45, 120, 0.9); border-color: rgba(96,165,250,0.4);
+  transform: translateY(-1px); color: #fff;
+}
+.sl-theme-btn:active { transform: translateY(0); }
+.sl-theme-emoji {
+  width: 40px; height: 40px; border-radius: 12px; flex: 0 0 40px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.3rem; background: rgba(255,255,255,0.07);
+}
+.sl-theme-info { flex: 1; min-width: 0; }
+.sl-theme-name { font-weight: 700; font-size: 0.88rem; display: block; }
+.sl-theme-desc { font-size: 0.72rem; color: rgba(255,255,255,0.5); margin-top: 2px; display: block; }
+.sl-theme-arrow { color: rgba(255,255,255,0.35); font-size: 0.9rem; flex: 0 0 auto; }
+
+/* ===== TIP BAR ===== */
+.sl-tip {
+  background: rgba(10,25,80,0.6); border: 1px solid rgba(96,165,250,0.12);
+  border-radius: 12px; padding: 12px 16px;
+  display: flex; align-items: center; gap: 8px;
+  font-size: 0.8rem; color: rgba(255,255,255,0.65);
+}
+.sl-tip-icon { font-size: 1rem; flex: 0 0 auto; }
+
+/* ===== VALIDATION MSG ===== */
+.sl-validation-msg {
+  display: none; position: fixed; top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(220,38,38,0.95); color: #fff;
+  padding: 20px 36px; border-radius: 14px;
+  font-size: 1.05rem; font-weight: 700;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.4); z-index: 9000;
+  text-align: center; backdrop-filter: blur(4px);
+}
+
+/* ===== WARNING POPUP ===== */
+.sl-warn-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.75);
+  display: flex; align-items: center; justify-content: center; z-index: 9999;
+  animation: slFadeIn .25s ease;
+}
+.sl-warn-popup {
+  background: linear-gradient(145deg, #2d1f3d, #1a1a2e);
+  border: 2px solid #f39c12; border-radius: 20px; padding: 30px;
+  max-width: 400px; margin: 20px; position: relative;
+  box-shadow: 0 0 40px rgba(243,156,18,0.3); animation: slScaleIn .25s ease;
+}
+.sl-warn-close {
+  position: absolute; top: 10px; right: 14px; font-size: 1.8rem;
+  cursor: pointer; color: rgba(255,255,255,0.5); background: none; border: none;
+  transition: color .15s; line-height: 1;
+}
+.sl-warn-close:hover { color: #fff; }
+
+/* ===== TEAMMATE DROPDOWN ===== */
+.sl-teammate-wrap { position: relative; }
+.sl-teammate-btn {
+  background: transparent; border: none; cursor: pointer;
+  font-size: 0.9rem; padding: 2px 6px; color: rgba(255,255,255,0.5);
+  transition: transform .15s;
+}
+.sl-teammate-btn.open { transform: rotate(180deg); }
+.sl-teammate-dropdown {
+  position: absolute; top: calc(100% + 8px); left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(145deg, #1a3a6e, #0d2347);
+  border: 1.5px solid rgba(255,255,255,0.25); border-radius: 12px;
+  min-width: 260px; max-width: 300px; z-index: 500; overflow: hidden;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.4); animation: slDropdown .15s ease;
+}
+.sl-td-header { background: rgba(255,255,255,0.1); padding: 9px 14px; font-weight: 700; font-size: 0.85rem; border-bottom: 1px solid rgba(255,255,255,0.15); }
+.sl-td-opt {
+  display: flex; align-items: center; gap: 10px; padding: 11px 14px; cursor: pointer;
+  transition: background .15s; border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+.sl-td-opt:last-child { border-bottom: none; }
+.sl-td-opt.unlocked:hover { background: rgba(255,255,255,0.12); }
+.sl-td-opt.locked { opacity: 0.45; cursor: not-allowed; }
+.sl-td-opt.selected { background: rgba(46,204,113,0.2); border-left: 3px solid #2ecc71; }
+.sl-td-icon { font-size: 1.3rem; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.08); border-radius: 50%; }
+.sl-td-info { flex: 1; }
+.sl-td-name { font-weight: 700; font-size: 0.88rem; }
+.sl-td-skill { font-size: 0.72rem; color: rgba(255,255,255,0.6); margin-top: 1px; }
+.sl-td-check { color: #2ecc71; font-weight: 900; }
+
+@keyframes slFadeIn  { from { opacity:0 } to { opacity:1 } }
+@keyframes slScaleIn { from { opacity:0; transform:scale(.85) } to { opacity:1; transform:scale(1) } }
+@keyframes slDropdown { from { opacity:0; transform:translateX(-50%) translateY(-6px) } to { opacity:1; transform:translateX(-50%) translateY(0) } }
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 640px) {
+  .sl-title { font-size: 2rem; }
+  .sl-opts-row { grid-template-columns: 1fr; gap: 10px; }
+  .sl-theme-grid { grid-template-columns: repeat(2, 1fr); }
+  .sl-adv-btn { font-size: 0.8rem; }
+}
+@media (max-width: 400px) {
+  .sl-theme-grid { grid-template-columns: 1fr; }
+}
 </style>
 
-<a href="{{ route('menu') }}" class="header-menu" style="
-  background: white;
-  color: #003DA5;
-  padding: 10px 20px;
-  border-radius: 8px;
-  text-decoration: none;
-  font-weight: 700;
-  font-size: 1rem;
-  transition: all 0.3s ease;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(255,255,255,0.3)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none';">
-  {{ __('Menu') }}
-</a>
+{{-- Bouton Menu fixe --}}
+<a href="{{ route('menu') }}" class="sl-menu-btn">← {{ __('Menu') }}</a>
 
-<div class="container-solo">
-  <h1 class="display-4 text-center">{{ __('Mode Solo') }}</h1>
-  <p class="lead text-center" style="margin-top:6px">{{ __('Votre Niveau') }} : <strong>{{ $choix_niveau }}</strong></p>
+<div class="sl-wrap">
 
+  {{-- HEADER --}}
+  <div class="sl-header">
+    <h1 class="sl-title">{{ __('MODE SOLO') }}</h1>
+    <div class="sl-level-badge">
+      🧠 {{ __('Votre niveau actuel') }}
+      <span class="sl-level-num" id="display-choix-niveau">{{ $choix_niveau }}</span>
+    </div>
+  </div>
+
+  {{-- FORMULAIRE PRINCIPAL --}}
   <form id="soloForm" action="{{ route('solo.start') }}" method="POST">
     @csrf
+    <input type="hidden" name="niveau_joueur" id="niveau_joueur" value="{{ $niveau_selectionne ?? $choix_niveau }}">
 
-    <div class="box text-center">
-      <div class="mb-2"><strong>{{ __('Choisissez vos options puis un thème pour commencer la partie') }} :</strong></div>
+    {{-- OPTIONS CARD --}}
+    <div class="sl-card">
+      <div class="sl-card-title">{{ __('Choisissez vos options puis un thème pour commencer la partie :') }}</div>
 
-      <div class="mb-2">
-        <span class="lbl">{{ __('Questions par Manche') }} :</span>
-        <select name="nb_questions" id="nb_questions" class="form-select d-inline-block" style="width:auto;">
-          <option value="">-- {{ __('Choisissez') }} --</option>
-          <option value="10"  {{ (isset($nb_questions) && $nb_questions==10)  ? 'selected' : '' }}>10</option>
-          <option value="20"  {{ (isset($nb_questions) && $nb_questions==20)  ? 'selected' : '' }}>20</option>
-          <option value="30"  {{ (isset($nb_questions) && $nb_questions==30)  ? 'selected' : '' }}>30</option>
-          <option value="40"  {{ (isset($nb_questions) && $nb_questions==40)  ? 'selected' : '' }}>40</option>
-          <option value="50"  {{ (isset($nb_questions) && $nb_questions==50)  ? 'selected' : '' }}>50</option>
-        </select>
-      </div>
+      <div class="sl-opts-row">
+        {{-- Questions par manche --}}
+        <div class="sl-opt">
+          <div class="sl-opt-label">
+            <span class="sl-opt-icon">📅</span>
+            {{ __('Questions par manche') }}
+          </div>
+          <select name="nb_questions" id="nb_questions" class="sl-select">
+            <option value="">-- {{ __('Choisissez') }} --</option>
+            @foreach([10,20,30,40,50] as $n)
+              <option value="{{ $n }}" {{ (isset($nb_questions) && $nb_questions == $n) ? 'selected' : '' }}>{{ $n }}</option>
+            @endforeach
+          </select>
+        </div>
 
-      <div class="mb-3">
-        <input type="hidden" name="niveau_joueur" id="niveau_joueur" value="{{ $niveau_selectionne ?? $choix_niveau }}">
-        <div style="display:flex; align-items:center; justify-content:center; gap:12px;">
-          <span class="lbl">{{ __('Niveau sélectionné') }} : <strong>{{ $niveau_selectionne ?? $choix_niveau }}</strong></span>
-          <a href="{{ route('solo.opponents') }}" class="btn btn-outline-light btn-sm">
-            👥 {{ __('Choisir un Adversaire') }}
+        {{-- Niveau sélectionné --}}
+        <div class="sl-opt">
+          <div class="sl-opt-label">
+            <span class="sl-opt-icon">📊</span>
+            {{ __('Niveau sélectionné') }}
+          </div>
+          <div class="sl-level-box">
+            <div class="sl-level-display">
+              🧠 <span id="display-niveau">{{ $niveau_selectionne ?? $choix_niveau }}</span>
+            </div>
+            <button type="button" class="sl-level-btn" id="btn-niveau-moins"
+                    {{ ($niveau_selectionne ?? $choix_niveau) <= 1 ? 'disabled' : '' }}>−</button>
+          </div>
+        </div>
+
+        {{-- Choisir un adversaire --}}
+        <div class="sl-opt">
+          <div class="sl-opt-label">
+            <span class="sl-opt-icon">👥</span>
+            {{ __('Choisir un adversaire') }}
+          </div>
+          <a href="{{ route('solo.opponents') }}" class="sl-adv-btn">
+            {{ __('Choisir un Adversaire') }}
           </a>
         </div>
       </div>
 
-      <div class="mb-1" style="position: relative;">
-        <span class="lbl">{{ __('Choix de l\'Avatar Stratégique (optionnel)') }} :</span>
-        <span id="avatar_name_display">{{ $avatar_stratégique ?? __('Aucun') }}</span>
-        @if($is_stratege ?? false)
-          <button type="button" id="teammate_dropdown_btn" class="teammate-dropdown-btn" onclick="toggleTeammateDropdown()">🔽</button>
-          <div id="teammate_dropdown" class="teammate-dropdown" style="display: none;">
-            <div class="teammate-dropdown-header">👥 {{ __('Sélectionner un coéquipier') }}</div>
-            <div class="teammate-option {{ empty($selected_teammate) ? 'selected' : '' }}" data-slug="" data-locked="0">
-              <span class="teammate-icon">❌</span>
-              <div class="teammate-info">
-                <span class="teammate-name">{{ __('Aucun coéquipier') }}</span>
-              </div>
-              @if(empty($selected_teammate))
-                <span class="teammate-check">✓</span>
-              @endif
-            </div>
-            @foreach($rare_avatars_data ?? [] as $slug => $avatarData)
-              @php
-                $isUnlocked = $avatarData['unlocked'] ?? false;
-                $isSelected = ($selected_teammate ?? '') === $slug;
-                $avatarIcon = $avatarData['icon'] ?? '🎯';
-                $skillName = $avatarData['skills'][0]['name'] ?? '';
-                $skillIcon = $avatarData['skills'][0]['icon'] ?? '✨';
-              @endphp
-              <div class="teammate-option {{ $isUnlocked ? 'unlocked' : 'locked' }} {{ $isSelected ? 'selected' : '' }}" 
-                   data-slug="{{ $slug }}" data-locked="{{ $isUnlocked ? '0' : '1' }}">
-                <span class="teammate-icon">{{ $avatarIcon }}</span>
-                <div class="teammate-info">
-                  <span class="teammate-name">{{ $avatarData['name'] }} @if(!$isUnlocked) 🔒 @endif</span>
-                  <span class="teammate-skill">{{ $skillIcon }} {{ $skillName }}</span>
+      {{-- Avatar Stratégique --}}
+      <div class="sl-strat-row">
+        <div class="sl-strat-label">
+          <span class="sl-strat-icon">🛡</span>
+          {{ __("Choix de l'Avatar Stratégique") }}
+          <span style="color:rgba(255,255,255,0.4);font-size:0.78rem">({{ __('optionnel') }})</span>
+        </div>
+
+        @if(!empty($selSlug) || ($avatar_stratégique && strtolower($avatar_stratégique) !== 'aucun'))
+          <span class="sl-strat-name" id="strat-name-display">{{ $selAvatarName }}</span>
+          @if($is_stratege && !empty($selected_teammate))
+            <div class="sl-teammate-wrap">
+              <button type="button" class="sl-teammate-btn" id="teammate_dropdown_btn" onclick="toggleTeammateDropdown()">🔽</button>
+              <div id="teammate_dropdown" class="sl-teammate-dropdown" style="display:none;">
+                <div class="sl-td-header">👥 {{ __('Sélectionner un coéquipier') }}</div>
+                <div class="sl-td-opt {{ empty($selected_teammate) ? 'selected' : '' }} unlocked" data-slug="" data-locked="0">
+                  <span class="sl-td-icon">❌</span>
+                  <div class="sl-td-info"><span class="sl-td-name">{{ __('Aucun coéquipier') }}</span></div>
+                  @if(empty($selected_teammate))<span class="sl-td-check">✓</span>@endif
                 </div>
-                @if($isSelected)
-                  <span class="teammate-check">✓</span>
-                @endif
+                @foreach($rare_avatars_data ?? [] as $slug => $ad)
+                  @php $isU=$ad['unlocked']??false; $isSel=($selected_teammate??'')===$slug; @endphp
+                  <div class="sl-td-opt {{ $isU?'unlocked':'locked' }} {{ $isSel?'selected':'' }}" data-slug="{{ $slug }}" data-locked="{{ $isU?'0':'1' }}">
+                    <span class="sl-td-icon">{{ $ad['icon']??'🎯' }}</span>
+                    <div class="sl-td-info">
+                      <span class="sl-td-name">{{ $ad['name'] }} @if(!$isU)🔒@endif</span>
+                      <span class="sl-td-skill">{{ ($ad['skills'][0]['icon']??'') }} {{ ($ad['skills'][0]['name']??'') }}</span>
+                    </div>
+                    @if($isSel)<span class="sl-td-check">✓</span>@endif
+                  </div>
+                @endforeach
               </div>
+            </div>
+          @endif
+        @else
+          <span class="sl-strat-name" style="color:rgba(255,255,255,0.35);font-weight:500" id="strat-name-display">{{ __('Aucun') }}</span>
+        @endif
+
+        {{-- Badges skills du stratégique sélectionné --}}
+        @if(!empty($selSkillsShort))
+          <div class="sl-skills-badges">
+            @foreach(array_slice($selSkillsShort,0,3) as $sk)
+              @php $emoji = preg_match('/^\p{So}|\p{Sm}|\p{Sk}|\p{L}/u', $sk, $m) ? mb_substr($sk,0,2) : '⚡'; @endphp
+              <div class="sl-skill-badge" title="{{ $sk }}" style="background:rgba(99,102,241,0.25);">{{ mb_substr($sk,0,2) }}</div>
             @endforeach
           </div>
-        @endif
-        @if(!($is_stratege ?? false))
-        <a href="{{ \Illuminate\Support\Facades\Route::has('avatar') ? route('avatar') : url('/avatar') }}"
-           class="btn btn-sm btn-outline-light ms-2">{{ __('Sélectionner') }}</a>
         @endif
       </div>
     </div>
 
-    <div class="grid-2">
-      <button type="submit" class="btn-theme" name="theme" value="general">🧠 {{ __('Général') }}</button>
-      <button type="submit" class="btn-theme" name="theme" value="geographie">🌐 {{ __('Géographie') }}</button>
-      <button type="submit" class="btn-theme" name="theme" value="histoire">📜 {{ __('Histoire') }}</button>
-      <button type="submit" class="btn-theme" name="theme" value="art">🎨 {{ __('Art') }}</button>
-      <button type="submit" class="btn-theme" name="theme" value="cinema">🎬 {{ __('Cinéma') }}</button>
-      <button type="submit" class="btn-theme" name="theme" value="sport">🏅 {{ __('Sport') }}</button>
-      <button type="submit" class="btn-theme" name="theme" value="faune">🦁 {{ __('Faune') }}</button>
-      <button type="submit" class="btn-theme" name="theme" value="cuisine">🍳 {{ __('Cuisine') }}</button>
-      <button type="submit" name="theme" value="sciences" class="btn-theme">🔬 {{ __('Sciences') }}</button>
+    {{-- GALERIE AVATARS STRATÉGIQUES --}}
+    <div class="sl-card">
+      <div class="sl-av-header">
+        <div class="sl-av-title">{{ __('Vos Avatar Stratégique') }}</div>
+        <div class="sl-av-sub">{{ __('Sélectionnez vos avatars débloqués pour vous accompagner dans vos confrontations.') }}</div>
+      </div>
+
+      <div class="sl-av-gallery" id="avatar-gallery">
+        @foreach($strategic_avatars ?? [] as $slug => $av)
+          @php
+            $tier      = $av['tier'] ?? 'Rare';
+            $tierColor = $tierColors[$tier] ?? '#f59e0b';
+            $imgPath   = $av['path'] ?? "images/avatars/{$slug}.png";
+            $isUnlocked = $av['unlocked'] ?? false;
+            $isSelected = ($slug === $selSlug);
+          @endphp
+          <div class="sl-av-portrait {{ $isSelected ? 'selected' : '' }} {{ !$isUnlocked ? 'locked' : '' }}"
+               data-slug="{{ $slug }}"
+               data-unlocked="{{ $isUnlocked ? '1' : '0' }}"
+               data-name="{{ strtoupper($av['name'] ?? $slug) }}"
+               title="{{ $isUnlocked ? ($av['name'] ?? $slug) : __('Verrouillé — achetez en boutique') }}"
+               onclick="selectStrategicAvatar(this)">
+            <img src="{{ asset($imgPath) }}" alt="{{ $av['name'] ?? $slug }}"
+                 onerror="this.src='{{ asset('images/avatars/default.png') }}'">
+            <div class="sl-av-tier-dot" style="background:{{ $tierColor }}"></div>
+            @if($isSelected)<div class="sl-av-check">✓</div>@endif
+            @if(!$isUnlocked)<div class="sl-av-lock">🔒</div>@endif
+            <div class="sl-av-name">{{ $av['name'] ?? $slug }}</div>
+          </div>
+        @endforeach
+      </div>
+    </div>
+
+    {{-- GRILLE THÈMES --}}
+    <div class="sl-theme-grid">
+      @foreach($themeList as $t)
+        <button type="submit" class="sl-theme-btn" name="theme" value="{{ $t['key'] }}">
+          <span class="sl-theme-emoji">{{ $t['emoji'] }}</span>
+          <span class="sl-theme-info">
+            <span class="sl-theme-name">{{ __($t['label']) }}</span>
+            <span class="sl-theme-desc">{{ __($t['desc']) }}</span>
+          </span>
+          <span class="sl-theme-arrow">›</span>
+        </button>
+      @endforeach
     </div>
   </form>
+
+  {{-- TIP --}}
+  <div class="sl-tip">
+    <span class="sl-tip-icon">ℹ️</span>
+    <span><strong>{{ __('Conseil') }} :</strong> {{ __('Plus votre niveau augmente, plus les questions deviennent difficiles et rapportent plus de points !') }}</span>
+  </div>
+
 </div>
 
-<div id="validationMessage" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(231, 76, 60, 0.95); color: white; padding: 25px 40px; border-radius: 15px; font-size: 1.2rem; font-weight: 700; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3); z-index: 10000; text-align: center;">
+{{-- MESSAGE VALIDATION --}}
+<div class="sl-validation-msg" id="validationMessage">
   {{ __('Choisissez le nombre de questions') }}.
 </div>
 
+{{-- POPUP AVERTISSEMENT AVATAR --}}
 @if($showSoloWarning)
-<div class="solo-warning-overlay" id="soloWarningOverlay">
-    <div class="solo-warning-popup">
-        <button class="solo-warning-close" onclick="closeSoloWarning()">&times;</button>
-        <div class="solo-warning-icon">⚠️</div>
-        <div class="solo-warning-title">{{ __('Avertissement Avatar Stratégique') }}</div>
-        <div class="solo-warning-message">{{ __($soloWarningMessage) }}</div>
-    </div>
+<div class="sl-warn-overlay" id="soloWarningOverlay">
+  <div class="sl-warn-popup">
+    <button class="sl-warn-close" onclick="closeSoloWarning()">×</button>
+    <div style="font-size:3rem;text-align:center;margin-bottom:14px">⚠️</div>
+    <div style="font-size:1.2rem;font-weight:700;text-align:center;margin-bottom:12px;color:#f39c12">{{ __('Avertissement Avatar Stratégique') }}</div>
+    <div style="font-size:0.95rem;line-height:1.5;text-align:center;color:rgba(255,255,255,0.85)">{{ __($soloWarningMsg) }}</div>
+  </div>
 </div>
 @endif
 
 <script>
-  // Fonction pour fermer le popup d'avertissement avatar
-  function closeSoloWarning() {
-    const overlay = document.getElementById('soloWarningOverlay');
-    if (overlay) {
-      overlay.style.animation = 'fadeOutWarning 0.3s ease forwards';
-      setTimeout(() => overlay.remove(), 300);
+(function () {
+  /* ====== NIVEAU STEPPER ====== */
+  const niveauInput   = document.getElementById('niveau_joueur');
+  const niveauDisplay = document.getElementById('display-niveau');
+  const btnMoins      = document.getElementById('btn-niveau-moins');
+  const maxNiveau     = {{ (int)$choix_niveau }};
+  let   curNiveau     = {{ (int)($niveau_selectionne ?? $choix_niveau) }};
+
+  function setNiveau(n) {
+    n = Math.max(1, Math.min(maxNiveau, n));
+    curNiveau = n;
+    niveauInput.value = n;
+    niveauDisplay.textContent = n;
+    btnMoins.disabled = (n <= 1);
+  }
+  if (btnMoins) btnMoins.addEventListener('click', () => setNiveau(curNiveau - 1));
+
+  /* ====== RESTAURER NB_QUESTIONS ====== */
+  const nbQSel = document.getElementById('nb_questions');
+  const saved  = sessionStorage.getItem('solo_nb_questions');
+  if (saved && nbQSel) nbQSel.value = saved;
+  if (nbQSel) nbQSel.addEventListener('change', () => sessionStorage.setItem('solo_nb_questions', nbQSel.value));
+
+  /* ====== VALIDATION AU SUBMIT ====== */
+  const validMsg = document.getElementById('validationMessage');
+  document.querySelectorAll('.sl-theme-btn').forEach(btn => {
+    btn.addEventListener('click', e => {
+      if (!nbQSel || !nbQSel.value) {
+        e.preventDefault();
+        validMsg.style.display = 'block';
+        setTimeout(() => { validMsg.style.display = 'none'; }, 2200);
+        return false;
+      }
+      sessionStorage.removeItem('solo_nb_questions');
+    });
+  });
+
+  /* ====== AVATAR STRATÉGIQUE SELECTION ====== */
+  const selectUrl  = '{{ route("avatars.select") }}';
+  const csrfToken  = '{{ csrf_token() }}';
+
+  window.selectStrategicAvatar = function (el) {
+    if (el.dataset.unlocked === '0') {
+      window.location.href = '{{ route("boutique") }}?tab=avatars';
+      return;
     }
-  }
-  
-  // Toggle le dropdown du coéquipier
-  let dropdownOpen = false;
-  function toggleTeammateDropdown() {
-    const dropdown = document.getElementById('teammate_dropdown');
-    const btn = document.getElementById('teammate_dropdown_btn');
-    if (!dropdown || !btn) return;
-    dropdownOpen = !dropdownOpen;
-    dropdown.style.display = dropdownOpen ? 'block' : 'none';
-    btn.classList.toggle('open', dropdownOpen);
-  }
-  
-  // Sélectionner un coéquipier via data-attributes
-  function selectTeammate(slug) {
-    fetch('{{ route("solo.set-teammate") }}', {
+    const slug = el.dataset.slug;
+    fetch(selectUrl, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRF-TOKEN': '{{ csrf_token() }}'
-      },
-      body: JSON.stringify({ teammate: slug })
-    }).then(response => response.json())
-      .then(data => {
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' },
+      body: new URLSearchParams({ _token: csrfToken, avatar: slug, from: 'solo' })
+    })
+    .then(r => r.ok ? r.text() : null)
+    .then(() => {
+      // Mettre à jour UI
+      document.querySelectorAll('.sl-av-portrait').forEach(p => {
+        p.classList.remove('selected');
+        const c = p.querySelector('.sl-av-check');
+        if (c) c.remove();
+      });
+      const isAlreadySelected = (slug === '{{ $selSlug }}') && el.classList.contains('selected');
+      if (!isAlreadySelected) {
+        el.classList.add('selected');
+        const chk = document.createElement('div');
+        chk.className = 'sl-av-check'; chk.textContent = '✓';
+        el.appendChild(chk);
+        const nameEl = document.getElementById('strat-name-display');
+        if (nameEl) nameEl.textContent = el.dataset.name;
+      }
+    })
+    .catch(() => { window.location.reload(); });
+  };
+
+  /* ====== TEAMMATE DROPDOWN ====== */
+  let dropdownOpen = false;
+  window.toggleTeammateDropdown = function () {
+    const dd  = document.getElementById('teammate_dropdown');
+    const btn = document.getElementById('teammate_dropdown_btn');
+    if (!dd || !btn) return;
+    dropdownOpen = !dropdownOpen;
+    dd.style.display = dropdownOpen ? 'block' : 'none';
+    btn.classList.toggle('open', dropdownOpen);
+  };
+
+  const dd = document.getElementById('teammate_dropdown');
+  if (dd) {
+    dd.addEventListener('click', function (e) {
+      const opt = e.target.closest('.sl-td-opt');
+      if (!opt || opt.dataset.locked === '1') return;
+      const slug = opt.dataset.slug || '';
+      fetch('{{ route("solo.set-teammate") }}', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+        body: JSON.stringify({ teammate: slug })
+      }).then(r => r.json()).then(data => {
         if (data.success) {
-          // Mettre à jour visuellement
-          document.querySelectorAll('.teammate-option').forEach(opt => {
-            opt.classList.remove('selected');
-            const checkEl = opt.querySelector('.teammate-check');
-            if (checkEl) checkEl.remove();
+          document.querySelectorAll('.sl-td-opt').forEach(o => {
+            o.classList.remove('selected');
+            const c = o.querySelector('.sl-td-check');
+            if (c) c.remove();
           });
-          // Marquer la nouvelle sélection
-          const selectedOpt = slug === '' 
-            ? document.querySelector('.teammate-option:first-child')
-            : document.querySelector('.teammate-option[data-slug="' + slug + '"]');
-          if (selectedOpt) {
-            selectedOpt.classList.add('selected');
-            const check = document.createElement('span');
-            check.className = 'teammate-check';
-            check.textContent = '✓';
-            selectedOpt.appendChild(check);
+          const sel = slug === '' ? dd.querySelector('.sl-td-opt:first-child') : dd.querySelector(`.sl-td-opt[data-slug="${slug}"]`);
+          if (sel) {
+            sel.classList.add('selected');
+            const c = document.createElement('span'); c.className = 'sl-td-check'; c.textContent = '✓';
+            sel.appendChild(c);
           }
           toggleTeammateDropdown();
         }
       });
+    });
   }
-  
-  // Event delegation pour les clics sur les options
-  document.addEventListener('DOMContentLoaded', function() {
-    const dropdown = document.getElementById('teammate_dropdown');
-    if (dropdown) {
-      dropdown.addEventListener('click', function(e) {
-        const option = e.target.closest('.teammate-option');
-        if (!option) return;
-        if (option.dataset.locked === '1') return; // Ignorer les avatars verrouillés
-        const slug = option.dataset.slug || '';
-        selectTeammate(slug);
-      });
-    }
-  });
-  
-  // Fermer le dropdown si on clique en dehors
-  document.addEventListener('click', function(e) {
-    const dropdown = document.getElementById('teammate_dropdown');
-    const btn = document.getElementById('teammate_dropdown_btn');
-    if (dropdown && btn && !dropdown.contains(e.target) && !btn.contains(e.target)) {
-      dropdown.style.display = 'none';
-      btn.classList.remove('open');
+
+  document.addEventListener('click', function (e) {
+    const ddEl  = document.getElementById('teammate_dropdown');
+    const ddBtn = document.getElementById('teammate_dropdown_btn');
+    if (ddEl && ddBtn && !ddEl.contains(e.target) && !ddBtn.contains(e.target)) {
+      ddEl.style.display = 'none';
+      if (ddBtn) ddBtn.classList.remove('open');
       dropdownOpen = false;
     }
   });
 
-  const form = document.getElementById('soloForm');
-  const validationMsg = document.getElementById('validationMessage');
-  const nbQuestionsSelect = document.getElementById('nb_questions');
-  
-  // Restaurer la valeur sauvegardée au chargement
-  const savedNbQuestions = sessionStorage.getItem('solo_nb_questions');
-  if (savedNbQuestions && nbQuestionsSelect) {
-    nbQuestionsSelect.value = savedNbQuestions;
-  }
-  
-  // Sauvegarder quand l'utilisateur change la valeur
-  if (nbQuestionsSelect) {
-    nbQuestionsSelect.addEventListener('change', () => {
-      sessionStorage.setItem('solo_nb_questions', nbQuestionsSelect.value);
-    });
-  }
-  
-  document.querySelectorAll('.btn-theme').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      const nbq = document.getElementById('nb_questions').value;
-      if (!nbq) {
-        e.preventDefault();
-        
-        validationMsg.style.display = 'block';
-        
-        setTimeout(() => {
-          validationMsg.style.display = 'none';
-        }, 2000);
-        
-        return false;
-      }
-      // Nettoyer sessionStorage quand le jeu commence
-      sessionStorage.removeItem('solo_nb_questions');
-    });
-  });
+  /* ====== WARNING CLOSE ====== */
+  window.closeSoloWarning = function () {
+    const ov = document.getElementById('soloWarningOverlay');
+    if (ov) { ov.style.opacity = '0'; ov.style.transition = 'opacity .25s'; setTimeout(() => ov.remove(), 260); }
+  };
+})();
 </script>
-<style>
-  /* THEME BUTTONS UNIFORM */
-  .btn-theme{display:block;width:100%;padding:14px 18px;border-radius:12px;font-size:1.1rem;box-shadow:2px 2px 6px rgba(0,0,0,.3);}
-  .btn-theme:hover{transform:translateY(-1px);}
-  .btn-theme:active{transform:translateY(0);}
-  .container .row{overflow:hidden;}
-</style>
 
 @endsection
