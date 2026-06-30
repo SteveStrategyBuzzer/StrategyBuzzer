@@ -37,6 +37,22 @@ $selTierColor      = $tierColors[$selTier] ?? '#ffffff';
 $avatarsSorted = collect($strategic_avatars ?? [])
     ->sortByDesc(fn($a) => $a['unlocked'] ? 1 : 0)
     ->all();
+// Rare avatars pour le panel coéquipier Stratège (calculé toujours)
+$rareAvatarsJs = [];
+foreach ($strategic_avatars ?? [] as $rSlug => $rAv) {
+    if (($rAv['tier'] ?? '') !== 'Rare') continue;
+    $rSkill = $rAv['skills'][0] ?? '';
+    preg_match('/^(\S+)\s+(.+?)(?=\s*:)/u', $rSkill, $rM);
+    $rareAvatarsJs[$rSlug] = [
+        'name'      => $rAv['name'] ?? $rSlug,
+        'emoji'     => $rM[1] ?? '⚡',
+        'skillName' => isset($rM[2]) ? trim($rM[2]) : $rSkill,
+        'unlocked'  => $rAv['unlocked'] ?? false,
+    ];
+}
+// Données du coéquipier actuellement choisi (pour le rendu PHP initial)
+$selTeamSlug  = $selected_teammate ?? null;
+$selTeamData  = ($selTeamSlug && isset($rareAvatarsJs[$selTeamSlug])) ? $rareAvatarsJs[$selTeamSlug] : null;
 $themeList = [
     ['key'=>'general',    'emoji'=>'🧠','label'=>'Général',    'desc'=>'Culture générale'],
     ['key'=>'geographie', 'emoji'=>'🌐','label'=>'Géographie', 'desc'=>'Pays, villes, lieux'],
@@ -346,6 +362,44 @@ body { background: #030924; color: #fff; overflow-x: hidden; }
 .sl-td-name { font-weight: 700; font-size: 0.88rem; }
 .sl-td-skill { font-size: 0.72rem; color: rgba(255,255,255,0.6); margin-top: 1px; }
 .sl-td-check { color: #2ecc71; font-weight: 900; }
+/* ── Coéquipier Stratège ── */
+@keyframes slPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(59,130,246,.7), 0 4px 14px rgba(59,130,246,.3); transform:scale(1); }
+  50%       { box-shadow: 0 0 0 9px rgba(59,130,246,0), 0 4px 14px rgba(59,130,246,.6); transform:scale(1.07); }
+}
+.sl-team-trigger { animation: slPulse 1.5s ease-in-out infinite; cursor:pointer !important; }
+.sl-team-trigger:hover { animation:none !important; transform:scale(1.1) !important; }
+.sl-team-panel {
+  position:fixed; inset:0; z-index:900;
+  display:flex; align-items:center; justify-content:center;
+  background:rgba(0,0,0,.55); backdrop-filter:blur(5px);
+}
+.sl-team-inner {
+  background:linear-gradient(145deg,#132047,#0a1735);
+  border:1.5px solid rgba(255,255,255,.22); border-radius:18px;
+  padding:22px 18px 16px; width:88%; max-width:340px;
+  box-shadow:0 20px 60px rgba(0,0,0,.65);
+  animation:slScaleIn .2s ease;
+}
+.sl-team-panel-title {
+  font-weight:800; font-size:0.95rem; margin-bottom:14px;
+  text-align:center; color:rgba(255,255,255,.92); letter-spacing:.3px;
+}
+.sl-team-opt {
+  display:flex; align-items:center; gap:12px; padding:11px 12px;
+  border-radius:12px; margin-bottom:8px; cursor:pointer;
+  background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.1);
+  transition:background .15s, border-color .15s;
+}
+.sl-team-opt:last-of-type { margin-bottom:0; }
+.sl-team-opt:not(.locked):hover { background:rgba(59,130,246,.15); border-color:rgba(59,130,246,.5); }
+.sl-team-opt.selected { background:rgba(59,130,246,.2); border-color:rgba(59,130,246,.7); }
+.sl-team-opt.locked { opacity:.4; cursor:not-allowed; }
+.sl-team-opt-icon { font-size:1.6rem; width:44px; height:44px; display:flex; align-items:center; justify-content:center; background:rgba(59,130,246,.12); border-radius:12px; flex-shrink:0; }
+.sl-team-opt-name { font-weight:700; font-size:.88rem; }
+.sl-team-opt-skill { font-size:.71rem; color:rgba(255,255,255,.55); margin-top:2px; }
+.sl-team-panel-close { width:100%; margin-top:12px; padding:10px; background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.15); border-radius:10px; color:rgba(255,255,255,.7); font-weight:600; font-size:.85rem; cursor:pointer; transition:background .15s; }
+.sl-team-panel-close:hover { background:rgba(255,255,255,.15); }
 
 @keyframes slFadeIn  { from { opacity:0 } to { opacity:1 } }
 @keyframes slScaleIn { from { opacity:0; transform:scale(.85) } to { opacity:1; transform:scale(1) } }
@@ -441,30 +495,6 @@ body { background: #030924; color: #fff; overflow-x: hidden; }
           @if(!empty($selSlug) || ($avatar_stratégique && strtolower($avatar_stratégique) !== 'aucun'))
             <span class="sl-strat-name" id="strat-name-display"
                   style="color: {{ $selTierColor }}">{{ $selAvatarName }}</span>
-            @if($is_stratege && !empty($selected_teammate))
-              <div class="sl-teammate-wrap">
-                <button type="button" class="sl-teammate-btn" id="teammate_dropdown_btn" onclick="toggleTeammateDropdown()">🔽</button>
-                <div id="teammate_dropdown" class="sl-teammate-dropdown" style="display:none;">
-                  <div class="sl-td-header">👥 {{ __('Sélectionner un coéquipier') }}</div>
-                  <div class="sl-td-opt {{ empty($selected_teammate) ? 'selected' : '' }} unlocked" data-slug="" data-locked="0">
-                    <span class="sl-td-icon">❌</span>
-                    <div class="sl-td-info"><span class="sl-td-name">{{ __('Aucun coéquipier') }}</span></div>
-                    @if(empty($selected_teammate))<span class="sl-td-check">✓</span>@endif
-                  </div>
-                  @foreach($rare_avatars_data ?? [] as $slug => $ad)
-                    @php $isU=$ad['unlocked']??false; $isSel=($selected_teammate??'')===$slug; @endphp
-                    <div class="sl-td-opt {{ $isU?'unlocked':'locked' }} {{ $isSel?'selected':'' }}" data-slug="{{ $slug }}" data-locked="{{ $isU?'0':'1' }}">
-                      <span class="sl-td-icon">{{ $ad['icon']??'🎯' }}</span>
-                      <div class="sl-td-info">
-                        <span class="sl-td-name">{{ $ad['name'] }} @if(!$isU)🔒@endif</span>
-                        <span class="sl-td-skill">{{ ($ad['skills'][0]['icon']??'') }} {{ ($ad['skills'][0]['name']??'') }}</span>
-                      </div>
-                      @if($isSel)<span class="sl-td-check">✓</span>@endif
-                    </div>
-                  @endforeach
-                </div>
-              </div>
-            @endif
           @else
             <span class="sl-strat-name" style="color:rgba(255,255,255,0.35);font-weight:500" id="strat-name-display">{{ __('Aucun') }}</span>
           @endif
@@ -472,17 +502,47 @@ body { background: #030924; color: #fff; overflow-x: hidden; }
           {{-- Ability cards — icône large + nom extrait --}}
           <div class="sl-skill-cards" id="sl-skills-badges">
             @foreach($selSkillsParsed as $sk)
-              <div class="sl-skill-card" title="{{ $sk['emoji'] }} {{ $sk['name'] }}"
-                   style="--tc:{{ $selTierColor }}">
-                <div class="sl-skill-icon"
-                     style="background:linear-gradient(135deg,{{ $selTierColor }}33 0%,{{ $selTierColor }}0d 100%);
-                            border-color:{{ $selTierColor }}99;
-                            box-shadow:0 4px 14px {{ $selTierColor }}40;">{{ $sk['emoji'] }}</div>
-                <div class="sl-skill-name" style="color:{{ $selTierColor }}">{{ $sk['name'] }}</div>
-              </div>
+              @if($sk['name'] === 'Coéquipier')
+                {{-- Slot spécial : pulsant si aucun coéquipier, sinon skill du coéquipier --}}
+                <div class="sl-skill-card" id="sl-team-slot" title="{{ __('Choisir un coéquipier') }}" onclick="openTeamPanel()" style="cursor:pointer">
+                  <div class="sl-skill-icon {{ $selTeamData ? '' : 'sl-team-trigger' }}"
+                       style="{{ $selTeamData
+                         ? 'background:linear-gradient(135deg,'.$selTierColor.'33 0%,'.$selTierColor.'0d 100%);border-color:'.$selTierColor.'99;box-shadow:0 4px 14px '.$selTierColor.'40'
+                         : 'background:linear-gradient(135deg,rgba(59,130,246,.2) 0%,rgba(59,130,246,.06) 100%);border-color:rgba(59,130,246,.85)' }}">{{ $selTeamData ? $selTeamData['emoji'] : '👥' }}</div>
+                  <div class="sl-skill-name" style="color:#3b82f6">{{ $selTeamData ? $selTeamData['skillName'] : __('Équipe') }}</div>
+                </div>
+              @else
+                <div class="sl-skill-card" title="{{ $sk['emoji'] }} {{ $sk['name'] }}">
+                  <div class="sl-skill-icon"
+                       style="background:linear-gradient(135deg,{{ $selTierColor }}33 0%,{{ $selTierColor }}0d 100%);
+                              border-color:{{ $selTierColor }}99;
+                              box-shadow:0 4px 14px {{ $selTierColor }}40;">{{ $sk['emoji'] }}</div>
+                  <div class="sl-skill-name" style="color:{{ $selTierColor }}">{{ $sk['name'] }}</div>
+                </div>
+              @endif
             @endforeach
           </div>
         </div>
+      </div>
+    </div>
+
+    {{-- Panel sélection coéquipier (Stratège) — toujours en DOM --}}
+    <div class="sl-team-panel" id="sl-team-panel" style="display:none" onclick="if(event.target===this)closeTeamPanel()">
+      <div class="sl-team-inner">
+        <div class="sl-team-panel-title">👥 {{ __('Choisir un coéquipier') }}</div>
+        @foreach($rareAvatarsJs as $rSlug => $rD)
+          <div class="sl-team-opt {{ !$rD['unlocked'] ? 'locked' : '' }} {{ $selTeamSlug===$rSlug ? 'selected' : '' }}"
+               data-slug="{{ $rSlug }}"
+               onclick="if(!this.classList.contains('locked')) pickTeammate('{{ $rSlug }}','{{ $rD['emoji'] }}','{{ addslashes($rD['skillName']) }}')">
+            <div class="sl-team-opt-icon">{{ $rD['emoji'] }}</div>
+            <div>
+              <div class="sl-team-opt-name">{{ $rD['name'] }}{{ !$rD['unlocked'] ? ' 🔒' : '' }}</div>
+              <div class="sl-team-opt-skill">{{ $rD['skillName'] }}</div>
+            </div>
+            @if($selTeamSlug===$rSlug)<span style="color:#2ecc71;font-weight:900;margin-left:auto">✓</span>@endif
+          </div>
+        @endforeach
+        <button class="sl-team-panel-close" onclick="closeTeamPanel()">{{ __('Annuler') }}</button>
       </div>
     </div>
 
@@ -607,11 +667,16 @@ body { background: #030924; color: #fff; overflow-x: hidden; }
   });
 
   /* ====== AVATAR STRATÉGIQUE SELECTION ====== */
-  const selectUrl  = '{{ route("avatars.select") }}';
-  const csrfToken  = '{{ csrf_token() }}';
+  const selectUrl       = '{{ route("avatars.select") }}';
+  const csrfToken       = '{{ csrf_token() }}';
+  const SET_TEAMMATE_URL = '{{ route("set-teammate") }}';
+  const RARE_AVATARS    = @json($rareAvatarsJs);
+  let   currentTeammate = @json($selTeamSlug);
+  let   currentTierColor = @json($selTierColor);
 
   /* ── Helpers ── */
   function buildSkillCards(badgesEl, tierColor, skills) {
+    currentTierColor = tierColor;
     badgesEl.innerHTML = '';
     skills.slice(0, 3).forEach(sk => {
       const withColon = sk.match(/^(\S+)\s+(.+?)(?=\s*:)/u);
@@ -619,23 +684,31 @@ body { background: #030924; color: #fff; overflow-x: hidden; }
       const m = withColon || fallback;
       const emoji = m ? m[1] : '⚡';
       const name  = m ? m[2].trim() : sk;
+      const isTeam = (name === 'Coéquipier');
 
-      const card  = document.createElement('div');
+      const card = document.createElement('div');
       card.className = 'sl-skill-card';
-      card.title = name;
+      if (isTeam) { card.id = 'sl-team-slot'; card.style.cursor = 'pointer'; card.onclick = openTeamPanel; }
+      card.title = isTeam ? '{{ __("Choisir un coéquipier") }}' : name;
 
       const icon = document.createElement('div');
-      icon.className = 'sl-skill-icon';
-      icon.style.cssText = `background:linear-gradient(135deg,${tierColor}33 0%,${tierColor}0d 100%);border-color:${tierColor}99;box-shadow:0 4px 14px ${tierColor}40`;
-      icon.textContent = emoji;
+      const tm = isTeam && currentTeammate ? RARE_AVATARS[currentTeammate] : null;
+      if (isTeam && !tm) {
+        icon.className = 'sl-skill-icon sl-team-trigger';
+        icon.style.cssText = 'background:linear-gradient(135deg,rgba(59,130,246,.2) 0%,rgba(59,130,246,.06) 100%);border-color:rgba(59,130,246,.85)';
+        icon.textContent = '👥';
+      } else {
+        icon.className = 'sl-skill-icon';
+        icon.style.cssText = `background:linear-gradient(135deg,${tierColor}33 0%,${tierColor}0d 100%);border-color:${tierColor}99;box-shadow:0 4px 14px ${tierColor}40`;
+        icon.textContent = tm ? tm.emoji : emoji;
+      }
 
       const lbl = document.createElement('div');
       lbl.className = 'sl-skill-name';
-      lbl.style.color = tierColor;
-      lbl.textContent = name;
+      lbl.style.color = isTeam ? '#3b82f6' : tierColor;
+      lbl.textContent = isTeam ? (tm ? tm.skillName : '{{ __("Équipe") }}') : name;
 
-      card.appendChild(icon);
-      card.appendChild(lbl);
+      card.appendChild(icon); card.appendChild(lbl);
       badgesEl.appendChild(card);
     });
   }
@@ -702,55 +775,52 @@ body { background: #030924; color: #fff; overflow-x: hidden; }
     }).catch(() => { /* échec silencieux — l'UI est déjà mise à jour */ });
   };
 
-  /* ====== TEAMMATE DROPDOWN ====== */
-  let dropdownOpen = false;
-  window.toggleTeammateDropdown = function () {
-    const dd  = document.getElementById('teammate_dropdown');
-    const btn = document.getElementById('teammate_dropdown_btn');
-    if (!dd || !btn) return;
-    dropdownOpen = !dropdownOpen;
-    dd.style.display = dropdownOpen ? 'block' : 'none';
-    btn.classList.toggle('open', dropdownOpen);
+  /* ====== COÉQUIPIER TEAM PANEL (Stratège) ====== */
+  window.openTeamPanel = function () {
+    const panel = document.getElementById('sl-team-panel');
+    if (panel) panel.style.display = 'flex';
   };
+  window.closeTeamPanel = function () {
+    const panel = document.getElementById('sl-team-panel');
+    if (panel) panel.style.display = 'none';
+  };
+  window.pickTeammate = function (slug, emoji, skillName) {
+    currentTeammate = slug;
+    closeTeamPanel();
 
-  const dd = document.getElementById('teammate_dropdown');
-  if (dd) {
-    dd.addEventListener('click', function (e) {
-      const opt = e.target.closest('.sl-td-opt');
-      if (!opt || opt.dataset.locked === '1') return;
-      const slug = opt.dataset.slug || '';
-      fetch('{{ route("solo.set-teammate") }}', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
-        body: JSON.stringify({ teammate: slug })
-      }).then(r => r.json()).then(data => {
-        if (data.success) {
-          document.querySelectorAll('.sl-td-opt').forEach(o => {
-            o.classList.remove('selected');
-            const c = o.querySelector('.sl-td-check');
-            if (c) c.remove();
-          });
-          const sel = slug === '' ? dd.querySelector('.sl-td-opt:first-child') : dd.querySelector(`.sl-td-opt[data-slug="${slug}"]`);
-          if (sel) {
-            sel.classList.add('selected');
-            const c = document.createElement('span'); c.className = 'sl-td-check'; c.textContent = '✓';
-            sel.appendChild(c);
-          }
-          toggleTeammateDropdown();
-        }
-      });
-    });
-  }
-
-  document.addEventListener('click', function (e) {
-    const ddEl  = document.getElementById('teammate_dropdown');
-    const ddBtn = document.getElementById('teammate_dropdown_btn');
-    if (ddEl && ddBtn && !ddEl.contains(e.target) && !ddBtn.contains(e.target)) {
-      ddEl.style.display = 'none';
-      if (ddBtn) ddBtn.classList.remove('open');
-      dropdownOpen = false;
+    // Mise à jour du slot coéquipier dans les skill cards
+    const slot = document.getElementById('sl-team-slot');
+    if (slot) {
+      const icon = slot.querySelector('.sl-skill-icon');
+      const lbl  = slot.querySelector('.sl-skill-name');
+      if (icon) {
+        icon.classList.remove('sl-team-trigger');
+        icon.textContent = emoji;
+        icon.style.cssText = `background:linear-gradient(135deg,${currentTierColor}33 0%,${currentTierColor}0d 100%);border-color:${currentTierColor}99;box-shadow:0 4px 14px ${currentTierColor}40`;
+      }
+      if (lbl) lbl.textContent = skillName;
     }
-  });
+    // Cocher dans le panel
+    document.querySelectorAll('.sl-team-opt').forEach(o => {
+      o.classList.remove('selected');
+      const chk = o.querySelector('.sl-chk');
+      if (chk) chk.remove();
+    });
+    const picked = document.querySelector(`.sl-team-opt[data-slug="${slug}"]`);
+    if (picked) {
+      picked.classList.add('selected');
+      const chk = document.createElement('span');
+      chk.className = 'sl-chk'; chk.style.cssText = 'color:#2ecc71;font-weight:900;margin-left:auto';
+      chk.textContent = '✓'; picked.appendChild(chk);
+    }
+
+    // Sauvegarde en arrière-plan
+    fetch(SET_TEAMMATE_URL, {
+      method: 'POST', redirect: 'manual',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' },
+      body: new URLSearchParams({ _token: csrfToken, teammate: slug })
+    }).catch(() => {});
+  };
 
   /* ====== WARNING CLOSE ====== */
   window.closeSoloWarning = function () {
