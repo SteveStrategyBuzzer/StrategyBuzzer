@@ -507,7 +507,7 @@ body { background: #030924; color: #fff; overflow-x: hidden; }
                data-unlocked="{{ $isUnlocked ? '1' : '0' }}"
                data-name="{{ strtoupper($av['name'] ?? $slug) }}"
                data-tier-color="{{ $tierColor }}"
-               data-skills="{{ htmlspecialchars(json_encode($av['skills'] ?? []), ENT_QUOTES) }}"
+               data-skills="{{ json_encode($av['skills'] ?? []) }}"
                title="{{ $isUnlocked ? ($av['name'] ?? $slug) : __('Verrouillé — achetez en boutique') }}"
                onclick="selectStrategicAvatar(this)">
             <div class="sl-av-frame"
