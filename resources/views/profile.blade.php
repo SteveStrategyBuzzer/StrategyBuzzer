@@ -1985,9 +1985,12 @@ document.addEventListener('DOMContentLoaded', () => {
   };
   
   // Écouter tous les changements de champs
-  form.querySelectorAll('input, select').forEach(field => {
+  // Inclure les éléments hors du DOM du form mais associés via form="profileForm"
+  document.querySelectorAll(
+    '#profileForm input, #profileForm select, input[form="profileForm"], select[form="profileForm"]'
+  ).forEach(field => {
     field.addEventListener('change', autoSave);
-    if (field.type === 'text') {
+    if (field.type === 'text' || field.type === 'number') {
       field.addEventListener('input', autoSave);
     }
   });
