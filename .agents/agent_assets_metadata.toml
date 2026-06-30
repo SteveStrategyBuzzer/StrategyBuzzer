@@ -1775,3 +1775,27 @@ id = "iJX3JPV_-cE-rLC4-a_Pp"
 uri = "file://kernel_raw_121.json"
 type = "unspecified"
 title = "kernel_raw_121.json — Faune / Anatomie aviaire (depth 8)"
+
+[[outputs]]
+id = "7hPi6k825GYyAxdUDVUid"
+uri = "file://public/images/solo_boss100.png"
+type = "image"
+title = "Solo"
+
+[[outputs]]
+id = "wcabdDBiu0Z8ASj8wM8eL"
+uri = "file://public/images/duo_splash_landscape.png"
+type = "image"
+title = "Duo"
+
+[[outputs]]
+id = "fdwdgCExdmax5PCJ3rwtx"
+uri = "file://public/images/ligue_hero.png"
+type = "image"
+title = "Ligue"
+
+[[outputs]]
+id = "sZt4getG6HfoCk2x5JFN8"
+uri = "file://public/images/master-home-landscape.png"
+type = "image"
+title = "Maître du Jeu"
