@@ -175,10 +175,10 @@ body { background: #030924; color: #fff; overflow-x: hidden; }
 }
 .sl-strat-label { display: flex; align-items: center; gap: 7px; font-size: 0.82rem; color: rgba(255,255,255,0.7); }
 .sl-strat-icon { font-size: 1rem; }
-.sl-strat-bottom { display: flex; flex-direction: row; flex-wrap: nowrap; align-items: center; gap: 8px; min-width: 0; overflow: hidden; }
+.sl-strat-bottom { display: flex; flex-direction: row; flex-wrap: nowrap; align-items: center; gap: 10px; min-width: 0; }
 .sl-strat-name { font-weight: 800; font-size: 0.85rem; letter-spacing: 0.5px; flex-shrink: 0; white-space: nowrap; }
 /* ── Ability cards ── */
-.sl-skill-cards { display: flex; gap: 5px; margin-left: auto; flex-shrink: 0; }
+.sl-skill-cards { display: flex; gap: 5px; flex-shrink: 0; }
 .sl-skill-card {
   display: flex; flex-direction: column; align-items: center; gap: 4px;
   width: 54px; cursor: default;
