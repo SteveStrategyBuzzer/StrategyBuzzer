@@ -30,7 +30,7 @@ $selSkillsParsed   = array_map(function($s) {
     preg_match('/^(\S+)\s+(.+)$/u', $s, $m2);
     return ['emoji' => $m2[1] ?? '⚡', 'name' => trim($m2[2] ?? $s)];
 }, array_slice($selSkillsFull, 0, 3));
-$selAvatarName     = $selAvatarData ? strtoupper($selAvatarData['name'] ?? '') : strtoupper($avatar_stratégique ?? __('Aucun'));
+$selAvatarName     = $selAvatarData ? mb_strtoupper($selAvatarData['name'] ?? '', 'UTF-8') : mb_strtoupper($avatar_stratégique ?? __('Aucun'), 'UTF-8');
 $selTier           = $selAvatarData['tier'] ?? '';
 $selTierColor      = $tierColors[$selTier] ?? '#ffffff';
 // Avatars débloqués en premier
@@ -175,27 +175,27 @@ body { background: #030924; color: #fff; overflow-x: hidden; }
 }
 .sl-strat-label { display: flex; align-items: center; gap: 7px; font-size: 0.82rem; color: rgba(255,255,255,0.7); }
 .sl-strat-icon { font-size: 1rem; }
-.sl-strat-bottom { display: flex; align-items: center; gap: 12px; min-width: 0; }
-.sl-strat-name { font-weight: 800; font-size: 0.9rem; letter-spacing: 0.5px; flex-shrink: 0; }
+.sl-strat-bottom { display: flex; flex-direction: row; flex-wrap: nowrap; align-items: center; gap: 8px; min-width: 0; overflow: hidden; }
+.sl-strat-name { font-weight: 800; font-size: 0.85rem; letter-spacing: 0.5px; flex-shrink: 0; white-space: nowrap; }
 /* ── Ability cards ── */
-.sl-skill-cards { display: flex; gap: 8px; margin-left: auto; flex-shrink: 0; }
+.sl-skill-cards { display: flex; gap: 5px; margin-left: auto; flex-shrink: 0; }
 .sl-skill-card {
-  display: flex; flex-direction: column; align-items: center; gap: 5px;
-  width: 62px; cursor: default;
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  width: 54px; cursor: default;
 }
 .sl-skill-icon {
-  width: 48px; height: 48px; border-radius: 14px; flex-shrink: 0;
+  width: 42px; height: 42px; border-radius: 12px; flex-shrink: 0;
   display: flex; align-items: center; justify-content: center;
-  font-size: 1.45rem;
+  font-size: 1.3rem;
   border: 2px solid;
   backdrop-filter: blur(6px);
   transition: transform .15s, box-shadow .15s;
 }
 .sl-skill-icon:hover { transform: translateY(-2px); }
 .sl-skill-name {
-  font-size: 0.6rem; font-weight: 700; text-align: center; line-height: 1.25;
-  color: rgba(255,255,255,0.8); text-transform: uppercase; letter-spacing: 0.4px;
-  max-width: 62px;
+  font-size: 0.55rem; font-weight: 700; text-align: center; line-height: 1.2;
+  color: rgba(255,255,255,0.8); text-transform: uppercase; letter-spacing: 0.3px;
+  max-width: 54px;
 }
 
 /* ===== AVATAR GALLERY CARD ===== */
@@ -565,7 +565,7 @@ body { background: #030924; color: #fff; overflow-x: hidden; }
           <div class="sl-av-portrait {{ $isSelected ? 'selected' : '' }} {{ !$isUnlocked ? 'locked' : '' }}"
                data-slug="{{ $slug }}"
                data-unlocked="{{ $isUnlocked ? '1' : '0' }}"
-               data-name="{{ strtoupper($av['name'] ?? $slug) }}"
+               data-name="{{ mb_strtoupper($av['name'] ?? $slug, 'UTF-8') }}"
                data-tier-color="{{ $tierColor }}"
                data-skills="{{ json_encode($av['skills'] ?? []) }}"
                title="{{ $isUnlocked ? ($av['name'] ?? $slug) : __('Verrouillé — achetez en boutique') }}"
