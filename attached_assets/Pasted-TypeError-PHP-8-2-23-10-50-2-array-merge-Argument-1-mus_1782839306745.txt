@@ -1,0 +1,161 @@
+TypeError
+PHP 8.2.23
+10.50.2
+array_merge(): Argument #1 must be of type array, string given
+
+Expand vendor frames
+app
+ / 
+Http
+ / 
+Controllers
+ / 
+SoloController
+.php
+ 
+: 94
+array_merge
+App
+ \ 
+Http
+ \ 
+Controllers
+ \ 
+SoloController
+ 
+: 94
+index
+14 vendor frames
+App
+ \ 
+Http
+ \ 
+Middleware
+ \ 
+SetLocale
+ 
+: 30
+handle
+1 vendor frame
+App
+ \ 
+Http
+ \ 
+Middleware
+ \ 
+DetectCurrency
+ 
+: 33
+handle
+15 vendor frames
+App
+ \ 
+Http
+ \ 
+Middleware
+ \ 
+NoCacheHeaders
+ 
+: 13
+handle
+19 vendor frames
+app
+ / 
+Http
+ / 
+Controllers
+ / 
+SoloController
+.php
+ 
+: 94
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        $selectedTeammate = session('stratege_teammate', null);
+
+
+
+        // Galerie avatars stratégiques pour le nouveau lobby UX
+
+        $catalogStrategiques = \App\Services\AvatarCatalog::get()['stratégiques'] ?? [];
+
+        $userUnlocked = [];
+
+        if ($user) {
+
+            $s = (array) ($user->profile_settings ?? []);
+
+            $userUnlocked = array_unique(array_merge(
+
+                (array) ($s['unlocked_avatars'] ?? []),
+
+                (array) ($s['unlocked'] ?? [])
+
+            ));
+
+        }
+
+        $strategicAvatarsGallery = [];
+
+        foreach ($catalogStrategiques as $slug => $data) {
+
+            $strategicAvatarsGallery[$slug] = array_merge($data, [
+
+                'unlocked' => in_array($slug, $userUnlocked),
+
+            ]);
+
+        }
+
+        $currentStrategicSlug = $user
+
+            ? (string) data_get((array)($user->profile_settings ?? []), 'strategic_avatar.id', '')
+
+            : '';
+
+
+
+        return view('solo', [
+
+            'choix_niveau'            => $choix_niveau,
+
+            'niveau_selectionne'      => $niveau_selectionne,
+
+            'avatar_stratégique'      => $avatar,
+
+            'nb_questions'            => $nb_questions,
+
+            'is_stratege'             => $isStratege,
+
+            'rare_avatars_data'       => $rareAvatarsData,

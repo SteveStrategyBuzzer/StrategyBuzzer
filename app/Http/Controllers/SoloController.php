@@ -80,7 +80,7 @@ class SoloController extends Controller
         $selectedTeammate = session('stratege_teammate', null);
 
         // Galerie avatars stratégiques pour le nouveau lobby UX
-        $catalogStrategiques = \App\Services\AvatarCatalog::get()['stratégiques'] ?? [];
+        $catalogStrategiques = \App\Services\AvatarCatalog::getStrategiques() ?: [];
         $userUnlocked = [];
         if ($user) {
             $s = (array) ($user->profile_settings ?? []);
