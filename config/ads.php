@@ -1,17 +1,19 @@
 <?php
 
 return [
-    'enabled' => env('ADS_ENABLED', true),
+    'enabled' => env('ADS_ENABLED', false),
 
-    'provider' => env('ADS_PROVIDER', 'google'),
+    'provider' => env('ADS_PROVIDER', 'google_ad_manager'),
+
+    'test_mode' => env('ADS_TEST_MODE', true),
 
     'banner' => [
-        'enabled' => true,
+        'enabled' => false,
         'position' => 'bottom',
     ],
 
     'rewarded' => [
-        'enabled' => true,
+        'enabled' => env('ADS_REWARDED_ENABLED', false),
         'max_per_day' => 3,
         'rewards' => [
             'competence'   => ['type' => 'competence',   'amount' => 10],
