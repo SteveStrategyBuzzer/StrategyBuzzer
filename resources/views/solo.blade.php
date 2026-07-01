@@ -606,7 +606,7 @@ body { background: #030924; color: #fff; overflow-x: hidden; }
   {{-- TIP --}}
   <div class="sl-tip">
     <span class="sl-tip-icon">ℹ️</span>
-    <span><strong>{{ __('Conseil') }} :</strong> {{ __('Plus votre niveau augmente, plus les questions deviennent difficiles et rapportent plus de points !') }}</span>
+    <span><strong>{{ __('Conseil') }} :</strong> {{ __('Plus votre niveau augmente, plus les questions deviennent difficiles et rapportent plus de pièces de Compétence !') }}</span>
   </div>
 
 </div>
