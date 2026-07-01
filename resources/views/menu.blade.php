@@ -606,9 +606,14 @@ body { background: var(--sb-bg); }
     box-shadow: 0 8px 24px rgba(0,0,0,0.4);
 }
 
-.sb-mode-card.locked {
-    opacity: 0.5;
+.sb-mode-card.locked .sb-mode-img-wrap {
+    opacity: 0.45;
+}
+.sb-mode-card.locked .sb-mode-body {
     pointer-events: none;
+}
+.sb-mode-card.locked .sb-shop-corner {
+    pointer-events: auto;
 }
 
 .sb-mode-img-wrap {
@@ -1366,7 +1371,7 @@ body { background: var(--sb-bg); }
                             <a href="{{ route('duo.invitations') }}" class="sb-mode-btn btn-green">{{ __('Rejoindre') }}</a>
                         @else
                             <div style="font-size:0.62rem;color:var(--sb-muted);text-align:center;line-height:1.6">
-                                🔒 {{ __('Vaincre Le Stratège (niv. 10)') }}
+                                🔒 {{ __('Vaincre Le Stratège') }} — {{ __('Niv.') }} ({{ $duoUnlockInfo['choix_niveau'] }}/10)
                             </div>
                             <a href="{{ route('boutique') }}?tab=duo" class="sb-shop-corner" title="{{ __('Débloquer dans la Boutique') }}">🛒</a>
                         @endif
@@ -1400,7 +1405,7 @@ body { background: var(--sb-bg); }
                 </div>
 
                 {{-- MAÎTRE DU JEU --}}
-                <div class="sb-mode-card">
+                <div class="sb-mode-card {{ (!$masterPurchased || !$profileComplete) ? 'locked' : '' }}" style="position:relative">
                     <div class="sb-mode-img-wrap">
                         <img src="{{ asset('images/master-home-landscape.png') }}" alt="Maître du Jeu"
                              onerror="this.parentElement.innerHTML='<div class=\'sb-mode-img-placeholder\'>👑</div>'">
@@ -1411,7 +1416,10 @@ body { background: var(--sb-bg); }
                         @if($masterPurchased && $profileComplete)
                             <a href="{{ url('/master') }}" class="sb-mode-btn btn-orange">{{ __('Jouer') }}</a>
                         @else
-                            <a href="{{ route('boutique') }}?tab=master" class="sb-mode-btn btn-orange">{{ __('Découvrir') }}</a>
+                            <div style="font-size:0.62rem;color:var(--sb-muted);text-align:center;line-height:1.6">
+                                🔒 {{ __('Créez vos propres quiz et défiez vos amis') }}
+                            </div>
+                            <a href="{{ route('boutique') }}?tab=master" class="sb-shop-corner" title="{{ __('Débloquer dans la Boutique') }}">🛒</a>
                         @endif
                     </div>
                 </div>
