@@ -1,0 +1,56 @@
+Fais-le dans Replit d’abord, mais seulement en mode préparation + sandbox/test, pas en prod.
+
+La VM doit servir à brancher les vraies clés .env et tester sur le domaine final quand le compte pub est prêt.
+
+Ordre recommandé :
+
+Replit
+nettoyer le système actuel pour empêcher les pièces gratuites
+préparer l’architecture SDK
+ajouter un mode ADS_TEST_MODE=true
+tester le callback “pub complétée”
+ne pas afficher au public tant que non validé
+Compte pub
+créer/valider un compte Google Ad Manager ou AdSense Rewarded Ads
+créer une unité publicitaire récompensée
+récupérer l’Ad Unit ID / Publisher ID
+VM production
+ajouter les vraies variables .env
+activer ADS_TEST_MODE=false
+tester sur strategybuzzer.com
+ensuite seulement afficher le bouton aux joueurs
+
+Pour trouver le SDK : la voie propre web est Google Publisher Tag / Google Ad Manager rewarded ads. Google documente les rewarded ads web dans Ad Manager et indique que l’utilisateur doit volontairement choisir de regarder la pub en échange d’une récompense. Le sample officiel côté web est “Display a rewarded ad” avec Google Publisher Tag.
+
+Envoie ceci à Replit :
+
+Décision : on prépare l’intégration dans Replit, mais on n’active pas en production tant que le vrai compte publicitaire n’est pas prêt.
+
+Objectif :
+- empêcher le bouton actuel de créditer des pièces sans vraie pub
+- préparer une intégration propre Google Publisher Tag / Google Ad Manager Rewarded Ads
+- garder un mode test en Replit
+- activer les vraies clés seulement sur VM avec strategybuzzer.com
+
+À faire maintenant :
+GREP → SLICE → diagnostic exact.
+
+Ne pas patcher avant d’avoir confirmé :
+1. où /ads/reward crédite les pièces
+2. si le composant <x-ad-reward> est inclus quelque part
+3. si un SDK pub existe déjà
+4. quelles variables .env ADS_* existent déjà
+
+Plan attendu :
+- ADS_PROVIDER=google_ad_manager
+- ADS_TEST_MODE=true en Replit
+- ADS_REWARDED_AD_UNIT_ID à ajouter plus tard
+- callback client “reward granted / ad completed” obligatoire avant POST /ads/reward
+- serveur refuse la récompense si aucun token/callback valide
+- aucun affichage public tant que ADS_TEST_MODE=false + vraie config absente
+
+Important :
+ne pas donner de pièces gratuitement.
+ne pas afficher le bouton aux joueurs maintenant.
+
+Ma recommandation nette : on prépare dans Replit, on active réellement sur VM seulement quand Google Ad Manager/AdSense est validé.
