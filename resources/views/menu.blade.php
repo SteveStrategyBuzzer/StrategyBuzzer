@@ -1373,7 +1373,7 @@ body { background: var(--sb-bg); }
                             <div style="font-size:0.62rem;color:var(--sb-muted);text-align:center;line-height:1.6">
                                 🔒 {{ __('Vaincre Le Stratège') }} — {{ __('Niv.') }} ({{ $duoUnlockInfo['choix_niveau'] }}/10)
                             </div>
-                            <a href="{{ route('boutique') }}?tab=duo" class="sb-shop-corner" title="{{ __('Débloquer dans la Boutique') }}">🛒</a>
+                            <a href="{{ route('boutique.category', 'master') }}" class="sb-shop-corner" title="{{ __('Débloquer dans la Boutique') }}">🛒</a>
                         @endif
                     </div>
                 </div>
@@ -1399,7 +1399,7 @@ body { background: var(--sb-bg); }
                             <div style="font-size:0.62rem;color:var(--sb-muted);text-align:center;line-height:1.6">
                                 🔒 {{ __('25 matchs Duo requis') }} ({{ $ligueUnlockInfo['duo_matches'] }}/25)
                             </div>
-                            <a href="{{ route('boutique') }}?tab=league" class="sb-shop-corner" title="{{ __('Débloquer dans la Boutique') }}">🛒</a>
+                            <a href="{{ route('boutique.category', 'master') }}" class="sb-shop-corner" title="{{ __('Débloquer dans la Boutique') }}">🛒</a>
                         @endif
                     </div>
                 </div>
@@ -1419,7 +1419,7 @@ body { background: var(--sb-bg); }
                             <div style="font-size:0.62rem;color:var(--sb-muted);text-align:center;line-height:1.6">
                                 🔒 {{ __('Créez vos propres quiz et défiez vos amis') }}
                             </div>
-                            <a href="{{ route('boutique') }}?tab=master" class="sb-shop-corner" title="{{ __('Débloquer dans la Boutique') }}">🛒</a>
+                            <a href="{{ route('boutique.category', 'master') }}" class="sb-shop-corner" title="{{ __('Débloquer dans la Boutique') }}">🛒</a>
                         @endif
                     </div>
                 </div>
