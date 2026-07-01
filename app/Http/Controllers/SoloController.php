@@ -347,8 +347,10 @@ class SoloController extends Controller
             'visionnaire_next_question' => session('visionnaire_next_question'),
             'visionnaire_previews_remaining' => session('visionnaire_previews_remaining', 5),
             // Coéquipier Stratège
-            'teammate_name' => $this->getTeammateName(),
-            'teammate_skill_icon' => $this->getTeammateSkillIcon(),
+            'teammate_name'             => $this->getTeammateName(),
+            'teammate_skill_icon'       => $this->getTeammateSkillIcon(),
+            'teammate_skill_name'       => $this->getTeammateSkillName(),
+            'teammate_skill_description'=> $this->getTeammateSkillDescription(),
         ];
 
         return view('resume', compact('params'));
@@ -462,8 +464,10 @@ class SoloController extends Controller
             'visionnaire_next_question' => session('visionnaire_next_question'),
             'visionnaire_previews_remaining' => session('visionnaire_previews_remaining', 5),
             // Coéquipier Stratège
-            'teammate_name' => $this->getTeammateName(),
-            'teammate_skill_icon' => $this->getTeammateSkillIcon(),
+            'teammate_name'             => $this->getTeammateName(),
+            'teammate_skill_icon'       => $this->getTeammateSkillIcon(),
+            'teammate_skill_name'       => $this->getTeammateSkillName(),
+            'teammate_skill_description'=> $this->getTeammateSkillDescription(),
         ];
         
         return view('resume', compact('params'));
@@ -1255,15 +1259,54 @@ class SoloController extends Controller
             return '👥';
         }
         
-        // Mapping des slugs vers les icônes des skills principaux
         $slugToSkillIcon = [
-            'mathematicien' => '🔢',  // illuminate_numbers
-            'scientifique' => '🧪',   // acidify_error
-            'explorateur' => '👁️',    // see_opponent_choice
-            'defenseur' => '🛡️',      // shield
+            'mathematicien' => '🔢',
+            'scientifique' => '🧪',
+            'explorateur' => '👁️',
+            'defenseur' => '🛡️',
         ];
         
         return $slugToSkillIcon[strtolower($teammate)] ?? '👥';
+    }
+
+    /**
+     * Récupérer le nom du skill du coéquipier Stratège
+     */
+    private function getTeammateSkillName(): string
+    {
+        $teammate = $this->getEffectiveTeammate();
+        if (!$teammate) {
+            return 'Équipe';
+        }
+
+        $slugToSkillName = [
+            'mathematicien' => 'Illumine si chiffre',
+            'scientifique'  => 'Acidifie erreur',
+            'explorateur'   => 'Voit choix adverse',
+            'defenseur'     => 'Bouclier',
+        ];
+
+        return $slugToSkillName[strtolower($teammate)] ?? 'Équipe';
+    }
+
+    /**
+     * Récupérer la description du skill du coéquipier Stratège
+     */
+    private function getTeammateSkillDescription(): string
+    {
+        $teammate = $this->getEffectiveTeammate();
+        if (!$teammate) {
+            return 'Choisissez un coéquipier Rare';
+        }
+
+        $slugToDescription = [
+            'mathematicien' => 'Met en évidence la bonne réponse si elle contient un chiffre',
+            'scientifique'  => 'Après avoir buzzé, acidifie 2 mauvaises réponses (1x par partie)',
+            'explorateur'   => 'Voit le choix de l\'adversaire ou la réponse la plus cliquée',
+            'defenseur'     => 'Annule une attaque provenant de n\'importe quel Avatar',
+        ];
+
+        return $slugToDescription[strtolower($teammate)] ?? 'Coéquipier Avatar Rare';
     }
     
     private function getAvailableRareAvatars()

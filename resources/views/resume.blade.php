@@ -594,7 +594,7 @@
                 ],
                 'Stratège' => [
                     ['icon' => '💰', 'name' => 'Bonus Pièces', 'description' => '25% gain supplémentaire'],
-                    ['icon' => $params['teammate_skill_icon'] ?? '👥', 'name' => 'Team', 'description' => 'Choix d\'un Avatar Stratégique Rare'],
+                    ['icon' => $params['teammate_skill_icon'] ?? '👥', 'name' => $params['teammate_skill_name'] ?? 'Équipe', 'description' => $params['teammate_skill_description'] ?? 'Coéquipier Avatar Rare'],
                     ['icon' => '🏷️', 'name' => 'Réduction', 'description' => 'Boutique']
                 ],
                 'Sprinteur' => [
