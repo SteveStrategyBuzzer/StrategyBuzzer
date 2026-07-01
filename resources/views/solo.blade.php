@@ -411,6 +411,13 @@ body { background: #030924; color: #fff; overflow-x: hidden; }
   .sl-opts-row { grid-template-columns: 1fr; gap: 10px; }
   .sl-theme-grid { grid-template-columns: repeat(2, 1fr); }
   .sl-adv-btn { font-size: 0.8rem; }
+  /* Sur mobile : nom avatar seul sur la 1ère ligne, icônes sur la 2e */
+  .sl-strat-bottom { flex-wrap: wrap; gap: 8px 6px; }
+  .sl-strat-name { flex: 0 0 100%; white-space: normal; font-size: 0.82rem; }
+  .sl-skill-cards { flex-wrap: wrap; gap: 6px; }
+  .sl-skill-card { min-width: 44px; max-width: 64px; }
+  .sl-skill-icon { width: 38px; height: 38px; font-size: 1.15rem; }
+  .sl-skill-name { font-size: 0.5rem; }
 }
 @media (max-width: 400px) {
   .sl-theme-grid { grid-template-columns: 1fr; }
