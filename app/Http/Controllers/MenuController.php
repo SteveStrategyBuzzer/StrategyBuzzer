@@ -12,27 +12,32 @@ use App\Models\Season;
 use App\Models\ProfileStat;
 use App\Models\PlayerDuoStat;
 use App\Services\DailyQuestService;
+use App\Services\GameModeAccessService;
 
 class MenuController extends Controller
 {
-    public function index()
+    public function index(GameModeAccessService $accessService)
     {
         $user = Auth::user();
 
         $profileSettings   = $user && $user->profile_settings ? $user->profile_settings : [];
         $profileComplete   = $user && ($user->profile_completed ?? false);
 
-        $choixNiveau       = is_array($profileSettings) ? ($profileSettings['choix_niveau'] ?? 1) : 1;
         $soloUnlocked      = $profileComplete;
-        $duoUnlocked       = true;
-        $duoFullUnlocked   = $choixNiveau >= 11;
-
-        $profileStats      = $user ? ProfileStat::where('user_id', $user->id)->first() : null;
-        $duoMatches        = $profileStats ? (($profileStats->duo_victoires ?? 0) + ($profileStats->duo_defaites ?? 0)) : 0;
-        $leaguePurchased   = $user && ($user->league_purchased ?? false);
-        $ligueUnlocked     = $leaguePurchased || $duoMatches >= 25;
         $masterPurchased   = $user && ($user->master_purchased ?? false);
         $masterUnlocked    = !$masterPurchased || ($masterPurchased && $profileComplete);
+
+        // Centralized mode access
+        $duoStatus         = $accessService->getModeStatus($user, 'duo');
+        $ligueStatus       = $accessService->getModeStatus($user, 'league');
+        $duoUnlockInfo     = $accessService->getDuoUnlockInfo($user);
+        $ligueUnlockInfo   = $accessService->getLeagueUnlockInfo($user);
+
+        // Keep legacy vars for backward compat (stats panels, etc.)
+        $duoUnlocked       = $duoStatus === 'unlocked';
+        $duoFullUnlocked   = $duoUnlockInfo['boss_beaten'] || $duoUnlockInfo['purchased'];
+        $duoMatches        = $ligueUnlockInfo['duo_matches'];
+        $ligueUnlocked     = $ligueStatus === 'unlocked';
 
         $duoNotifications        = 0;
         $ligueNotifications      = 0;
@@ -95,7 +100,8 @@ class MenuController extends Controller
             'soloUnlocked', 'duoUnlocked', 'duoFullUnlocked',
             'ligueUnlocked', 'masterUnlocked', 'masterPurchased', 'profileComplete',
             'duoNotifications', 'ligueNotifications', 'questsNotifications', 'dailyQuestsNotifications',
-            'duoMatches'
+            'duoMatches',
+            'duoStatus', 'ligueStatus', 'duoUnlockInfo', 'ligueUnlockInfo'
         ));
     }
 

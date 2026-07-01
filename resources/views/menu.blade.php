@@ -1334,7 +1334,7 @@ body { background: var(--sb-bg); }
                 </div>
 
                 {{-- DUO --}}
-                <div class="sb-mode-card" style="position:relative">
+                <div class="sb-mode-card {{ $duoStatus === 'locked' ? 'locked' : '' }}" style="position:relative">
                     @if($duoNotifications > 0)
                         <div class="sb-notif-badge" id="duo-badge">{{ $duoNotifications }}</div>
                     @endif
@@ -1345,12 +1345,24 @@ body { background: var(--sb-bg); }
                     </div>
                     <div class="sb-mode-body">
                         <div class="sb-mode-desc">{{ __('Affrontez d\'autres joueurs en temps réel') }}</div>
-                        <a href="{{ route('duo.splash') }}" class="sb-mode-btn btn-green">{{ __('Jouer') }}</a>
+                        @if($duoStatus === 'unlocked')
+                            <a href="{{ route('duo.splash') }}" class="sb-mode-btn btn-green">{{ __('Jouer') }}</a>
+                        @elseif($duoStatus === 'invite_only')
+                            <a href="{{ route('duo.invitations') }}" class="sb-mode-btn btn-green">{{ __('Rejoindre') }}</a>
+                        @else
+                            <div style="font-size:0.62rem;color:var(--sb-muted);text-align:center;line-height:1.5;margin-bottom:6px">
+                                🔒 {{ __('Vaincre Le Stratège (niv. 10)') }}<br>
+                                {{ __('ou') }}
+                            </div>
+                            <a href="{{ route('boutique') }}?tab=duo" class="sb-mode-btn btn-green" style="opacity:0.75;font-size:0.72rem">
+                                🛒 {{ __('Débloquer dans la Boutique') }}
+                            </a>
+                        @endif
                     </div>
                 </div>
 
                 {{-- LIGUE --}}
-                <div class="sb-mode-card {{ $ligueUnlocked ? '' : '' }}" style="position:relative">
+                <div class="sb-mode-card {{ $ligueStatus === 'locked' ? 'locked' : '' }}" style="position:relative">
                     @if($ligueNotifications > 0)
                         <div class="sb-notif-badge" id="ligue-badge">{{ $ligueNotifications }}</div>
                     @endif
@@ -1362,10 +1374,18 @@ body { background: var(--sb-bg); }
                     </div>
                     <div class="sb-mode-body">
                         <div class="sb-mode-desc">{{ __('Gravissez les ligues en Solo ou en Équipe et devenez «légende»') }}</div>
-                        @if($ligueUnlocked)
+                        @if($ligueStatus === 'unlocked')
                             <a href="{{ R::has('ligue') ? route('ligue') : url('/ligue') }}" class="sb-mode-btn btn-purple">{{ __('Entrer') }}</a>
+                        @elseif($ligueStatus === 'invite_only')
+                            <a href="{{ R::has('ligue') ? route('ligue') : url('/ligue') }}" class="sb-mode-btn btn-purple">{{ __('Rejoindre') }}</a>
                         @else
-                            <div style="font-size:0.6rem; color:var(--sb-muted); text-align:center">{{ __('25 matchs Duo requis') }} ({{ $duoMatches }}/25)</div>
+                            <div style="font-size:0.62rem;color:var(--sb-muted);text-align:center;line-height:1.5;margin-bottom:6px">
+                                🔒 {{ __('25 matchs Duo requis') }} ({{ $ligueUnlockInfo['duo_matches'] }}/25)<br>
+                                {{ __('ou') }}
+                            </div>
+                            <a href="{{ route('boutique') }}?tab=league" class="sb-mode-btn btn-purple" style="opacity:0.75;font-size:0.72rem">
+                                🛒 {{ __('Débloquer dans la Boutique') }}
+                            </a>
                         @endif
                     </div>
                 </div>

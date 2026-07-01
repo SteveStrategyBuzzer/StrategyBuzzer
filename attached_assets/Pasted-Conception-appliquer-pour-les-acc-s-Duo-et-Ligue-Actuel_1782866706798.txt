@@ -1,0 +1,79 @@
+Conception à appliquer pour les accès Duo et Ligue.
+
+Actuellement :
+- Ligue affiche bien une condition de verrouillage.
+- Duo affiche encore “JOUER”, mais ce n’est pas correct.
+
+Règle produit officielle :
+
+1. Duo
+- Le mode Duo est verrouillé par défaut.
+- Il devient accessible seulement si le joueur a vaincu le boss “Le Stratège” niveau 10.
+- Sinon, le joueur peut acheter l’accès complet Duo dans la Boutique.
+- Tant que le joueur n’a ni vaincu Le Stratège niv.10 ni acheté l’accès Duo :
+  - ne pas afficher “JOUER”
+  - afficher les spécifications pour débloquer le mode
+  - icône pour proposer “Débloquer dans la Boutique”
+
+2. Ligue
+- Le mode Ligue reste verrouillé selon ses conditions actuelles.
+- Il peut aussi être débloqué par achat complet dans la Boutique.
+- Garder l’affichage de condition déjà présent,
+- icône pour proposer “Débloquer dans la Boutique”
+
+3. Invitations
+Un joueur non débloqué peut recevoir une invitation Duo ou Ligue.
+
+Dans ce cas seulement :
+- afficher un bouton temporaire “REJOINDRE”
+- permettre uniquement de rejoindre la partie ou la Ligue invitée
+- ne pas débloquer le mode complet
+- ne pas permettre de créer une partie Duo
+- ne pas permettre de faire une demande Duo
+- ne pas permettre de créer une équipe Ligue
+- ne pas permettre de rejoindre librement une autre Ligue
+- dès que le joueur quitte/refuse/termine l’invitation, le bouton “REJOINDRE” disparaît.
+
+4. Source de vérité
+Créer une logique claire côté backend, pas seulement côté Blade.
+
+Prévoir une méthode centralisée du type :
+- canAccessMode($user, 'duo')
+- canAccessMode($user, 'league')
+- hasTemporaryInviteAccess($user, 'duo')
+- hasTemporaryInviteAccess($user, 'league')
+
+Le Blade doit seulement afficher l’état retourné :
+- unlocked
+- locked
+- purchasable
+- invite_only
+
+5. Affichage attendu sur les cartes du menu
+Duo :
+- Si accès complet : bouton “JOUER”
+- Si verrouillé sans invitation :sans bouton, juste les conditions
+- Si invitation active : bouton “REJOINDRE”
+
+Ligue :
+- Si accès complet : bouton “JOUER”
+- Si verrouillé sans invitation : condition 
+- Si invitation active : bouton “REJOINDRE”
+
+6. Sécurité
+Même si quelqu’un modifie le HTML, les routes doivent bloquer l’accès.
+Les routes Duo/Ligue doivent vérifier les droits serveur avant d’ouvrir :
+- création
+- matchmaking
+- équipe
+- lobby
+- gameplay
+
+7. Important
+Ne pas supprimer les conditions existantes Ligue.
+Ne pas donner un accès complet quand le joueur rejoint par invitation.
+L’invitation donne un accès temporaire et limité à cette session seulement.
+
+Avant patch :
+GREP → SLICE → PATCH → VALIDATION.
+Afficher les fichiers concernés et la zone exacte avant modification.

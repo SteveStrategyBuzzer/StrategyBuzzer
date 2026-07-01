@@ -218,18 +218,18 @@ Route::prefix('lobby')->name('lobby.')->middleware('auth')->group(function () {
 Route::post('/api/strategic-avatar', [LobbyController::class, 'setStrategicAvatar'])->middleware('auth')->name('api.strategic-avatar');
 
 /* ===== DUO ===== */
-Route::get('/duo/splash', [App\Http\Controllers\DuoController::class, 'showSplash'])->middleware('auth')->name('duo.splash');
+Route::get('/duo/splash', [App\Http\Controllers\DuoController::class, 'showSplash'])->middleware(['auth', 'mode.access:duo,any'])->name('duo.splash');
 Route::get('/duo', fn() => redirect()->route('duo.lobby'))->name('duo');
 
 Route::prefix('duo')->name('duo.')->middleware('auth')->group(function () {
-    Route::get('/lobby', [App\Http\Controllers\DuoController::class, 'lobby'])->name('lobby');
-    Route::post('/matchmaking/random', [App\Http\Controllers\DuoController::class, 'createMatch'])->name('matchmaking.random');
-    Route::post('/invite', [App\Http\Controllers\DuoController::class, 'invitePlayer'])->name('invite');
+    Route::get('/lobby', [App\Http\Controllers\DuoController::class, 'lobby'])->name('lobby')->middleware('mode.access:duo,any');
+    Route::post('/matchmaking/random', [App\Http\Controllers\DuoController::class, 'createMatch'])->name('matchmaking.random')->middleware('mode.access:duo,full');
+    Route::post('/invite', [App\Http\Controllers\DuoController::class, 'invitePlayer'])->name('invite')->middleware('mode.access:duo,full');
     Route::get('/invitations', [App\Http\Controllers\DuoController::class, 'getInvitations'])->name('invitations');
     Route::post('/matches/{match}/accept', [App\Http\Controllers\DuoController::class, 'acceptMatch'])->name('matches.accept');
     Route::post('/matches/{match}/decline', [App\Http\Controllers\DuoController::class, 'declineMatch'])->name('matches.decline');
     Route::post('/matches/{match}/cancel', [App\Http\Controllers\DuoController::class, 'cancelMatch'])->name('matches.cancel');
-    Route::get('/matchmaking', [App\Http\Controllers\DuoController::class, 'matchmaking'])->name('matchmaking');
+    Route::get('/matchmaking', [App\Http\Controllers\DuoController::class, 'matchmaking'])->name('matchmaking')->middleware('mode.access:duo,full');
     Route::get('/game/{match}', [App\Http\Controllers\DuoController::class, 'game'])->name('game');
     Route::get('/question/{match}', [App\Http\Controllers\DuoController::class, 'question'])->name('question');
     Route::get('/answer/{match}', [App\Http\Controllers\DuoController::class, 'answer'])->name('answer');
@@ -246,12 +246,12 @@ Route::prefix('duo')->name('duo.')->middleware('auth')->group(function () {
     Route::delete('/contacts/groups/{groupId}', [App\Http\Controllers\PlayerGroupController::class, 'destroy'])->name('contacts.groups.destroy');
     Route::post('/contacts/groups/{groupId}/members', [App\Http\Controllers\PlayerGroupController::class, 'addMembers'])->name('contacts.groups.addMembers');
     Route::delete('/contacts/groups/{groupId}/members', [App\Http\Controllers\PlayerGroupController::class, 'removeMembers'])->name('contacts.groups.removeMembers');
-    Route::post('/queue/join', [App\Http\Controllers\DuoController::class, 'joinQueue'])->name('queue.join');
+    Route::post('/queue/join', [App\Http\Controllers\DuoController::class, 'joinQueue'])->name('queue.join')->middleware('mode.access:duo,full');
     Route::post('/queue/leave', [App\Http\Controllers\DuoController::class, 'leaveQueue'])->name('queue.leave');
     Route::get('/queue/opponents', [App\Http\Controllers\DuoController::class, 'getQueueOpponents'])->name('queue.opponents');
-    Route::post('/queue/create-match', [App\Http\Controllers\DuoController::class, 'createQueueMatch'])->name('queue.createMatch');
+    Route::post('/queue/create-match', [App\Http\Controllers\DuoController::class, 'createQueueMatch'])->name('queue.createMatch')->middleware('mode.access:duo,full');
     Route::post('/matches/{match}/create-room', [App\Http\Controllers\DuoController::class, 'createGameServerRoom'])->name('matches.create-room');
-    
+
     Route::post('/match/{match}/skill', [App\Http\Controllers\DuoController::class, 'activateSkill'])->name('match.skill');
     Route::post('/match/{match}/hint', [App\Http\Controllers\DuoController::class, 'getHint'])->name('match.hint');
     Route::post('/match/{match}/ai-suggest', [App\Http\Controllers\DuoController::class, 'getAISuggestion'])->name('match.ai-suggest');
@@ -270,8 +270,8 @@ Route::prefix('chat')->name('chat.')->middleware('auth')->group(function () {
 
 /* ===== LIGUE INDIVIDUEL ===== */
 Route::prefix('league/individual')->name('league.individual.')->middleware('auth')->group(function () {
-    Route::get('/', [App\Http\Controllers\LeagueIndividualController::class, 'index'])->name('index');
-    Route::get('/lobby', [App\Http\Controllers\LeagueIndividualController::class, 'index'])->name('lobby');
+    Route::get('/', [App\Http\Controllers\LeagueIndividualController::class, 'index'])->name('index')->middleware('mode.access:league,any');
+    Route::get('/lobby', [App\Http\Controllers\LeagueIndividualController::class, 'index'])->name('lobby')->middleware('mode.access:league,any');
     Route::get('/game/{match}', function (App\Models\LeagueIndividualMatch $match) {
         $userId = Auth::id();
         if ($match->player1_id !== $userId && $match->player2_id !== $userId) {
@@ -294,9 +294,9 @@ Route::prefix('league/individual')->name('league.individual.')->middleware('auth
 /* ===== LIGUE INDIVIDUEL API (web middleware for session auth) ===== */
 Route::prefix('api/league/individual')->middleware('auth')->group(function () {
     Route::get('/', [App\Http\Controllers\LeagueIndividualController::class, 'index']);
-    Route::post('/initialize', [App\Http\Controllers\LeagueIndividualController::class, 'initialize']);
+    Route::post('/initialize', [App\Http\Controllers\LeagueIndividualController::class, 'initialize'])->middleware('mode.access:league,full');
     Route::get('/check-initialized', [App\Http\Controllers\LeagueIndividualController::class, 'checkInitialized']);
-    Route::post('/create-match', [App\Http\Controllers\LeagueIndividualController::class, 'createMatch']);
+    Route::post('/create-match', [App\Http\Controllers\LeagueIndividualController::class, 'createMatch'])->middleware('mode.access:league,full');
     Route::get('/rankings', [App\Http\Controllers\LeagueIndividualController::class, 'getRankings']);
     Route::get('/match/{match}/game-state', [App\Http\Controllers\LeagueIndividualController::class, 'getGameState']);
     Route::post('/match/{match}/buzz', [App\Http\Controllers\LeagueIndividualController::class, 'buzz']);
@@ -312,16 +312,16 @@ Route::get('/league/entry', function() {
 })->middleware('auth')->name('league.entry');
 
 Route::prefix('league/team')->name('league.team.')->middleware('auth')->group(function () {
-    Route::get('/management/{teamId?}', [App\Http\Controllers\LeagueTeamController::class, 'showTeamManagement'])->name('management');
-    Route::get('/create', [App\Http\Controllers\LeagueTeamController::class, 'showCreateTeam'])->name('create');
-    Route::post('/create', [App\Http\Controllers\LeagueTeamController::class, 'createTeam'])->name('create.submit');
-    Route::get('/search', [App\Http\Controllers\LeagueTeamController::class, 'searchTeams'])->name('search');
-    Route::get('/search/api', [App\Http\Controllers\LeagueTeamController::class, 'searchTeamsApi'])->name('search.api');
+    Route::get('/management/{teamId?}', [App\Http\Controllers\LeagueTeamController::class, 'showTeamManagement'])->name('management')->middleware('mode.access:league,any');
+    Route::get('/create', [App\Http\Controllers\LeagueTeamController::class, 'showCreateTeam'])->name('create')->middleware('mode.access:league,full');
+    Route::post('/create', [App\Http\Controllers\LeagueTeamController::class, 'createTeam'])->name('create.submit')->middleware('mode.access:league,full');
+    Route::get('/search', [App\Http\Controllers\LeagueTeamController::class, 'searchTeams'])->name('search')->middleware('mode.access:league,full');
+    Route::get('/search/api', [App\Http\Controllers\LeagueTeamController::class, 'searchTeamsApi'])->name('search.api')->middleware('mode.access:league,full');
     Route::get('/contacts/api', [App\Http\Controllers\LeagueTeamController::class, 'getContacts'])->name('contacts.api');
     Route::get('/details/{teamId}', [App\Http\Controllers\LeagueTeamController::class, 'showTeamDetails'])->name('details');
-    Route::get('/captain/{teamId?}', [App\Http\Controllers\LeagueTeamController::class, 'showCaptainPanel'])->name('captain');
-    Route::post('/invite', [App\Http\Controllers\LeagueTeamController::class, 'invitePlayer'])->name('invite');
-    Route::post('/request/{teamId}', [App\Http\Controllers\LeagueTeamController::class, 'requestJoin'])->name('request');
+    Route::get('/captain/{teamId?}', [App\Http\Controllers\LeagueTeamController::class, 'showCaptainPanel'])->name('captain')->middleware('mode.access:league,full');
+    Route::post('/invite', [App\Http\Controllers\LeagueTeamController::class, 'invitePlayer'])->name('invite')->middleware('mode.access:league,full');
+    Route::post('/request/{teamId}', [App\Http\Controllers\LeagueTeamController::class, 'requestJoin'])->name('request')->middleware('mode.access:league,full');
     Route::delete('/request/{teamId}', [App\Http\Controllers\LeagueTeamController::class, 'cancelRequest'])->name('request.cancel');
     Route::post('/join-request/{requestId}/accept', [App\Http\Controllers\LeagueTeamController::class, 'acceptJoinRequest'])->name('join-request.accept');
     Route::post('/join-request/{requestId}/reject', [App\Http\Controllers\LeagueTeamController::class, 'rejectJoinRequest'])->name('join-request.reject');
@@ -341,8 +341,8 @@ Route::prefix('league/team')->name('league.team.')->middleware('auth')->group(fu
 });
 
 Route::prefix('api/league/team')->middleware('auth')->group(function () {
-    Route::post('/find-opponents', [App\Http\Controllers\LeagueTeamController::class, 'findOpponents']);
-    Route::post('/start-match', [App\Http\Controllers\LeagueTeamController::class, 'startMatch']);
+    Route::post('/find-opponents', [App\Http\Controllers\LeagueTeamController::class, 'findOpponents'])->middleware('mode.access:league,full');
+    Route::post('/start-match', [App\Http\Controllers\LeagueTeamController::class, 'startMatch'])->middleware('mode.access:league,full');
     Route::get('/timed-access', [App\Http\Controllers\LeagueTeamController::class, 'getTimedAccess']);
 });
 
@@ -389,7 +389,7 @@ Route::middleware('auth')->prefix('master')->name('master.')->group(function () 
 });
 
 /* ===== LIGUE (page de sélection) ===== */
-Route::get('/ligue', [App\Http\Controllers\LeagueTeamController::class, 'showLigue'])->middleware('auth')->name('ligue');
+Route::get('/ligue', [App\Http\Controllers\LeagueTeamController::class, 'showLigue'])->middleware(['auth', 'mode.access:league,any'])->name('ligue');
 
 /* ===== GUIDE DU JOUEUR ===== */
 Route::get('/guide', [App\Http\Controllers\GuideController::class, 'index'])->name('guide.index');
