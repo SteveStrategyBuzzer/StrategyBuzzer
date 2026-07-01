@@ -711,6 +711,21 @@ body { background: var(--sb-bg); }
     text-align: center;
     justify-content: center;
 }
+.sb-shop-corner {
+    position: absolute;
+    bottom: 8px;
+    right: 8px;
+    font-size: 1rem;
+    text-decoration: none;
+    opacity: 0.55;
+    animation: sbShopPulse 2.4s ease-in-out infinite;
+    line-height: 1;
+}
+.sb-shop-corner:hover { opacity: 0.95; }
+@keyframes sbShopPulse {
+    0%, 100% { transform: scale(1);   opacity: 0.55; }
+    50%       { transform: scale(1.2); opacity: 0.9; }
+}
 
 /* ── ROW 3 : INFO PANELS ──────────────────────── */
 .sb-row3 {
@@ -1350,13 +1365,10 @@ body { background: var(--sb-bg); }
                         @elseif($duoStatus === 'invite_only')
                             <a href="{{ route('duo.invitations') }}" class="sb-mode-btn btn-green">{{ __('Rejoindre') }}</a>
                         @else
-                            <div style="font-size:0.62rem;color:var(--sb-muted);text-align:center;line-height:1.5;margin-bottom:6px">
-                                🔒 {{ __('Vaincre Le Stratège (niv. 10)') }}<br>
-                                {{ __('ou') }}
+                            <div style="font-size:0.62rem;color:var(--sb-muted);text-align:center;line-height:1.6">
+                                🔒 {{ __('Vaincre Le Stratège (niv. 10)') }}
                             </div>
-                            <a href="{{ route('boutique') }}?tab=duo" class="sb-mode-btn btn-green" style="opacity:0.75;font-size:0.72rem">
-                                🛒 {{ __('Débloquer dans la Boutique') }}
-                            </a>
+                            <a href="{{ route('boutique') }}?tab=duo" class="sb-shop-corner" title="{{ __('Débloquer dans la Boutique') }}">🛒</a>
                         @endif
                     </div>
                 </div>
@@ -1379,13 +1391,10 @@ body { background: var(--sb-bg); }
                         @elseif($ligueStatus === 'invite_only')
                             <a href="{{ R::has('ligue') ? route('ligue') : url('/ligue') }}" class="sb-mode-btn btn-purple">{{ __('Rejoindre') }}</a>
                         @else
-                            <div style="font-size:0.62rem;color:var(--sb-muted);text-align:center;line-height:1.5;margin-bottom:6px">
-                                🔒 {{ __('25 matchs Duo requis') }} ({{ $ligueUnlockInfo['duo_matches'] }}/25)<br>
-                                {{ __('ou') }}
+                            <div style="font-size:0.62rem;color:var(--sb-muted);text-align:center;line-height:1.6">
+                                🔒 {{ __('25 matchs Duo requis') }} ({{ $ligueUnlockInfo['duo_matches'] }}/25)
                             </div>
-                            <a href="{{ route('boutique') }}?tab=league" class="sb-mode-btn btn-purple" style="opacity:0.75;font-size:0.72rem">
-                                🛒 {{ __('Débloquer dans la Boutique') }}
-                            </a>
+                            <a href="{{ route('boutique') }}?tab=league" class="sb-shop-corner" title="{{ __('Débloquer dans la Boutique') }}">🛒</a>
                         @endif
                     </div>
                 </div>
