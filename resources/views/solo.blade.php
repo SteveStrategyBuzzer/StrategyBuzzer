@@ -178,10 +178,10 @@ body { background: #030924; color: #fff; overflow-x: hidden; }
 .sl-strat-bottom { display: flex; flex-direction: row; flex-wrap: nowrap; align-items: center; gap: 10px; min-width: 0; flex: 1; }
 .sl-strat-name { font-weight: 800; font-size: 0.85rem; letter-spacing: 0.5px; flex-shrink: 0; white-space: nowrap; }
 /* ── Ability cards ── */
-.sl-skill-cards { display: flex; gap: 5px; flex-shrink: 0; }
+.sl-skill-cards { display: flex; gap: 8px; flex-shrink: 0; flex-wrap: wrap; align-items: flex-start; }
 .sl-skill-card {
   display: flex; flex-direction: column; align-items: center; gap: 4px;
-  width: 54px; cursor: default;
+  min-width: 48px; max-width: 72px; flex: 0 0 auto; cursor: default;
 }
 .sl-skill-icon {
   width: 42px; height: 42px; border-radius: 12px; flex-shrink: 0;
@@ -193,9 +193,9 @@ body { background: #030924; color: #fff; overflow-x: hidden; }
 }
 .sl-skill-icon:hover { transform: translateY(-2px); }
 .sl-skill-name {
-  font-size: 0.55rem; font-weight: 700; text-align: center; line-height: 1.2;
+  font-size: 0.55rem; font-weight: 700; text-align: center; line-height: 1.3;
   color: rgba(255,255,255,0.8); text-transform: uppercase; letter-spacing: 0.3px;
-  max-width: 54px;
+  width: 100%; word-break: break-word; white-space: normal;
 }
 
 /* ===== AVATAR GALLERY CARD ===== */
@@ -499,19 +499,19 @@ body { background: #030924; color: #fff; overflow-x: hidden; }
             <span class="sl-strat-name" style="color:rgba(255,255,255,0.35);font-weight:500" id="strat-name-display">{{ __('Aucun') }}</span>
           @endif
 
-          {{-- Ability cards — icône large + nom extrait --}}
+          {{-- Ability cards — Coéquipier toujours en pos.1, skills en pos.2-3 --}}
           <div class="sl-skill-cards" id="sl-skills-badges">
+            {{-- Position 1 : Coéquipier --}}
+            <div class="sl-skill-card" id="sl-team-slot" title="{{ __('Choisir un coéquipier') }}" onclick="openTeamPanel()" style="cursor:pointer">
+              <div class="sl-skill-icon {{ $selTeamData ? '' : 'sl-team-trigger' }}"
+                   style="{{ $selTeamData
+                     ? 'background:linear-gradient(135deg,'.$selTierColor.'33 0%,'.$selTierColor.'0d 100%);border-color:'.$selTierColor.'99;box-shadow:0 4px 14px '.$selTierColor.'40'
+                     : 'background:linear-gradient(135deg,rgba(59,130,246,.2) 0%,rgba(59,130,246,.06) 100%);border-color:rgba(59,130,246,.85)' }}">{{ $selTeamData ? $selTeamData['emoji'] : '👥' }}</div>
+              <div class="sl-skill-name" style="color:#3b82f6">{{ $selTeamData ? $selTeamData['skillName'] : __('Équipe') }}</div>
+            </div>
+            {{-- Positions 2-3 : autres skills (Stratège, Bonus pièces, Réduction…) --}}
             @foreach($selSkillsParsed as $sk)
-              @if($sk['name'] === 'Coéquipier')
-                {{-- Slot spécial : pulsant si aucun coéquipier, sinon skill du coéquipier --}}
-                <div class="sl-skill-card" id="sl-team-slot" title="{{ __('Choisir un coéquipier') }}" onclick="openTeamPanel()" style="cursor:pointer">
-                  <div class="sl-skill-icon {{ $selTeamData ? '' : 'sl-team-trigger' }}"
-                       style="{{ $selTeamData
-                         ? 'background:linear-gradient(135deg,'.$selTierColor.'33 0%,'.$selTierColor.'0d 100%);border-color:'.$selTierColor.'99;box-shadow:0 4px 14px '.$selTierColor.'40'
-                         : 'background:linear-gradient(135deg,rgba(59,130,246,.2) 0%,rgba(59,130,246,.06) 100%);border-color:rgba(59,130,246,.85)' }}">{{ $selTeamData ? $selTeamData['emoji'] : '👥' }}</div>
-                  <div class="sl-skill-name" style="color:#3b82f6">{{ $selTeamData ? $selTeamData['skillName'] : __('Équipe') }}</div>
-                </div>
-              @else
+              @if($sk['name'] !== 'Coéquipier')
                 <div class="sl-skill-card" title="{{ $sk['emoji'] }} {{ $sk['name'] }}">
                   <div class="sl-skill-icon"
                        style="background:linear-gradient(135deg,{{ $selTierColor }}33 0%,{{ $selTierColor }}0d 100%);
