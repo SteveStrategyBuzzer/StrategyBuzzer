@@ -1106,29 +1106,30 @@ body { background: var(--sb-bg); }
         overflow-y: auto;
     }
 
-    /* Compact topbar — titre intégré à gauche sur la même ligne que les pièces */
-    .sb-topbar { padding: 8px 12px; gap: 8px; justify-content: space-between; }
+    /* Compact topbar — flex-wrap : si titre ne rentre pas, passe sous les pièces */
+    .sb-topbar { padding: 8px 12px; gap: 6px 10px; flex-wrap: wrap; justify-content: flex-end; }
     .sb-topbar-spacer { display: none; }
     .sb-topbar-logo {
         display: flex !important;
         align-items: center;
         justify-content: flex-start;
-        flex: 1 1 0;
+        flex: 1 1 120px;
         min-width: 0;
+        order: 1;
     }
     .sb-logo-tagline { display: none; }
-    .sb-logo-text { font-size: 0.68rem; letter-spacing: 0.04em; white-space: nowrap; overflow: visible; text-overflow: clip; }
-    .sb-logo-title { gap: 3px; flex-wrap: nowrap; }
-    .sb-logo-title span:first-child { font-size: 0.72rem; }
+    .sb-logo-text { font-size: clamp(0.6rem, 3.5vw, 0.9rem); letter-spacing: 0.04em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .sb-logo-title { gap: 3px; flex-wrap: nowrap; min-width: 0; }
+    .sb-logo-title span:first-child { font-size: clamp(0.6rem, 3.5vw, 0.9rem); }
     .sb-logo-title span:last-child  { display: none; }
-    .sb-topbar-right { gap: 6px; flex-shrink: 0; }
+    .sb-topbar-right { gap: 6px; flex-shrink: 0; order: 2; }
     .sb-topbar-icon { width: 30px; height: 30px; border-radius: 6px; }
     .sb-coin-display { padding: 4px 8px; gap: 4px; }
     .sb-coin-value { font-size: 0.72rem; }
     .sb-coin-icon { width: 16px; height: 16px; }
-    .sb-coin-add { width: 24px; height: 24px; font-size: 0.9rem; }
+    .sb-coin-add { display: none; }
 
-    /* Titre séparé masqué — maintenant dans la topbar */
+    /* Titre séparé masqué — intégré dans la topbar */
     .sb-mobile-title { display: none; }
 
     /* Bottom bar hidden on mobile (replaced by bottom nav) */
@@ -1166,8 +1167,7 @@ body { background: var(--sb-bg); }
 
 /* Very small phones (≤ 400px) */
 @media (max-width: 400px) {
-    .sb-logo-text { font-size: 0.85rem; }
-    .sb-topbar-icon { display: none; }
+    .sb-logo-text { font-size: clamp(0.55rem, 3vw, 0.85rem); }
     .sb-coin-add { display: none; }
     .sb-row2 { grid-template-columns: 1fr; }
     .sb-mode-img-wrap { height: 120px; }
@@ -1295,15 +1295,14 @@ body { background: var(--sb-bg); }
             </div>
 
             <div class="sb-topbar-right">
-                <div class="sb-coin-display">
+                <a href="{{ route('boutique.category', 'coins_intelligence') }}" class="sb-coin-display" style="text-decoration:none;color:inherit;" title="{{ __('Pièces d\'Intelligence') }}">
                     <img class="sb-coin-icon" src="{{ asset('images/coin-intelligence.png') }}" alt="Intelligence" onerror="this.style.display='none'" style="object-fit:cover;">
                     <span class="sb-coin-value" id="topbar-intel">{{ number_format($intelligencePieces) }}</span>
-                </div>
-                <div class="sb-coin-display">
+                </a>
+                <a href="{{ route('boutique.category', 'coins_competence') }}" class="sb-coin-display" style="text-decoration:none;color:inherit;" title="{{ __('Pièces de Compétence') }}">
                     <img class="sb-coin-icon" src="{{ asset('images/skill_coin.png') }}" alt="Compétence" onerror="this.replaceWith('⭐')">
                     <span class="sb-coin-value" id="topbar-comp">{{ number_format($competenceCoins) }}</span>
-                </div>
-                <a href="{{ R::has('boutique') ? route('boutique') : url('/boutique') }}" class="sb-coin-add" title="{{ __('Obtenir des pièces') }}">+</a>
+                </a>
 
                 {{-- Messages masqué temporairement (pas de page /messages ; à réactiver quand la page existera)
                 <a href="{{ url('/messages') }}" class="sb-topbar-icon" title="{{ __('Messages') }}">
