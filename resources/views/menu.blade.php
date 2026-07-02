@@ -1190,7 +1190,7 @@ body { background: var(--sb-bg); }
 
         {{-- Logo titre (affiché dans le menu latéral quand l'écran rétrécit — voir responsive) --}}
         <div class="sb-sidebar-logo">
-            <img src="{{ asset('images/coin-intelligence.png') }}" alt="" style="height:1.4rem;width:1.4rem;object-fit:contain;vertical-align:middle;">
+            <img src="{{ asset('images/brain.png') }}" alt="" style="height:1.4rem;width:1.4rem;object-fit:contain;vertical-align:middle;">
             <span class="sb-sidebar-logo-text">Strategy Buzzer</span>
         </div>
 
@@ -1288,9 +1288,9 @@ body { background: var(--sb-bg); }
 
             <div class="sb-topbar-logo">
                 <div class="sb-logo-title">
-                    <img src="{{ asset('images/coin-intelligence.png') }}" alt="" style="height:1.3rem;width:1.3rem;object-fit:contain;vertical-align:middle;">
+                    <img src="{{ asset('images/brain.png') }}" alt="" style="height:1.3rem;width:1.3rem;object-fit:contain;vertical-align:middle;">
                     <span class="sb-logo-text">Strategy Buzzer</span>
-                    <img src="{{ asset('images/coin-intelligence.png') }}" alt="" style="height:1.3rem;width:1.3rem;object-fit:contain;vertical-align:middle;">
+                    <img src="{{ asset('images/brain.png') }}" alt="" style="height:1.3rem;width:1.3rem;object-fit:contain;vertical-align:middle;">
                 </div>
                 <div class="sb-logo-tagline">{{ __('La connaissance est votre meilleure stratégie') }}</div>
             </div>
@@ -1318,9 +1318,9 @@ body { background: var(--sb-bg); }
 
         {{-- Titre compact mobile (≤639px — visible sous topbar quand menu latéral masqué) --}}
         <div class="sb-mobile-title">
-            <img src="{{ asset('images/coin-intelligence.png') }}" alt="" style="height:1.1rem;width:1.1rem;object-fit:contain;vertical-align:middle;">
+            <img src="{{ asset('images/brain.png') }}" alt="" style="height:1.1rem;width:1.1rem;object-fit:contain;vertical-align:middle;">
             <span class="sb-mobile-title-text">Strategy Buzzer</span>
-            <img src="{{ asset('images/coin-intelligence.png') }}" alt="" style="height:1.1rem;width:1.1rem;object-fit:contain;vertical-align:middle;">
+            <img src="{{ asset('images/brain.png') }}" alt="" style="height:1.1rem;width:1.1rem;object-fit:contain;vertical-align:middle;">
         </div>
 
         {{-- ── CONTENT ── --}}
