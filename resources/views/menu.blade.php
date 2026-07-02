@@ -487,28 +487,35 @@ body { background: var(--sb-bg); }
     flex-shrink: 0;
 }
 
-.sb-season-info { flex: 1; min-width: 0; }
+.sb-season-top {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
 
 .sb-season-label {
-    font-size: 0.6rem;
+    font-size: 0.65rem;
     color: var(--sb-gold);
     text-transform: uppercase;
-    letter-spacing: 0.12em;
+    letter-spacing: 0.1em;
     font-weight: 700;
-    margin-bottom: 4px;
 }
 
 .sb-season-name {
-    font-size: 1.1rem;
+    font-size: 0.85rem;
     font-weight: 800;
     color: #fff;
     text-transform: uppercase;
 }
 
 .sb-season-end {
-    font-size: 0.7rem;
+    font-size: 0.68rem;
     color: var(--sb-muted);
-    margin-top: 3px;
+    margin-top: 4px;
+    text-align: center;
+    width: 100%;
 }
 
 .sb-daily-card {
@@ -1317,16 +1324,16 @@ body { background: var(--sb-bg); }
 
                 {{-- Season --}}
                 <div class="sb-season-card">
-                    <div class="sb-season-icon">🏆</div>
-                    <div class="sb-season-info">
-                        <div class="sb-season-label">{{ __('Saison actuelle') }}</div>
-                        <div class="sb-season-name">{{ $seasonName ?? __('Hors saison') }}</div>
-                        @if($season && $seasonDays > 0)
-                            <div class="sb-season-end">{{ __('Fin dans') }} {{ $seasonDays }}{{ __('j') }}</div>
-                        @elseif(!$season)
-                            <div class="sb-season-end">{{ __('Aucune saison active') }}</div>
-                        @endif
+                    <div class="sb-season-top">
+                        <span class="sb-season-icon">🏆</span>
+                        <span class="sb-season-label">{{ __('Saison actuelle') }} :</span>
+                        <span class="sb-season-name">{{ $seasonName ?? __('Hors saison') }}</span>
                     </div>
+                    @if($season && $seasonDays > 0)
+                        <div class="sb-season-end">{{ __('Fin dans') }} {{ $seasonDays }}{{ __('j') }}</div>
+                    @elseif(!$season)
+                        <div class="sb-season-end">{{ __('Aucune saison active') }}</div>
+                    @endif
                 </div>
 
                 {{-- Daily Challenge --}}
