@@ -1190,7 +1190,7 @@ body { background: var(--sb-bg); }
 
         {{-- Logo titre (affiché dans le menu latéral quand l'écran rétrécit — voir responsive) --}}
         <div class="sb-sidebar-logo">
-            <span class="sb-sidebar-logo-flash">⚡</span>
+            <span class="sb-sidebar-logo-flash">🧠</span>
             <span class="sb-sidebar-logo-text">Strategy Buzzer</span>
         </div>
 
@@ -1288,9 +1288,9 @@ body { background: var(--sb-bg); }
 
             <div class="sb-topbar-logo">
                 <div class="sb-logo-title">
-                    <span style="font-size:1.6rem">⚡</span>
+                    <span style="font-size:1.4rem">🧠</span>
                     <span class="sb-logo-text">Strategy Buzzer</span>
-                    <span style="font-size:1.6rem">⚡</span>
+                    <span style="font-size:1.4rem">🧠</span>
                 </div>
                 <div class="sb-logo-tagline">{{ __('La connaissance est votre meilleure stratégie') }}</div>
             </div>
@@ -1318,9 +1318,9 @@ body { background: var(--sb-bg); }
 
         {{-- Titre compact mobile (≤639px — visible sous topbar quand menu latéral masqué) --}}
         <div class="sb-mobile-title">
-            <span class="sb-sidebar-logo-flash">⚡</span>
+            <span class="sb-sidebar-logo-flash">🧠</span>
             <span class="sb-mobile-title-text">Strategy Buzzer</span>
-            <span class="sb-sidebar-logo-flash">⚡</span>
+            <span class="sb-sidebar-logo-flash">🧠</span>
         </div>
 
         {{-- ── CONTENT ── --}}
