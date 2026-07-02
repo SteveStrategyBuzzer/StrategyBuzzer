@@ -1106,23 +1106,30 @@ body { background: var(--sb-bg); }
         overflow-y: auto;
     }
 
-    /* Compact topbar */
-    .sb-topbar { padding: 8px 12px; gap: 0; }
+    /* Compact topbar — titre intégré à gauche sur la même ligne que les pièces */
+    .sb-topbar { padding: 8px 12px; gap: 8px; justify-content: space-between; }
     .sb-topbar-spacer { display: none; }
-    .sb-topbar-logo { align-items: center; }
+    .sb-topbar-logo {
+        display: flex !important;
+        align-items: center;
+        justify-content: flex-start;
+        flex: 1 1 0;
+        min-width: 0;
+    }
     .sb-logo-tagline { display: none; }
-    .sb-logo-text { font-size: 1rem; letter-spacing: 0.05em; }
+    .sb-logo-text { font-size: 0.82rem; letter-spacing: 0.05em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .sb-logo-title { gap: 4px; }
     .sb-logo-title span:first-child,
-    .sb-logo-title span:last-child { font-size: 1rem; }
-    .sb-topbar-right { gap: 6px; }
+    .sb-logo-title span:last-child { font-size: 0.85rem; }
+    .sb-topbar-right { gap: 6px; flex-shrink: 0; }
     .sb-topbar-icon { width: 30px; height: 30px; border-radius: 6px; }
     .sb-coin-display { padding: 4px 8px; gap: 4px; }
     .sb-coin-value { font-size: 0.72rem; }
     .sb-coin-icon { width: 16px; height: 16px; }
     .sb-coin-add { width: 24px; height: 24px; font-size: 0.9rem; }
 
-    /* Titre compact sous la topbar (remplace sidebar-logo absent sur mobile) */
-    .sb-mobile-title { display: flex; }
+    /* Titre séparé masqué — maintenant dans la topbar */
+    .sb-mobile-title { display: none; }
 
     /* Bottom bar hidden on mobile (replaced by bottom nav) */
     .sb-bottombar { display: none; }
