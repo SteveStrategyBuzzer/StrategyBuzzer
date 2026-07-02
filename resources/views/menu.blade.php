@@ -340,18 +340,15 @@ body { background: var(--sb-bg); }
 }
 
 .sb-topbar-spacer {
-    flex: 1 1 0;
-    min-width: 0;
+    display: none;
 }
 
 .sb-topbar-logo {
     display: flex;
     flex-direction: column;
     align-items: center;
-    flex: 0 0 auto;
-    position: absolute;
-    left: 50%;
-    transform: translateX(-50%);
+    justify-content: center;
+    flex: 1 1 0;
 }
 
 .sb-logo-title {
@@ -366,7 +363,7 @@ body { background: var(--sb-bg); }
 }
 
 .sb-logo-text {
-    font-size: 1.5rem;
+    font-size: clamp(0.85rem, 2.5vw, 1.5rem);
     font-weight: 900;
     letter-spacing: 0.08em;
     background: linear-gradient(135deg, #fff 0%, var(--sb-gold) 100%);
