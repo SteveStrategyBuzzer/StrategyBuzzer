@@ -1117,10 +1117,10 @@ body { background: var(--sb-bg); }
         min-width: 0;
     }
     .sb-logo-tagline { display: none; }
-    .sb-logo-text { font-size: 0.82rem; letter-spacing: 0.05em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .sb-logo-title { gap: 4px; }
-    .sb-logo-title span:first-child,
-    .sb-logo-title span:last-child { font-size: 0.85rem; }
+    .sb-logo-text { font-size: 0.68rem; letter-spacing: 0.04em; white-space: nowrap; overflow: visible; text-overflow: clip; }
+    .sb-logo-title { gap: 3px; flex-wrap: nowrap; }
+    .sb-logo-title span:first-child { font-size: 0.72rem; }
+    .sb-logo-title span:last-child  { display: none; }
     .sb-topbar-right { gap: 6px; flex-shrink: 0; }
     .sb-topbar-icon { width: 30px; height: 30px; border-radius: 6px; }
     .sb-coin-display { padding: 4px 8px; gap: 4px; }
