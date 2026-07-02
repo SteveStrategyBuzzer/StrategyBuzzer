@@ -484,7 +484,7 @@ body { background: var(--sb-bg); }
     flex-shrink: 0;
 }
 
-.sb-season-info {}
+.sb-season-info { flex: 1; min-width: 0; }
 
 .sb-season-label {
     font-size: 0.6rem;
