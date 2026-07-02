@@ -1106,22 +1106,24 @@ body { background: var(--sb-bg); }
         overflow-y: auto;
     }
 
-    /* Compact topbar — flex-wrap : si titre ne rentre pas, passe sous les pièces */
-    .sb-topbar { padding: 8px 12px; gap: 6px 10px; flex-wrap: wrap; justify-content: flex-end; }
+    /* Compact topbar — 2 lignes : pièces+⚙ en haut, Strategy Buzzer en bas */
+    .sb-topbar { padding: 6px 12px; gap: 4px 8px; flex-wrap: wrap; justify-content: flex-end; align-items: center; }
     .sb-topbar-spacer { display: none; }
+    /* Ligne 2 : titre centré sur toute la largeur */
     .sb-topbar-logo {
         display: flex !important;
         align-items: center;
-        justify-content: flex-start;
-        flex: 0 0 auto;
-        order: 1;
+        justify-content: center;
+        flex: 0 0 100%;
+        order: 2;
     }
     .sb-logo-tagline { display: none; }
-    .sb-logo-text { font-size: 0.82rem; letter-spacing: 0.04em; white-space: nowrap; overflow: visible; text-overflow: clip; }
-    .sb-logo-title { gap: 3px; flex-wrap: nowrap; }
-    .sb-logo-title span:first-child { font-size: 0.82rem; }
-    .sb-logo-title span:last-child  { display: none; }
-    .sb-topbar-right { gap: 6px; flex-shrink: 0; order: 2; }
+    .sb-logo-text { font-size: 0.78rem; letter-spacing: 0.06em; white-space: nowrap; overflow: visible; }
+    .sb-logo-title { gap: 4px; flex-wrap: nowrap; justify-content: center; }
+    .sb-logo-title span:first-child,
+    .sb-logo-title span:last-child { font-size: 0.78rem; }
+    /* Ligne 1 : pièces + ⚙ à droite */
+    .sb-topbar-right { gap: 6px; flex-shrink: 0; order: 1; margin-left: auto; }
     .sb-topbar-icon { width: 30px; height: 30px; border-radius: 6px; }
     .sb-coin-display { padding: 4px 8px; gap: 4px; }
     .sb-coin-value { font-size: 0.72rem; }
