@@ -347,16 +347,13 @@ body { background: var(--sb-bg); }
     display: flex;
     flex-direction: column;
     align-items: center;
-    flex: 1 1 0;
-    min-width: 0;
+    flex: 0 0 auto;
 }
 
 .sb-logo-title {
     display: flex;
     align-items: center;
     gap: 8px;
-    min-width: 0;
-    max-width: 100%;
 }
 
 .sb-logo-img {
@@ -374,9 +371,6 @@ body { background: var(--sb-bg); }
     background-clip: text;
     text-transform: uppercase;
     white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    min-width: 0;
 }
 
 .sb-logo-tagline {
