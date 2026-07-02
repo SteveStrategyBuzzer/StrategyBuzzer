@@ -1118,9 +1118,25 @@ body { background: var(--sb-bg); }
     .sb-bottombar { display: none; }
 
     /* Rows */
-    .sb-row1 { grid-template-columns: 1fr; gap: 8px; }
+    .sb-row1 { grid-template-columns: 1fr; gap: 6px; }
     .sb-row2 { grid-template-columns: repeat(2, 1fr); gap: 8px; }
     .sb-row3 { grid-template-columns: 1fr; gap: 8px; }
+
+    /* ── Panneaux Saison & Défi : bandeaux compacts sur mobile ── */
+    .sb-season-card,
+    .sb-daily-card   { padding: 9px 12px; gap: 10px; }
+    .sb-season-icon  { font-size: 1.4rem; }
+    .sb-season-label { font-size: 0.55rem; margin-bottom: 2px; }
+    .sb-season-name  { font-size: 0.82rem; }
+    .sb-season-end   { font-size: 0.6rem; margin-top: 1px; }
+    .sb-daily-chest  { font-size: 1.5rem; }
+    .sb-daily-label  { font-size: 0.55rem; margin-bottom: 2px; }
+    .sb-daily-title  { font-size: 0.72rem; margin-bottom: 5px; line-height: 1.2; }
+    .sb-daily-progress-bar { height: 5px; margin-bottom: 3px; }
+    .sb-daily-progress-text { font-size: 0.6rem; }
+    .sb-daily-reward { flex-direction: row; align-items: center; gap: 3px; }
+    .sb-daily-reward-icon { font-size: 1rem; }
+    .sb-daily-reward-value { font-size: 0.75rem; }
 
     /* Smaller game card images */
     .sb-mode-img-wrap { height: 100px; }
@@ -1138,9 +1154,14 @@ body { background: var(--sb-bg); }
     .sb-coin-add { display: none; }
     .sb-row2 { grid-template-columns: 1fr; }
     .sb-mode-img-wrap { height: 120px; }
+    /* Garder les panneaux horizontaux même sur très petits écrans */
     .sb-season-card,
-    .sb-daily-card { flex-direction: column; align-items: flex-start; gap: 8px; }
-    .sb-daily-reward { flex-direction: row; align-self: flex-end; gap: 4px; }
+    .sb-daily-card   { flex-direction: row; align-items: center; padding: 8px 10px; gap: 8px; }
+    .sb-season-icon  { font-size: 1.2rem; }
+    .sb-season-name  { font-size: 0.75rem; }
+    .sb-daily-chest  { font-size: 1.3rem; }
+    .sb-daily-title  { font-size: 0.68rem; }
+    .sb-daily-reward { flex-direction: row; align-items: center; gap: 2px; flex-shrink: 0; }
 }
 </style>
 
