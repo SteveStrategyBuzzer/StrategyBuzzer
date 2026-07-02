@@ -475,8 +475,11 @@ body { background: var(--sb-bg); }
     border-radius: 12px;
     padding: 14px 16px;
     display: flex;
+    flex-direction: column;
     align-items: center;
-    gap: 14px;
+    justify-content: center;
+    text-align: center;
+    gap: 4px;
 }
 
 .sb-season-icon {
@@ -1123,10 +1126,10 @@ body { background: var(--sb-bg); }
     .sb-row3 { grid-template-columns: 1fr; gap: 8px; }
 
     /* ── Panneaux Saison & Défi : bandeaux compacts sur mobile ── */
-    .sb-season-card,
+    .sb-season-card  { padding: 9px 12px; gap: 3px; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
     .sb-daily-card   { padding: 9px 12px; gap: 10px; }
     .sb-season-icon  { font-size: 1.4rem; }
-    .sb-season-label { font-size: 0.55rem; margin-bottom: 2px; }
+    .sb-season-label { font-size: 0.55rem; margin-bottom: 1px; }
     .sb-season-name  { font-size: 0.82rem; }
     .sb-season-end   { font-size: 0.6rem; margin-top: 1px; }
     .sb-daily-chest  { font-size: 1.5rem; }
@@ -1154,11 +1157,11 @@ body { background: var(--sb-bg); }
     .sb-coin-add { display: none; }
     .sb-row2 { grid-template-columns: 1fr; }
     .sb-mode-img-wrap { height: 120px; }
-    /* Garder les panneaux horizontaux même sur très petits écrans */
-    .sb-season-card,
-    .sb-daily-card   { flex-direction: row; align-items: center; padding: 8px 10px; gap: 8px; }
+    /* Très petits écrans */
+    .sb-season-card  { flex-direction: column; align-items: center; text-align: center; padding: 8px 10px; gap: 2px; }
     .sb-season-icon  { font-size: 1.2rem; }
     .sb-season-name  { font-size: 0.75rem; }
+    .sb-daily-card   { flex-direction: row; align-items: center; padding: 8px 10px; gap: 8px; }
     .sb-daily-chest  { font-size: 1.3rem; }
     .sb-daily-title  { font-size: 0.68rem; }
     .sb-daily-reward { flex-direction: row; align-items: center; gap: 2px; flex-shrink: 0; }
