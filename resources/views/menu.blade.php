@@ -336,6 +336,7 @@ body { background: var(--sb-bg); }
     background: var(--sb-sidebar);
     border-bottom: 1px solid var(--sb-border);
     flex-shrink: 0;
+    position: relative;
 }
 
 .sb-topbar-spacer {
@@ -348,6 +349,9 @@ body { background: var(--sb-bg); }
     flex-direction: column;
     align-items: center;
     flex: 0 0 auto;
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
 }
 
 .sb-logo-title {
@@ -1110,6 +1114,8 @@ body { background: var(--sb-bg); }
         justify-content: center;
         flex: 0 0 100%;
         order: 2;
+        position: static;
+        transform: none;
     }
     .sb-logo-tagline { display: none; }
     .sb-logo-text { font-size: 0.78rem; letter-spacing: 0.06em; white-space: nowrap; overflow: visible; }
