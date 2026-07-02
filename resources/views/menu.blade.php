@@ -1113,14 +1113,13 @@ body { background: var(--sb-bg); }
         display: flex !important;
         align-items: center;
         justify-content: flex-start;
-        flex: 1 1 120px;
-        min-width: 0;
+        flex: 0 0 auto;
         order: 1;
     }
     .sb-logo-tagline { display: none; }
-    .sb-logo-text { font-size: clamp(0.6rem, 3.5vw, 0.9rem); letter-spacing: 0.04em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .sb-logo-title { gap: 3px; flex-wrap: nowrap; min-width: 0; }
-    .sb-logo-title span:first-child { font-size: clamp(0.6rem, 3.5vw, 0.9rem); }
+    .sb-logo-text { font-size: 0.82rem; letter-spacing: 0.04em; white-space: nowrap; overflow: visible; text-overflow: clip; }
+    .sb-logo-title { gap: 3px; flex-wrap: nowrap; }
+    .sb-logo-title span:first-child { font-size: 0.82rem; }
     .sb-logo-title span:last-child  { display: none; }
     .sb-topbar-right { gap: 6px; flex-shrink: 0; order: 2; }
     .sb-topbar-icon { width: 30px; height: 30px; border-radius: 6px; }
