@@ -104,12 +104,41 @@ class KernelFrameBuilderBlueprintTest extends TestCase
     }
 
     // =========================================================================
-    // 2. kernel_code
+    // 2. kernel_code — slot structuré
     // =========================================================================
 
-    public function test_kernel_code_is_null_at_construction(): void
+    public function test_kernel_code_slot_has_required_keys(): void
     {
-        $this->assertNull($this->skeleton()['kernel_code']);
+        $slot = $this->skeleton()['kernel_code'];
+
+        foreach (['value', 'format', 'status', 'locked', 'rules', 'traces'] as $key) {
+            $this->assertArrayHasKey($key, $slot, "kernel_code manque : {$key}");
+        }
+    }
+
+    public function test_kernel_code_value_is_null_at_construction(): void
+    {
+        $slot = $this->skeleton()['kernel_code'];
+
+        $this->assertNull($slot['value']);
+        $this->assertSame('empty', $slot['status']);
+        $this->assertFalse($slot['locked']);
+        $this->assertSame('yy-xx-xxx-xxx-xxx-zz', $slot['format']);
+    }
+
+    public function test_kernel_code_rules_declare_full_access_contract(): void
+    {
+        $rules = $this->skeleton()['kernel_code']['rules'];
+
+        $this->assertSame('KernelFrameBuilder', $rules['creator']);
+        $this->assertStringContainsString('KEY_STRUCTURE', $rules['filler_prefix']);
+        $this->assertStringContainsString('KLD',           $rules['filler_suffix']);
+        $this->assertContains('QuestionIntent',  $rules['read_by']);
+        $this->assertContains('READY_BANK',      $rules['read_by']);
+        $this->assertStringContainsString('KLD',            $rules['locked_after']);
+        $this->assertStringContainsString('Immutable',      $rules['forbidden']);
+        $this->assertArrayHasKey('transmitted_to',          $rules);
+        $this->assertArrayHasKey('expected_content',        $rules);
     }
 
     // =========================================================================
@@ -157,30 +186,46 @@ class KernelFrameBuilderBlueprintTest extends TestCase
     {
         $rules = $this->skeleton()['depth_slot']['rules'];
 
-        $this->assertSame('KernelFrameBuilder', $rules['creator']);
-        $this->assertSame('KernelRotationPlanner', $rules['filler']);
-        $this->assertSame('DepthNeedMatrix', $rules['driven_by']);
-        $this->assertSame('Taxonomy', $rules['transmitted_to']);
+        $this->assertSame('KernelFrameBuilder',     $rules['creator']);
+        $this->assertSame('KernelRotationPlanner',  $rules['filler']);
+        $this->assertSame('DepthNeedMatrix',         $rules['driven_by']);
+        $this->assertSame('Taxonomy',                $rules['transmitted_to']);
         $this->assertContains('Taxonomy',        $rules['read_by']);
         $this->assertContains('KEY_STRUCTURE',   $rules['read_by']);
         $this->assertContains('QuestionIntent',  $rules['read_by']);
         $this->assertContains('Phase1',          $rules['read_by']);
         $this->assertContains('READY_BANK',      $rules['read_by']);
         $this->assertStringContainsString('KernelRotationPlanner', $rules['write_access']);
-        $this->assertStringContainsString('depth_slot', $rules['forbidden']);
+        $this->assertStringContainsString('depth_slot',            $rules['forbidden']);
+        $this->assertArrayHasKey('expected_content',               $rules);
     }
 
     // =========================================================================
     // 4. domain_slot
     // =========================================================================
 
+    public function test_domain_slot_has_required_keys(): void
+    {
+        $slot = $this->skeleton()['domain_slot'];
+
+        foreach ([
+            'requested_domain', 'actual_domain', 'selection_source',
+            'filled_at', 'status', 'locked', 'rules', 'traces',
+        ] as $key) {
+            $this->assertArrayHasKey($key, $slot, "domain_slot manque : {$key}");
+        }
+    }
+
     public function test_domain_slot_prefills_from_intent(): void
     {
         $slot = $this->skeleton()['domain_slot'];
 
-        $this->assertSame('Géographie', $slot['value']);
-        $this->assertSame('legacy_intent', $slot['source']);
+        $this->assertSame('Géographie', $slot['requested_domain']);
+        $this->assertSame('Géographie', $slot['actual_domain']);
+        $this->assertSame('legacy_intent', $slot['selection_source']);
+        $this->assertNull($slot['filled_at']);
         $this->assertSame('filled', $slot['status']);
+        $this->assertTrue($slot['locked']);
     }
 
     public function test_domain_slot_is_empty_when_intent_has_no_domain(): void
@@ -188,20 +233,90 @@ class KernelFrameBuilderBlueprintTest extends TestCase
         $this->intent = $this->makeIntent(['domain' => null]);
         $slot = $this->skeleton()['domain_slot'];
 
-        $this->assertNull($slot['value']);
+        $this->assertNull($slot['requested_domain']);
+        $this->assertNull($slot['actual_domain']);
+        $this->assertNull($slot['selection_source']);
+        $this->assertNull($slot['filled_at']);
         $this->assertSame('empty', $slot['status']);
+        $this->assertFalse($slot['locked']);
+    }
+
+    public function test_domain_slot_rules_declare_full_access_contract(): void
+    {
+        $rules = $this->skeleton()['domain_slot']['rules'];
+
+        $this->assertSame('KernelFrameBuilder',    $rules['creator']);
+        $this->assertSame('KernelRotationPlanner', $rules['filler']);
+        $this->assertSame('DomainCycle',           $rules['driven_by']);
+        $this->assertSame('depth_slot',            $rules['depends_on']);
+        $this->assertSame('Taxonomy',              $rules['transmitted_to']);
+        $this->assertContains('Taxonomy',        $rules['read_by']);
+        $this->assertContains('KEY_STRUCTURE',   $rules['read_by']);
+        $this->assertContains('QuestionIntent',  $rules['read_by']);
+        $this->assertContains('Phase1',          $rules['read_by']);
+        $this->assertContains('READY_BANK',      $rules['read_by']);
+        $this->assertStringContainsString('KernelRotationPlanner', $rules['write_access']);
+        $this->assertStringContainsString('domain_slot',           $rules['forbidden']);
+        $this->assertArrayHasKey('expected_content',               $rules);
     }
 
     // =========================================================================
     // 5. sub_domain_slot
     // =========================================================================
 
+    public function test_sub_domain_slot_has_required_keys(): void
+    {
+        $slot = $this->skeleton()['sub_domain_slot'];
+
+        foreach ([
+            'requested_sub_domain', 'actual_sub_domain', 'selection_source',
+            'filled_at', 'status', 'locked', 'rules', 'traces',
+        ] as $key) {
+            $this->assertArrayHasKey($key, $slot, "sub_domain_slot manque : {$key}");
+        }
+    }
+
     public function test_sub_domain_slot_prefills_from_intent(): void
     {
         $slot = $this->skeleton()['sub_domain_slot'];
 
-        $this->assertSame('Capitales', $slot['value']);
+        $this->assertSame('Capitales', $slot['requested_sub_domain']);
+        $this->assertSame('Capitales', $slot['actual_sub_domain']);
+        $this->assertSame('legacy_intent', $slot['selection_source']);
+        $this->assertNull($slot['filled_at']);
         $this->assertSame('filled', $slot['status']);
+        $this->assertTrue($slot['locked']);
+    }
+
+    public function test_sub_domain_slot_is_empty_when_intent_has_no_sub_domain(): void
+    {
+        $this->intent = $this->makeIntent(['sub_domain' => null]);
+        $slot = $this->skeleton()['sub_domain_slot'];
+
+        $this->assertNull($slot['requested_sub_domain']);
+        $this->assertNull($slot['actual_sub_domain']);
+        $this->assertNull($slot['selection_source']);
+        $this->assertNull($slot['filled_at']);
+        $this->assertSame('empty', $slot['status']);
+        $this->assertFalse($slot['locked']);
+    }
+
+    public function test_sub_domain_slot_rules_declare_full_access_contract(): void
+    {
+        $rules = $this->skeleton()['sub_domain_slot']['rules'];
+
+        $this->assertSame('KernelFrameBuilder',            $rules['creator']);
+        $this->assertSame('Taxonomy (TaxonomyReader)',      $rules['filler']);
+        $this->assertContains('depth_slot',       $rules['depends_on']);
+        $this->assertContains('domain_slot',      $rules['depends_on']);
+        $this->assertContains('KEY_STRUCTURE',    $rules['read_by']);
+        $this->assertContains('QuestionIntent',   $rules['read_by']);
+        $this->assertContains('READY_BANK',       $rules['read_by']);
+        $this->assertStringContainsString('Taxonomy',          $rules['write_access']);
+        $this->assertStringContainsString('Taxonomy',          $rules['locked_after']);
+        $this->assertStringContainsString('subjects_inventory',$rules['transmitted_to']);
+        $this->assertStringContainsString('sub_domain_slot',   $rules['forbidden']);
+        $this->assertArrayHasKey('expected_content',           $rules);
     }
 
     // =========================================================================
@@ -216,40 +331,174 @@ class KernelFrameBuilderBlueprintTest extends TestCase
         $this->assertCount(50, $inventory);
     }
 
+    public function test_subjects_inventory_slots_have_required_keys(): void
+    {
+        $inventory = $this->skeleton()['subjects_inventory'];
+
+        foreach ($inventory as $i => $slot) {
+            foreach (['index', 'label', 'filled_at', 'status', 'locked', 'rules', 'traces'] as $key) {
+                $this->assertArrayHasKey($key, $slot, "subjects_inventory[{$i}] manque : {$key}");
+            }
+        }
+    }
+
     public function test_subjects_inventory_slots_are_all_empty(): void
     {
         $inventory = $this->skeleton()['subjects_inventory'];
 
         foreach ($inventory as $i => $slot) {
-            $this->assertNull($slot['value'], "Slot {$i} devrait être null.");
-            $this->assertSame('available', $slot['status'], "Slot {$i} devrait avoir status=available.");
-            $this->assertSame($i + 1, $slot['index'], "Slot {$i} devrait avoir index=" . ($i + 1) . ".");
+            $this->assertNull($slot['label'],      "Slot {$i} label devrait être null.");
+            $this->assertNull($slot['filled_at'],  "Slot {$i} filled_at devrait être null.");
+            $this->assertFalse($slot['locked'],    "Slot {$i} locked devrait être false.");
+            $this->assertSame('available', $slot['status'], "Slot {$i} status devrait être 'available'.");
+            $this->assertSame($i + 1, $slot['index'], "Slot {$i} index devrait être " . ($i + 1) . ".");
         }
     }
 
-    // =========================================================================
-    // 7. active_subject / dominant_ideas / active_dominant_idea
-    // =========================================================================
-
-    public function test_active_subject_is_null_at_construction(): void
+    public function test_subjects_inventory_rules_declare_full_access_contract(): void
     {
-        $this->assertNull($this->skeleton()['active_subject']);
-    }
+        $rules = $this->skeleton()['subjects_inventory'][0]['rules'];
 
-    public function test_dominant_ideas_is_empty_array_at_construction(): void
-    {
-        $ideas = $this->skeleton()['dominant_ideas'];
-        $this->assertIsArray($ideas);
-        $this->assertEmpty($ideas);
-    }
-
-    public function test_active_dominant_idea_is_null_at_construction(): void
-    {
-        $this->assertNull($this->skeleton()['active_dominant_idea']);
+        $this->assertSame('KernelFrameBuilder',         $rules['creator']);
+        $this->assertSame('Taxonomy (TaxonomyReader)',   $rules['filler']);
+        $this->assertSame(50,                            $rules['max_slots']);
+        $this->assertContains('active_subject', $rules['read_by']);
+        $this->assertContains('KEY_STRUCTURE',  $rules['read_by']);
+        $this->assertStringContainsString('Taxonomy',         $rules['write_access']);
+        $this->assertStringContainsString('active',           $rules['locked_after']);
+        $this->assertStringContainsString('active_subject',   $rules['transmitted_to']);
+        $this->assertStringContainsString('dominant_ideas',   $rules['forbidden']);
+        $this->assertArrayHasKey('expected_content',          $rules);
     }
 
     // =========================================================================
-    // 8. cognitive_slots
+    // 7. active_subject — slot structuré
+    // =========================================================================
+
+    public function test_active_subject_slot_has_required_keys(): void
+    {
+        $slot = $this->skeleton()['active_subject'];
+
+        foreach ([
+            'subject_index', 'subject_label', 'set_at', 'status', 'locked', 'rules', 'traces',
+        ] as $key) {
+            $this->assertArrayHasKey($key, $slot, "active_subject manque : {$key}");
+        }
+    }
+
+    public function test_active_subject_is_empty_at_construction(): void
+    {
+        $slot = $this->skeleton()['active_subject'];
+
+        $this->assertNull($slot['subject_index']);
+        $this->assertNull($slot['subject_label']);
+        $this->assertNull($slot['set_at']);
+        $this->assertSame('empty', $slot['status']);
+        $this->assertFalse($slot['locked']);
+    }
+
+    public function test_active_subject_rules_declare_full_access_contract(): void
+    {
+        $rules = $this->skeleton()['active_subject']['rules'];
+
+        $this->assertSame('KernelFrameBuilder',         $rules['creator']);
+        $this->assertSame('Taxonomy (TaxonomyReader)',   $rules['filler']);
+        $this->assertContains('dominant_ideas',  $rules['read_by']);
+        $this->assertContains('KEY_STRUCTURE',   $rules['read_by']);
+        $this->assertContains('QuestionIntent',  $rules['read_by']);
+        $this->assertStringContainsString('Taxonomy',          $rules['write_access']);
+        $this->assertStringContainsString('dominant_ideas',    $rules['locked_after']);
+        $this->assertStringContainsString('dominant_ideas',    $rules['transmitted_to']);
+        $this->assertStringContainsString('active_subject',    $rules['forbidden']);
+        $this->assertArrayHasKey('expected_content',           $rules);
+    }
+
+    // =========================================================================
+    // 8. dominant_ideas — slot structuré
+    // =========================================================================
+
+    public function test_dominant_ideas_slot_has_required_keys(): void
+    {
+        $slot = $this->skeleton()['dominant_ideas'];
+
+        foreach (['ideas', 'status', 'locked', 'rules', 'traces'] as $key) {
+            $this->assertArrayHasKey($key, $slot, "dominant_ideas manque : {$key}");
+        }
+    }
+
+    public function test_dominant_ideas_ideas_is_empty_at_construction(): void
+    {
+        $slot = $this->skeleton()['dominant_ideas'];
+
+        $this->assertSame([], $slot['ideas']);
+        $this->assertSame('empty', $slot['status']);
+        $this->assertFalse($slot['locked']);
+    }
+
+    public function test_dominant_ideas_rules_declare_full_access_contract(): void
+    {
+        $rules = $this->skeleton()['dominant_ideas']['rules'];
+
+        $this->assertSame('KernelFrameBuilder',         $rules['creator']);
+        $this->assertSame('Taxonomy (TaxonomyReader)',   $rules['filler']);
+        $this->assertSame(5,                             $rules['max_ideas']);
+        $this->assertStringContainsString('active_subject',       $rules['scope']);
+        $this->assertContains('active_dominant_idea', $rules['read_by']);
+        $this->assertContains('KEY_STRUCTURE',        $rules['read_by']);
+        $this->assertContains('QuestionIntent',       $rules['read_by']);
+        $this->assertStringContainsString('Taxonomy',             $rules['write_access']);
+        $this->assertStringContainsString('QuestionIntent',       $rules['locked_after']);
+        $this->assertStringContainsString('active_dominant_idea', $rules['transmitted_to']);
+        $this->assertStringContainsString('active_subject',       $rules['forbidden']);
+        $this->assertStringContainsString('5',                    $rules['forbidden']);
+        $this->assertArrayHasKey('expected_content',              $rules);
+    }
+
+    // =========================================================================
+    // 9. active_dominant_idea — slot structuré
+    // =========================================================================
+
+    public function test_active_dominant_idea_slot_has_required_keys(): void
+    {
+        $slot = $this->skeleton()['active_dominant_idea'];
+
+        foreach ([
+            'idea_index', 'idea_label', 'set_at', 'status', 'locked', 'rules', 'traces',
+        ] as $key) {
+            $this->assertArrayHasKey($key, $slot, "active_dominant_idea manque : {$key}");
+        }
+    }
+
+    public function test_active_dominant_idea_is_empty_at_construction(): void
+    {
+        $slot = $this->skeleton()['active_dominant_idea'];
+
+        $this->assertNull($slot['idea_index']);
+        $this->assertNull($slot['idea_label']);
+        $this->assertNull($slot['set_at']);
+        $this->assertSame('empty', $slot['status']);
+        $this->assertFalse($slot['locked']);
+    }
+
+    public function test_active_dominant_idea_rules_declare_full_access_contract(): void
+    {
+        $rules = $this->skeleton()['active_dominant_idea']['rules'];
+
+        $this->assertSame('KernelFrameBuilder',         $rules['creator']);
+        $this->assertSame('Taxonomy (TaxonomyReader)',   $rules['filler']);
+        $this->assertSame('dominant_ideas',              $rules['depends_on']);
+        $this->assertContains('KEY_STRUCTURE',   $rules['read_by']);
+        $this->assertContains('QuestionIntent',  $rules['read_by']);
+        $this->assertContains('Phase1',          $rules['read_by']);
+        $this->assertStringContainsString('Taxonomy',                  $rules['write_access']);
+        $this->assertStringContainsString('QuestionIntent',            $rules['locked_after']);
+        $this->assertStringContainsString('KEY_STRUCTURE',             $rules['transmitted_to']);
+        $this->assertStringContainsString('active_dominant_idea',      $rules['forbidden']);
+        $this->assertArrayHasKey('expected_content',                   $rules);
+    }
+
+    // =========================================================================
+    // 10. cognitive_slots
     // =========================================================================
 
     public function test_cognitive_slots_has_exactly_7_entries(): void
@@ -295,11 +544,70 @@ class KernelFrameBuilderBlueprintTest extends TestCase
         $slots = $this->skeleton()['cognitive_slots'];
 
         foreach ($slots as $variantKey => $slot) {
-            $this->assertNull($slot['question_slot']['value'], "{$variantKey}.question_slot.value devrait être null.");
-            $this->assertNull($slot['correct_answer_key'], "{$variantKey}.correct_answer_key devrait être null.");
-            $this->assertNull($slot['sv_slot']['value'], "{$variantKey}.sv_slot.value devrait être null.");
-            $this->assertSame('empty', $slot['status'], "{$variantKey}.status devrait être 'empty'.");
+            $this->assertNull($slot['question_slot']['value'],   "{$variantKey}.question_slot.value devrait être null.");
+            $this->assertNull($slot['correct_answer_key'],       "{$variantKey}.correct_answer_key devrait être null.");
+            $this->assertNull($slot['sv_slot']['value'],         "{$variantKey}.sv_slot.value devrait être null.");
+            $this->assertSame('empty', $slot['status'],          "{$variantKey}.status devrait être 'empty'.");
         }
+    }
+
+    public function test_question_slot_has_full_contract_keys(): void
+    {
+        $slots = $this->skeleton()['cognitive_slots'];
+        $qs = $slots['qcm_recognition']['question_slot'];
+
+        foreach (['value', 'filled_at', 'status', 'locked', 'rules', 'traces'] as $key) {
+            $this->assertArrayHasKey($key, $qs, "question_slot manque : {$key}");
+        }
+        $this->assertSame('empty', $qs['status']);
+        $this->assertFalse($qs['locked']);
+        $this->assertNull($qs['filled_at']);
+    }
+
+    public function test_question_slot_rules_declare_full_access_contract(): void
+    {
+        $rules = $this->skeleton()['cognitive_slots']['qcm_recognition']['question_slot']['rules'];
+
+        $this->assertSame('KernelFrameBuilder',              $rules['creator']);
+        $this->assertSame('Phase1 (KernelContentBuilder)',   $rules['filler']);
+        $this->assertSame('en',                              $rules['language']);
+        $this->assertContains('Phase2',       $rules['read_by']);
+        $this->assertContains('Phase3',       $rules['read_by']);
+        $this->assertContains('READY_BANK',   $rules['read_by']);
+        $this->assertStringContainsString('Phase1',            $rules['write_access']);
+        $this->assertStringContainsString('Phase2',            $rules['locked_after']);
+        $this->assertStringContainsString('Phase3',            $rules['transmitted_to']);
+        $this->assertStringContainsString('question_slot',     $rules['forbidden']);
+        $this->assertArrayHasKey('expected_content',           $rules);
+    }
+
+    public function test_sv_slot_has_full_contract_keys(): void
+    {
+        $sv = $this->skeleton()['cognitive_slots']['qcm_recognition']['sv_slot'];
+
+        foreach (['value', 'filled_at', 'status', 'locked', 'rules', 'traces'] as $key) {
+            $this->assertArrayHasKey($key, $sv, "sv_slot manque : {$key}");
+        }
+        $this->assertSame('empty', $sv['status']);
+        $this->assertFalse($sv['locked']);
+        $this->assertNull($sv['filled_at']);
+    }
+
+    public function test_sv_slot_rules_declare_full_access_contract(): void
+    {
+        $rules = $this->skeleton()['cognitive_slots']['qcm_recognition']['sv_slot']['rules'];
+
+        $this->assertSame('KernelFrameBuilder',            $rules['creator']);
+        $this->assertSame('Phase1 (KernelContentBuilder)', $rules['filler']);
+        $this->assertSame('en',                            $rules['language']);
+        $this->assertIsInt($rules['min_chars']);
+        $this->assertIsInt($rules['max_chars']);
+        $this->assertContains('Phase2',     $rules['read_by']);
+        $this->assertContains('Phase3',     $rules['read_by']);
+        $this->assertContains('READY_BANK', $rules['read_by']);
+        $this->assertStringContainsString('Phase1',    $rules['write_access']);
+        $this->assertStringContainsString('sv_slot',   $rules['forbidden']);
+        $this->assertArrayHasKey('expected_content',   $rules);
     }
 
     public function test_qcm_variants_have_4_answer_slots(): void
@@ -328,6 +636,42 @@ class KernelFrameBuilderBlueprintTest extends TestCase
         }
     }
 
+    public function test_answer_slots_have_full_contract_keys(): void
+    {
+        $ans = $this->skeleton()['cognitive_slots']['qcm_recognition']['answer_slots'];
+
+        foreach (['answer_a', 'answer_b', 'answer_c', 'answer_d'] as $ansKey) {
+            foreach (['value', 'filled_at', 'status', 'locked', 'rules', 'traces'] as $key) {
+                $this->assertArrayHasKey($key, $ans[$ansKey], "{$ansKey} manque : {$key}");
+            }
+            $this->assertNull($ans[$ansKey]['value']);
+            $this->assertNull($ans[$ansKey]['filled_at']);
+            $this->assertSame('empty', $ans[$ansKey]['status']);
+            $this->assertFalse($ans[$ansKey]['locked']);
+        }
+    }
+
+    public function test_answer_slots_rules_declare_full_access_contract(): void
+    {
+        $rules = $this->skeleton()['cognitive_slots']['qcm_recognition']['answer_slots']['answer_a']['rules'];
+
+        $this->assertSame('KernelFrameBuilder',            $rules['creator']);
+        $this->assertSame('Phase1 (KernelContentBuilder)', $rules['filler']);
+        $this->assertSame('en',                            $rules['language']);
+        $this->assertIsInt($rules['max_chars']);
+        $this->assertContains('Phase2',     $rules['read_by']);
+        $this->assertContains('Phase3',     $rules['read_by']);
+        $this->assertContains('READY_BANK', $rules['read_by']);
+        $this->assertStringContainsString('Phase1',       $rules['write_access']);
+        $this->assertStringContainsString('Phase3',       $rules['transmitted_to']);
+        $this->assertStringContainsString('answer_slots', $rules['forbidden']);
+        $this->assertArrayHasKey('expected_content',      $rules);
+    }
+
+    // =========================================================================
+    // 11. translation_slots
+    // =========================================================================
+
     public function test_each_cognitive_slot_has_exactly_9_translation_langs(): void
     {
         $slots    = $this->skeleton()['cognitive_slots'];
@@ -352,8 +696,53 @@ class KernelFrameBuilderBlueprintTest extends TestCase
         }
     }
 
+    public function test_translation_slots_have_full_contract_keys(): void
+    {
+        $frSlot = $this->skeleton()['cognitive_slots']['qcm_recognition']['translation_slots']['fr'];
+
+        foreach ([
+            'status', 'filled_at', 'locked',
+            'question_text', 'answer_a', 'answer_b', 'answer_c', 'answer_d',
+            'correct_answer_key', 'explanation', 'saviez_vous',
+            'rules', 'traces',
+        ] as $key) {
+            $this->assertArrayHasKey($key, $frSlot, "translation_slot[fr] manque : {$key}");
+        }
+        $this->assertFalse($frSlot['locked']);
+        $this->assertNull($frSlot['filled_at']);
+    }
+
+    public function test_translation_slots_rules_declare_full_access_contract(): void
+    {
+        $rules = $this->skeleton()['cognitive_slots']['qcm_recognition']['translation_slots']['fr']['rules'];
+
+        $this->assertSame('KernelFrameBuilder',           $rules['creator']);
+        $this->assertSame('Phase3 (KernelTranslator)',    $rules['filler']);
+        $this->assertSame('Phase4',                       $rules['validator']);
+        $this->assertSame('fr',                           $rules['language']);
+        $this->assertIsInt($rules['answer_max']);
+        $this->assertIsInt($rules['sv_max']);
+        $this->assertContains('Phase4',    $rules['read_by']);
+        $this->assertContains('READY_BANK',$rules['read_by']);
+        $this->assertContains('Gameplay',  $rules['read_by']);
+        $this->assertStringContainsString('Phase3',            $rules['write_access']);
+        $this->assertStringContainsString('Phase4',            $rules['locked_after']);
+        $this->assertStringContainsString('READY_BANK',        $rules['transmitted_to']);
+        $this->assertStringContainsString('translation_slots', $rules['forbidden']);
+        $this->assertArrayHasKey('expected_content',           $rules);
+    }
+
+    public function test_translation_slots_zh_has_reduced_char_limits(): void
+    {
+        $zhRules = $this->skeleton()['cognitive_slots']['qcm_recognition']['translation_slots']['zh']['rules'];
+        $frRules = $this->skeleton()['cognitive_slots']['qcm_recognition']['translation_slots']['fr']['rules'];
+
+        $this->assertLessThan($frRules['answer_max'], $zhRules['answer_max']);
+        $this->assertLessThan($frRules['sv_max'],     $zhRules['sv_max']);
+    }
+
     // =========================================================================
-    // 9. rules / mechanisms / constraints / statuses / traces
+    // 12. rules / mechanisms / constraints / statuses / traces
     // =========================================================================
 
     public function test_rules_contains_kernel_code_format(): void
@@ -400,13 +789,13 @@ class KernelFrameBuilderBlueprintTest extends TestCase
         }
     }
 
-    public function test_traces_is_empty_array_at_construction(): void
+    public function test_root_traces_is_empty_array_at_construction(): void
     {
         $this->assertSame([], $this->skeleton()['traces']);
     }
 
     // =========================================================================
-    // 10. Compatibilité legacy (kernel_core / variants / translation_constraints)
+    // 13. Compatibilité legacy (kernel_core / variants / translation_constraints)
     // =========================================================================
 
     public function test_kernel_core_legacy_is_still_present(): void
@@ -433,7 +822,7 @@ class KernelFrameBuilderBlueprintTest extends TestCase
     }
 
     // =========================================================================
-    // 11. Sortie JSON valide (exemple noyau vide)
+    // 14. Sortie JSON valide (exemple noyau vide)
     // =========================================================================
 
     public function test_skeleton_encodes_to_valid_json(): void
@@ -444,7 +833,10 @@ class KernelFrameBuilderBlueprintTest extends TestCase
         $this->assertNotEmpty($json);
 
         $decoded = json_decode($json, true, 512, JSON_THROW_ON_ERROR);
-        $this->assertNull($decoded['kernel_code']);
+
+        $this->assertIsArray($decoded['kernel_code']);
+        $this->assertNull($decoded['kernel_code']['value']);
+        $this->assertSame('empty', $decoded['kernel_code']['status']);
         $this->assertCount(50, $decoded['subjects_inventory']);
         $this->assertCount(7, $decoded['cognitive_slots']);
         $this->assertCount(10, $decoded['statuses']);

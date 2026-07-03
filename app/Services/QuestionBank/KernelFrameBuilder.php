@@ -20,21 +20,17 @@ use App\Models\QuestionIntent;
  *      statuts et traces. Toutes les valeurs = null / [] à la construction.
  *      C'est le contenant. Rien n'est sélectionné ici.
  *
- *      Slots Blueprint :
- *        kernel_code            → null (yy-xx-xxx-xxx-xxx-zz — généré par KEY_STRUCTURE+KLD)
- *        depth_slot             → Rempli par KernelRotationPlanner via DepthNeedMatrix
- *        domain_slot            → Rempli par KernelRotationPlanner via DomainCycle
- *        sub_domain_slot        → Rempli par Taxonomy
- *        subjects_inventory     → Jusqu'à 50 sujets (Taxonomy remplit les coquilles)
- *        active_subject         → Curseur sujet actif (Taxonomy)
- *        dominant_ideas         → 5 idées du sujet actif seulement (Taxonomy)
- *        active_dominant_idea   → Curseur idée active (Taxonomy)
- *        cognitive_slots        → 7 cognitifs × {question/réponses/SV/traduction/statut/traces}
- *        rules                  → Règles de remplissage de chaque slot
- *        mechanisms             → Qui remplit quoi et quand
- *        constraints            → Invariants non négociables
- *        statuses               → Statut pipeline de chaque composant
- *        traces                 → Historique chronologique des décisions
+ *      Chaque slot expose le même contrat mécanique :
+ *        created_by    — KernelFrameBuilder (toujours ce fichier)
+ *        filled_by     — brique propriétaire (seule habilitée à écrire)
+ *        read_by       — briques autorisées à lire
+ *        write_access  — propriétaire unique d'écriture
+ *        locked_after  — événement de verrouillage
+ *        transmitted_to— brique(s) destinataire(s) après remplissage
+ *        forbidden     — ce qui est explicitement interdit
+ *        expected_content — ce que le slot doit contenir une fois rempli
+ *        status_initial— valeur de status à la construction
+ *        traces        — historique append-only des décisions sur ce slot
  *
  *   2. KERNEL CORE LEGACY (conservé — compatibilité pipeline existant)
  *      kernel_core, translation_constraints, variants
@@ -97,7 +93,7 @@ class KernelFrameBuilder
      * Retourne un array prêt à être encodé en JSON et stocké dans frame_en.
      * Toutes les valeurs à remplir ultérieurement sont null ou [].
      * Si l'intent fournit déjà domain/depth (pipeline legacy), ils sont pré-remplis
-     * avec source='legacy_intent' et status='filled'.
+     * avec selection_source='legacy_intent' et status='filled'.
      */
     public function buildSkeleton(QuestionIntent $intent): array
     {
@@ -105,14 +101,14 @@ class KernelFrameBuilder
 
         return [
             // ══ BLUEPRINT FRAME — nouvelle architecture ══════════════════════
-            'kernel_code'          => null,
+            'kernel_code'          => $this->buildKernelCodeSlot(),
             'depth_slot'           => $this->buildDepthSlot($intent),
             'domain_slot'          => $this->buildDomainSlot($intent),
             'sub_domain_slot'      => $this->buildSubDomainSlot($intent),
             'subjects_inventory'   => $this->buildSubjectsInventory(),
-            'active_subject'       => null,
-            'dominant_ideas'       => [],
-            'active_dominant_idea' => null,
+            'active_subject'       => $this->buildActiveSubjectSlot(),
+            'dominant_ideas'       => $this->buildDominantIdeasSlot(),
+            'active_dominant_idea' => $this->buildActiveDominantIdeaSlot(),
             'cognitive_slots'      => $this->buildCognitiveSlots($band),
             'rules'                => $this->buildRules(),
             'mechanisms'           => $this->buildMechanisms(),
@@ -132,23 +128,54 @@ class KernelFrameBuilder
     // ═════════════════════════════════════════════════════════════════════════
 
     /**
+     * kernel_code — Identifiant unique du noyau mère au format yy-xx-xxx-xxx-xxx-zz.
+     *
+     * created_by    : KernelFrameBuilder
+     * filled_by     : KEY_STRUCTURE (précode yy-xx-xxx-xxx-xxx) + KLD (suffixe zz)
+     * read_by       : QuestionIntent, Phase1, Phase2, Phase3, Phase4, READY_BANK, tous les composants
+     * write_access  : KEY_STRUCTURE (précode) puis KLD (suffixe zz) — séquentiels, jamais simultanés
+     * locked_after  : validation KLD (kld_hash posé)
+     * transmitted_to: QuestionIntent, READY_BANK
+     * forbidden     : Immutable après verrouillage KLD. Aucune modification ni écrasement.
+     * expected_content: chaîne VARCHAR(32) — ex: "06-03-012-007-003-04"
+     * status_initial: 'empty'
+     * traces        : append-only par KEY_STRUCTURE puis KLD
+     */
+    private function buildKernelCodeSlot(): array
+    {
+        return [
+            'value'   => null,
+            'format'  => 'yy-xx-xxx-xxx-xxx-zz',
+            'status'  => 'empty',
+            'locked'  => false,
+            'rules'   => [
+                'creator'          => 'KernelFrameBuilder',
+                'filler_prefix'    => 'KEY_STRUCTURE (yy-xx-xxx-xxx-xxx)',
+                'filler_suffix'    => 'KLD (zz)',
+                'read_by'          => ['QuestionIntent', 'Phase1', 'Phase2', 'Phase3', 'Phase4', 'READY_BANK'],
+                'write_access'     => 'KEY_STRUCTURE (précode) puis KLD (suffixe zz) — séquentiels',
+                'locked_after'     => 'validation KLD (kld_hash posé)',
+                'transmitted_to'   => 'QuestionIntent, READY_BANK',
+                'forbidden'        => 'Immutable après verrouillage KLD. Aucune modification ni écrasement.',
+                'expected_content' => 'VARCHAR(32) — ex: "06-03-012-007-003-04"',
+            ],
+            'traces'  => [],
+        ];
+    }
+
+    /**
      * depth_slot — Contenant structurel du Depth du noyau.
      *
-     * Créé par     : KernelFrameBuilder (ce fichier) — toutes valeurs null/vides.
-     * Rempli par   : KernelRotationPlanner via DepthNeedMatrix.
-     * Lu par       : Taxonomy, KEY_STRUCTURE, QuestionIntent, Phase1, READY_BANK.
-     * Verrouillé   : après remplissage par KernelRotationPlanner.
-     * Transmis à   : Taxonomy (qui en a besoin pour sélectionner sous-domaine + sujets).
-     * Interdit     : aucune autre brique ne peut modifier depth_slot.
-     *
-     * Champs :
-     *   requested_depth  — Depth demandé par DepthNeedMatrix (priorité bank).
-     *   actual_depth     — Depth réel confirmé (peut diverger de requested si fallback).
-     *   selection_source — Origine de la sélection (ex: 'DepthNeedMatrix', 'legacy_intent').
-     *   filled_at        — Timestamp ISO 8601 de remplissage (null tant que non rempli).
-     *   status           — 'empty' | 'filled' | 'locked'.
-     *   locked           — true une fois KernelRotationPlanner a rempli le slot.
-     *   traces           — Historique des décisions sur ce slot.
+     * created_by    : KernelFrameBuilder
+     * filled_by     : KernelRotationPlanner via DepthNeedMatrix
+     * read_by       : Taxonomy, KEY_STRUCTURE, QuestionIntent, Phase1, READY_BANK
+     * write_access  : KernelRotationPlanner uniquement
+     * locked_after  : remplissage par KernelRotationPlanner
+     * transmitted_to: Taxonomy
+     * forbidden     : Aucune autre brique ne peut modifier depth_slot
+     * expected_content: requested_depth=int 1–10, actual_depth=int 1–10 (peut diverger si fallback)
+     * status_initial: 'empty'
+     * traces        : append-only par KernelRotationPlanner
      */
     private function buildDepthSlot(QuestionIntent $intent): array
     {
@@ -163,71 +190,120 @@ class KernelFrameBuilder
             'status'           => $hasDepth ? 'filled' : 'empty',
             'locked'           => $hasDepth,
             'rules'            => [
-                'creator'        => 'KernelFrameBuilder',
-                'filler'         => 'KernelRotationPlanner',
-                'driven_by'      => 'DepthNeedMatrix',
-                'allowed_values' => '1–10',
-                'read_by'        => ['Taxonomy', 'KEY_STRUCTURE', 'QuestionIntent', 'Phase1', 'READY_BANK'],
-                'write_access'   => 'KernelRotationPlanner uniquement',
-                'locked_after'   => 'remplissage par KernelRotationPlanner',
-                'transmitted_to' => 'Taxonomy',
-                'forbidden'      => 'Aucune autre brique ne peut modifier depth_slot.',
+                'creator'          => 'KernelFrameBuilder',
+                'filler'           => 'KernelRotationPlanner',
+                'driven_by'        => 'DepthNeedMatrix',
+                'allowed_values'   => '1–10',
+                'read_by'          => ['Taxonomy', 'KEY_STRUCTURE', 'QuestionIntent', 'Phase1', 'READY_BANK'],
+                'write_access'     => 'KernelRotationPlanner uniquement',
+                'locked_after'     => 'remplissage par KernelRotationPlanner',
+                'transmitted_to'   => 'Taxonomy',
+                'forbidden'        => 'Aucune autre brique ne peut modifier depth_slot.',
+                'expected_content' => 'requested_depth et actual_depth = entier 1–10',
             ],
             'traces' => [],
         ];
     }
 
     /**
-     * domain_slot — Rempli par KernelRotationPlanner via DomainCycle.
-     * Pré-rempli si l'intent a déjà un domain (pipeline legacy).
+     * domain_slot — Contenant structurel du Domaine du noyau.
+     *
+     * created_by    : KernelFrameBuilder
+     * filled_by     : KernelRotationPlanner via DomainCycle
+     * read_by       : Taxonomy, KEY_STRUCTURE, QuestionIntent, Phase1, READY_BANK
+     * write_access  : KernelRotationPlanner uniquement
+     * locked_after  : remplissage par KernelRotationPlanner
+     * transmitted_to: Taxonomy
+     * forbidden     : Aucune autre brique ne peut modifier domain_slot
+     * expected_content: libellé domaine issu de taxonomy.json (ex: "Géographie")
+     * status_initial: 'empty'
+     * traces        : append-only par KernelRotationPlanner
      */
     private function buildDomainSlot(QuestionIntent $intent): array
     {
         $hasDomain = $intent->domain !== null && $intent->domain !== '';
+        $domain    = $hasDomain ? $intent->domain : null;
 
         return [
-            'value'  => $hasDomain ? $intent->domain : null,
-            'source' => $hasDomain ? 'legacy_intent' : null,
-            'status' => $hasDomain ? 'filled' : 'empty',
-            'rules'  => [
-                'filler'      => 'KernelRotationPlanner',
-                'driven_by'   => 'DomainCycle',
-                'depends_on'  => 'depth_slot',
-                'source_data' => 'taxonomy.json',
-                'frozen_after'=> 'KEY_STRUCTURE',
-                'note'        => 'Cycle déterministe sur les domaines disponibles dans la taxonomie.',
+            'requested_domain' => $domain,
+            'actual_domain'    => $domain,
+            'selection_source' => $hasDomain ? 'legacy_intent' : null,
+            'filled_at'        => null,
+            'status'           => $hasDomain ? 'filled' : 'empty',
+            'locked'           => $hasDomain,
+            'rules'            => [
+                'creator'          => 'KernelFrameBuilder',
+                'filler'           => 'KernelRotationPlanner',
+                'driven_by'        => 'DomainCycle',
+                'depends_on'       => 'depth_slot',
+                'allowed_values'   => 'domaines valides dans taxonomy.json',
+                'read_by'          => ['Taxonomy', 'KEY_STRUCTURE', 'QuestionIntent', 'Phase1', 'READY_BANK'],
+                'write_access'     => 'KernelRotationPlanner uniquement',
+                'locked_after'     => 'remplissage par KernelRotationPlanner',
+                'transmitted_to'   => 'Taxonomy',
+                'forbidden'        => 'Aucune autre brique ne peut modifier domain_slot.',
+                'expected_content' => 'libellé domaine issu de taxonomy.json — ex: "Géographie"',
             ],
             'traces' => [],
         ];
     }
 
     /**
-     * sub_domain_slot — Rempli par Taxonomy après domain_slot.
-     * Pré-rempli si l'intent a déjà un sub_domain (pipeline legacy).
+     * sub_domain_slot — Contenant structurel du Sous-domaine du noyau.
+     *
+     * created_by    : KernelFrameBuilder
+     * filled_by     : Taxonomy (TaxonomyReader)
+     * read_by       : KEY_STRUCTURE, QuestionIntent, Phase1, READY_BANK, subjects_inventory
+     * write_access  : Taxonomy (TaxonomyReader) uniquement
+     * locked_after  : remplissage par Taxonomy
+     * transmitted_to: subjects_inventory, KEY_STRUCTURE
+     * forbidden     : Aucune autre brique ne peut modifier sub_domain_slot
+     * expected_content: libellé sous-domaine valide pour domain+depth dans taxonomy.json
+     * status_initial: 'empty'
+     * traces        : append-only par Taxonomy
      */
     private function buildSubDomainSlot(QuestionIntent $intent): array
     {
         $hasSubDomain = $intent->sub_domain !== null && $intent->sub_domain !== '';
+        $subDomain    = $hasSubDomain ? $intent->sub_domain : null;
 
         return [
-            'value'  => $hasSubDomain ? $intent->sub_domain : null,
-            'source' => $hasSubDomain ? 'legacy_intent' : null,
-            'status' => $hasSubDomain ? 'filled' : 'empty',
-            'rules'  => [
-                'filler'      => 'Taxonomy (TaxonomyReader)',
-                'depends_on'  => ['depth_slot', 'domain_slot'],
-                'source_data' => 'taxonomy.json',
-                'frozen_after'=> 'KEY_STRUCTURE',
-                'note'        => 'Sélectionné par TaxonomyReader parmi les sous-domaines disponibles pour domain+depth.',
+            'requested_sub_domain' => $subDomain,
+            'actual_sub_domain'    => $subDomain,
+            'selection_source'     => $hasSubDomain ? 'legacy_intent' : null,
+            'filled_at'            => null,
+            'status'               => $hasSubDomain ? 'filled' : 'empty',
+            'locked'               => $hasSubDomain,
+            'rules'                => [
+                'creator'          => 'KernelFrameBuilder',
+                'filler'           => 'Taxonomy (TaxonomyReader)',
+                'depends_on'       => ['depth_slot', 'domain_slot'],
+                'allowed_values'   => 'sous-domaines valides pour domain+depth dans taxonomy.json',
+                'read_by'          => ['KEY_STRUCTURE', 'QuestionIntent', 'Phase1', 'READY_BANK'],
+                'write_access'     => 'Taxonomy (TaxonomyReader) uniquement',
+                'locked_after'     => 'remplissage par Taxonomy',
+                'transmitted_to'   => 'subjects_inventory, KEY_STRUCTURE',
+                'forbidden'        => 'Aucune autre brique ne peut modifier sub_domain_slot.',
+                'expected_content' => 'libellé sous-domaine — ex: "Capitales"',
             ],
             'traces' => [],
         ];
     }
 
     /**
-     * subjects_inventory — Coquilles pour jusqu'à 50 sujets du sous-domaine.
-     * Rempli par Taxonomy. Les coquilles vides sont pré-allouées ici.
-     * Seul active_subject aura ses dominant_ideas générées.
+     * subjects_inventory — 50 coquilles de sujets du sous-domaine actif.
+     *
+     * created_by    : KernelFrameBuilder (50 coquilles vides)
+     * filled_by     : Taxonomy (TaxonomyReader) — remplit les labels
+     * read_by       : active_subject, KEY_STRUCTURE
+     * write_access  : Taxonomy (TaxonomyReader) uniquement
+     * locked_after  : sujet marqué 'active' et dominant_ideas générées pour lui
+     * transmitted_to: active_subject
+     * forbidden     : Les dominant_ideas ne sont générées QUE pour le sujet actif.
+     *                 Un sujet non actif ne peut pas avoir d'idées dominantes.
+     * expected_content: label = libellé du sujet (ex: "Nairobi"), status = 'available'|'active'|'consumed'
+     * status_initial: 'available' (coquille prête à recevoir un label)
+     * traces        : append-only par Taxonomy
      */
     private function buildSubjectsInventory(): array
     {
@@ -235,16 +311,23 @@ class KernelFrameBuilder
 
         for ($i = 1; $i <= self::SUBJECTS_INVENTORY_MAX; $i++) {
             $inventory[] = [
-                'index'   => $i,
-                'value'   => null,
-                'status'  => 'available',
-                'rules'   => [
-                    'filler'             => 'Taxonomy',
-                    'max_slots'          => self::SUBJECTS_INVENTORY_MAX,
-                    'ideas_generated_if' => 'active',
-                    'note'               => 'Les idées dominantes ne sont générées que pour le sujet actif.',
+                'index'     => $i,
+                'label'     => null,
+                'filled_at' => null,
+                'status'    => 'available',
+                'locked'    => false,
+                'rules'     => [
+                    'creator'          => 'KernelFrameBuilder',
+                    'filler'           => 'Taxonomy (TaxonomyReader)',
+                    'max_slots'        => self::SUBJECTS_INVENTORY_MAX,
+                    'read_by'          => ['active_subject', 'KEY_STRUCTURE'],
+                    'write_access'     => 'Taxonomy (TaxonomyReader) uniquement',
+                    'locked_after'     => 'sujet marqué active et dominant_ideas générées',
+                    'transmitted_to'   => 'active_subject',
+                    'forbidden'        => 'dominant_ideas générées uniquement pour le sujet actif.',
+                    'expected_content' => 'label = libellé sujet (ex: "Nairobi")',
                 ],
-                'traces'  => [],
+                'traces' => [],
             ];
         }
 
@@ -252,8 +335,122 @@ class KernelFrameBuilder
     }
 
     /**
+     * active_subject — Pointeur vers le sujet courant du noyau.
+     *
+     * created_by    : KernelFrameBuilder (slot vide)
+     * filled_by     : Taxonomy (TaxonomyReader)
+     * read_by       : dominant_ideas, active_dominant_idea, KEY_STRUCTURE, QuestionIntent
+     * write_access  : Taxonomy (TaxonomyReader) uniquement
+     * locked_after  : dominant_ideas générées pour ce sujet
+     * transmitted_to: dominant_ideas
+     * forbidden     : Un seul sujet peut être actif à la fois.
+     *                 Aucune autre brique ne peut modifier active_subject.
+     * expected_content: subject_index = int (index dans subjects_inventory), subject_label = string
+     * status_initial: 'empty'
+     * traces        : append-only par Taxonomy
+     */
+    private function buildActiveSubjectSlot(): array
+    {
+        return [
+            'subject_index' => null,
+            'subject_label' => null,
+            'set_at'        => null,
+            'status'        => 'empty',
+            'locked'        => false,
+            'rules'         => [
+                'creator'          => 'KernelFrameBuilder',
+                'filler'           => 'Taxonomy (TaxonomyReader)',
+                'depends_on'       => 'subjects_inventory',
+                'read_by'          => ['dominant_ideas', 'active_dominant_idea', 'KEY_STRUCTURE', 'QuestionIntent'],
+                'write_access'     => 'Taxonomy (TaxonomyReader) uniquement',
+                'locked_after'     => 'dominant_ideas générées pour ce sujet',
+                'transmitted_to'   => 'dominant_ideas',
+                'forbidden'        => 'Un seul sujet peut être actif. Aucune autre brique ne peut modifier active_subject.',
+                'expected_content' => 'subject_index = int, subject_label = libellé sujet',
+            ],
+            'traces' => [],
+        ];
+    }
+
+    /**
+     * dominant_ideas — 5 idées du sujet actif uniquement.
+     *
+     * created_by    : KernelFrameBuilder (conteneur vide)
+     * filled_by     : Taxonomy (TaxonomyReader)
+     * read_by       : active_dominant_idea, KEY_STRUCTURE, QuestionIntent
+     * write_access  : Taxonomy (TaxonomyReader) uniquement
+     * locked_after  : QuestionIntent verrouillé
+     * transmitted_to: active_dominant_idea, KEY_STRUCTURE
+     * forbidden     : Les idées sont générées UNIQUEMENT pour active_subject.
+     *                 Aucune idée pour un sujet non actif. Max 5 idées.
+     * expected_content: ideas = [{index, label, filled_at}] — max 5 entrées
+     * status_initial: 'empty'
+     * traces        : append-only par Taxonomy
+     */
+    private function buildDominantIdeasSlot(): array
+    {
+        return [
+            'ideas'  => [],
+            'status' => 'empty',
+            'locked' => false,
+            'rules'  => [
+                'creator'          => 'KernelFrameBuilder',
+                'filler'           => 'Taxonomy (TaxonomyReader)',
+                'max_ideas'        => self::DOMINANT_IDEAS_MAX,
+                'scope'            => 'active_subject uniquement — aucune idée pour un sujet non actif',
+                'depends_on'       => 'active_subject',
+                'read_by'          => ['active_dominant_idea', 'KEY_STRUCTURE', 'QuestionIntent'],
+                'write_access'     => 'Taxonomy (TaxonomyReader) uniquement',
+                'locked_after'     => 'QuestionIntent verrouillé',
+                'transmitted_to'   => 'active_dominant_idea, KEY_STRUCTURE',
+                'forbidden'        => 'Idées générées uniquement pour active_subject. Max 5. Aucune autre brique ne peut modifier dominant_ideas.',
+                'expected_content' => 'ideas = [{index, label, filled_at}] — 1 à 5 entrées',
+            ],
+            'traces' => [],
+        ];
+    }
+
+    /**
+     * active_dominant_idea — Pointeur vers l'idée dominante courante du noyau.
+     *
+     * created_by    : KernelFrameBuilder (slot vide)
+     * filled_by     : Taxonomy (TaxonomyReader)
+     * read_by       : KEY_STRUCTURE, QuestionIntent, Phase1
+     * write_access  : Taxonomy (TaxonomyReader) uniquement
+     * locked_after  : QuestionIntent verrouillé
+     * transmitted_to: KEY_STRUCTURE, QuestionIntent
+     * forbidden     : Une seule idée peut être active à la fois.
+     *                 Aucune autre brique ne peut modifier active_dominant_idea.
+     * expected_content: idea_index = int (index dans dominant_ideas.ideas), idea_label = string
+     * status_initial: 'empty'
+     * traces        : append-only par Taxonomy
+     */
+    private function buildActiveDominantIdeaSlot(): array
+    {
+        return [
+            'idea_index' => null,
+            'idea_label' => null,
+            'set_at'     => null,
+            'status'     => 'empty',
+            'locked'     => false,
+            'rules'      => [
+                'creator'          => 'KernelFrameBuilder',
+                'filler'           => 'Taxonomy (TaxonomyReader)',
+                'depends_on'       => 'dominant_ideas',
+                'read_by'          => ['KEY_STRUCTURE', 'QuestionIntent', 'Phase1'],
+                'write_access'     => 'Taxonomy (TaxonomyReader) uniquement',
+                'locked_after'     => 'QuestionIntent verrouillé',
+                'transmitted_to'   => 'KEY_STRUCTURE, QuestionIntent',
+                'forbidden'        => 'Une seule idée active à la fois. Aucune autre brique ne peut modifier active_dominant_idea.',
+                'expected_content' => 'idea_index = int, idea_label = libellé idée dominante',
+            ],
+            'traces' => [],
+        ];
+    }
+
+    /**
      * cognitive_slots — 7 cognitifs × {question/réponses/SV/traduction/statut/traces}.
-     * Toutes les valeurs null. Rempli par Phase 1.
+     * Toutes les valeurs null. Rempli par Phase1 (KernelContentBuilder).
      */
     private function buildCognitiveSlots(string $band): array
     {
@@ -266,46 +463,88 @@ class KernelFrameBuilder
                 'question_type'  => $questionType,
                 'cognitive_type' => $cognitiveType,
 
-                // ── question slot ─────────────────────────────────────────
+                // ── question_slot ─────────────────────────────────────────
+                // created_by: KernelFrameBuilder | filled_by: Phase1 (KernelContentBuilder)
+                // read_by: Phase2, Phase3, READY_BANK | locked_after: Phase2 validation
+                // transmitted_to: Phase2 (validation), Phase3 (source traduction)
+                // forbidden: Aucune autre brique ne peut modifier question_slot
                 'question_slot' => [
-                    'value'  => null,
-                    'status' => 'empty',
-                    'rules'  => [
-                        'filler'   => 'Phase1 (KernelContentBuilder)',
-                        'language' => 'en',
-                        'max_chars'=> ReadingBandConfig::resolveForLang($band, 'en')['soft'] ?? 280,
+                    'value'     => null,
+                    'filled_at' => null,
+                    'status'    => 'empty',
+                    'locked'    => false,
+                    'rules'     => [
+                        'creator'          => 'KernelFrameBuilder',
+                        'filler'           => 'Phase1 (KernelContentBuilder)',
+                        'language'         => 'en',
+                        'max_chars'        => ReadingBandConfig::resolveForLang($band, 'en')['soft'] ?? 280,
+                        'depends_on'       => 'QuestionIntent verrouillé',
+                        'read_by'          => ['Phase2', 'Phase3', 'READY_BANK'],
+                        'write_access'     => 'Phase1 (KernelContentBuilder) uniquement',
+                        'locked_after'     => 'Phase2 validation',
+                        'transmitted_to'   => 'Phase2 (validation source EN), Phase3 (source traduction)',
+                        'forbidden'        => 'Aucune autre brique ne peut modifier question_slot.',
+                        'expected_content' => 'question EN — chaîne de max max_chars caractères',
                     ],
                     'traces' => [],
                 ],
 
-                // ── answer slots ──────────────────────────────────────────
+                // ── answer_slots ──────────────────────────────────────────
+                // created_by: KernelFrameBuilder | filled_by: Phase1
+                // read_by: Phase2, Phase3, READY_BANK | locked_after: Phase2 validation
+                // transmitted_to: Phase3 (source traduction)
+                // forbidden: Aucune autre brique ne peut modifier answer_slots
                 'answer_slots' => $this->buildAnswerSlots($isTf),
 
-                // ── correct answer key ────────────────────────────────────
+                // ── correct_answer_key ────────────────────────────────────
                 'correct_answer_key' => null,
 
-                // ── sv slot (saviez-vous) ─────────────────────────────────
+                // ── sv_slot (saviez-vous) ─────────────────────────────────
+                // created_by: KernelFrameBuilder | filled_by: Phase1 (KernelContentBuilder)
+                // read_by: Phase2, Phase3, READY_BANK | locked_after: Phase2 validation
+                // transmitted_to: Phase2 (validation), Phase3 (source traduction), READY_BANK
+                // forbidden: Aucune autre brique ne peut modifier sv_slot
                 'sv_slot' => [
-                    'value'  => null,
-                    'status' => 'empty',
-                    'rules'  => [
-                        'filler'   => 'Phase1 (KernelContentBuilder)',
-                        'language' => 'en',
-                        'min_chars'=> self::SV_MIN,
-                        'max_chars'=> self::SV_MAX,
+                    'value'     => null,
+                    'filled_at' => null,
+                    'status'    => 'empty',
+                    'locked'    => false,
+                    'rules'     => [
+                        'creator'          => 'KernelFrameBuilder',
+                        'filler'           => 'Phase1 (KernelContentBuilder)',
+                        'language'         => 'en',
+                        'min_chars'        => self::SV_MIN,
+                        'max_chars'        => self::SV_MAX,
+                        'depends_on'       => 'QuestionIntent verrouillé',
+                        'read_by'          => ['Phase2', 'Phase3', 'READY_BANK'],
+                        'write_access'     => 'Phase1 (KernelContentBuilder) uniquement',
+                        'locked_after'     => 'Phase2 validation',
+                        'transmitted_to'   => 'Phase2 (validation), Phase3 (source traduction), READY_BANK',
+                        'forbidden'        => 'Aucune autre brique ne peut modifier sv_slot.',
+                        'expected_content' => '"Saviez-vous" EN — ' . self::SV_MIN . '–' . self::SV_MAX . ' chars',
                     ],
                     'traces' => [],
                 ],
 
-                // ── translation slots (9 langues) ─────────────────────────
+                // ── translation_slots (9 langues) ─────────────────────────
+                // created_by: KernelFrameBuilder | filled_by: Phase3 (KernelTranslator)
+                // validated_by: Phase4 | read_by: Phase4, READY_BANK, Gameplay
+                // locked_after: Phase4 validation | transmitted_to: READY_BANK, Gameplay
+                // forbidden: Aucune autre brique ne peut modifier translation_slots
                 'translation_slots' => $this->buildCognitiveTranslationSlots($isTf),
 
                 // ── statut et traces du cognitif ──────────────────────────
                 'status' => 'empty',
                 'rules'  => [
-                    'filler'       => 'Phase1',
-                    'depends_on'   => 'QuestionIntent',
-                    'note'         => 'Rempli après QuestionIntent verrouillé. Master = qcm_recognition.',
+                    'creator'          => 'KernelFrameBuilder',
+                    'filler'           => 'Phase1 (KernelContentBuilder)',
+                    'depends_on'       => 'QuestionIntent verrouillé',
+                    'read_by'          => ['Phase2', 'Phase3', 'Phase4', 'READY_BANK'],
+                    'write_access'     => 'Phase1 (KernelContentBuilder) uniquement',
+                    'locked_after'     => 'Phase2 validation (toutes questions/réponses/SV EN validés)',
+                    'transmitted_to'   => 'Phase2, Phase3 (source traduction), READY_BANK',
+                    'forbidden'        => 'Aucune autre brique ne peut remplir ce slot cognitif. Master = qcm_recognition.',
+                    'expected_content' => 'question + réponses + sv EN validés — status = validated_ok',
                 ],
                 'traces' => [],
             ];
@@ -316,26 +555,67 @@ class KernelFrameBuilder
 
     /**
      * answer_slots — 4 pour QCM, 2 pour TF.
+     *
+     * created_by    : KernelFrameBuilder
+     * filled_by     : Phase1 (KernelContentBuilder)
+     * read_by       : Phase2, Phase3, READY_BANK
+     * write_access  : Phase1 (KernelContentBuilder) uniquement
+     * locked_after  : Phase2 validation
+     * transmitted_to: Phase3 (source traduction)
+     * forbidden     : Aucune autre brique ne peut modifier answer_slots
+     * expected_content: réponse EN — chaîne ≤ max_chars
      */
     private function buildAnswerSlots(bool $isTf): array
     {
+        $answerRules = [
+            'creator'          => 'KernelFrameBuilder',
+            'filler'           => 'Phase1 (KernelContentBuilder)',
+            'language'         => 'en',
+            'max_chars'        => self::A_MAX,
+            'read_by'          => ['Phase2', 'Phase3', 'READY_BANK'],
+            'write_access'     => 'Phase1 (KernelContentBuilder) uniquement',
+            'locked_after'     => 'Phase2 validation',
+            'transmitted_to'   => 'Phase3 (source traduction)',
+            'forbidden'        => 'Aucune autre brique ne peut modifier answer_slots.',
+            'expected_content' => 'réponse EN — ≤ ' . self::A_MAX . ' chars',
+        ];
+
+        $answerSlot = fn() => [
+            'value'     => null,
+            'filled_at' => null,
+            'status'    => 'empty',
+            'locked'    => false,
+            'rules'     => $answerRules,
+            'traces'    => [],
+        ];
+
         if ($isTf) {
             return [
-                'answer_a' => ['value' => null, 'status' => 'empty', 'max_chars' => self::A_MAX],
-                'answer_b' => ['value' => null, 'status' => 'empty', 'max_chars' => self::A_MAX],
+                'answer_a' => $answerSlot(),
+                'answer_b' => $answerSlot(),
             ];
         }
 
         return [
-            'answer_a' => ['value' => null, 'status' => 'empty', 'max_chars' => self::A_MAX],
-            'answer_b' => ['value' => null, 'status' => 'empty', 'max_chars' => self::A_MAX],
-            'answer_c' => ['value' => null, 'status' => 'empty', 'max_chars' => self::A_MAX],
-            'answer_d' => ['value' => null, 'status' => 'empty', 'max_chars' => self::A_MAX],
+            'answer_a' => $answerSlot(),
+            'answer_b' => $answerSlot(),
+            'answer_c' => $answerSlot(),
+            'answer_d' => $answerSlot(),
         ];
     }
 
     /**
-     * translation_slots par cognitif — 9 langues × {question/réponses/SV/statut}.
+     * translation_slots — 9 langues × {question/réponses/SV/statut/traces}.
+     *
+     * created_by    : KernelFrameBuilder
+     * filled_by     : Phase3 (KernelTranslator)
+     * validated_by  : Phase4
+     * read_by       : Phase4, READY_BANK, Gameplay
+     * write_access  : Phase3 (KernelTranslator) uniquement
+     * locked_after  : Phase4 validation
+     * transmitted_to: READY_BANK, Gameplay
+     * forbidden     : Aucune autre brique ne peut modifier translation_slots
+     * expected_content: traduction complète (question + réponses + sv) dans la langue cible
      */
     private function buildCognitiveTranslationSlots(bool $isTf): array
     {
@@ -345,24 +625,38 @@ class KernelFrameBuilder
             $isZh = ($lang === 'zh');
             $isAr = ($lang === 'ar');
 
+            $answerMax = $isZh ? self::A_MAX_ZH : ($isAr ? self::A_MAX_AR : self::A_MAX);
+            $svMax     = $isZh ? self::SV_MAX_ZH : ($isAr ? self::SV_MAX_AR : self::SV_MAX);
+
             $slots[$lang] = [
                 'status'             => 'pending',
+                'filled_at'          => null,
+                'locked'             => false,
                 'question_text'      => null,
                 'answer_a'           => null,
                 'answer_b'           => null,
-                'answer_c'           => $isTf ? null : null,
-                'answer_d'           => $isTf ? null : null,
+                'answer_c'           => $isTf ? 'n/a' : null,
+                'answer_d'           => $isTf ? 'n/a' : null,
                 'correct_answer_key' => null,
                 'explanation'        => null,
                 'saviez_vous'        => null,
                 'rules'              => [
-                    'filler'         => 'Phase3 (KernelTranslator)',
-                    'language'       => $lang,
-                    'answer_max'     => $isZh ? self::A_MAX_ZH : ($isAr ? self::A_MAX_AR : self::A_MAX),
-                    'sv_max'         => $isZh ? self::SV_MAX_ZH : ($isAr ? self::SV_MAX_AR : self::SV_MAX),
-                    'sv_min'         => self::SV_MIN,
+                    'creator'          => 'KernelFrameBuilder',
+                    'filler'           => 'Phase3 (KernelTranslator)',
+                    'validator'        => 'Phase4',
+                    'source'           => 'question_slot EN (Phase1 output)',
+                    'language'         => $lang,
+                    'answer_max'       => $answerMax,
+                    'sv_max'           => $svMax,
+                    'sv_min'           => self::SV_MIN,
+                    'read_by'          => ['Phase4', 'READY_BANK', 'Gameplay'],
+                    'write_access'     => 'Phase3 (KernelTranslator) uniquement',
+                    'locked_after'     => 'Phase4 validation',
+                    'transmitted_to'   => 'READY_BANK, Gameplay',
+                    'forbidden'        => 'Aucune autre brique ne peut modifier translation_slots.',
+                    'expected_content' => "traduction complète {$lang} — question + réponses + sv",
                 ],
-                'traces'             => [],
+                'traces' => [],
             ];
         }
 
@@ -374,7 +668,7 @@ class KernelFrameBuilder
     // ═════════════════════════════════════════════════════════════════════════
 
     /**
-     * rules — Règles de remplissage de chaque slot du noyau.
+     * rules — Index des règles de remplissage de chaque slot du noyau.
      */
     private function buildRules(): array
     {
@@ -393,18 +687,18 @@ class KernelFrameBuilder
     }
 
     /**
-     * mechanisms — Qui remplit quoi et quand.
+     * mechanisms — Qui remplit quoi et quand (11 étapes pipeline).
      */
     private function buildMechanisms(): array
     {
         return [
             'step_1_blueprint_frame'   => 'KernelFrameBuilder — crée le contenant vide (ce fichier)',
             'step_2_depth_domain'      => 'KernelRotationPlanner (DepthNeedMatrix + DomainCycle) — remplit depth_slot + domain_slot + début kernel_code yy-xx',
-            'step_3_taxonomy'          => 'TaxonomyReader via KernelRotationPlanner — remplit sub_domain_slot + subjects_inventory + active_subject + dominant_ideas + milieu kernel_code xxx-xxx-xxx',
-            'step_4_key_structure'     => 'IntentKeyBuilder.KEY_STRUCTURE — valide égrainage + cohérence + ks_hash + début traces',
-            'step_5_kld'               => 'IntentKeyBuilder.KLD — anti-doublon directionnel + kld_hash + suffixe zz + verrouille paire Sujet/Idée',
+            'step_3_taxonomy'          => 'TaxonomyReader via KernelRotationPlanner — remplit sub_domain_slot + subjects_inventory + active_subject + dominant_ideas + active_dominant_idea + milieu kernel_code xxx-xxx-xxx',
+            'step_4_key_structure'     => 'IntentKeyBuilder.KEY_STRUCTURE — valide égrainage + cohérence + ks_hash + précode yy-xx-xxx-xxx-xxx',
+            'step_5_kld'               => 'IntentKeyBuilder.KLD — anti-doublon directionnel + kld_hash + suffixe zz + verrouille kernel_code complet',
             'step_6_question_intent'   => 'QuestionIntent — verrouille intent_key + semantic_key + prépare 7 variant_keys',
-            'step_7_phase1'            => 'KernelContentBuilder — remplit cognitive_slots (questions + réponses + SV)',
+            'step_7_phase1'            => 'KernelContentBuilder — remplit cognitive_slots (question_slot + answer_slots + sv_slot EN)',
             'step_8_phase2'            => 'KernelFrameValidator + VariantAlignmentChecker — valide contenu EN',
             'step_9_phase3'            => 'KernelTranslator — remplit translation_slots des cognitive_slots (9 langues)',
             'step_10_phase4'           => 'KernelTranslator validation — vérifie qualité traductions',
@@ -418,20 +712,27 @@ class KernelFrameBuilder
     private function buildConstraints(): array
     {
         return [
-            'frame_builder_no_selection'           => true,
-            'frame_builder_no_question_generation' => true,
-            'dominant_ideas_only_for_active_subject'=> true,
-            'kernel_code_immutable_after_kld'       => true,
-            'ready_bank_stores_encoded_noyau'       => true,
-            'no_isolated_cognitive_in_ready_bank'   => true,
-            'cognitive_consumed_by_gameplay'        => 'Gameplay consomme les cognitifs internes — READY_BANK stocke le noyau entier',
-            'backward_compat_variants_preserved'    => 'Ne pas supprimer kernel_core/variants tant que migration non complète',
+            'frame_builder_no_selection'            => true,
+            'frame_builder_no_question_generation'  => true,
+            'dominant_ideas_only_for_active_subject' => true,
+            'kernel_code_immutable_after_kld'        => true,
+            'ready_bank_stores_encoded_noyau'        => true,
+            'no_isolated_cognitive_in_ready_bank'    => true,
+            'cognitive_consumed_by_gameplay'         => 'Gameplay consomme les cognitifs internes — READY_BANK stocke le noyau entier',
+            'backward_compat_variants_preserved'     => 'Ne pas supprimer kernel_core/variants tant que migration non complète',
         ];
     }
 
     /**
-     * statuses — Statut pipeline de chaque composant.
-     * Tous null à la construction — mis à jour par chaque composant.
+     * statuses — Statut pipeline de chaque composant (10 étapes).
+     *
+     * created_by    : KernelFrameBuilder (tous null)
+     * updated_by    : chaque composant met à jour SA clé uniquement
+     * read_by       : KernelExporter, READY_BANK, tous les composants
+     * write_access  : chaque composant écrit UNIQUEMENT sa propre clé
+     * locked_after  : ready_bank = 'validated_ok' (noyau complet)
+     * forbidden     : Un composant ne peut pas modifier le statut d'un autre composant.
+     * expected_values: null | 'pending' | 'ok' | 'failed' | 'skipped'
      */
     private function buildStatuses(): array
     {
@@ -537,132 +838,53 @@ class KernelFrameBuilder
             'saviez_vous'           => null,
             'cognitive_contract'    => $this->buildCognitiveContract($variantKey),
             'gameplay_constraints'  => $this->buildGameplayConstraints($questionType),
-            'translation_slots'     => $this->buildVariantTranslationSlots(),
+            'translation_slots'     => $this->buildTranslationSlots(),
+            'status'                => 'pending',
         ];
+    }
+
+    private function buildCognitiveContract(string $variantKey): array
+    {
+        $contracts = [
+            'qcm_recognition'      => ['type' => 'recognition', 'trap_allowed' => false, 'min_wrong_answers' => 3],
+            'qcm_reasoning'        => ['type' => 'reasoning',   'trap_allowed' => false, 'min_wrong_answers' => 3],
+            'qcm_deceptive_trap'   => ['type' => 'deceptive',   'trap_allowed' => true,  'min_wrong_answers' => 3],
+            'tf_recognition_true'  => ['type' => 'recognition', 'expected_truth' => true,  'binary' => true],
+            'tf_recognition_false' => ['type' => 'recognition', 'expected_truth' => false, 'binary' => true],
+            'tf_reasoning_true'    => ['type' => 'reasoning',   'expected_truth' => true,  'binary' => true],
+            'tf_reasoning_false'   => ['type' => 'reasoning',   'expected_truth' => false, 'binary' => true],
+        ];
+
+        return $contracts[$variantKey] ?? [];
     }
 
     private function buildGameplayConstraints(string $questionType): array
     {
-        if ($questionType === 'true_false') {
-            return [
-                'question_type'       => 'true_false',
-                'answer_count'        => 2,
-                'answer_keys_allowed' => ['A', 'B'],
-            ];
-        }
-
         return [
-            'question_type'       => 'qcm',
-            'answer_count'        => 4,
-            'answer_keys_allowed' => ['A', 'B', 'C', 'D'],
+            'display_mode'   => $questionType === 'true_false' ? 'binary' : 'quad',
+            'time_limit_sec' => 30,
+            'buzz_eligible'  => true,
         ];
     }
 
-    private function buildVariantTranslationSlots(): array
+    private function buildTranslationSlots(): array
     {
         $slots = [];
 
         foreach (self::TRANSLATION_LANGS as $lang) {
             $slots[$lang] = [
-                'status'             => 'pending',
-                'correct_answer_key' => null,
                 'question_text'      => null,
                 'answer_a'           => null,
                 'answer_b'           => null,
                 'answer_c'           => null,
                 'answer_d'           => null,
+                'correct_answer_key' => null,
                 'explanation'        => null,
                 'saviez_vous'        => null,
+                'status'             => 'pending',
             ];
         }
 
         return $slots;
-    }
-
-    // ═════════════════════════════════════════════════════════════════════════
-    // Cognitive contracts — un contract distinct par cognitif
-    // ═════════════════════════════════════════════════════════════════════════
-
-    private function buildCognitiveContract(string $variantKey): array
-    {
-        return match ($variantKey) {
-
-            'qcm_recognition' => [
-                'subject_scope'                 => 'subdomain_and_subject',
-                'requires_inference'            => false,
-                'has_deceptive_distractor'      => false,
-                'question_form'                 => 'direct_retrieval',
-                'answer_directly_names_subject' => true,
-            ],
-
-            'qcm_reasoning' => [
-                'subject_scope'               => 'subdomain_and_subject',
-                'requires_inference'          => true,
-                'has_deceptive_distractor'    => false,
-                'reasoning_type'              => null,
-                'reasoning_scope'             => 'subdomain_and_subject',
-                'reasoning_anchor'            => 'subject',
-                'answer_derives_from_subject' => true,
-                'no_direct_recall'            => true,
-            ],
-
-            'qcm_deceptive_trap' => [
-                'subject_scope'                         => 'subdomain_and_subject',
-                'requires_inference'                    => true,
-                'has_deceptive_distractor'              => true,
-                'trap_anchored_to'                      => 'sub_domain_and_subject',
-                'trap_carriers'                         => null,
-                'natural_hypothesis_triggered'          => null,
-                'hypothesis_overturned_after_full_read' => null,
-                'implicit_hypothesis'                   => null,
-                'hypothesis_invalidated_by'             => null,
-                'reconstruction_required'               => null,
-                'intuitive_wrong_answer'                => null,
-                'intuitive_answer_presence'             => null,
-                'fairness_reason'                       => null,
-                'alignment_with_kernel_core'            => null,
-            ],
-
-            'tf_recognition_true' => [
-                'subject_scope'                => 'subdomain_and_subject',
-                'requires_inference'           => false,
-                'has_deceptive_distractor'     => false,
-                'polarity'                     => 'true',
-                'expected_master_proximity'    => true,
-                'proximity_is_never_penalized' => true,
-            ],
-
-            'tf_recognition_false' => [
-                'subject_scope'            => 'subdomain_and_subject',
-                'requires_inference'       => false,
-                'has_deceptive_distractor' => false,
-                'polarity'                 => 'false',
-                'must_appear_plausible'    => true,
-                'correct_answer_key'       => 'B',
-            ],
-
-            'tf_reasoning_true' => [
-                'subject_scope'            => 'subdomain_and_subject',
-                'requires_inference'       => true,
-                'has_deceptive_distractor' => false,
-                'polarity'                 => 'true',
-                'reasoning_type'           => null,
-                'reasoning_scope'          => 'subdomain_and_subject',
-                'reasoning_anchor'         => 'subject',
-                'player_must_reason'       => true,
-            ],
-
-            'tf_reasoning_false' => [
-                'subject_scope'               => 'subdomain_and_subject',
-                'requires_inference'          => true,
-                'has_deceptive_distractor'    => false,
-                'polarity'                    => 'false',
-                'trivial_inversion_forbidden' => true,
-                'player_must_reason'          => true,
-                'reasoning_type'              => null,
-                'reasoning_scope'             => 'subdomain_and_subject',
-                'reasoning_anchor'            => 'subject',
-            ],
-        };
     }
 }
