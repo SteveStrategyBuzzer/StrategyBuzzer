@@ -1,0 +1,199 @@
+MODE ARCHITECTURE STRICTE — STRATEGYBUZZER
+
+Nous construisons maintenant la brique :
+
+KernelRotationPlanner
+
+RÈGLE ABSOLUE
+
+Ne pas extrapoler.
+Ne pas inventer de nouvelle brique.
+Ne pas inventer de statut.
+Ne pas inventer d’événement.
+Ne pas déplacer de responsabilité.
+
+CONTEXTE VERROUILLÉ
+
+Le Kernel Blueprint Frame est terminé.
+
+Le Blueprint est un contenant passif.
+Il ne contient aucune logique métier.
+
+Le Blueprint ne crée pas :
+
+* domaine
+* profondeur
+* sous-domaine
+* sujet
+* idée dominante
+* question
+* réponse
+* cognitif
+* traduction
+* READY_BANK
+* gameplay
+* consommation joueur
+
+PROCHAINE BRIQUE
+
+KernelRotationPlanner
+
+RESPONSABILITÉ UNIQUE
+
+KernelRotationPlanner doit uniquement déterminer le contexte de rotation du prochain noyau.
+
+Il produit seulement :
+
+* depth_slot
+* domain_slot
+* rotation_identifier
+
+Rien d’autre.
+
+INTERDICTIONS
+
+KernelRotationPlanner ne doit jamais créer ou modifier :
+
+* Sous-domaine
+* Sujet
+* Idée dominante
+* Knowledge
+* Question
+* Réponse
+* Cognitif
+* Traduction
+* Validation
+* Semantic Key
+* QuestionIntent
+* READY_BANK
+* Gameplay
+* Statistiques joueur
+* Consommation joueur
+
+Ces responsabilités appartiennent aux briques suivantes :
+
+* Taxonomy : sous-domaine, sujets, idées dominantes
+* KEY_STRUCTURE : validation / élagage de Taxonomy
+* KLD : contrôle anti-répétition pédagogique
+* QuestionIntent : verrouillage de l’intention
+* Phase 1 : création questions / réponses / cognitifs / slots traduction
+* Phase 2 : validation
+* Phase 3 : traduction
+* READY_BANK : disponibilité gameplay
+* Gameplay : consommation joueur
+
+SORTIE ATTENDUE
+
+KernelRotationPlanner doit produire un objet autonome :
+
+rotation_context
+
+Structure minimale :
+
+rotation_context
+
+* planner_version
+* rotation_identifier
+* depth_slot
+* domain_slot
+* rotation_iteration
+* created_at
+
+Aucun autre champ sans justification architecturale.
+
+RÈGLES
+
+depth_slot vient uniquement de DepthNeedMatrix.
+
+domain_slot vient uniquement de DomainCycle.
+
+rotation_identifier sert uniquement à identifier cette rotation.
+Il ne doit pas être confondu avec le futur kernel_code complet.
+
+KernelRotationPlanner ne doit pas produire le kernel_code final.
+
+Le kernel_code complet sera assemblé plus tard par les briques aval, quand Taxonomy, KEY_STRUCTURE, KLD et QuestionIntent auront produit leurs parties respectives.
+
+CYCLE D’EXÉCUTION INTERNE
+
+Ces étapes sont internes, non métier, non persistées comme statuts globaux :
+
+* WAITING
+* PLANNING
+* PLANNED
+* LOCKED
+* TRANSFERRED
+
+Elles ne doivent pas être utilisées comme statuts du noyau.
+
+COMPORTEMENT EN ERREUR
+
+Si une donnée nécessaire est absente ou incohérente :
+
+STOP.
+
+Aucun fallback.
+Aucun retry automatique.
+Aucune correction implicite.
+Aucune génération IA.
+Aucun résultat partiel.
+
+Cas d’erreur obligatoires :
+
+* DomainCycle absent ou invalide
+* DepthNeedMatrix absent ou invalide
+* depth_slot invalide
+* domain_slot invalide
+* rotation_identifier déjà utilisé
+* configuration de rotation incomplète
+* incompatibilité avec Blueprint.version
+
+GARANTIES
+
+KernelRotationPlanner garantit :
+
+* une seule profondeur active
+* un seul domaine actif
+* aucune création de contenu pédagogique
+* aucune logique IA
+* aucune logique gameplay
+* aucune lecture de profils joueurs
+* aucune lecture de consommation joueur
+* aucun accès READY_BANK
+* un rotation_context complet ou aucun résultat
+* un résultat immutable après production
+
+AUTORITÉ
+
+KernelRotationPlanner est l’unique autorité pour choisir :
+
+* depth_slot
+* domain_slot
+* rotation_identifier
+
+Aucune autre brique ne peut recalculer ou modifier ces valeurs après production.
+
+VALIDATION DEMANDÉE AVANT CODE
+
+Avant toute modification de code, fournir :
+
+1. Les fichiers concernés
+2. Les classes/fonctions existantes réelles
+3. Les responsabilités actuelles observées
+4. Les écarts avec ce contrat
+5. Le plan de correction
+6. Les risques de dérive
+7. La validation que Taxonomy, KEY_STRUCTURE, KLD, QuestionIntent, Phase 1, READY_BANK et Gameplay ne sont pas touchés
+
+Aucun patch sans slice réel.
+
+Méthode obligatoire :
+
+GREP → SLICE → PATCH → VALIDATION
+
+Si un point du contrat est impossible avec le code actuel, ne pas inventer.
+Répondre :
+
+BLOCAGE — contrat non couvert par le code actuel
+
+Puis expliquer précisément ce qui manque.
