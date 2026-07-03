@@ -101,6 +101,9 @@ class KernelFrameBuilder
 
         return [
             // ══ BLUEPRINT FRAME — nouvelle architecture ══════════════════════
+            'schema_version'       => '1.0.0',
+            'content_version'      => '1.0.0',
+            'correction_version'   => 0,
             'kernel_code'          => $this->buildKernelCodeSlot(),
             'depth_slot'           => $this->buildDepthSlot($intent),
             'domain_slot'          => $this->buildDomainSlot($intent),
@@ -315,8 +318,8 @@ class KernelFrameBuilder
      * transmitted_to: active_subject
      * forbidden     : Les dominant_ideas ne sont générées QUE pour le sujet actif.
      *                 Un sujet non actif ne peut pas avoir d'idées dominantes.
-     * expected_content: label = libellé du sujet (ex: "Nairobi"), status = 'available'|'active'|'consumed'
-     * status_initial: 'available' (coquille prête à recevoir un label)
+     * expected_content: label = libellé du sujet (ex: "Nairobi"), cycle = EMPTY→FILLED→ACTIVE→EXHAUSTED
+     * status_initial: EMPTY (coquille prête à recevoir un label)
      * traces        : append-only par Taxonomy
      */
     private function buildSubjectsInventory(): array
@@ -736,9 +739,9 @@ class KernelFrameBuilder
                     'subject_id'           => 'string|null          — identifiant DB Taxonomy',
                     'subject_code'         => 'string|null          — code unique dans le sous-domaine (ex: "CAP-007")',
                     'active'               => 'bool                 — true = c\'est l\'active_subject courant',
-                    'exhausted'            => 'bool                 — true = toutes les idées dominantes consommées',
+                    'exhausted'            => 'bool                 — true = toutes les idées dominantes ont été traitées par QuestionIntent (plus aucune disponible pour ce cycle)',
                     'dominant_ideas_count' => 'int (0..5)           — nombre d\'idées confirmées pour ce sujet',
-                    'status'               => 'EMPTY|FILLED|VALIDATED_OK|LOCKED|REJECTED|CORRECTION_NEEDED',
+                    'status'               => 'EMPTY|FILLED|ACTIVE|EXHAUSTED',
                     'locked'               => 'bool                 — slot verrouillé pour ce cycle',
                     'filled_at'            => 'timestamp|null       — horodatage remplissage par Taxonomy',
                     'traces'               => 'Trace[]              — historique append-only (décisions Taxonomy)',
@@ -755,6 +758,8 @@ class KernelFrameBuilder
                     'locked'               => false,
                     'filled_at'            => null,
                 ],
+                'lifecycle'     => 'EMPTY → FILLED (Taxonomy remplit label/id/code) → ACTIVE (sélectionné par Taxonomy comme active_subject) → EXHAUSTED (toutes les idées traitées par QuestionIntent)',
+                'no_archived_v1'=> 'ARCHIVED est une extension future — pas dans le cycle actif v1',
             ],
 
             // ── DominantIdeaSlot ─────────────────────────────────────────────
@@ -768,10 +773,9 @@ class KernelFrameBuilder
                     'idea_id'   => 'string|null   — identifiant DB Taxonomy',
                     'idea_code' => 'string|null   — code unique dans le sujet (ex: "IDEA-003")',
                     'active'    => 'bool          — true = c\'est l\'active_dominant_idea courante',
-                    'consumed'  => 'bool          — paire (sujet+idée) déjà consommée par QuestionIntent',
                     'rejected'  => 'bool          — rejetée par KEY_STRUCTURE ou KLD',
                     'validated' => 'bool          — validée (VALIDATED_OK) pour usage gameplay',
-                    'status'    => 'EMPTY|FILLED|VALIDATED_OK|LOCKED|REJECTED|CORRECTION_NEEDED',
+                    'status'    => 'EMPTY|FILLED|ACTIVE|LOCKED_BY_QUESTION_INTENT|VALIDATED_OK|REJECTED|CORRECTION_NEEDED',
                     'filled_at' => 'timestamp|null — horodatage remplissage',
                 ],
                 'initial_state' => [
@@ -779,13 +783,13 @@ class KernelFrameBuilder
                     'idea_id'   => null,
                     'idea_code' => null,
                     'active'    => false,
-                    'consumed'  => false,
                     'rejected'  => false,
                     'validated' => false,
                     'status'    => 'EMPTY',
                     'filled_at' => null,
                 ],
-                'lifecycle' => 'EMPTY → FILLED (Taxonomy) → VALIDATED_OK (KEY_STRUCTURE) → LOCKED (consommée par QuestionIntent) | REJECTED (KLD/KEY_STRUCTURE)',
+                'lifecycle'   => 'EMPTY → FILLED (Taxonomy) → ACTIVE (sélectionnée par Taxonomy) → LOCKED_BY_QUESTION_INTENT (paire sujet+idée verrouillée) → VALIDATED_OK | REJECTED | CORRECTION_NEEDED',
+                'no_consumed' => 'CONSUMED est interdit ici — la consommation est player-level via player_kernel_cognitive_usage uniquement',
             ],
 
             // ── CognitiveSlot ────────────────────────────────────────────────
@@ -809,6 +813,8 @@ class KernelFrameBuilder
                     'correct_answer_key' => null,
                     'status'             => 'EMPTY',
                 ],
+                'lifecycle'   => 'EMPTY → FILLED (Phase1) → VALIDATED_OK (Phase2) → READY_BANK (Phase4 + KernelExporter)',
+                'no_consumed' => 'CONSUMED est interdit dans le noyau — la consommation gameplay est per-player via player_kernel_cognitive_usage',
             ],
 
             // ── QuestionSlot ─────────────────────────────────────────────────
@@ -823,23 +829,21 @@ class KernelFrameBuilder
                         'max_chars'      => 'int — longueur maximale du texte question',
                         'timing_weight'  => 'float — coefficient temps de lecture (profondeur × lisibilité)',
                     ],
-                    'validation_state' => 'EMPTY|FILLED|VALIDATED_OK|REJECTED|CORRECTION_NEEDED',
-                    'consumed'         => 'bool      — question déjà exposée en gameplay (phase de résolution vue)',
-                    'language'         => '"en"      — toujours la langue source',
-                    'filled_at'        => 'timestamp|null',
-                    'status'           => 'EMPTY|FILLED|VALIDATED_OK|LOCKED|REJECTED|CORRECTION_NEEDED',
-                    'locked'           => 'bool',
-                    'traces'           => 'Trace[]',
-                    'rules'            => 'SlotRules',
+                    'language'   => '"en"      — toujours la langue source',
+                    'filled_at'  => 'timestamp|null',
+                    'status'     => 'EMPTY|FILLED|VALIDATED_OK|LOCKED|REJECTED|CORRECTION_NEEDED',
+                    'locked'     => 'bool',
+                    'traces'     => 'Trace[]',
+                    'rules'      => 'SlotRules',
                 ],
                 'initial_state' => [
-                    'value'            => null,
-                    'consumed'         => false,
-                    'validation_state' => 'EMPTY',
-                    'status'           => 'EMPTY',
-                    'locked'           => false,
-                    'filled_at'        => null,
+                    'value'      => null,
+                    'status'     => 'EMPTY',
+                    'locked'     => false,
+                    'filled_at'  => null,
                 ],
+                'lifecycle'   => 'EMPTY → FILLED (Phase1) → VALIDATED_OK (Phase2) → READY_BANK',
+                'no_consumed' => 'CONSUMED interdit ici — la consommation est per-player via player_kernel_cognitive_usage',
             ],
 
             // ── AnswerSlot ───────────────────────────────────────────────────
@@ -866,7 +870,9 @@ class KernelFrameBuilder
                     'locked'     => false,
                     'filled_at'  => null,
                 ],
-                'constraint' => 'Exactement 1 slot has is_correct=true par CognitiveSlot',
+                'constraint'  => 'Exactement 1 slot has is_correct=true par CognitiveSlot',
+                'lifecycle'   => 'EMPTY → FILLED (Phase1) → VALIDATED_OK (Phase2) → READY_BANK',
+                'no_consumed' => 'CONSUMED interdit ici — consommation per-player uniquement',
             ],
 
             // ── SVSlot ───────────────────────────────────────────────────────
@@ -891,14 +897,18 @@ class KernelFrameBuilder
                     'locked'    => false,
                     'filled_at' => null,
                 ],
+                'lifecycle'   => 'EMPTY → FILLED (Phase1) → VALIDATED_OK (Phase2) → READY_BANK',
+                'no_consumed' => 'CONSUMED interdit ici — consommation per-player uniquement',
             ],
 
             // ── TranslationSlot ──────────────────────────────────────────────
+            // CYCLE V1 NON VERROUILLÉ : les détails de Phase3/Phase4 seront
+            // spécifiés après stabilisation de Phase1. Seuls les slots sont
+            // créés maintenant avec status=EMPTY.
             'TranslationSlot' => [
-                'description' => 'Traduction complète d\'un cognitif dans une langue cible (9 langues)',
-                'filled_by'   => 'Phase3 (KernelTranslator)',
-                'validated_by'=> 'Phase4 (KernelTranslator validation)',
-                'languages'   => self::TRANSLATION_LANGS,
+                'description'  => 'Traduction d\'un cognitif dans une langue cible (9 langues) — cycle v1 à préciser en Phase3',
+                'filled_by'    => 'Phase3 (KernelTranslator) — cycle détaillé non encore verrouillé',
+                'languages'    => self::TRANSLATION_LANGS,
                 'fields' => [
                     'question_text'      => 'string|null — texte traduit de la question',
                     'answer_a'           => 'string|null — texte traduit réponse A',
@@ -910,7 +920,7 @@ class KernelFrameBuilder
                     'saviez_vous'        => 'string|null — texte traduit "Saviez-vous que..."',
                     'answer_max'         => 'int         — cap réponse pour cette langue',
                     'sv_max'             => 'int         — cap SV pour cette langue',
-                    'status'             => 'EMPTY|FILLED|VALIDATED_OK|LOCKED|REJECTED|CORRECTION_NEEDED',
+                    'status'             => 'EMPTY (v1) — détails Phase3 à spécifier ultérieurement',
                     'locked'             => 'bool',
                     'filled_at'          => 'timestamp|null',
                     'traces'             => 'Trace[]',
@@ -937,6 +947,7 @@ class KernelFrameBuilder
                     'zh_sv_max'          => self::SV_MAX_ZH,
                     'ar_sv_max'          => self::SV_MAX_AR,
                 ],
+                'lifecycle_note' => 'Cycle complet Phase3/Phase4 non verrouillé en v1 — slots présents, status=EMPTY, règles finales à définir lors de l\'implémentation Phase3',
             ],
         ];
     }
@@ -1039,13 +1050,46 @@ class KernelFrameBuilder
             'frame_is_container_only'         => 'KernelFrameBuilder ne choisit rien — structure vide uniquement',
             'legacy_fields_preserved'         => 'kernel_core/variants/translation_constraints conservés pour compatibilité pipeline existant',
 
-            // ── Hiérarchie des statuts ─────────────────────────────────────
+            // ── Hiérarchie des statuts — 3 couches distinctes ─────────────
             'statuses_hierarchy'              => [
-                'kernel_level'   => 'statuses{} — 10 étapes pipeline (rotation/taxonomy/ks/kld/intent/phase1-4/ready_bank), chacune null|pending|ok|failed|skipped',
-                'slot_level'     => 'chaque slot expose son propre status — depth_slot.status, domain_slot.status, question_slot.status, translation_slot.status, etc.',
-                'slot_enum'      => ['EMPTY', 'FILLED', 'VALIDATED_OK', 'LOCKED', 'REJECTED', 'CORRECTION_NEEDED'],
+
+                // A) Statuts de slot (champ status de chaque slot individuel)
+                'slot_status_layer' => [
+                    'description' => 'État local d\'un slot individuel — géré par le propriétaire du slot',
+                    'slot_enum'   => ['EMPTY', 'FILLED', 'VALIDATED_OK', 'LOCKED', 'REJECTED', 'CORRECTION_NEEDED'],
+                    'examples'    => 'depth_slot.status, domain_slot.status, question_slot.status',
+                    'no_consumed' => 'CONSUMED est interdit dans cette couche',
+                    'locked_semantics' => 'LOCKED ≠ verrou définitif global. Ex: active_subject → LOCKED après activation, mais Taxonomy peut le changer quand les 5 idées sont épuisées.',
+                ],
+
+                // B) États pipeline noyau (champ statuses{} racine)
+                'kernel_pipeline_layer' => [
+                    'description' => 'Avancement global du noyau à travers les 11 étapes du pipeline',
+                    'stages'      => [
+                        'blueprint_created', 'rotation_filled', 'taxonomy_filled',
+                        'key_structure_validated', 'kld_validated', 'question_intent_locked',
+                        'phase1_filled', 'phase2_validated', 'phase3_pending',
+                        'phase4_pending', 'ready_bank',
+                    ],
+                    'values'      => 'null | pending | ok | failed | skipped',
+                    'final_state' => 'READY_BANK (pas READY seul — trop vague)',
+                ],
+
+                // C) États gameplay joueur (table player_kernel_cognitive_usage)
+                'player_gameplay_layer' => [
+                    'description'  => 'Consommation per-player — JAMAIS stockée dans le noyau mère',
+                    'location'     => 'table player_kernel_cognitive_usage (DB séparée)',
+                    'states'       => ['vierge', 'touché', 'back_support'],
+                    'consumed_def' => 'CONSUMED = question+bonne_réponse+SV vus par ce joueur pour ce cognitif',
+                    'rule'         => 'Un même CognitiveSlot peut être vierge pour joueur A, touché pour joueur B, back_support pour joueur C — le noyau ignore tout cela',
+                ],
+
+                // Règle globale
+                'kernel_level'     => 'statuses{} — 10 étapes pipeline (rotation/taxonomy/ks/kld/intent/phase1-4/ready_bank), chacune null|pending|ok|failed|skipped',
+                'slot_level'       => 'chaque slot expose son propre status — depth_slot.status, domain_slot.status, question_slot.status, translation_slot.status, etc.',
+                'slot_enum'        => ['EMPTY', 'FILLED', 'VALIDATED_OK', 'LOCKED', 'REJECTED', 'CORRECTION_NEEDED'],
                 'locked_semantics' => 'LOCKED ≠ verrou définitif global. Certains slots sont LOCKED pour une étape donnée mais peuvent être réactivés par leur propriétaire officiel selon le cycle du noyau. Ex: active_subject devient LOCKED après activation, mais Taxonomy peut le changer quand les 5 idées sont épuisées.',
-                'rule'           => 'kernel_level = avancement global du noyau ; slot_level = état local du slot. Les deux coexistent.',
+                'rule'             => '3 couches séparées : slot_status (A) ≠ kernel_pipeline_status (B) ≠ player_gameplay_status (C). Ne jamais mélanger.',
             ],
 
             // ── Hiérarchie des traces ──────────────────────────────────────
@@ -1107,7 +1151,8 @@ class KernelFrameBuilder
             'kernel_code_immutable_after_kld'        => true,
             'ready_bank_stores_encoded_noyau'        => true,
             'no_isolated_cognitive_in_ready_bank'    => true,
-            'cognitive_consumed_by_gameplay'         => 'Gameplay consomme les cognitifs internes — READY_BANK stocke le noyau entier',
+            'cognitive_consumption_is_player_level'  => 'CONSUMED appartient uniquement à Gameplay + player_kernel_cognitive_usage. Le noyau ne stocke jamais la consommation globale. Un même CognitiveSlot peut être vierge/touché/back_support selon le joueur.',
+            'ready_bank_no_consumption_tracking'    => 'READY_BANK stocke le noyau mère encodé complet — pas de consommation, pas de back_support, pas d\'historique joueur',
             'backward_compat_variants_preserved'     => 'Ne pas supprimer kernel_core/variants tant que migration non complète',
         ];
     }

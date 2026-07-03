@@ -1,0 +1,291 @@
+Correction finale Kernel Blueprint Frame avant KernelRotationPlanner.
+
+On ne passe PAS à KernelRotationPlanner tant que ces corrections ne sont pas intégrées.
+
+Tu as bien avancé sur :
+- slots
+- contrats d’écriture/lecture
+- depends_on
+- statuts
+- object_contracts
+- relation_map
+
+Mais il y a des déviations à corriger.
+
+1. CONSUMED ne doit jamais être un statut interne du noyau
+
+Correction obligatoire :
+
+CognitiveSlot appartient au moteur de banque jusqu’à READY_BANK seulement.
+
+Cycle correct côté banque :
+
+EMPTY
+↓
+FILLED
+↓
+VALIDATED_OK
+↓
+READY_BANK
+
+Interdit :
+
+EMPTY
+↓
+FILLED
+↓
+VALIDATED_OK
+↓
+READY
+↓
+CONSUMED
+
+CONSUMED appartient uniquement à Gameplay + historique joueur.
+
+La consommation est PER-PLAYER via :
+
+player_kernel_cognitive_usage
+
+Donc un même CognitiveSlot peut être :
+- non consommé pour joueur A
+- consommé pour joueur B
+- back_support pour joueur C
+
+Le noyau ne stocke pas la consommation globale.
+
+2. READY doit être remplacé par READY_BANK
+
+Dans le pipeline Kernel, le bon état final est :
+
+READY_BANK
+
+Pas :
+
+READY
+
+READY est trop vague.
+
+3. TranslationSlot ne doit pas être trop figé maintenant
+
+TranslationSlot doit exister dès le Blueprint.
+
+Mais son cycle détaillé n’est pas encore verrouillé.
+
+Statut actuel attendu :
+
+translation_slots présents
+status = EMPTY
+phase = future Phase 3
+
+Ne pas définir maintenant :
+- cycle complet Phase 3
+- règles finales de validation traduction
+- comportement définitif multi-langue
+
+On est encore sur la fondation Phase 1 :
+Questions
+Réponses
+SV
+slots traduction préparés
+
+4. Versioning obligatoire
+
+Ajouter au Blueprint :
+
+schema_version = "1.0.0"
+content_version = "1.0.0"
+correction_version = 0
+
+Rôle :
+
+schema_version :
+version de la structure du Blueprint.
+
+content_version :
+version du contenu du noyau.
+
+correction_version :
+incrémentée si une question, réponse, SV ou traduction est corrigée plus tard.
+
+Important :
+le versioning sert aux corrections futures du contenu.
+Il ne sert pas à la consommation gameplay.
+
+5. Cycle SubjectSlot
+
+SubjectSlot ne doit pas être ARCHIVED maintenant.
+
+Cycle correct :
+
+EMPTY
+↓
+FILLED
+↓
+ACTIVE
+↓
+EXHAUSTED
+
+ARCHIVED peut rester seulement comme future extension, pas dans le cycle actif v1.
+
+6. Cycle DominantIdeaSlot
+
+Cycle correct :
+
+EMPTY
+↓
+FILLED
+↓
+ACTIVE
+↓
+LOCKED_BY_QUESTION_INTENT
+↓
+VALIDATED_OK / REJECTED / CORRECTION_NEEDED
+
+Ne pas mettre CONSUMED ici.
+
+Une idée dominante est verrouillée pour produire une intention cognitive.
+Elle n’est pas consommée par Gameplay directement.
+
+7. Cycle CognitiveSlot
+
+Cycle correct :
+
+EMPTY
+↓
+FILLED
+↓
+VALIDATED_OK
+↓
+READY_BANK
+
+Ne pas mettre CONSUMED.
+Ne pas mettre BACK_SUPPORT.
+Ces états sont gameplay/player-level.
+
+8. Cycle QuestionSlot / AnswerSlot / SVSlot
+
+Cycle correct :
+
+EMPTY
+↓
+FILLED
+↓
+VALIDATED_OK
+↓
+READY_BANK
+
+Si problème :
+
+CORRECTION_NEEDED
+ou
+REJECTED
+
+Pas de CONSUMED.
+
+9. TranslationSlot
+
+Cycle v1 temporaire :
+
+EMPTY
+↓
+future Phase 3
+
+Ne pas détailler davantage maintenant.
+
+10. Statuts officiels de slot
+
+Garder :
+
+EMPTY
+FILLED
+VALIDATED_OK
+LOCKED
+REJECTED
+CORRECTION_NEEDED
+
+Mais attention :
+
+READY_BANK est un état de pipeline / export, pas forcément un statut local identique pour tous les slots.
+
+CONSUMED n’est PAS dans cette enum.
+
+11. LOCKED est contextuel
+
+LOCKED ne veut pas dire verrou définitif global.
+
+Exemples :
+
+active_subject :
+modifiable uniquement par Taxonomy quand les 5 idées du sujet actif sont épuisées.
+
+dominant_ideas :
+recréées par Taxonomy quand active_subject change.
+
+active_dominant_idea :
+la paire sujet actif + idée active est verrouillée par QuestionIntent, mais Taxonomy peut pointer l’idée suivante après usage.
+
+12. Hiérarchie des états
+
+Distinguer clairement :
+
+A) Statuts de slot :
+EMPTY
+FILLED
+VALIDATED_OK
+LOCKED
+REJECTED
+CORRECTION_NEEDED
+
+B) États pipeline noyau :
+blueprint_created
+rotation_filled
+taxonomy_filled
+key_structure_validated
+kld_validated
+question_intent_locked
+phase1_filled
+phase2_validated
+phase3_pending
+phase4_pending
+ready_bank
+
+C) États gameplay joueur :
+vierge
+touché
+back_support
+consumed cognitive per player
+
+Ces 3 couches ne doivent pas être mélangées.
+
+13. READY_BANK
+
+READY_BANK stocke des noyaux mères encodés.
+
+READY_BANK ne stocke pas :
+- consommation joueur
+- back_support joueur
+- historique gameplay
+
+Gameplay lira les cognitifs internes du noyau, mais la consommation sera enregistrée séparément par joueur.
+
+14. Correction attendue maintenant
+
+Corriger KernelFrameBuilder + tests pour refléter exactement :
+
+- aucun CONSUMED dans les cycles internes Blueprint/Kernel
+- CognitiveSlot finit à READY_BANK
+- QuestionSlot / AnswerSlot / SVSlot finissent à READY_BANK
+- TranslationSlot reste EMPTY / future Phase 3
+- ajout schema_version / content_version / correction_version
+- séparation claire slot_status / kernel_pipeline_status / player_gameplay_status
+- SubjectSlot sans ARCHIVED en v1 actif
+- DominantIdeaSlot sans CONSUMED
+- READY remplacé par READY_BANK partout où il représente la fin banque
+
+Validation attendue :
+- php -l
+- tests unitaires existants
+- mise à jour des assertions
+- résumé clair des corrections appliquées
+
+Ne pas commencer KernelRotationPlanner tant que ce correctif n’est pas terminé.

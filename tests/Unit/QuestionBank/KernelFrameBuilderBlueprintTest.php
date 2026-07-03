@@ -78,6 +78,9 @@ class KernelFrameBuilderBlueprintTest extends TestCase
 
         $expectedKeys = [
             // Blueprint Frame
+            'schema_version',
+            'content_version',
+            'correction_version',
             'kernel_code',
             'depth_slot',
             'domain_slot',
@@ -103,6 +106,15 @@ class KernelFrameBuilderBlueprintTest extends TestCase
         foreach ($expectedKeys as $key) {
             $this->assertArrayHasKey($key, $frame, "Clé racine manquante : {$key}");
         }
+    }
+
+    public function test_versioning_fields_are_present_and_correct(): void
+    {
+        $frame = $this->skeleton();
+
+        $this->assertSame('1.0.0', $frame['schema_version'],     'schema_version devrait être 1.0.0');
+        $this->assertSame('1.0.0', $frame['content_version'],    'content_version devrait être 1.0.0');
+        $this->assertSame(0,       $frame['correction_version'],  'correction_version devrait être 0');
     }
 
     // =========================================================================
@@ -810,6 +822,7 @@ class KernelFrameBuilderBlueprintTest extends TestCase
     {
         $sh = $this->skeleton()['rules']['statuses_hierarchy'];
 
+        // Clés globales préservées
         $this->assertArrayHasKey('kernel_level',    $sh);
         $this->assertArrayHasKey('slot_level',      $sh);
         $this->assertArrayHasKey('slot_enum',       $sh);
@@ -830,6 +843,38 @@ class KernelFrameBuilderBlueprintTest extends TestCase
 
         $this->assertStringContainsString('LOCKED',          $sh['locked_semantics']);
         $this->assertStringContainsString('active_subject',  $sh['locked_semantics']);
+
+        // ── Couche A : slot_status ──────────────────────────────────────────
+        $this->assertArrayHasKey('slot_status_layer', $sh);
+        $layerA = $sh['slot_status_layer'];
+        $this->assertArrayHasKey('slot_enum',   $layerA);
+        $this->assertArrayHasKey('no_consumed', $layerA);
+        $this->assertContains('EMPTY',             $layerA['slot_enum']);
+        $this->assertContains('VALIDATED_OK',      $layerA['slot_enum']);
+        $this->assertStringContainsString('CONSUMED', $layerA['no_consumed']);
+
+        // ── Couche B : kernel_pipeline ──────────────────────────────────────
+        $this->assertArrayHasKey('kernel_pipeline_layer', $sh);
+        $layerB = $sh['kernel_pipeline_layer'];
+        $this->assertArrayHasKey('stages',      $layerB);
+        $this->assertArrayHasKey('final_state', $layerB);
+        $this->assertContains('ready_bank',        $layerB['stages']);
+        $this->assertStringContainsString('READY_BANK', $layerB['final_state']);
+
+        // ── Couche C : player_gameplay ──────────────────────────────────────
+        $this->assertArrayHasKey('player_gameplay_layer', $sh);
+        $layerC = $sh['player_gameplay_layer'];
+        $this->assertArrayHasKey('states',       $layerC);
+        $this->assertArrayHasKey('location',     $layerC);
+        $this->assertArrayHasKey('consumed_def', $layerC);
+        $this->assertContains('vierge',      $layerC['states']);
+        $this->assertContains('touché',      $layerC['states']);
+        $this->assertContains('back_support',$layerC['states']);
+        $this->assertStringContainsString('player_kernel_cognitive_usage', $layerC['location']);
+        $this->assertStringContainsString('JAMAIS', $layerC['description'] ?? $layerC['rule'] ?? '');
+
+        // La règle globale mentionne les 3 couches
+        $this->assertStringContainsString('3', $sh['rule']);
     }
 
     public function test_rules_contains_traces_hierarchy(): void
@@ -882,6 +927,16 @@ class KernelFrameBuilderBlueprintTest extends TestCase
         $this->assertTrue($constraints['kernel_code_immutable_after_kld']);
         $this->assertTrue($constraints['ready_bank_stores_encoded_noyau']);
         $this->assertTrue($constraints['no_isolated_cognitive_in_ready_bank']);
+
+        // Contraintes player-level séparation (CONSUMED interdit dans le noyau)
+        $this->assertArrayHasKey('cognitive_consumption_is_player_level', $constraints);
+        $this->assertArrayHasKey('ready_bank_no_consumption_tracking',    $constraints);
+        $this->assertArrayNotHasKey('cognitive_consumed_by_gameplay',     $constraints,
+            'Ancienne clé cognitive_consumed_by_gameplay remplacée');
+
+        $this->assertStringContainsString('CONSUMED',                    $constraints['cognitive_consumption_is_player_level']);
+        $this->assertStringContainsString('player_kernel_cognitive_usage',$constraints['cognitive_consumption_is_player_level']);
+        $this->assertStringContainsString('READY_BANK',                  $constraints['ready_bank_no_consumption_tracking']);
     }
 
     public function test_statuses_has_all_10_pipeline_stages_at_null(): void
@@ -977,6 +1032,15 @@ class KernelFrameBuilderBlueprintTest extends TestCase
         $this->assertSame('EMPTY', $init['status']);
         $this->assertFalse($init['locked']);
         $this->assertNull($init['filled_at']);
+
+        $this->assertArrayHasKey('lifecycle',      $ss);
+        $this->assertArrayHasKey('no_archived_v1', $ss);
+        $this->assertStringContainsString('EMPTY',     $ss['lifecycle']);
+        $this->assertStringContainsString('ACTIVE',    $ss['lifecycle']);
+        $this->assertStringContainsString('EXHAUSTED', $ss['lifecycle']);
+        $this->assertStringNotContainsString('ARCHIVED', $ss['lifecycle']);
+        $this->assertStringContainsString('ARCHIVED', $ss['no_archived_v1']);
+        $this->assertStringContainsString('future',   $ss['no_archived_v1']);
     }
 
     public function test_dominant_idea_slot_contract_has_all_required_sections(): void
@@ -996,24 +1060,30 @@ class KernelFrameBuilderBlueprintTest extends TestCase
         $fields = $di['fields'];
         foreach ([
             'index', 'idea', 'idea_id', 'idea_code',
-            'active', 'consumed', 'rejected', 'validated',
+            'active', 'rejected', 'validated',
             'status', 'filled_at',
         ] as $field) {
             $this->assertArrayHasKey($field, $fields, "DominantIdeaSlot.fields manque : {$field}");
         }
+        $this->assertArrayNotHasKey('consumed', $fields, 'DominantIdeaSlot ne doit pas avoir de champ consumed');
 
         $init = $di['initial_state'];
         $this->assertNull($init['idea']);
         $this->assertFalse($init['active']);
-        $this->assertFalse($init['consumed']);
+        $this->assertArrayNotHasKey('consumed', $init, 'DominantIdeaSlot.initial_state ne doit pas avoir consumed');
         $this->assertFalse($init['rejected']);
         $this->assertFalse($init['validated']);
         $this->assertSame('EMPTY', $init['status']);
 
-        $this->assertStringContainsString('EMPTY',    $di['lifecycle']);
-        $this->assertStringContainsString('FILLED',   $di['lifecycle']);
-        $this->assertStringContainsString('LOCKED',   $di['lifecycle']);
-        $this->assertStringContainsString('REJECTED',  $di['lifecycle']);
+        $this->assertStringContainsString('EMPTY',                    $di['lifecycle']);
+        $this->assertStringContainsString('FILLED',                   $di['lifecycle']);
+        $this->assertStringContainsString('ACTIVE',                   $di['lifecycle']);
+        $this->assertStringContainsString('LOCKED_BY_QUESTION_INTENT', $di['lifecycle']);
+        $this->assertStringContainsString('REJECTED',                 $di['lifecycle']);
+
+        $this->assertArrayHasKey('no_consumed', $di);
+        $this->assertStringContainsString('CONSUMED', $di['no_consumed']);
+        $this->assertStringContainsString('player_kernel_cognitive_usage', $di['no_consumed']);
     }
 
     public function test_cognitive_slot_contract_has_all_required_sections(): void
@@ -1043,6 +1113,12 @@ class KernelFrameBuilderBlueprintTest extends TestCase
         $this->assertStringContainsString('true_false', $fields['cognitive_family']);
         $this->assertNull($cs['initial_state']['correct_answer_key']);
         $this->assertSame('EMPTY', $cs['initial_state']['status']);
+
+        $this->assertArrayHasKey('lifecycle',   $cs);
+        $this->assertArrayHasKey('no_consumed', $cs);
+        $this->assertStringContainsString('READY_BANK', $cs['lifecycle']);
+        $this->assertStringContainsString('CONSUMED',   $cs['no_consumed']);
+        $this->assertStringContainsString('player_kernel_cognitive_usage', $cs['no_consumed']);
     }
 
     public function test_question_slot_contract_has_gameplay_constraints_and_initial_state(): void
@@ -1061,9 +1137,9 @@ class KernelFrameBuilderBlueprintTest extends TestCase
         $fields = $qs['fields'];
         $this->assertArrayHasKey('value',                $fields);
         $this->assertArrayHasKey('gameplay_constraints', $fields);
-        $this->assertArrayHasKey('validation_state',     $fields);
-        $this->assertArrayHasKey('consumed',             $fields);
         $this->assertArrayHasKey('language',             $fields);
+        $this->assertArrayNotHasKey('consumed',          $fields, 'QuestionSlot ne doit pas avoir de champ consumed');
+        $this->assertArrayNotHasKey('validation_state',  $fields, 'QuestionSlot ne doit pas avoir validation_state (doublon de status)');
 
         $gc = $fields['gameplay_constraints'];
         $this->assertArrayHasKey('question_type',  $gc);
@@ -1072,11 +1148,16 @@ class KernelFrameBuilderBlueprintTest extends TestCase
 
         $init = $qs['initial_state'];
         $this->assertNull($init['value']);
-        $this->assertFalse($init['consumed']);
-        $this->assertSame('EMPTY', $init['validation_state']);
+        $this->assertArrayNotHasKey('consumed',         $init, 'QuestionSlot.initial_state ne doit pas avoir consumed');
+        $this->assertArrayNotHasKey('validation_state', $init, 'QuestionSlot.initial_state ne doit pas avoir validation_state');
         $this->assertSame('EMPTY', $init['status']);
         $this->assertFalse($init['locked']);
         $this->assertNull($init['filled_at']);
+
+        $this->assertArrayHasKey('lifecycle',   $qs);
+        $this->assertArrayHasKey('no_consumed', $qs);
+        $this->assertStringContainsString('READY_BANK', $qs['lifecycle']);
+        $this->assertStringContainsString('CONSUMED',   $qs['no_consumed']);
     }
 
     public function test_answer_slot_contract_has_is_correct_and_constraint(): void
@@ -1104,6 +1185,11 @@ class KernelFrameBuilderBlueprintTest extends TestCase
         $this->assertFalse($init['is_correct']);
         $this->assertNull($init['answer_key']);
         $this->assertSame('EMPTY', $init['status']);
+
+        $this->assertArrayHasKey('lifecycle',   $as);
+        $this->assertArrayHasKey('no_consumed', $as);
+        $this->assertStringContainsString('READY_BANK', $as['lifecycle']);
+        $this->assertStringContainsString('CONSUMED',   $as['no_consumed']);
     }
 
     public function test_sv_slot_contract_has_char_limits_and_language(): void
@@ -1130,19 +1216,25 @@ class KernelFrameBuilderBlueprintTest extends TestCase
         $init = $sv['initial_state'];
         $this->assertNull($init['value']);
         $this->assertSame('EMPTY', $init['status']);
+
+        $this->assertArrayHasKey('lifecycle',   $sv);
+        $this->assertArrayHasKey('no_consumed', $sv);
+        $this->assertStringContainsString('READY_BANK', $sv['lifecycle']);
+        $this->assertStringContainsString('CONSUMED',   $sv['no_consumed']);
     }
 
     public function test_translation_slot_contract_has_all_fields_and_char_caps(): void
     {
         $ts = $this->skeleton()['object_contracts']['TranslationSlot'];
 
-        $this->assertArrayHasKey('description',   $ts);
-        $this->assertArrayHasKey('filled_by',     $ts);
-        $this->assertArrayHasKey('validated_by',  $ts);
-        $this->assertArrayHasKey('languages',     $ts);
-        $this->assertArrayHasKey('fields',        $ts);
-        $this->assertArrayHasKey('initial_state', $ts);
-        $this->assertArrayHasKey('char_caps',     $ts);
+        $this->assertArrayHasKey('description',    $ts);
+        $this->assertArrayHasKey('filled_by',      $ts);
+        $this->assertArrayHasKey('languages',      $ts);
+        $this->assertArrayHasKey('fields',         $ts);
+        $this->assertArrayHasKey('initial_state',  $ts);
+        $this->assertArrayHasKey('char_caps',      $ts);
+        $this->assertArrayHasKey('lifecycle_note', $ts);
+        $this->assertArrayNotHasKey('validated_by', $ts, 'TranslationSlot ne doit pas avoir validated_by en v1 — cycle Phase3 non verrouillé');
 
         $this->assertSame(9, count($ts['languages']));
         $this->assertContains('fr', $ts['languages']);
@@ -1150,7 +1242,7 @@ class KernelFrameBuilderBlueprintTest extends TestCase
         $this->assertContains('ar', $ts['languages']);
 
         $this->assertStringContainsString('Phase3', $ts['filled_by']);
-        $this->assertStringContainsString('Phase4', $ts['validated_by']);
+        $this->assertStringContainsString('EMPTY',  $ts['lifecycle_note']);
 
         $fields = $ts['fields'];
         foreach ([
