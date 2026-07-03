@@ -120,7 +120,10 @@ class KernelFrameBuilderBlueprintTest extends TestCase
     {
         $slot = $this->skeleton()['depth_slot'];
 
-        foreach (['value', 'source', 'status', 'rules', 'traces'] as $key) {
+        foreach ([
+            'requested_depth', 'actual_depth', 'selection_source',
+            'filled_at', 'status', 'locked', 'rules', 'traces',
+        ] as $key) {
             $this->assertArrayHasKey($key, $slot, "depth_slot manque : {$key}");
         }
     }
@@ -129,9 +132,12 @@ class KernelFrameBuilderBlueprintTest extends TestCase
     {
         $slot = $this->skeleton()['depth_slot'];
 
-        $this->assertSame(4, $slot['value']);
-        $this->assertSame('legacy_intent', $slot['source']);
+        $this->assertSame(4, $slot['requested_depth']);
+        $this->assertSame(4, $slot['actual_depth']);
+        $this->assertSame('legacy_intent', $slot['selection_source']);
+        $this->assertNull($slot['filled_at']);
         $this->assertSame('filled', $slot['status']);
+        $this->assertTrue($slot['locked']);
     }
 
     public function test_depth_slot_is_empty_when_intent_has_no_depth(): void
@@ -139,17 +145,29 @@ class KernelFrameBuilderBlueprintTest extends TestCase
         $this->intent = $this->makeIntent(['difficulty_depth' => null]);
         $slot = $this->skeleton()['depth_slot'];
 
-        $this->assertNull($slot['value']);
-        $this->assertNull($slot['source']);
+        $this->assertNull($slot['requested_depth']);
+        $this->assertNull($slot['actual_depth']);
+        $this->assertNull($slot['selection_source']);
+        $this->assertNull($slot['filled_at']);
         $this->assertSame('empty', $slot['status']);
+        $this->assertFalse($slot['locked']);
     }
 
-    public function test_depth_slot_rules_reference_rotation_planner(): void
+    public function test_depth_slot_rules_declare_full_access_contract(): void
     {
         $rules = $this->skeleton()['depth_slot']['rules'];
 
+        $this->assertSame('KernelFrameBuilder', $rules['creator']);
         $this->assertSame('KernelRotationPlanner', $rules['filler']);
         $this->assertSame('DepthNeedMatrix', $rules['driven_by']);
+        $this->assertSame('Taxonomy', $rules['transmitted_to']);
+        $this->assertContains('Taxonomy',        $rules['read_by']);
+        $this->assertContains('KEY_STRUCTURE',   $rules['read_by']);
+        $this->assertContains('QuestionIntent',  $rules['read_by']);
+        $this->assertContains('Phase1',          $rules['read_by']);
+        $this->assertContains('READY_BANK',      $rules['read_by']);
+        $this->assertStringContainsString('KernelRotationPlanner', $rules['write_access']);
+        $this->assertStringContainsString('depth_slot', $rules['forbidden']);
     }
 
     // =========================================================================

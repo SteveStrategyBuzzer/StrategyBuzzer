@@ -132,23 +132,46 @@ class KernelFrameBuilder
     // ═════════════════════════════════════════════════════════════════════════
 
     /**
-     * depth_slot — Rempli par KernelRotationPlanner via DepthNeedMatrix.
-     * Pré-rempli si l'intent a déjà un difficulty_depth (pipeline legacy).
+     * depth_slot — Contenant structurel du Depth du noyau.
+     *
+     * Créé par     : KernelFrameBuilder (ce fichier) — toutes valeurs null/vides.
+     * Rempli par   : KernelRotationPlanner via DepthNeedMatrix.
+     * Lu par       : Taxonomy, KEY_STRUCTURE, QuestionIntent, Phase1, READY_BANK.
+     * Verrouillé   : après remplissage par KernelRotationPlanner.
+     * Transmis à   : Taxonomy (qui en a besoin pour sélectionner sous-domaine + sujets).
+     * Interdit     : aucune autre brique ne peut modifier depth_slot.
+     *
+     * Champs :
+     *   requested_depth  — Depth demandé par DepthNeedMatrix (priorité bank).
+     *   actual_depth     — Depth réel confirmé (peut diverger de requested si fallback).
+     *   selection_source — Origine de la sélection (ex: 'DepthNeedMatrix', 'legacy_intent').
+     *   filled_at        — Timestamp ISO 8601 de remplissage (null tant que non rempli).
+     *   status           — 'empty' | 'filled' | 'locked'.
+     *   locked           — true une fois KernelRotationPlanner a rempli le slot.
+     *   traces           — Historique des décisions sur ce slot.
      */
     private function buildDepthSlot(QuestionIntent $intent): array
     {
         $hasDepth = $intent->difficulty_depth !== null;
+        $depth    = $hasDepth ? (int) $intent->difficulty_depth : null;
 
         return [
-            'value'  => $hasDepth ? (int) $intent->difficulty_depth : null,
-            'source' => $hasDepth ? 'legacy_intent' : null,
-            'status' => $hasDepth ? 'filled' : 'empty',
-            'rules'  => [
+            'requested_depth'  => $depth,
+            'actual_depth'     => $depth,
+            'selection_source' => $hasDepth ? 'legacy_intent' : null,
+            'filled_at'        => null,
+            'status'           => $hasDepth ? 'filled' : 'empty',
+            'locked'           => $hasDepth,
+            'rules'            => [
+                'creator'        => 'KernelFrameBuilder',
                 'filler'         => 'KernelRotationPlanner',
                 'driven_by'      => 'DepthNeedMatrix',
                 'allowed_values' => '1–10',
-                'frozen_after'   => 'KEY_STRUCTURE',
-                'note'           => 'Priorité déterminée par les cibles bank par Depth (Redis+config).',
+                'read_by'        => ['Taxonomy', 'KEY_STRUCTURE', 'QuestionIntent', 'Phase1', 'READY_BANK'],
+                'write_access'   => 'KernelRotationPlanner uniquement',
+                'locked_after'   => 'remplissage par KernelRotationPlanner',
+                'transmitted_to' => 'Taxonomy',
+                'forbidden'      => 'Aucune autre brique ne peut modifier depth_slot.',
             ],
             'traces' => [],
         ];
