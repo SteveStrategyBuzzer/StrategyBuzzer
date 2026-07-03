@@ -1,0 +1,454 @@
+Parfait. Avant de le rédiger, je le valide contre toutes les décisions déjà verrouillées.
+
+Validation d'intégration système
+Brique	Compatible	Vérification
+Kernel Blueprint	✅	Le Blueprint reste un simple contenant.
+KernelRotationPlanner	✅	Planification uniquement.
+Taxonomy	✅	Reçoit uniquement le contexte à exploiter.
+KEY_STRUCTURE	✅	Continue de valider Taxonomy, jamais la rotation.
+KLD	✅	N'intervient pas ici.
+QuestionIntent	✅	N'intervient pas ici.
+Phase 1	✅	N'intervient pas ici.
+READY_BANK	✅	Aucun lien direct.
+Gameplay	✅	Aucun lien direct.
+Consommation joueur	✅	Aucun lien direct.
+
+Aucune dérive détectée.
+
+CONTRAT OFFICIEL — KernelRotationPlanner
+Version
+1.0.0
+Nature de la brique
+Planificateur.
+
+Cette brique ne produit aucun contenu pédagogique.
+
+Elle planifie uniquement quel contexte devra être utilisé par les briques suivantes.
+Rôle
+
+Déterminer le prochain contexte de génération d'un noyau.
+
+Il choisit uniquement :
+
+• depth_slot
+• domain_slot
+• kernel_code (préfixe)
+
+Il ne crée jamais le contenu du noyau.
+
+Responsabilité
+
+Maintenir une rotation cohérente des domaines et des profondeurs afin d'assurer une répartition équilibrée de la banque de connaissances.
+
+Objectifs
+
+Garantir :
+
+la rotation des domaines ;
+la progression des profondeurs ;
+l'équilibrage de la banque ;
+l'identité unique du noyau.
+Entrées
+
+Le planner reçoit uniquement :
+
+Blueprint.version
+
+Rotation configuration
+
+DomainCycle
+
+DepthNeedMatrix
+
+BankTarget
+
+Historique de rotation
+
+Kernel séquentiel courant
+
+Configuration globale
+
+Aucune autre donnée.
+
+Sorties
+
+Il produit uniquement :
+
+rotation_context
+
+contenant :
+
+kernel_code_prefix
+
+depth_slot
+
+domain_slot
+
+rotation_iteration
+
+rotation_sequence
+
+planner_version
+
+Rien d'autre.
+
+Écritures autorisées
+
+Il peut écrire uniquement :
+
+depth_slot
+
+domain_slot
+
+kernel_code_prefix
+
+rotation_metadata
+Écritures interdites
+
+Il ne peut jamais écrire :
+
+Sous-domaine
+
+Sujet
+
+Idée dominante
+
+Knowledge
+
+Question
+
+Réponse
+
+Cognitif
+
+Traduction
+
+Validation
+
+Semantic Key
+
+QuestionIntent
+
+READY_BANK
+
+Gameplay
+
+Statistiques
+
+Ces objets appartiennent exclusivement aux briques suivantes.
+
+Dépendances
+
+Lecture uniquement :
+
+Kernel Blueprint
+
+RotationConfig
+
+DomainCycle
+
+DepthNeedMatrix
+
+BankTarget
+
+PlannerHistory
+Dépendants
+
+Les briques suivantes liront son résultat :
+
+Taxonomy
+
+(KEY_STRUCTURE indirectement)
+
+QuestionIntent indirectement
+
+Phase 1 indirectement
+Données transmises
+
+Il transmet uniquement :
+
+rotation_context
+
+Structure :
+
+rotation_context
+│
+├── kernel_code_prefix
+├── depth_slot
+├── domain_slot
+├── planner_version
+├── rotation_iteration
+└── metadata
+Invariants
+
+Toujours vrai :
+
+1.
+Un seul domaine actif.
+
+2.
+Une seule profondeur active.
+
+3.
+Un seul kernel_code.
+
+4.
+Aucun contenu pédagogique.
+
+5.
+Aucune IA générative.
+
+6.
+Aucune validation.
+
+7.
+Aucune création de connaissances.
+Règles métier
+Domaine
+
+Le domaine provient uniquement du DomainCycle.
+
+Jamais d'invention.
+
+Profondeur
+
+La profondeur provient uniquement du DepthNeedMatrix.
+
+Jamais calculée librement.
+
+Kernel Code
+
+Le planner initialise uniquement le préfixe.
+
+Exemple :
+
+26-04
+
+Le suffixe sera complété plus tard par les autres briques selon les règles du système.
+
+Rotation
+
+La rotation suit uniquement l'ordre défini.
+
+Aucune optimisation locale.
+
+Aucun saut.
+
+Aucune priorité IA.
+
+Verrouillage
+
+Une fois produit :
+
+rotation_context
+
+est immuable.
+
+Aucune brique suivante ne peut modifier :
+
+domain_slot
+
+depth_slot
+
+kernel_code_prefix
+Cycle de vie
+WAITING
+
+↓
+
+PLANNED
+
+↓
+
+LOCKED
+
+↓
+
+TRANSFERRED
+
+Le planner s'arrête ici.
+
+Il ne poursuit jamais le cycle métier du noyau.
+
+Versionnement
+
+Chaque évolution incrémente :
+
+planner_version
+
+Le Blueprint conserve également sa propre version.
+
+Les deux versionnements sont indépendants.
+
+Gestion des erreurs
+Domaine indisponible
+
+Échec.
+
+Aucun remplacement automatique.
+
+Depth invalide
+
+Échec.
+
+Aucune correction automatique.
+
+Rotation incomplète
+
+Échec.
+
+Aucune extrapolation.
+
+Historique incohérent
+
+Échec.
+
+Le planner refuse de produire un nouveau contexte.
+
+Comportement en erreur
+
+Toujours :
+
+STOP
+
+Jamais :
+
+guess
+
+fallback IA
+
+création automatique
+
+correction implicite
+
+La décision est volontairement conservatrice pour éviter une dérive architecturale.
+
+Propriétaire
+
+Le propriétaire exclusif est :
+
+KernelRotationPlanner
+
+Aucune autre brique ne peut modifier son résultat.
+
+Lecture
+
+Lecture autorisée :
+
+Taxonomy
+
+Observabilité
+
+Journalisation
+
+Audit
+
+Lecture seule.
+
+Écriture
+
+Écriture autorisée :
+
+Kernel Blueprint
+
+uniquement dans la zone réservée au contexte de rotation.
+
+Relations avec les autres briques
+Kernel Blueprint
+
+Reçoit le conteneur.
+
+Écrit le contexte de rotation.
+
+Taxonomy
+
+Consomme :
+
+depth_slot
+
+domain_slot
+
+kernel_code_prefix
+
+Puis commence la génération du contenu.
+
+KEY_STRUCTURE
+
+Ne lit jamais directement le planner.
+
+Il valide uniquement la sortie de Taxonomy.
+
+KEY_LEARNING_DIRECTION
+
+Aucun lien direct.
+
+QuestionIntent
+
+Aucun lien direct.
+
+Phase 1
+
+Aucun lien direct.
+
+READY_BANK
+
+Aucun lien direct.
+
+Gameplay
+
+Aucun lien direct.
+
+Contrat d'interface
+Entrée
+Blueprint
+RotationConfig
+DomainCycle
+DepthNeedMatrix
+BankTarget
+PlannerHistory
+Sortie
+rotation_context
+Contraintes architecturales
+
+Le KernelRotationPlanner ne doit jamais :
+
+créer un sous-domaine ;
+créer un sujet ;
+créer une idée dominante ;
+créer une connaissance ;
+créer une question ;
+créer une réponse ;
+créer un cognitif ;
+lancer une validation ;
+préparer une traduction ;
+produire un objet READY_BANK ;
+produire un objet Gameplay.
+
+Sa seule mission est de planifier le contexte de travail des briques suivantes.
+
+Correction architecturale importante
+
+Je vois un point qui mérite d'être verrouillé dès maintenant pour éviter une dérive future.
+
+Tu avais déjà défini que le Kernel Blueprint est un contenant passif, sans logique métier. Par conséquent, le KernelRotationPlanner ne devrait pas écrire directement dans le Blueprint. Il devrait produire un objet autonome (rotation_context) qui est ensuite attaché au Blueprint par l'orchestrateur du pipeline.
+
+Le flux deviendrait alors :
+
+Kernel Blueprint
+        │
+        ▼
+KernelRotationPlanner
+        │
+        ▼
+rotation_context
+        │
+        ▼
+Pipeline Orchestrator
+        │
+        ▼
+Blueprint enrichi
+        │
+        ▼
+Taxonomy
+
+Cette légère séparation respecte mieux le principe déjà verrouillé : le Blueprint reste un conteneur, et chaque brique produit son propre contrat sans modifier directement les autres objets. C'est une architecture plus modulaire et plus facile à faire évoluer.
