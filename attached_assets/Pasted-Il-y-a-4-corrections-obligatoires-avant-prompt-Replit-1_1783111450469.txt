@@ -1,0 +1,120 @@
+Il y a 4 corrections obligatoires avant prompt Replit.
+
+1. Depth 2–10 est faux
+
+On avait verrouillé :
+
+Depth 4, 6, 7, 8, 9
+Depth 10 interdit
+Depth 1–2 refusé
+
+Donc remplacer :
+
+Depth 2–10
+
+par :
+
+Depth autorisés selon DepthNeedMatrix : 4, 6, 7, 8, 9.
+Depth 10 interdit.
+Depth 1–2 refusés.
+2. PlannerHistory n’est pas verrouillé
+
+Le texte utilise encore :
+
+PlannerHistory
+
+mais ce contrat n’existe pas officiellement.
+
+Remplacer partout par :
+
+historique de rotation existant, si déjà présent dans le code réel
+
+ou :
+
+rotation_state existant, si déjà présent dans le code réel
+
+Ne pas inventer PlannerHistory.
+
+3. kernel_code_prefix doit rester rotation_identifier
+
+On avait corrigé ça.
+
+KRP ne produit pas le kernel_code_prefix.
+
+Il produit :
+
+rotation_identifier
+
+Pourquoi : éviter de mélanger l’identité de rotation avec le futur kernel_code complet.
+
+Donc remplacer toute la section :
+
+kernel_code_prefix
+
+par :
+
+rotation_identifier
+
+Et préciser :
+
+rotation_identifier n’est pas le kernel_code.
+rotation_identifier n’est pas un préfixe de kernel_code garanti.
+Il sert uniquement à identifier la rotation.
+4. status: PLANNED dans stored_value est dangereux
+
+Ça réintroduit un statut dans le slot.
+
+On avait dit : cycle interne ≠ statut métier.
+
+Donc remplacer :
+
+{ depth: int, status: 'PLANNED' }
+
+par :
+
+{ depth: int }
+
+Et :
+
+{ domain_id: string, domain_code: string }
+
+Pas de status.
+
+Réponse à envoyer à Replit :
+
+Correction obligatoire.
+
+Les slot_references proposées ne sont pas encore conformes.
+
+1. Depth 2–10 est refusé.
+Les profondeurs autorisées sont uniquement celles du DepthNeedMatrix :
+4, 6, 7, 8, 9.
+Depth 10 est interdit.
+Depth 1–2 sont refusés.
+
+2. PlannerHistory n’est pas un contrat officiellement verrouillé.
+Ne pas l’utiliser comme composant nommé.
+Utiliser seulement :
+historique de rotation existant, si présent dans le code réel.
+
+3. kernel_code_prefix est refusé pour KernelRotationPlanner.
+KernelRotationPlanner produit rotation_identifier.
+rotation_identifier n’est pas le kernel_code.
+rotation_identifier n’est pas un préfixe garanti du futur kernel_code complet.
+
+4. Ne pas mettre status: PLANNED dans stored_value.
+WAITING / PLANNING / PLANNED / LOCKED / TRANSFERRED sont des étapes internes d’exécution, pas des statuts métier persistés dans les slots.
+
+stored_value attendu :
+
+depth_slot:
+{ depth: int }
+
+domain_slot:
+{ domain_id: string, domain_code: string }
+
+rotation_identifier:
+string
+
+Reprendre les 3 slot_references avec ces corrections exactes.
+Ne pas ajouter de nouvelle brique, nouveau statut, nouveau rôle, ou nouveau mécanisme d’écriture.
