@@ -1,0 +1,528 @@
+# STRATEGYBUZZER — SPÉCIFICATION FONCTIONNELLE COMPLÈTE
+
+## Brique : KernelRotationPlanner
+
+## Phase : Implémentation Rotation après Blueprint Phase 0 validé
+
+---
+
+# 1. Objectif
+
+Implémenter **KernelRotationPlanner** sans modifier le contrat Blueprint validé.
+
+KernelRotationPlanner est la première brique décisionnelle après le Blueprint.
+
+Il sert uniquement à déterminer le prochain contexte de rotation d’un noyau.
+
+Il produit exclusivement :
+
+* `depth_slot`
+* `domain_slot`
+* `rotation_identifier`
+
+Il ne produit rien d’autre.
+
+---
+
+# 2. Règle absolue
+
+Ne pas extrapoler.
+
+Ne pas inventer :
+
+* nouvelle brique ;
+* nouveau statut ;
+* nouvel événement ;
+* nouveau mécanisme d’écriture ;
+* nouveau format de `kernel_code` ;
+* nouveau comportement Taxonomy ;
+* nouvelle logique READY_BANK ;
+* nouvelle logique gameplay.
+
+Si une information n’existe pas dans le code réel :
+
+```text
+BLOCAGE — contrat non couvert par le code actuel
+```
+
+Puis expliquer précisément ce qui manque.
+
+---
+
+# 3. État officiel du Blueprint
+
+Le Blueprint Phase 0 est terminé.
+
+État :
+
+```text
+Blueprint
+Architecture      OK
+Contract          OK
+Implementation    OK
+Validation        OK
+```
+
+Interdiction de rouvrir la conception du Blueprint.
+
+KernelRotationPlanner doit respecter les slots déjà définis :
+
+* `depth_slot`
+* `domain_slot`
+* `rotation_identifier`
+
+---
+
+# 4. Valeurs officielles de production par depth
+
+La banque de noyaux doit viser les volumes suivants :
+
+```text
+Depth 4 : 3000 noyaux
+Depth 6 : 3000 noyaux
+Depth 7 : 2500 noyaux
+Depth 8 : 2000 noyaux
+Depth 9 : 1500 noyaux
+```
+
+Total cible v1 :
+
+```text
+12000 noyaux
+```
+
+Ces valeurs sont des cibles de noyaux, pas des questions finales.
+
+Un noyau pourra ensuite produire plusieurs objets en aval selon Phase 1, mais KernelRotationPlanner ne gère pas cela.
+
+---
+
+# 5. Depths autorisés
+
+KernelRotationPlanner ne peut choisir que :
+
+```text
+4
+6
+7
+8
+9
+```
+
+Interdit :
+
+```text
+Depth 1
+Depth 2
+Depth 10
+```
+
+Tout autre depth non listé doit être refusé.
+
+---
+
+# 6. DepthNeedMatrix
+
+## Rôle
+
+DepthNeedMatrix ne choisit jamais la profondeur.
+
+DepthNeedMatrix fournit uniquement une matrice des besoins par depth.
+
+## Structure attendue
+
+```text
+DepthNeedMatrix
+- depth
+- target_kernels
+- existing_kernels
+- remaining_kernels
+- completed
+```
+
+Exemple :
+
+```text
+Depth 4 : target 3000 / existing 3000 / remaining 0 / completed true
+Depth 6 : target 3000 / existing 0 / remaining 3000 / completed false
+Depth 7 : target 2500 / existing 0 / remaining 2500 / completed false
+Depth 8 : target 2000 / existing 0 / remaining 2000 / completed false
+Depth 9 : target 1500 / existing 0 / remaining 1500 / completed false
+```
+
+## Source actuelle autorisée
+
+Utiliser le code existant si possible :
+
+```text
+BankNeedsCalculator
+config/question_bank_profiles.php
+```
+
+Ne pas créer une nouvelle classe `DepthNeedMatrix` si `BankNeedsCalculator` peut fournir la couverture nécessaire par adaptation minimale.
+
+---
+
+# 7. Règle de choix de depth
+
+KernelRotationPlanner lit DepthNeedMatrix.
+
+Il choisit UNE seule profondeur.
+
+Règle v1 :
+
+```text
+Choisir le depth autorisé ayant le plus grand remaining_kernels.
+```
+
+En cas d’égalité :
+
+```text
+choisir le depth le plus bas.
+```
+
+Exemple :
+
+```text
+Depth 6 : remaining 3000
+Depth 7 : remaining 2500
+Depth 8 : remaining 2000
+Depth 9 : remaining 1500
+
+=> KernelRotationPlanner choisit Depth 6.
+```
+
+Si tous les `remaining_kernels` sont à 0 :
+
+```text
+STOP — aucune profondeur à produire
+```
+
+Aucun fallback.
+
+---
+
+# 8. DomainCycle
+
+## Rôle
+
+DomainCycle fournit le domaine actif selon une rotation stricte.
+
+KernelRotationPlanner choisit UNE seule valeur pour `domain_slot`.
+
+## Domaines officiels v1
+
+Utiliser uniquement les domaines présents dans la configuration réelle.
+
+Si la config contient cette liste :
+
+```text
+general
+histoire
+sport
+geographie
+art
+cuisine
+science
+cinema
+faune
+```
+
+alors c’est la liste utilisée.
+
+Ne pas inventer de domaine.
+
+## Règle de rotation domaine
+
+Règle v1 :
+
+```text
+À chaque nouveau noyau, passer au domaine suivant dans l’ordre officiel.
+```
+
+Si on arrive à la fin :
+
+```text
+revenir au premier domaine.
+```
+
+Aucun saut.
+
+Aucune optimisation.
+
+Aucune heuristique.
+
+Aucun choix IA.
+
+---
+
+# 9. rotation_identifier
+
+KernelRotationPlanner produit `rotation_identifier`.
+
+Règles :
+
+```text
+rotation_identifier n’est pas kernel_code.
+rotation_identifier n’est pas kernel_code_prefix.
+rotation_identifier n’est pas un fragment du futur kernel_code.
+rotation_identifier n’a aucun format métier imposé.
+rotation_identifier doit seulement être unique dans le périmètre de rotation.
+```
+
+Format technique accepté v1 :
+
+```text
+UUID
+```
+
+Si un générateur UUID existe déjà dans le projet, l’utiliser.
+
+Sinon utiliser le mécanisme Laravel standard disponible.
+
+Ne pas utiliser `yy-xx`.
+
+---
+
+# 10. Sortie officielle de KernelRotationPlanner
+
+KernelRotationPlanner produit :
+
+```text
+rotation_context
+```
+
+Structure :
+
+```text
+rotation_context:
+  depth_slot:
+    depth: int
+
+  domain_slot:
+    domain_id: string
+    domain_code: string
+
+  rotation_identifier: string
+```
+
+Rien d’autre.
+
+---
+
+# 11. Interdictions absolues
+
+KernelRotationPlanner ne doit jamais créer ou modifier :
+
+* sous-domaine ;
+* sujet ;
+* idée dominante ;
+* question ;
+* réponse ;
+* cognitif ;
+* traduction ;
+* validation ;
+* semantic_key ;
+* QuestionIntent ;
+* READY_BANK ;
+* gameplay ;
+* statistiques joueur ;
+* consommation joueur ;
+* kernel_code ;
+* kernel_code_prefix.
+
+---
+
+# 12. Relation avec Taxonomy
+
+KernelRotationPlanner ne lance pas Taxonomy.
+
+KernelRotationPlanner ne choisit aucun sous-domaine.
+
+KernelRotationPlanner ne choisit aucun sujet.
+
+KernelRotationPlanner ne choisit aucune idée dominante.
+
+Il fournit seulement :
+
+```text
+depth_slot
+domain_slot
+rotation_identifier
+```
+
+Taxonomy sera traitée dans une phase séparée.
+
+---
+
+# 13. Gestion des erreurs
+
+Comportement obligatoire :
+
+```text
+STOP
+```
+
+Jamais :
+
+* fallback ;
+* retry automatique ;
+* correction implicite ;
+* IA ;
+* extrapolation ;
+* résultat partiel.
+
+Cas STOP obligatoires :
+
+```text
+DepthNeedMatrix absente
+DepthNeedMatrix invalide
+aucun depth restant
+depth choisi hors 4,6,7,8,9
+DomainCycle absent
+liste de domaines vide
+rotation_identifier impossible à produire
+Blueprint slots incompatibles
+```
+
+---
+
+# 14. Méthode obligatoire avant patch
+
+Avant tout patch :
+
+```text
+GREP -> SLICE
+```
+
+Fournir les slices de :
+
+```text
+BankNeedsCalculator
+config/question_bank_profiles.php autour des domains
+config/question_bank_profiles.php autour des targets worker
+KernelFrameBuilder autour de depth_slot
+KernelFrameBuilder autour de domain_slot
+KernelFrameBuilder autour de rotation_identifier
+tout fichier existant pouvant déjà gérer une rotation
+```
+
+Aucun patch sans ancrage réel.
+
+---
+
+# 15. Patch autorisé
+
+Patch minimal autorisé :
+
+1. créer ou adapter le service KernelRotationPlanner ;
+2. lire la matrice de besoins par depth ;
+3. appliquer les cibles officielles :
+
+   * Depth 4 : 3000
+   * Depth 6 : 3000
+   * Depth 7 : 2500
+   * Depth 8 : 2000
+   * Depth 9 : 1500
+4. choisir un seul depth ;
+5. choisir un seul domaine selon DomainCycle ;
+6. produire un `rotation_context` ;
+7. ne toucher aucune brique aval.
+
+---
+
+# 16. Tests obligatoires
+
+Créer ou adapter les tests pour valider :
+
+## DepthNeedMatrix
+
+```text
+retourne les targets officiels par depth
+calcule remaining_kernels correctement
+marque completed=true si remaining=0
+refuse depth hors 4,6,7,8,9
+```
+
+## KernelRotationPlanner
+
+```text
+choisit le depth avec le plus grand remaining_kernels
+en cas d’égalité choisit le depth le plus bas
+STOP si aucun remaining_kernels
+choisit le domaine suivant sans saut
+revient au premier domaine après le dernier
+produit rotation_identifier unique
+ne produit pas kernel_code
+ne produit pas kernel_code_prefix
+ne touche pas Taxonomy
+ne touche pas READY_BANK
+```
+
+---
+
+# 17. Validation obligatoire après patch
+
+Exécuter :
+
+```bash
+php -l app/Services/QuestionBank/KernelFrameBuilder.php
+```
+
+Exécuter aussi `php -l` sur tout nouveau fichier créé ou modifié.
+
+Puis :
+
+```bash
+vendor/bin/phpunit --filter KernelRotationPlanner
+```
+
+Puis :
+
+```bash
+vendor/bin/phpunit --filter KernelFrameBuilderBlueprintTest
+```
+
+Puis grep :
+
+```bash
+grep -RIn "kernel_code_prefix\|yy-xx\|KernelRotationPlanner(yy-xx)\|TaxonomyReader via KernelRotationPlanner" app/Services/QuestionBank
+```
+
+Résultat attendu :
+
+```text
+aucune occurrence interdite
+```
+
+Les occurrences `yy-xx-xxx-xxx-xxx-zz` liées uniquement au format propre de `kernel_code` peuvent rester si elles ne sont pas liées à KernelRotationPlanner.
+
+---
+
+# 18. Sortie attendue de Replit
+
+Répondre avec :
+
+1. slices avant patch ;
+2. patch appliqué ;
+3. fichiers modifiés ;
+4. sorties `php -l` ;
+5. sorties PHPUnit ;
+6. sortie grep ;
+7. slices après patch ;
+8. verdict final :
+
+```text
+KernelRotationPlanner:
+Architecture: OK
+Contract: OK
+Implementation: OK / NON
+Validation: OK / NON
+```
+
+Ne pas passer à Taxonomy tant que KernelRotationPlanner n’est pas :
+
+```text
+Implementation: OK
+Validation: OK
+```
