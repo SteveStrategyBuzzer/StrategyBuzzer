@@ -1,0 +1,195 @@
+1. « KRP peut écrire directement dans le Blueprint »
+
+❌ REFUS — conclusion non démontrée.
+
+Ce que nous avons défini est :
+
+Le Blueprint peut contenir les informations produites par les briques autorisées.
+
+Nous n'avons jamais défini le mécanisme d'écriture.
+
+Dire :
+
+« KRP peut écrire directement dans le Blueprint »
+
+est déjà une décision d'implémentation.
+
+La seule conclusion architecturale correcte est :
+
+Le Blueprint est le support officiel des slots.
+
+Les briques autorisées produisent les informations destinées à ces slots.
+
+Le mécanisme d'écriture sera défini par l'architecture d'implémentation.
+
+Il ne doit pas être supposé à ce stade.
+
+Donc Replit est allé trop loin.
+
+2. Pipeline Orchestrator
+
+Là encore :
+
+Flux A
+
+Flux B
+
+❌ Refus.
+
+Pourquoi ?
+
+Parce qu'on lui a demandé un contrat métier, pas deux architectures possibles.
+
+Deux architectures = deux contrats.
+
+Nous devons d'abord choisir.
+
+Pas lui.
+
+3. « coauteur autorisé »
+
+Là c'est une invention.
+
+Il écrit :
+
+KRP est coauteur autorisé
+
+Nous n'avons jamais défini le concept de coauteur.
+
+Nos rôles actuels sont :
+
+autorité
+producteur
+consommateur
+lecteur
+validateur
+propriétaire
+
+Pas coauteur.
+
+Donc :
+
+❌ terme refusé.
+
+4. « KRP lit les références métier »
+
+Ici je nuancerais.
+
+Oui.
+
+Mais il manque une précision essentielle.
+
+Il devrait écrire :
+
+Les références métier textuelles du Blueprint définissent le contrat attendu pour chaque slot.
+
+La brique lit ces références uniquement pour connaître le contrat qu'elle doit respecter.
+
+Les décisions restent exclusivement déterminées par ses propres sources métier.
+
+Exemple :
+
+depth_slot
+
+↓
+
+Blueprint indique :
+
+"La valeur doit provenir de DepthNeedMatrix."
+
+↓
+
+KRP consulte DepthNeedMatrix.
+
+↓
+
+Pas le Blueprint.
+
+C'est très différent.
+
+Le Blueprint ne fournit jamais la valeur.
+
+Il fournit le contrat.
+
+5. Ce qui manque complètement
+
+Pour moi, c'est le plus gros oubli.
+
+Le Blueprint contient des références métier textuelles.
+
+Mais ces références doivent être définies.
+
+Sinon chacun va écrire ce qu'il veut.
+
+Il manque donc une question fondamentale :
+
+Quel est le format officiel
+des références métier d'un slot ?
+
+Exemple :
+
+depth_slot
+
+reference :
+
+Purpose
+
+Authority
+
+Input
+
+Output
+
+Validation
+
+Constraints
+
+Dependencies
+
+Ou autre.
+
+Mais il faut un format.
+
+Sinon :
+
+Taxonomy écrira :
+
+Depth vient de...
+
+QuestionIntent écrira :
+
+Utiliser...
+
+KEY_STRUCTURE écrira encore autre chose.
+
+Et le Blueprint deviendra incohérent.
+
+Ce que j'aurais répondu à Replit
+Correction obligatoire.
+
+Le fait que le Blueprint contienne les informations produites par les briques autorisées ne définit pas le mécanisme d'écriture.
+
+Le contrat métier ne doit pas supposer une écriture directe ni un orchestrateur intermédiaire.
+
+Cette décision appartient à l'architecture d'implémentation et sera définie plus tard.
+
+De plus :
+
+- supprimer la notion de "coauteur", qui n'existe pas dans notre vocabulaire officiel ;
+
+- préciser que les références métier textuelles du Blueprint décrivent le contrat d'un slot, mais ne fournissent jamais les valeurs ;
+
+- proposer un format unique et obligatoire pour toutes les références métier des slots afin de garantir leur homogénéité dans l'ensemble du Blueprint.
+C'est précisément ce que je veux changer dans notre façon de travailler
+
+Avant, j'aurais probablement dit :
+
+"Oui, ça me semble correct."
+
+Maintenant, je dois raisonner comme un architecte de contrat.
+
+Je ne valide plus une réponse parce qu'elle est plausible.
+
+Je la valide seulement si chaque phrase découle explicitement d'une décision déjà verrouillée.
+
+Sinon, je la refuse et je ferme la dérive avant qu'elle n'entre dans l'architecture. C'est cette discipline qui nous fera gagner du temps et évitera les allers-retours coûteux avec Replit.
