@@ -1,0 +1,193 @@
+Il reste une dernière couche qui est, à mon avis, la plus importante de toutes, et étonnamment on ne lui a jamais demandée.
+
+Il manque le "contrat de contenu"
+
+Depuis plusieurs jours, on définit :
+
+qui crée,
+qui lit,
+qui écrit,
+qui verrouille,
+les statuts,
+les dépendances,
+les erreurs,
+les traces.
+
+Mais on n'a jamais défini ce qu'il y a réellement dans les objets.
+
+Par exemple :
+
+Aujourd'hui il connaît :
+
+subjects_inventory
+
+Mais il ne connaît pas :
+
+SubjectSlot
+
+Qu'est-ce qu'un SubjectSlot ?
+
+Il faudrait le définir.
+
+Exemple :
+
+SubjectSlot
+
+- subject_id
+- subject_name
+- subject_code
+- status
+- traces
+- rules
+- constraints
+- active
+- exhausted
+- dominant_ideas_count
+
+Même chose pour :
+
+DominantIdeaSlot
+
+Il faut définir exactement ce qu'il contient.
+
+Par exemple :
+
+DominantIdeaSlot
+
+- idea_id
+- idea
+- idea_code
+- status
+- traces
+- validated
+- consumed
+- rejected
+- active
+
+Même chose pour :
+
+CognitiveSlot
+
+Il faut définir :
+
+- cognitive_family
+- cognitive_form
+- question_slot
+- answer_slot
+- sv_slot
+- translation_slot
+- status
+- traces
+
+Puis :
+
+QuestionSlot
+
+doit avoir son propre contrat.
+
+Par exemple :
+
+QuestionSlot
+
+- question_text
+- gameplay_constraints
+- validation_state
+- consumed
+- language
+
+Idem :
+
+AnswerSlot
+
+SVSlot
+
+TranslationSlot
+Pourquoi c'est indispensable
+
+Aujourd'hui il connaît :
+
+subjects_inventory
+
+↓
+
+array<SubjectSlot>
+
+Mais il ne sait toujours pas :
+
+ce qu'est un SubjectSlot.
+
+Donc il devra encore inventer.
+
+Et c'est exactement ce qu'on veut éviter.
+
+Deuxième chose
+
+Je lui demanderais aussi de définir les objets métier.
+
+Par exemple :
+
+KernelFrame
+
+↓
+
+contient
+
+DepthSlot
+
+DomainSlot
+
+SubjectSlot[]
+
+IdeaSlot[]
+
+CognitiveSlot[]
+
+Chaque objet doit avoir son propre contrat.
+
+Troisième chose
+
+Le Blueprint devrait aussi définir les relations.
+
+Par exemple :
+
+KernelFrame
+
+1
+
+↓
+
+50 SubjectSlot
+
+↓
+
+1 Subject actif
+
+↓
+
+5 IdeaSlot
+
+↓
+
+1 Idea active
+
+↓
+
+7 CognitiveSlot
+
+Ça devient un véritable schéma métier, pas seulement une structure JSON.
+
+Mon verdict
+
+Je pense qu'on est à 98 %.
+
+Le dernier 2 % n'est plus une question de logique, mais de modélisation.
+
+Autrement dit :
+
+on a défini les conteneurs ;
+on a défini les responsabilités ;
+on a défini les règles de remplissage.
+
+Il manque maintenant de définir les objets contenus dans ces conteneurs (SubjectSlot, DominantIdeaSlot, CognitiveSlot, QuestionSlot, AnswerSlot, SVSlot, TranslationSlot) avec le même niveau de précision que celui qu'on a exigé pour les slots du Blueprint.
+
+À mon avis, une fois cette modélisation terminée, tu auras un véritable contrat d'architecture complet, où plus aucun moteur (KernelRotationPlanner, Taxonomy, KEY_STRUCTURE, KLD, QuestionIntent, Phase 1, etc.) n'aura besoin d'interpréter la structure ou d'inventer le contenu des objets : tout sera déjà spécifié. C'est à ce moment-là que je considérerais le Kernel Blueprint Frame comme réellement terminé avant de passer à KernelRotationPlanner.

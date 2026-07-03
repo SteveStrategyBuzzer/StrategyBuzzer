@@ -110,6 +110,8 @@ class KernelFrameBuilder
             'dominant_ideas'       => $this->buildDominantIdeasSlot(),
             'active_dominant_idea' => $this->buildActiveDominantIdeaSlot(),
             'cognitive_slots'      => $this->buildCognitiveSlots($band),
+            'object_contracts'     => $this->buildObjectContracts(),
+            'relation_map'         => $this->buildRelationMap(),
             'rules'                => $this->buildRules(),
             'mechanisms'           => $this->buildMechanisms(),
             'constraints'          => $this->buildConstraints(),
@@ -687,6 +689,338 @@ class KernelFrameBuilder
     // ═════════════════════════════════════════════════════════════════════════
     // Blueprint Frame — méta-slots (rules, mechanisms, constraints, statuses)
     // ═════════════════════════════════════════════════════════════════════════
+
+    /**
+     * object_contracts — Contrat de données (champs + types + sémantique) de chaque
+     * type de slot utilisé dans le frame. Définit ce qu'il y a RÉELLEMENT dans chaque
+     * objet quand il est rempli par son propriétaire.
+     *
+     * Objectif : aucun moteur (Taxonomy, KEY_STRUCTURE, KLD, Phase1…) n'a besoin
+     * d'inventer la structure — tout est déjà spécifié ici.
+     */
+    private function buildObjectContracts(): array
+    {
+        return [
+
+            // ── KernelFrame ─────────────────────────────────────────────────
+            'KernelFrame' => [
+                'description' => 'Objet racine du noyau mère — conteneur complet de tous les slots',
+                'fields' => [
+                    'kernel_code'          => 'KernelCodeSlot   — identifiant unique yy-xx-xxx-xxx-xxx-zz',
+                    'depth_slot'           => 'DepthSlot        — profondeur cognitive (1-10)',
+                    'domain_slot'          => 'DomainSlot       — domaine principal (ex: Géographie)',
+                    'sub_domain_slot'      => 'SubDomainSlot    — sous-domaine (ex: Capitales)',
+                    'subjects_inventory'   => 'SubjectSlot[50]  — inventaire des 50 sujets du sous-domaine',
+                    'active_subject'       => 'ActiveSubjectRef — pointeur vers le sujet actif courant',
+                    'dominant_ideas'       => 'DominantIdeasSlot — les 5 idées du sujet actif',
+                    'active_dominant_idea' => 'ActiveIdeaRef    — pointeur vers l\'idée dominante active',
+                    'cognitive_slots'      => 'CognitiveSlot[7] — 7 cognitifs (qcm×3 + tf×4)',
+                    'object_contracts'     => 'ObjectContracts  — contrats de données (ce fichier)',
+                    'relation_map'         => 'RelationMap      — chaîne 1→50→1→5→1→7',
+                    'rules'                => 'Rules            — règles de remplissage',
+                    'mechanisms'           => 'Mechanisms       — 11 étapes pipeline',
+                    'constraints'          => 'Constraints      — invariants non négociables',
+                    'statuses'             => 'Statuses[10]     — avancement pipeline par composant',
+                    'traces'               => 'Trace[]          — historique global append-only',
+                ],
+                'owner' => 'KernelFrameBuilder (création) → pipeline (remplissage progressif)',
+            ],
+
+            // ── SubjectSlot ──────────────────────────────────────────────────
+            'SubjectSlot' => [
+                'description' => 'Un sujet dans l\'inventaire des 50 sujets du sous-domaine actif',
+                'filled_by'   => 'Taxonomy (TaxonomyReader)',
+                'fields' => [
+                    'index'                => 'int (1..50)          — position dans l\'inventaire',
+                    'label'                => 'string|null          — libellé du sujet (ex: "Paris", "Rome")',
+                    'subject_id'           => 'string|null          — identifiant DB Taxonomy',
+                    'subject_code'         => 'string|null          — code unique dans le sous-domaine (ex: "CAP-007")',
+                    'active'               => 'bool                 — true = c\'est l\'active_subject courant',
+                    'exhausted'            => 'bool                 — true = toutes les idées dominantes consommées',
+                    'dominant_ideas_count' => 'int (0..5)           — nombre d\'idées confirmées pour ce sujet',
+                    'status'               => 'EMPTY|FILLED|VALIDATED_OK|LOCKED|REJECTED|CORRECTION_NEEDED',
+                    'locked'               => 'bool                 — slot verrouillé pour ce cycle',
+                    'filled_at'            => 'timestamp|null       — horodatage remplissage par Taxonomy',
+                    'traces'               => 'Trace[]              — historique append-only (décisions Taxonomy)',
+                    'rules'                => 'SlotRules            — contrat de remplissage (voir subjects_inventory)',
+                ],
+                'initial_state' => [
+                    'label'                => null,
+                    'subject_id'           => null,
+                    'subject_code'         => null,
+                    'active'               => false,
+                    'exhausted'            => false,
+                    'dominant_ideas_count' => 0,
+                    'status'               => 'EMPTY',
+                    'locked'               => false,
+                    'filled_at'            => null,
+                ],
+            ],
+
+            // ── DominantIdeaSlot ─────────────────────────────────────────────
+            'DominantIdeaSlot' => [
+                'description' => 'Une idée dominante dans la liste des 5 idées du sujet actif',
+                'filled_by'   => 'Taxonomy (TaxonomyReader)',
+                'capacity'    => 5,
+                'fields' => [
+                    'index'     => 'int (1..5)    — position dans dominant_ideas.ideas',
+                    'idea'      => 'string|null   — libellé de l\'idée dominante (ex: "Superficie")',
+                    'idea_id'   => 'string|null   — identifiant DB Taxonomy',
+                    'idea_code' => 'string|null   — code unique dans le sujet (ex: "IDEA-003")',
+                    'active'    => 'bool          — true = c\'est l\'active_dominant_idea courante',
+                    'consumed'  => 'bool          — paire (sujet+idée) déjà consommée par QuestionIntent',
+                    'rejected'  => 'bool          — rejetée par KEY_STRUCTURE ou KLD',
+                    'validated' => 'bool          — validée (VALIDATED_OK) pour usage gameplay',
+                    'status'    => 'EMPTY|FILLED|VALIDATED_OK|LOCKED|REJECTED|CORRECTION_NEEDED',
+                    'filled_at' => 'timestamp|null — horodatage remplissage',
+                ],
+                'initial_state' => [
+                    'idea'      => null,
+                    'idea_id'   => null,
+                    'idea_code' => null,
+                    'active'    => false,
+                    'consumed'  => false,
+                    'rejected'  => false,
+                    'validated' => false,
+                    'status'    => 'EMPTY',
+                    'filled_at' => null,
+                ],
+                'lifecycle' => 'EMPTY → FILLED (Taxonomy) → VALIDATED_OK (KEY_STRUCTURE) → LOCKED (consommée par QuestionIntent) | REJECTED (KLD/KEY_STRUCTURE)',
+            ],
+
+            // ── CognitiveSlot ────────────────────────────────────────────────
+            'CognitiveSlot' => [
+                'description' => 'Un cognitif complet (question + réponses + SV + traductions) pour un variant donné',
+                'filled_by'   => 'Phase1 (KernelContentBuilder) + Phase3 (KernelTranslator)',
+                'count'       => self::COGNITIVE_COUNT,
+                'fields' => [
+                    'variant_key'       => 'string              — clé du variant (ex: "qcm_recognition")',
+                    'cognitive_family'  => '"qcm"|"true_false"  — famille cognitive',
+                    'cognitive_form'    => '"recognition"|"reasoning"|"deceptive_trap" — forme cognitive',
+                    'question_slot'     => 'QuestionSlot        — question EN',
+                    'answer_slots'      => 'AnswerSlot[2|4]     — réponses EN (2 pour TF, 4 pour QCM)',
+                    'correct_answer_key'=> '"answer_a"|"answer_b"|"answer_c"|"answer_d"|null',
+                    'sv_slot'           => 'SVSlot              — saviez-vous EN',
+                    'translation_slots' => 'TranslationSlot[9]  — {fr,es,de,it,pt,ru,zh,ar,el}',
+                    'status'            => 'EMPTY|FILLED|VALIDATED_OK|LOCKED|REJECTED|CORRECTION_NEEDED',
+                    'traces'            => 'Trace[]             — historique append-only',
+                ],
+                'initial_state' => [
+                    'correct_answer_key' => null,
+                    'status'             => 'EMPTY',
+                ],
+            ],
+
+            // ── QuestionSlot ─────────────────────────────────────────────────
+            'QuestionSlot' => [
+                'description' => 'Slot de la question en langue source (anglais)',
+                'filled_by'   => 'Phase1 (KernelContentBuilder)',
+                'language'    => 'en',
+                'fields' => [
+                    'value'                => 'string|null        — texte de la question EN',
+                    'gameplay_constraints' => [
+                        'question_type'  => '"qcm"|"true_false"',
+                        'max_chars'      => 'int — longueur maximale du texte question',
+                        'timing_weight'  => 'float — coefficient temps de lecture (profondeur × lisibilité)',
+                    ],
+                    'validation_state' => 'EMPTY|FILLED|VALIDATED_OK|REJECTED|CORRECTION_NEEDED',
+                    'consumed'         => 'bool      — question déjà exposée en gameplay (phase de résolution vue)',
+                    'language'         => '"en"      — toujours la langue source',
+                    'filled_at'        => 'timestamp|null',
+                    'status'           => 'EMPTY|FILLED|VALIDATED_OK|LOCKED|REJECTED|CORRECTION_NEEDED',
+                    'locked'           => 'bool',
+                    'traces'           => 'Trace[]',
+                    'rules'            => 'SlotRules',
+                ],
+                'initial_state' => [
+                    'value'            => null,
+                    'consumed'         => false,
+                    'validation_state' => 'EMPTY',
+                    'status'           => 'EMPTY',
+                    'locked'           => false,
+                    'filled_at'        => null,
+                ],
+            ],
+
+            // ── AnswerSlot ───────────────────────────────────────────────────
+            'AnswerSlot' => [
+                'description' => 'Un slot de réponse (answer_a à answer_d, ou answer_a/b pour TF)',
+                'filled_by'   => 'Phase1 (KernelContentBuilder)',
+                'language'    => 'en',
+                'fields' => [
+                    'value'      => 'string|null        — texte de la réponse EN',
+                    'is_correct' => 'bool               — true si c\'est la bonne réponse',
+                    'answer_key' => '"answer_a"|"answer_b"|"answer_c"|"answer_d" — clé de ce slot',
+                    'language'   => '"en"               — toujours la langue source',
+                    'filled_at'  => 'timestamp|null',
+                    'status'     => 'EMPTY|FILLED|VALIDATED_OK|LOCKED|REJECTED|CORRECTION_NEEDED',
+                    'locked'     => 'bool',
+                    'traces'     => 'Trace[]',
+                    'rules'      => 'SlotRules',
+                ],
+                'initial_state' => [
+                    'value'      => null,
+                    'is_correct' => false,
+                    'answer_key' => null,
+                    'status'     => 'EMPTY',
+                    'locked'     => false,
+                    'filled_at'  => null,
+                ],
+                'constraint' => 'Exactement 1 slot has is_correct=true par CognitiveSlot',
+            ],
+
+            // ── SVSlot ───────────────────────────────────────────────────────
+            'SVSlot' => [
+                'description' => 'Slot "Saviez-vous que..." en langue source (anglais)',
+                'filled_by'   => 'Phase1 (KernelContentBuilder)',
+                'language'    => 'en',
+                'fields' => [
+                    'value'     => 'string|null  — texte EN "Did you know that..."',
+                    'min_chars' => 'int          — longueur minimale',
+                    'max_chars' => 'int          — longueur maximale (220 pour EN, 100 pour ZH, 140 pour AR)',
+                    'language'  => '"en"         — toujours la langue source',
+                    'filled_at' => 'timestamp|null',
+                    'status'    => 'EMPTY|FILLED|VALIDATED_OK|LOCKED|REJECTED|CORRECTION_NEEDED',
+                    'locked'    => 'bool',
+                    'traces'    => 'Trace[]',
+                    'rules'     => 'SlotRules',
+                ],
+                'initial_state' => [
+                    'value'     => null,
+                    'status'    => 'EMPTY',
+                    'locked'    => false,
+                    'filled_at' => null,
+                ],
+            ],
+
+            // ── TranslationSlot ──────────────────────────────────────────────
+            'TranslationSlot' => [
+                'description' => 'Traduction complète d\'un cognitif dans une langue cible (9 langues)',
+                'filled_by'   => 'Phase3 (KernelTranslator)',
+                'validated_by'=> 'Phase4 (KernelTranslator validation)',
+                'languages'   => self::TRANSLATION_LANGS,
+                'fields' => [
+                    'question_text'      => 'string|null — texte traduit de la question',
+                    'answer_a'           => 'string|null — texte traduit réponse A',
+                    'answer_b'           => 'string|null — texte traduit réponse B',
+                    'answer_c'           => 'string|null — texte traduit réponse C (null pour TF)',
+                    'answer_d'           => 'string|null — texte traduit réponse D (null pour TF)',
+                    'correct_answer_key' => '"answer_a"|"answer_b"|"answer_c"|"answer_d"|null',
+                    'explanation'        => 'string|null — explication traduite (optionnel)',
+                    'saviez_vous'        => 'string|null — texte traduit "Saviez-vous que..."',
+                    'answer_max'         => 'int         — cap réponse pour cette langue',
+                    'sv_max'             => 'int         — cap SV pour cette langue',
+                    'status'             => 'EMPTY|FILLED|VALIDATED_OK|LOCKED|REJECTED|CORRECTION_NEEDED',
+                    'locked'             => 'bool',
+                    'filled_at'          => 'timestamp|null',
+                    'traces'             => 'Trace[]',
+                    'rules'              => 'SlotRules',
+                ],
+                'initial_state' => [
+                    'question_text'      => null,
+                    'answer_a'           => null,
+                    'answer_b'           => null,
+                    'answer_c'           => null,
+                    'answer_d'           => null,
+                    'correct_answer_key' => null,
+                    'explanation'        => null,
+                    'saviez_vous'        => null,
+                    'status'             => 'EMPTY',
+                    'locked'             => false,
+                    'filled_at'          => null,
+                ],
+                'char_caps' => [
+                    'default_answer_max' => self::A_MAX,
+                    'zh_answer_max'      => self::A_MAX_ZH,
+                    'ar_answer_max'      => self::A_MAX_AR,
+                    'default_sv_max'     => self::SV_MAX,
+                    'zh_sv_max'          => self::SV_MAX_ZH,
+                    'ar_sv_max'          => self::SV_MAX_AR,
+                ],
+            ],
+        ];
+    }
+
+    /**
+     * relation_map — Schéma des relations hiérarchiques entre objets du noyau mère.
+     * Indique la cardinalité et la nature de chaque liaison.
+     */
+    private function buildRelationMap(): array
+    {
+        return [
+            'description' => 'Chaîne de relations KernelFrame → objets contenus (cardinalités et nature)',
+            'chain'        => '1 KernelFrame → 50 SubjectSlot → 1 actif → 5 DominantIdeaSlot → 1 active → 7 CognitiveSlot',
+            'relations'    => [
+                [
+                    'from'        => 'KernelFrame',
+                    'to'          => 'SubjectSlot',
+                    'cardinality' => '1 → 50',
+                    'slot'        => 'subjects_inventory',
+                    'note'        => 'Inventaire complet des sujets du sous-domaine actif',
+                ],
+                [
+                    'from'        => 'SubjectSlot[]',
+                    'to'          => 'active_subject',
+                    'cardinality' => '50 → 1',
+                    'slot'        => 'active_subject',
+                    'note'        => 'Un seul sujet actif à la fois — pointeur vers subjects_inventory[i]',
+                ],
+                [
+                    'from'        => 'active_subject',
+                    'to'          => 'DominantIdeaSlot',
+                    'cardinality' => '1 → 5',
+                    'slot'        => 'dominant_ideas.ideas',
+                    'note'        => 'Les 5 idées dominantes du sujet actif — rechargées à chaque changement de sujet',
+                ],
+                [
+                    'from'        => 'DominantIdeaSlot[]',
+                    'to'          => 'active_dominant_idea',
+                    'cardinality' => '5 → 1',
+                    'slot'        => 'active_dominant_idea',
+                    'note'        => 'Une seule idée active à la fois — pointeur vers dominant_ideas.ideas[i]',
+                ],
+                [
+                    'from'        => 'active_dominant_idea',
+                    'to'          => 'CognitiveSlot',
+                    'cardinality' => '1 → 7',
+                    'slot'        => 'cognitive_slots',
+                    'note'        => '7 cognitifs générés pour la paire (sujet actif + idée active)',
+                ],
+                [
+                    'from'        => 'CognitiveSlot',
+                    'to'          => 'QuestionSlot',
+                    'cardinality' => '1 → 1',
+                    'slot'        => 'cognitive_slots.{variant}.question_slot',
+                    'note'        => 'Question EN — seule langue source, remplie Phase1',
+                ],
+                [
+                    'from'        => 'CognitiveSlot',
+                    'to'          => 'AnswerSlot',
+                    'cardinality' => '1 → 2|4',
+                    'slot'        => 'cognitive_slots.{variant}.answer_slots',
+                    'note'        => '4 réponses pour QCM, 2 pour TF — exactement 1 is_correct=true',
+                ],
+                [
+                    'from'        => 'CognitiveSlot',
+                    'to'          => 'SVSlot',
+                    'cardinality' => '1 → 1',
+                    'slot'        => 'cognitive_slots.{variant}.sv_slot',
+                    'note'        => 'Saviez-vous EN — rempli Phase1',
+                ],
+                [
+                    'from'        => 'CognitiveSlot',
+                    'to'          => 'TranslationSlot',
+                    'cardinality' => '1 → 9',
+                    'slot'        => 'cognitive_slots.{variant}.translation_slots',
+                    'note'        => '9 langues cibles — {fr,es,de,it,pt,ru,zh,ar,el} — remplies Phase3',
+                ],
+            ],
+            'total_cognitifs_per_noyau'     => self::COGNITIVE_COUNT,
+            'total_translations_per_noyau'  => self::COGNITIVE_COUNT * count(self::TRANSLATION_LANGS),
+            'total_subjects_inventory'      => self::SUBJECTS_INVENTORY_MAX,
+            'total_ideas_per_subject'       => self::DOMINANT_IDEAS_MAX,
+        ];
+    }
 
     /**
      * rules — Index des règles de remplissage de chaque slot du noyau.
