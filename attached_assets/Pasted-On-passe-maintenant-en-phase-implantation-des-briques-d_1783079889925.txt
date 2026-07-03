@@ -1,0 +1,152 @@
+On passe maintenant en phase implantation des briques du nouveau moteur Kernel.
+
+Objectif :
+implanter la structure de noyau mère avant de générer les questions.
+
+Ne pas commencer par Phase 1.
+Ne pas générer de questions maintenant.
+Ne pas toucher au gameplay.
+Ne pas toucher à la VM.
+Replit = source de vérité.
+
+Vue d’ensemble officielle :
+
+1. Kernel Blueprint Frame
+↓
+crée le contenant vide du noyau
+
+Contenu obligatoire :
+- code vide yy-xx-xxx-xxx-xxx-zz
+- slot Depth
+- slot Domaine
+- slot Sous-domaine
+- slots jusqu’à 50 sujets
+- slot sujet actif
+- slots 5 idées dominantes du sujet actif
+- slots 7 cognitifs
+- slots Questions
+- slots Réponses
+- slots SV
+- slots Traductions
+- règles de chaque slot
+- mécanismes
+- contraintes
+- statuts
+- traces
+
+Rôle :
+créer le squelette stable du noyau avant toute rotation.
+Sans ce frame, KernelRotationPlanner n’a rien à taguer.
+
+2. KernelRotationPlanner
+↓
+remplit le début du noyau
+
+Il doit gérer :
+- BANK TARGET
+- DEPTH NEED MATRIX
+- DOMAIN CYCLE
+- sélection du Depth
+- sélection du Domaine
+- remplissage du code yy-xx
+
+Il ne crée pas les sujets.
+Il ne crée pas les questions.
+Il tague seulement le frame avec Depth + Domaine + début du code.
+
+3. Taxonomy
+↓
+remplit la partie intellectuelle centrale
+
+Elle doit remplir :
+- Sous-domaine
+- jusqu’à 50 sujets
+- sujet actif
+- 5 idées dominantes du sujet actif seulement
+- milieu du code xxx-xxx-xxx
+
+Important :
+les 50 sujets existent comme inventaire.
+Les 5 idées dominantes sont générées seulement pour le sujet actif.
+Les autres sujets restent disponibles mais sans idées dominantes générées tant qu’ils ne deviennent pas actifs.
+
+4. KEY_STRUCTURE / KLD
+↓
+valident et corrigent la cohérence intellectuelle
+
+KEY_STRUCTURE doit vérifier :
+- cohérence Depth → Domaine → Sous-domaine → Sujet → Idée dominante
+- égrainage naturel du Depth jusqu’à l’idée dominante
+- conformité des slots
+- non-absorption d’un niveau par un autre
+- pré-code yy-xx-xxx-xxx-xxx avant suffixe zz
+- collision structurelle évidente
+
+KLD doit vérifier :
+- collision intellectuelle Sujet/Idée
+- doublons directs
+- doublons inversés
+- équivalences contrôlées
+- paires déjà validées
+- paires rejetées
+- prochaine idée disponible
+- prochain sujet disponible
+- changement de sous-domaine si sujets épuisés
+
+5. QuestionIntent
+↓
+verrouille l’intention cognitive
+
+Il doit :
+- recevoir un noyau déjà structuré
+- verrouiller la paire Sujet actif / Idée dominante active
+- préparer les 7 cognitifs attendus
+- maintenir la cohérence avec le code du noyau
+- ne pas recalculer Rotation
+- ne pas remplacer KEY_STRUCTURE ou KLD
+
+6. Phase 1+
+↓
+remplit le contenu
+
+Seulement après les briques précédentes, Phase 1 peut remplir :
+- QCM Recognition
+- QCM Reasoning
+- Deceptive Trap
+- TF Recognition True
+- TF Recognition False
+- TF Reasoning True
+- TF Reasoning False
+- Questions
+- Réponses
+- SV
+- slots Traductions vides/préparés
+
+Puis les phases suivantes :
+- validation contenu
+- traductions
+- validation traductions
+- READY_BANK
+
+Règle centrale :
+READY_BANK stocke des noyaux mères encodés, pas une banque de cognitifs isolés.
+
+Le noyau est le contenant central.
+Les cognitifs sont consommés plus tard par Gameplay, mais ils restent internes au noyau.
+
+À faire maintenant :
+audit du code réel avant patch.
+
+Je veux savoir :
+1. quels fichiers existent déjà pour KernelFrame / KernelBlueprint ;
+2. quelles migrations/tables existent déjà ;
+3. si un frame de noyau existe déjà ou s’il faut le créer ;
+4. où placer Kernel Blueprint Frame proprement ;
+5. quels champs manquent pour représenter la structure complète ;
+6. quels tests existent déjà ;
+7. quel premier patch minimal proposer.
+
+Important :
+pas de patch avant validation.
+Réponse attendue :
+GREP → SLICE → PLAN.
