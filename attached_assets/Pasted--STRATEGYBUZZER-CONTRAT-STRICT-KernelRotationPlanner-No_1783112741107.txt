@@ -1,0 +1,304 @@
+# STRATEGYBUZZER — CONTRAT STRICT — KernelRotationPlanner
+
+Nous construisons maintenant uniquement la brique :
+
+**KernelRotationPlanner**
+
+## 1. Règle absolue
+
+Ne pas extrapoler.
+Ne pas inventer de nouvelle brique.
+Ne pas inventer de statut.
+Ne pas inventer d’événement.
+Ne pas inventer de mécanisme d’écriture.
+Ne pas déplacer de responsabilité.
+
+Si le code réel ne couvre pas une partie du contrat, répondre :
+
+**BLOCAGE — contrat non couvert par le code actuel**
+
+Puis expliquer précisément ce qui manque.
+
+---
+
+## 2. Contexte verrouillé
+
+Le **Kernel Blueprint** est un objet de description, de stockage et de références métier textuelles non exécutables.
+
+Il définit la structure officielle d’un noyau.
+
+Il contient les slots officiels du noyau.
+
+Chaque slot doit contenir :
+
+* une valeur, si elle existe ;
+* un contrat `slot_reference` ;
+* des références métier textuelles servant de guide aux briques suivantes.
+
+Les références métier du Blueprint sont prescriptives, mais non exécutables.
+
+Le Blueprint ne choisit rien.
+Il ne calcule rien.
+Il ne valide rien.
+Il ne génère aucun contenu.
+Il ne déduit aucune valeur.
+
+Le Blueprint stocke seulement ce que les briques autorisées produisent selon leur contrat.
+
+---
+
+## 3. Mission unique de KernelRotationPlanner
+
+KernelRotationPlanner détermine uniquement le contexte de rotation du prochain noyau.
+
+Il produit exclusivement :
+
+* `depth_slot`
+* `domain_slot`
+* `rotation_identifier`
+
+Rien d’autre.
+
+---
+
+## 4. Interdictions absolues
+
+KernelRotationPlanner ne crée jamais et ne modifie jamais :
+
+* sous-domaine ;
+* sujet ;
+* idée dominante ;
+* knowledge ;
+* question ;
+* réponse ;
+* cognitif ;
+* traduction ;
+* validation ;
+* semantic_key ;
+* QuestionIntent ;
+* READY_BANK ;
+* gameplay ;
+* statistiques joueur ;
+* consommation joueur ;
+* kernel_code ;
+* kernel_code_prefix.
+
+---
+
+## 5. Sources métier autorisées
+
+`depth_slot` vient uniquement de :
+
+```text
+DepthNeedMatrix
+```
+
+`domain_slot` vient uniquement de :
+
+```text
+DomainCycle
+```
+
+`rotation_identifier` est uniquement un identifiant de rotation.
+
+Il n’est pas :
+
+* un `kernel_code` ;
+* un `kernel_code_prefix` ;
+* un fragment du futur `kernel_code`.
+
+Son format exact n’est pas défini dans ce contrat.
+
+Il doit seulement être unique dans le périmètre de rotation.
+
+---
+
+## 6. Format obligatoire d’un slot_reference
+
+Chaque slot concerné doit utiliser exactement ce format :
+
+```yaml
+slot_reference:
+  purpose:
+  authority:
+  producer:
+  value_source:
+  stored_value:
+  readable_by:
+  consumed_by:
+  lifecycle:
+  constraints:
+  forbidden:
+  dependencies:
+```
+
+Ne pas ajouter de champ.
+Ne pas supprimer de champ.
+Ne pas renommer de champ.
+
+---
+
+## 7. slot_reference obligatoire — depth_slot
+
+```yaml
+depth_slot:
+  slot_reference:
+    purpose: "Profondeur cognitive active du noyau."
+    authority: "KernelRotationPlanner"
+    producer: "KernelRotationPlanner"
+    value_source: "DepthNeedMatrix"
+    stored_value: "{ depth: int }"
+    readable_by:
+      - "Taxonomy"
+      - "KEY_STRUCTURE"
+      - "QuestionIntent"
+      - "Phase 1"
+      - "Audit"
+    consumed_by:
+      - "Taxonomy"
+      - "KEY_STRUCTURE"
+    lifecycle: "EMPTY -> FILLED -> LOCKED"
+    constraints:
+      - "Une seule profondeur active par noyau."
+      - "Depth autorisés : 4, 6, 7, 8, 9."
+      - "Depth 10 interdit."
+      - "Depth 1-2 refusés."
+      - "Tout autre depth non défini doit être refusé jusqu'à décision architecturale officielle."
+    forbidden:
+      - "Inventer une profondeur."
+      - "Utiliser une profondeur hors DepthNeedMatrix."
+      - "Modifier cette valeur par Taxonomy, KEY_STRUCTURE, KLD, QuestionIntent, Phase 1 ou toute brique aval."
+      - "Créer ou modifier un sous-domaine, sujet, idée dominante, question, réponse ou cognitif."
+    dependencies:
+      - "DepthNeedMatrix"
+      - "BankTarget"
+      - "Blueprint schema compatible"
+```
+
+---
+
+## 8. slot_reference obligatoire — domain_slot
+
+```yaml
+domain_slot:
+  slot_reference:
+    purpose: "Domaine actif du noyau."
+    authority: "KernelRotationPlanner"
+    producer: "KernelRotationPlanner"
+    value_source: "DomainCycle"
+    stored_value: "{ domain_id: string, domain_code: string }"
+    readable_by:
+      - "Taxonomy"
+      - "KEY_STRUCTURE"
+      - "QuestionIntent"
+      - "Phase 1"
+      - "Audit"
+    consumed_by:
+      - "Taxonomy"
+      - "KEY_STRUCTURE"
+    lifecycle: "EMPTY -> FILLED -> LOCKED"
+    constraints:
+      - "Un seul domaine actif par noyau."
+      - "Valeur exclusivement issue de DomainCycle."
+      - "Aucun saut de cycle."
+      - "Aucune optimisation locale."
+      - "Aucune heuristique propre à KernelRotationPlanner."
+    forbidden:
+      - "Inventer un domaine."
+      - "Choisir un domaine hors DomainCycle."
+      - "Modifier cette valeur par Taxonomy, KEY_STRUCTURE, KLD, QuestionIntent, Phase 1 ou toute brique aval."
+    dependencies:
+      - "DomainCycle"
+      - "RotationConfig"
+      - "Blueprint schema compatible"
+```
+
+---
+
+## 9. slot_reference obligatoire — rotation_identifier
+
+```yaml
+rotation_identifier:
+  slot_reference:
+    purpose: "Identifiant unique de la rotation."
+    authority: "KernelRotationPlanner"
+    producer: "KernelRotationPlanner"
+    value_source: "Contexte de rotation produit à partir de depth_slot et domain_slot."
+    stored_value: "string"
+    readable_by:
+      - "Taxonomy"
+      - "KEY_STRUCTURE"
+      - "KLD"
+      - "QuestionIntent"
+      - "Audit"
+    consumed_by:
+      - "KEY_STRUCTURE"
+      - "KLD"
+    lifecycle: "EMPTY -> FILLED -> LOCKED"
+    constraints:
+      - "Unique dans le périmètre de rotation."
+      - "Aucun format imposé dans ce contrat."
+      - "Ne doit jamais être traité comme kernel_code."
+      - "Ne doit jamais être traité comme kernel_code_prefix."
+    forbidden:
+      - "Utiliser comme kernel_code."
+      - "Utiliser comme préfixe de kernel_code."
+      - "Utiliser comme fragment du futur kernel_code."
+      - "Imposer un format yy-xx."
+      - "Modifier cette valeur par Taxonomy, KEY_STRUCTURE, KLD, QuestionIntent, Phase 1 ou toute brique aval."
+    dependencies:
+      - "depth_slot produit"
+      - "domain_slot produit"
+```
+
+---
+
+## 10. Comportement en erreur
+
+Si une donnée nécessaire est absente, incohérente ou non couverte par le contrat :
+
+```text
+STOP
+```
+
+Jamais :
+
+* fallback ;
+* retry automatique ;
+* IA ;
+* correction implicite ;
+* extrapolation ;
+* résultat partiel.
+
+---
+
+## 11. Validation demandée maintenant
+
+Ne pas patcher.
+
+Ne pas coder.
+
+Ne pas proposer d’implémentation.
+
+Répondre uniquement avec :
+
+1. Les fichiers réels concernés.
+2. Les classes/fonctions réelles existantes.
+3. Les responsabilités actuellement observées.
+4. Les écarts avec ce contrat.
+5. Les points bloquants.
+6. Le plan de correction, sans patch.
+
+Aucun patch sans :
+
+```text
+GREP -> SLICE -> PATCH -> VALIDATION
+```
+
+Si un nom comme `DepthNeedMatrix`, `DomainCycle`, `RotationConfig`, `BankTarget` ou `Blueprint schema` n’existe pas dans le code réel, ne pas l’inventer.
+
+Répondre :
+
+**BLOCAGE — contrat non couvert par le code actuel**
+
+Puis indiquer précisément quel contrat manque.
