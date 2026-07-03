@@ -334,10 +334,7 @@ class KernelFrameBuilder
                     'Imposer un format yy-xx.',
                     'Modifier cette valeur par Taxonomy, KEY_STRUCTURE, KLD, QuestionIntent, Phase 1 ou toute brique aval.',
                 ],
-                'dependencies' => [
-                    'depth_slot produit',
-                    'domain_slot produit',
-                ],
+                'dependencies' => [],
             ],
             'traces' => [],
         ];
@@ -1118,7 +1115,7 @@ class KernelFrameBuilder
     {
         return [
             'kernel_code_format'              => 'yy-xx-xxx-xxx-xxx-zz',
-            'kernel_code_builder'             => 'KernelRotationPlanner(rotation_identifier) + Taxonomy(xxx-xxx-xxx) + KEY_STRUCTURE(validation) + KLD(zz)',
+            'kernel_code_builder'             => 'Non défini dans Blueprint Phase 0 — sera conçu dans une brique ultérieure.',
             'kernel_code_frozen_after'        => 'KLD validation (kld_hash posé)',
             'subjects_inventory_max'          => self::SUBJECTS_INVENTORY_MAX,
             'dominant_ideas_max'              => self::DOMINANT_IDEAS_MAX,
@@ -1181,7 +1178,7 @@ class KernelFrameBuilder
             'dependency_graph'                => [
                 'depth_slot'           => [],
                 'domain_slot'          => ['depth_slot'],
-                'rotation_identifier'  => ['depth_slot', 'domain_slot'],
+                'rotation_identifier'  => [],
                 'sub_domain_slot'      => ['depth_slot', 'domain_slot'],
                 'subjects_inventory'   => ['sub_domain_slot'],
                 'active_subject'       => ['subjects_inventory'],
@@ -1192,8 +1189,7 @@ class KernelFrameBuilder
                 'Phase1'               => ['QuestionIntent'],
                 'Phase2'               => ['Phase1'],
                 'Phase3'               => ['Phase2'],
-                'Phase4'               => ['Phase3'],
-                'READY_BANK'           => ['Phase4'],
+                'READY_BANK'           => [],
             ],
         ];
     }
@@ -1206,7 +1202,7 @@ class KernelFrameBuilder
         return [
             'step_1_blueprint_frame'   => 'KernelFrameBuilder — crée le contenant vide (ce fichier)',
             'step_2_depth_domain'      => 'KernelRotationPlanner (DepthNeedMatrix + DomainCycle) — remplit depth_slot + domain_slot + rotation_identifier',
-            'step_3_taxonomy'          => 'TaxonomyReader via KernelRotationPlanner — remplit sub_domain_slot + subjects_inventory + active_subject + dominant_ideas + active_dominant_idea + milieu kernel_code xxx-xxx-xxx',
+            'step_3_taxonomy'          => 'Taxonomy — responsabilité future non implémentée dans Blueprint Phase 0.',
             'step_4_key_structure'     => 'IntentKeyBuilder.KEY_STRUCTURE — valide égrainage + cohérence + ks_hash + précode xxx-xxx-xxx',
             'step_5_kld'               => 'IntentKeyBuilder.KLD — anti-doublon directionnel + kld_hash + suffixe zz + verrouille kernel_code complet',
             'step_6_question_intent'   => 'QuestionIntent — verrouille intent_key + semantic_key + prépare 7 variant_keys',

@@ -1,0 +1,252 @@
+# STRATEGYBUZZER — BLUEPRINT PHASE 0 — CORRECTION FINALE SANS EXTRAPOLATION
+
+Objectif unique :
+
+**Finaliser l’implémentation Blueprint sans ouvrir KernelRotationPlanner.**
+
+Cette tâche est un nettoyage d’extrapolations introduites dans le Blueprint.
+
+Aucune nouvelle architecture.
+Aucune nouvelle brique.
+Aucune nouvelle décision future.
+
+---
+
+# RÈGLE ABSOLUE
+
+Le Blueprint ne doit pas anticiper les briques non encore conçues.
+
+Il doit uniquement contenir :
+
+* les slots officiels ;
+* les contrats `slot_reference` ;
+* les références métier textuelles ;
+* les contraintes ;
+* les interdictions ;
+* les dépendances déjà verrouillées.
+
+Il ne doit pas décrire :
+
+* l’orchestration future ;
+* le mécanisme exact de construction du `kernel_code` ;
+* qui appelle Taxonomy ;
+* comment Rotation appelle Taxonomy ;
+* une Phase4 ;
+* un lien non verrouillé entre `rotation_identifier` et d’autres slots.
+
+---
+
+# PATCH AUTORISÉ — UNIQUEMENT CES 5 CORRECTIONS
+
+## 1. Corriger `rotation_identifier.dependencies`
+
+Actuellement, il ne doit PAS déclarer :
+
+```text
+depth_slot produit
+domain_slot produit
+```
+
+Remplacer par :
+
+```php
+'dependencies' => [],
+```
+
+Pourquoi :
+
+Le contrat dit seulement que KernelRotationPlanner produit `depth_slot`, `domain_slot` et `rotation_identifier`.
+
+Il ne dit pas que `rotation_identifier` est calculé à partir de `depth_slot` et `domain_slot`.
+
+---
+
+## 2. Corriger `dependency_graph`
+
+Supprimer l’entrée :
+
+```php
+'rotation_identifier' => ['depth_slot', 'domain_slot'],
+```
+
+Remplacer par :
+
+```php
+'rotation_identifier' => [],
+```
+
+Pourquoi :
+
+Cette dépendance n’est pas verrouillée.
+
+Le Blueprint ne doit pas inventer une relation non décidée.
+
+---
+
+## 3. Corriger `kernel_code_builder`
+
+Supprimer toute chaîne du type :
+
+```text
+KernelRotationPlanner(rotation_identifier) + Taxonomy(...) + KEY_STRUCTURE(...) + KLD(...)
+```
+
+Remplacer par une formulation non-exécutive :
+
+```php
+'kernel_code_builder' => 'Non défini dans Blueprint Phase 0 — sera conçu dans une brique ultérieure.',
+```
+
+Pourquoi :
+
+La construction officielle du `kernel_code` n’est pas encore verrouillée.
+
+---
+
+## 4. Corriger `step_3_taxonomy`
+
+Supprimer toute mention :
+
+```text
+TaxonomyReader via KernelRotationPlanner
+```
+
+Remplacer par :
+
+```php
+'step_3_taxonomy' => 'Taxonomy — responsabilité future non implémentée dans Blueprint Phase 0.',
+```
+
+Pourquoi :
+
+On n’a pas défini qui orchestre Taxonomy.
+
+---
+
+## 5. Corriger `READY_BANK => Phase4`
+
+Supprimer toute dépendance ou mention qui affirme :
+
+```text
+READY_BANK dépend de Phase4
+```
+
+Remplacer par une formulation non-spéculative :
+
+```php
+'READY_BANK' => [],
+```
+
+ou supprimer l’entrée si le graphe accepte l’absence d’entrée.
+
+Pourquoi :
+
+Phase4 n’est pas encore conçue officiellement.
+
+---
+
+# INTERDICTIONS
+
+Ne pas modifier `slot_reference`.
+
+Ne pas modifier `depth_slot`.
+
+Ne pas modifier `domain_slot`.
+
+Ne pas supprimer `rotation_identifier`.
+
+Ne pas modifier les tests sauf si strictement nécessaire pour refléter les 5 corrections ci-dessus.
+
+Ne pas créer KernelRotationPlanner.
+
+Ne pas créer DepthNeedMatrix.
+
+Ne pas créer DomainCycle.
+
+Ne pas créer RotationConfig.
+
+Ne pas créer BankTarget.
+
+Ne pas toucher Taxonomy.
+
+Ne pas toucher KEY_STRUCTURE.
+
+Ne pas toucher KLD.
+
+Ne pas toucher QuestionIntent.
+
+Ne pas toucher Phase 1.
+
+Ne pas toucher READY_BANK hors correction de mention spéculative.
+
+Ne pas ajouter de nouvelle étape.
+
+Ne pas ajouter de nouveau statut.
+
+Ne pas ajouter de nouveau mécanisme.
+
+---
+
+# MÉTHODE OBLIGATOIRE
+
+Faire exactement :
+
+```text
+GREP -> SLICE -> PATCH -> VALIDATION
+```
+
+Avant patch, afficher les slices exacts de :
+
+1. `rotation_identifier.dependencies`
+2. `dependency_graph`
+3. `kernel_code_builder`
+4. `step_3_taxonomy`
+5. `READY_BANK`
+
+Si un ancrage est absent :
+
+```text
+BLOCAGE — ancrage absent
+```
+
+---
+
+# VALIDATION APRÈS PATCH
+
+Exécuter :
+
+```bash
+php -l app/Services/QuestionBank/KernelFrameBuilder.php
+php -l tests/Unit/QuestionBank/KernelFrameBuilderBlueprintTest.php
+vendor/bin/phpunit --filter KernelFrameBuilderBlueprintTest
+grep -RIn "rotation_identifier\|kernel_code_builder\|step_3_taxonomy\|READY_BANK\|Phase4\|via KernelRotationPlanner" app/Services/QuestionBank/KernelFrameBuilder.php
+```
+
+Puis afficher les slices après patch des mêmes 5 zones.
+
+---
+
+# SORTIE ATTENDUE
+
+Répondre uniquement avec :
+
+1. Slices avant patch.
+2. Patch appliqué.
+3. Résultats validation.
+4. Slices après patch.
+5. Verdict final :
+
+```text
+Blueprint Phase 0:
+Architecture: OK
+Contract: OK
+Implementation: OK / NON
+Validation: OK / NON
+```
+
+Aucun passage à KernelRotationPlanner tant que ce verdict n’est pas :
+
+```text
+Implementation: OK
+Validation: OK
+```

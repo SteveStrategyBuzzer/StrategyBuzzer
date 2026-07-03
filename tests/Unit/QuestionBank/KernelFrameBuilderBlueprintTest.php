@@ -993,7 +993,7 @@ class KernelFrameBuilderBlueprintTest extends TestCase
         $this->assertContains('domain_slot',  $dg['sub_domain_slot']);
         $this->assertContains('active_subject',       $dg['QuestionIntent']);
         $this->assertContains('active_dominant_idea', $dg['QuestionIntent']);
-        $this->assertContains('Phase4', $dg['READY_BANK']);
+        $this->assertEmpty($dg['READY_BANK'], 'READY_BANK n\'a pas de dépendance verrouillée en Blueprint Phase 0');
     }
 
     public function test_mechanisms_lists_all_11_pipeline_steps(): void
