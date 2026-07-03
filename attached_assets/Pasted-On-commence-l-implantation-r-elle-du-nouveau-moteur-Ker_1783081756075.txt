@@ -1,0 +1,202 @@
+On commence l’implantation réelle du nouveau moteur Kernel.
+
+Objectif immédiat :
+installer la STRUCTURE DU NOYAU MÈRE, avant toute génération de questions.
+
+Ne pas toucher :
+- gameplay
+- VM
+- ancien BankWorker
+- Solo/Duo/Ligue/MJ
+- READY_BANK existant
+- génération Gemini actuelle
+
+On implante les briques dans cet ordre exact :
+
+1. KERNEL BLUEPRINT FRAME
+
+Rôle :
+créer le contenant vide du noyau mère.
+
+Il doit créer un frame avec ces slots :
+
+- kernel_code = null
+- format code attendu : yy-xx-xxx-xxx-xxx-zz
+
+Slots obligatoires :
+- depth_slot
+- domain_slot
+- sub_domain_slot
+- subjects_inventory jusqu’à 50 sujets
+- active_subject
+- dominant_ideas du sujet actif seulement
+- active_dominant_idea
+- cognitive_slots pour les 7 cognitifs
+- question_slots
+- answer_slots
+- sv_slots
+- translation_slots
+- rules
+- mechanisms
+- constraints
+- statuses
+- traces
+
+Règle :
+Kernel Blueprint Frame ne choisit rien.
+Il ne sélectionne pas Depth.
+Il ne sélectionne pas Domaine.
+Il ne génère pas de sujet.
+Il crée seulement la structure vide et les règles de remplissage.
+
+2. KERNEL ROTATION PLANNER
+
+Rôle :
+remplir le début du frame.
+
+Il conjugue :
+- Bank Target
+- DepthNeedMatrix
+- DomainCycle
+
+Il remplit :
+- depth_slot.value
+- depth_slot.source
+- domain_slot.value
+- domain_slot.source
+- début du kernel_code : yy-xx
+
+Il ne touche pas :
+- sous-domaine
+- sujets
+- idées dominantes
+- cognitifs
+- questions
+
+3. TAXONOMY
+
+Rôle :
+remplir la partie intellectuelle centrale du frame.
+
+Elle reçoit :
+- depth
+- domaine
+- frame existant
+
+Elle remplit :
+- sub_domain_slot
+- subjects_inventory jusqu’à 50 sujets
+- active_subject
+- 5 dominant_ideas du sujet actif seulement
+- active_dominant_idea
+- milieu du kernel_code : xxx-xxx-xxx
+
+Règle importante :
+les 50 sujets existent comme inventaire.
+Les 5 idées dominantes ne sont générées que pour le sujet actif.
+Les autres sujets restent sans idées dominantes jusqu’à activation future.
+
+4. KEY_STRUCTURE
+
+Rôle :
+valider la structure du noyau.
+
+Il vérifie :
+- Depth → Domaine → Sous-domaine → Sujet → Idée dominante
+- égrainage naturel du général au précis
+- cohérence de chaque slot
+- non-absorption d’un niveau par un autre
+- conformité du pré-code yy-xx-xxx-xxx-xxx
+- collision structurelle évidente
+
+Il remplit :
+- ks_hash
+- traces.KEY_STRUCTURE
+- statuses.KEY_STRUCTURE
+- corrections structurelles mineures si possible
+
+Il ne génère pas les questions.
+
+5. KLD
+
+Rôle :
+valider la direction intellectuelle Sujet / Idée dominante.
+
+Il vérifie :
+- doublon direct
+- doublon inversé
+- équivalence contrôlée
+- paire Sujet/Idée déjà validée
+- paire Sujet/Idée rejetée
+- idée suivante disponible
+- sujet suivant disponible
+- sous-domaine à changer si sujets épuisés
+
+Il remplit :
+- kld_hash
+- suffixe zz du kernel_code
+- traces.KLD
+- statuses.KLD
+
+6. QUESTIONINTENT
+
+Rôle :
+verrouiller l’intention cognitive du noyau.
+
+Il reçoit un noyau déjà structuré.
+
+Il remplit :
+- intent_key
+- semantic_key si applicable
+- cognitive_slots préparés
+- 7 variant_keys attendus
+
+Il ne refait pas :
+- Rotation
+- Taxonomy
+- KEY_STRUCTURE
+- KLD
+
+7. PHASE 1+
+
+Seulement après tout ça, Phase 1 pourra remplir :
+
+- qcm_recognition
+- qcm_reasoning
+- qcm_deceptive_trap
+- tf_recognition_true
+- tf_recognition_false
+- tf_reasoning_true
+- tf_reasoning_false
+
+Chaque cognitif devra ensuite recevoir :
+- question
+- réponses
+- bonne réponse
+- SV
+- slots de traduction préparés
+
+Décision centrale :
+READY_BANK stockera des NOYAUX MÈRES ENCODÉS.
+Gameplay consommera plus tard les cognitifs internes, mais READY_BANK n’est pas une banque de cognitifs isolés.
+
+Premier patch demandé maintenant :
+implanter uniquement Kernel Blueprint Frame.
+
+Ne pas implanter encore Rotation.
+Ne pas implanter encore Taxonomy.
+Ne pas implanter encore KEY_STRUCTURE.
+Ne pas implanter encore KLD.
+
+Patch demandé :
+- étendre ou créer la structure Kernel Blueprint Frame
+- ajouter les slots manquants au frame_en JSON
+- ajouter les règles/rôles de chaque slot dans le frame
+- ajouter les statuts et traces
+- laisser toutes les valeurs non remplies à null ou []
+- aucune génération de question
+
+Validation attendue :
+- php -l sur fichiers modifiés
+- test unitaire du frame
+- sortie JSON exemple d’un noyau vide

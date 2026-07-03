@@ -2,10 +2,13 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class QuestionIntent extends Model
 {
+    use HasFactory;
+
     protected $table = 'question_intents';
 
     protected $fillable = [
@@ -23,6 +26,11 @@ class QuestionIntent extends Model
         'potential_trap',
         'concept_family',
         'source',
+
+        // Kernel Blueprint Frame — code structurel + hashes
+        'kernel_code',
+        'ks_hash',
+        'kld_hash',
 
         // Tracking dialyse
         'dialysis_status',
@@ -49,6 +57,9 @@ class QuestionIntent extends Model
         'variantes_missing'      => 'array',
         'variantes_count'        => 'integer',
         'dialysis_action_count'  => 'integer',
+        // Kernel Blueprint Frame
+        'frame_en'               => 'array',
+        'frame_validated_at'     => 'datetime',
     ];
 
     public function questionGroups()
