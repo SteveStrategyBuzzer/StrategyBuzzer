@@ -1,0 +1,80 @@
+Non, je ne valide pas encore. Il y a encore une dérive.
+
+Le format proposé est bon à 80 %, mais il manque 3 champs essentiels et il retire à tort dependencies.
+
+Correction obligatoire :
+
+slot_reference:
+  purpose: string
+  authority: string
+  producer: string
+  value_source: string
+  stored_value: string
+  readable_by: array
+  consumed_by: array
+  lifecycle: string
+  constraints: array
+  forbidden: array
+  dependencies: array
+
+Pourquoi :
+
+authority = qui décide
+producer = qui produit
+value_source = d’où vient la valeur métier
+stored_value = ce que le Blueprint conserve réellement
+readable_by = qui peut lire
+consumed_by = qui utilise
+dependencies = quelles briques/règles doivent déjà exister
+
+La phrase de Replit à refuser :
+
+dependencies : relève de l'architecture d'implémentation
+
+Non.
+
+dependencies est un champ métier nécessaire, sinon une brique pourrait fonctionner sans savoir ce qui doit exister avant elle.
+
+Réponse à envoyer :
+
+Correction obligatoire.
+
+Le format slot_reference proposé est incomplet.
+
+Il faut ajouter :
+
+- producer
+- stored_value
+- consumed_by
+- dependencies
+
+Ne pas retirer dependencies.
+
+Dependencies n’est pas seulement un détail d’implémentation.
+Dans notre architecture, chaque slot doit déclarer les briques ou contrats métier dont il dépend pour éviter qu’une phase aval devine ce qui devait être produit avant elle.
+
+Format officiel attendu :
+
+slot_reference:
+  purpose: string
+  authority: string
+  producer: string
+  value_source: string
+  stored_value: string
+  readable_by: array
+  consumed_by: array
+  lifecycle: string
+  constraints: array
+  forbidden: array
+  dependencies: array
+
+Important :
+
+Le Blueprint fournit le contrat du slot.
+Il ne fournit jamais la décision métier.
+La valeur vient de la source métier déclarée dans value_source.
+La brique déclarée dans authority décide.
+La brique déclarée dans producer produit.
+Le Blueprint stocke seulement stored_value.
+
+Merci de reprendre le contrat KRP avec ce format exact, sans ajouter de nouveau rôle, nouvelle brique, nouveau statut ou nouveau mécanisme d’écriture.
