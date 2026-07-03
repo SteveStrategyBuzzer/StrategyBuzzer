@@ -130,16 +130,20 @@ class KernelFrameBuilder
     /**
      * kernel_code — Identifiant unique du noyau mère au format yy-xx-xxx-xxx-xxx-zz.
      *
-     * created_by    : KernelFrameBuilder
-     * filled_by     : KEY_STRUCTURE (précode yy-xx-xxx-xxx-xxx) + KLD (suffixe zz)
-     * read_by       : QuestionIntent, Phase1, Phase2, Phase3, Phase4, READY_BANK, tous les composants
-     * write_access  : KEY_STRUCTURE (précode) puis KLD (suffixe zz) — séquentiels, jamais simultanés
-     * locked_after  : validation KLD (kld_hash posé)
+     * Construction PROGRESSIVE — 5 propriétaires successifs :
+     *   Step 1 — KernelFrameBuilder   : réserve le slot (value=null)
+     *   Step 2 — KernelRotationPlanner: écrit le préfixe yy-xx (Depth+Domain)
+     *   Step 3 — Taxonomy             : écrit le segment xxx-xxx-xxx (SubDomain+Sujet+Idée)
+     *   Step 4 — KEY_STRUCTURE        : valide le pré-code + ks_hash
+     *   Step 5 — KLD                  : complète le suffixe zz + kld_hash → verrouille
+     *
+     * depends_on    : depth_slot, domain_slot, sub_domain_slot, active_subject, active_dominant_idea
+     * read_by       : QuestionIntent, Phase1, Phase2, Phase3, Phase4, READY_BANK, tous
+     * locked_after  : validation KLD (kld_hash posé) — le code devient immutable
      * transmitted_to: QuestionIntent, READY_BANK
-     * forbidden     : Immutable après verrouillage KLD. Aucune modification ni écrasement.
-     * expected_content: chaîne VARCHAR(32) — ex: "06-03-012-007-003-04"
+     * forbidden     : Immutable après verrouillage KLD. Aucun composant ne peut modifier ni écraser.
+     * expected_content: VARCHAR(32) — ex: "06-03-012-007-003-04"
      * status_initial: 'empty'
-     * traces        : append-only par KEY_STRUCTURE puis KLD
      */
     private function buildKernelCodeSlot(): array
     {
@@ -148,15 +152,22 @@ class KernelFrameBuilder
             'format'  => 'yy-xx-xxx-xxx-xxx-zz',
             'status'  => 'empty',
             'locked'  => false,
+            'owners'  => [
+                ['step' => 1, 'component' => 'KernelFrameBuilder',       'action' => 'réserve le slot (value=null)'],
+                ['step' => 2, 'component' => 'KernelRotationPlanner',     'action' => 'écrit le préfixe yy-xx (Depth+Domain)'],
+                ['step' => 3, 'component' => 'Taxonomy (TaxonomyReader)', 'action' => 'écrit le segment xxx-xxx-xxx (SubDomain+Sujet+Idée)'],
+                ['step' => 4, 'component' => 'KEY_STRUCTURE',             'action' => 'valide le pré-code + pose ks_hash'],
+                ['step' => 5, 'component' => 'KLD',                       'action' => 'complète le suffixe zz + pose kld_hash → verrouille'],
+            ],
             'rules'   => [
                 'creator'          => 'KernelFrameBuilder',
-                'filler_prefix'    => 'KEY_STRUCTURE (yy-xx-xxx-xxx-xxx)',
-                'filler_suffix'    => 'KLD (zz)',
+                'construction'     => 'progressive — 5 composants successifs (voir owners)',
+                'depends_on'       => ['depth_slot', 'domain_slot', 'sub_domain_slot', 'active_subject', 'active_dominant_idea'],
                 'read_by'          => ['QuestionIntent', 'Phase1', 'Phase2', 'Phase3', 'Phase4', 'READY_BANK'],
-                'write_access'     => 'KEY_STRUCTURE (précode) puis KLD (suffixe zz) — séquentiels',
-                'locked_after'     => 'validation KLD (kld_hash posé)',
+                'write_access'     => 'chaque owner écrit son segment dans l\'ordre défini dans owners[]',
+                'locked_after'     => 'KLD pose kld_hash — le code devient immutable',
                 'transmitted_to'   => 'QuestionIntent, READY_BANK',
-                'forbidden'        => 'Immutable après verrouillage KLD. Aucune modification ni écrasement.',
+                'forbidden'        => 'Immutable après verrouillage KLD. Aucun composant ne peut modifier ni écraser.',
                 'expected_content' => 'VARCHAR(32) — ex: "06-03-012-007-003-04"',
             ],
             'traces'  => [],
@@ -193,6 +204,7 @@ class KernelFrameBuilder
                 'creator'          => 'KernelFrameBuilder',
                 'filler'           => 'KernelRotationPlanner',
                 'driven_by'        => 'DepthNeedMatrix',
+                'depends_on'       => [],
                 'allowed_values'   => '1–10',
                 'read_by'          => ['Taxonomy', 'KEY_STRUCTURE', 'QuestionIntent', 'Phase1', 'READY_BANK'],
                 'write_access'     => 'KernelRotationPlanner uniquement',
@@ -235,7 +247,7 @@ class KernelFrameBuilder
                 'creator'          => 'KernelFrameBuilder',
                 'filler'           => 'KernelRotationPlanner',
                 'driven_by'        => 'DomainCycle',
-                'depends_on'       => 'depth_slot',
+                'depends_on'       => ['depth_slot'],
                 'allowed_values'   => 'domaines valides dans taxonomy.json',
                 'read_by'          => ['Taxonomy', 'KEY_STRUCTURE', 'QuestionIntent', 'Phase1', 'READY_BANK'],
                 'write_access'     => 'KernelRotationPlanner uniquement',
@@ -279,7 +291,7 @@ class KernelFrameBuilder
                 'filler'           => 'Taxonomy (TaxonomyReader)',
                 'depends_on'       => ['depth_slot', 'domain_slot'],
                 'allowed_values'   => 'sous-domaines valides pour domain+depth dans taxonomy.json',
-                'read_by'          => ['KEY_STRUCTURE', 'QuestionIntent', 'Phase1', 'READY_BANK'],
+                'read_by'          => ['subjects_inventory', 'KEY_STRUCTURE', 'QuestionIntent', 'Phase1', 'READY_BANK'],
                 'write_access'     => 'Taxonomy (TaxonomyReader) uniquement',
                 'locked_after'     => 'remplissage par Taxonomy',
                 'transmitted_to'   => 'subjects_inventory, KEY_STRUCTURE',
@@ -319,10 +331,11 @@ class KernelFrameBuilder
                 'rules'     => [
                     'creator'          => 'KernelFrameBuilder',
                     'filler'           => 'Taxonomy (TaxonomyReader)',
+                    'depends_on'       => ['sub_domain_slot'],
                     'max_slots'        => self::SUBJECTS_INVENTORY_MAX,
                     'read_by'          => ['active_subject', 'KEY_STRUCTURE'],
                     'write_access'     => 'Taxonomy (TaxonomyReader) uniquement',
-                    'locked_after'     => 'sujet marqué active et dominant_ideas générées',
+                    'locked_after'     => 'sujet marqué active et dominant_ideas générées pour lui',
                     'transmitted_to'   => 'active_subject',
                     'forbidden'        => 'dominant_ideas générées uniquement pour le sujet actif.',
                     'expected_content' => 'label = libellé sujet (ex: "Nairobi")',
@@ -360,13 +373,14 @@ class KernelFrameBuilder
             'rules'         => [
                 'creator'          => 'KernelFrameBuilder',
                 'filler'           => 'Taxonomy (TaxonomyReader)',
-                'depends_on'       => 'subjects_inventory',
+                'depends_on'       => ['subjects_inventory'],
                 'read_by'          => ['dominant_ideas', 'active_dominant_idea', 'KEY_STRUCTURE', 'QuestionIntent'],
                 'write_access'     => 'Taxonomy (TaxonomyReader) uniquement',
-                'locked_after'     => 'dominant_ideas générées pour ce sujet',
+                'locked_after'     => 'jamais de verrouillage définitif — le sujet actif peut changer quand ses idées sont épuisées',
+                'rotation'         => 'Sujet 1 → idées 1–5 épuisées par QuestionIntent → Taxonomy active Sujet 2 → dominant_ideas rechargées',
                 'transmitted_to'   => 'dominant_ideas',
-                'forbidden'        => 'Un seul sujet peut être actif. Aucune autre brique ne peut modifier active_subject.',
-                'expected_content' => 'subject_index = int, subject_label = libellé sujet',
+                'forbidden'        => 'Un seul sujet peut être actif à la fois. Aucune autre brique ne peut modifier active_subject.',
+                'expected_content' => 'subject_index = int (index dans subjects_inventory), subject_label = libellé sujet',
             ],
             'traces' => [],
         ];
@@ -398,13 +412,14 @@ class KernelFrameBuilder
                 'filler'           => 'Taxonomy (TaxonomyReader)',
                 'max_ideas'        => self::DOMINANT_IDEAS_MAX,
                 'scope'            => 'active_subject uniquement — aucune idée pour un sujet non actif',
-                'depends_on'       => 'active_subject',
+                'depends_on'       => ['active_subject'],
                 'read_by'          => ['active_dominant_idea', 'KEY_STRUCTURE', 'QuestionIntent'],
                 'write_access'     => 'Taxonomy (TaxonomyReader) uniquement',
-                'locked_after'     => 'QuestionIntent verrouillé',
+                'locked_after'     => 'jamais de verrouillage définitif — dominant_ideas se recharge quand active_subject change',
+                'rotation'         => 'Quand active_subject change → Taxonomy recharge dominant_ideas avec les 5 idées du nouveau sujet',
                 'transmitted_to'   => 'active_dominant_idea, KEY_STRUCTURE',
                 'forbidden'        => 'Idées générées uniquement pour active_subject. Max 5. Aucune autre brique ne peut modifier dominant_ideas.',
-                'expected_content' => 'ideas = [{index, label, filled_at}] — 1 à 5 entrées',
+                'expected_content' => 'ideas = [{index, label, filled_at}] — 1 à 5 entrées liées au sujet actif',
             ],
             'traces' => [],
         ];
@@ -436,13 +451,15 @@ class KernelFrameBuilder
             'rules'      => [
                 'creator'          => 'KernelFrameBuilder',
                 'filler'           => 'Taxonomy (TaxonomyReader)',
-                'depends_on'       => 'dominant_ideas',
+                'depends_on'       => ['dominant_ideas'],
                 'read_by'          => ['KEY_STRUCTURE', 'QuestionIntent', 'Phase1'],
                 'write_access'     => 'Taxonomy (TaxonomyReader) uniquement',
-                'locked_after'     => 'QuestionIntent verrouillé',
+                'locked_after'     => 'QuestionIntent consomme la PAIRE (active_subject + active_dominant_idea) — la paire est ensuite marquée consommée',
+                'pair_lock'        => 'QuestionIntent verrouille la PAIRE sujet+idée uniquement, pas le bloc Taxonomy. Taxonomy peut pointer vers la prochaine idée disponible.',
+                'rotation'         => 'Idée consommée → Taxonomy sélectionne la prochaine idée dans dominant_ideas. Toutes épuisées → Sujet 2 actif.',
                 'transmitted_to'   => 'KEY_STRUCTURE, QuestionIntent',
                 'forbidden'        => 'Une seule idée active à la fois. Aucune autre brique ne peut modifier active_dominant_idea.',
-                'expected_content' => 'idea_index = int, idea_label = libellé idée dominante',
+                'expected_content' => 'idea_index = int (index dans dominant_ideas.ideas), idea_label = libellé idée dominante',
             ],
             'traces' => [],
         ];
@@ -478,7 +495,7 @@ class KernelFrameBuilder
                         'filler'           => 'Phase1 (KernelContentBuilder)',
                         'language'         => 'en',
                         'max_chars'        => ReadingBandConfig::resolveForLang($band, 'en')['soft'] ?? 280,
-                        'depends_on'       => 'QuestionIntent verrouillé',
+                        'depends_on'       => ['QuestionIntent'],
                         'read_by'          => ['Phase2', 'Phase3', 'READY_BANK'],
                         'write_access'     => 'Phase1 (KernelContentBuilder) uniquement',
                         'locked_after'     => 'Phase2 validation',
@@ -515,7 +532,7 @@ class KernelFrameBuilder
                         'language'         => 'en',
                         'min_chars'        => self::SV_MIN,
                         'max_chars'        => self::SV_MAX,
-                        'depends_on'       => 'QuestionIntent verrouillé',
+                        'depends_on'       => ['QuestionIntent'],
                         'read_by'          => ['Phase2', 'Phase3', 'READY_BANK'],
                         'write_access'     => 'Phase1 (KernelContentBuilder) uniquement',
                         'locked_after'     => 'Phase2 validation',
@@ -572,6 +589,7 @@ class KernelFrameBuilder
             'filler'           => 'Phase1 (KernelContentBuilder)',
             'language'         => 'en',
             'max_chars'        => self::A_MAX,
+            'depends_on'       => ['QuestionIntent'],
             'read_by'          => ['Phase2', 'Phase3', 'READY_BANK'],
             'write_access'     => 'Phase1 (KernelContentBuilder) uniquement',
             'locked_after'     => 'Phase2 validation',
@@ -646,6 +664,7 @@ class KernelFrameBuilder
                     'validator'        => 'Phase4',
                     'source'           => 'question_slot EN (Phase1 output)',
                     'language'         => $lang,
+                    'depends_on'       => ['Phase2_validation'],
                     'answer_max'       => $answerMax,
                     'sv_max'           => $svMax,
                     'sv_min'           => self::SV_MIN,
@@ -674,15 +693,47 @@ class KernelFrameBuilder
     {
         return [
             'kernel_code_format'              => 'yy-xx-xxx-xxx-xxx-zz',
-            'kernel_code_builder'             => 'KEY_STRUCTURE (yy-xx-xxx-xxx-xxx) + KLD (zz)',
-            'kernel_code_frozen_after'        => 'KLD validation',
+            'kernel_code_builder'             => 'KernelRotationPlanner(yy-xx) + Taxonomy(xxx-xxx-xxx) + KEY_STRUCTURE(validation) + KLD(zz)',
+            'kernel_code_frozen_after'        => 'KLD validation (kld_hash posé)',
             'subjects_inventory_max'          => self::SUBJECTS_INVENTORY_MAX,
             'dominant_ideas_max'              => self::DOMINANT_IDEAS_MAX,
-            'dominant_ideas_scope'            => 'active_subject only — autres sujets sans idées tant que non actifs',
+            'dominant_ideas_scope'            => 'active_subject only — rechargé à chaque changement de sujet actif',
             'cognitive_count'                 => self::COGNITIVE_COUNT,
             'ready_bank_unit'                 => 'noyau_mere_encoded — pas une banque de cognitifs isolés',
             'frame_is_container_only'         => 'KernelFrameBuilder ne choisit rien — structure vide uniquement',
             'legacy_fields_preserved'         => 'kernel_core/variants/translation_constraints conservés pour compatibilité pipeline existant',
+
+            // ── Hiérarchie des statuts ─────────────────────────────────────
+            'statuses_hierarchy'              => [
+                'kernel_level' => 'statuses{} — 10 étapes pipeline (rotation/taxonomy/ks/kld/intent/phase1-4/ready_bank), chacune null|pending|ok|failed|skipped',
+                'slot_level'   => 'chaque slot expose son propre status — depth_slot.status, domain_slot.status, question_slot.status, translation_slot.status, etc.',
+                'rule'         => 'kernel_level = avancement global du noyau ; slot_level = état local du slot. Les deux coexistent.',
+            ],
+
+            // ── Hiérarchie des traces ──────────────────────────────────────
+            'traces_hierarchy'                => [
+                'root_level'   => 'traces[] racine — historique chronologique global du noyau (tous composants)',
+                'slot_level'   => 'chaque slot possède ses propres traces[] — décisions locales sur ce slot uniquement',
+                'rule'         => 'les deux niveaux coexistent. Append-only. Aucune suppression ni modification d\'entrée existante.',
+            ],
+
+            // ── Graphe de dépendances (ordre de remplissage) ──────────────
+            'dependency_graph'                => [
+                'depth_slot'           => [],
+                'domain_slot'          => ['depth_slot'],
+                'sub_domain_slot'      => ['depth_slot', 'domain_slot'],
+                'subjects_inventory'   => ['sub_domain_slot'],
+                'active_subject'       => ['subjects_inventory'],
+                'dominant_ideas'       => ['active_subject'],
+                'active_dominant_idea' => ['dominant_ideas'],
+                'kernel_code'          => ['depth_slot', 'domain_slot', 'sub_domain_slot', 'active_subject', 'active_dominant_idea'],
+                'QuestionIntent'       => ['active_subject', 'active_dominant_idea'],
+                'Phase1'               => ['QuestionIntent'],
+                'Phase2'               => ['Phase1'],
+                'Phase3'               => ['Phase2'],
+                'Phase4'               => ['Phase3'],
+                'READY_BANK'           => ['Phase4'],
+            ],
         ];
     }
 
