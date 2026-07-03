@@ -150,7 +150,7 @@ class KernelFrameBuilder
         return [
             'value'   => null,
             'format'  => 'yy-xx-xxx-xxx-xxx-zz',
-            'status'  => 'empty',
+            'status'  => 'EMPTY',
             'locked'  => false,
             'owners'  => [
                 ['step' => 1, 'component' => 'KernelFrameBuilder',       'action' => 'réserve le slot (value=null)'],
@@ -198,7 +198,7 @@ class KernelFrameBuilder
             'actual_depth'     => $depth,
             'selection_source' => $hasDepth ? 'legacy_intent' : null,
             'filled_at'        => null,
-            'status'           => $hasDepth ? 'filled' : 'empty',
+            'status'           => $hasDepth ? 'FILLED' : 'EMPTY',
             'locked'           => $hasDepth,
             'rules'            => [
                 'creator'          => 'KernelFrameBuilder',
@@ -241,7 +241,7 @@ class KernelFrameBuilder
             'actual_domain'    => $domain,
             'selection_source' => $hasDomain ? 'legacy_intent' : null,
             'filled_at'        => null,
-            'status'           => $hasDomain ? 'filled' : 'empty',
+            'status'           => $hasDomain ? 'FILLED' : 'EMPTY',
             'locked'           => $hasDomain,
             'rules'            => [
                 'creator'          => 'KernelFrameBuilder',
@@ -284,7 +284,7 @@ class KernelFrameBuilder
             'actual_sub_domain'    => $subDomain,
             'selection_source'     => $hasSubDomain ? 'legacy_intent' : null,
             'filled_at'            => null,
-            'status'               => $hasSubDomain ? 'filled' : 'empty',
+            'status'               => $hasSubDomain ? 'FILLED' : 'EMPTY',
             'locked'               => $hasSubDomain,
             'rules'                => [
                 'creator'          => 'KernelFrameBuilder',
@@ -326,7 +326,7 @@ class KernelFrameBuilder
                 'index'     => $i,
                 'label'     => null,
                 'filled_at' => null,
-                'status'    => 'available',
+                'status'    => 'EMPTY',
                 'locked'    => false,
                 'rules'     => [
                     'creator'          => 'KernelFrameBuilder',
@@ -368,7 +368,7 @@ class KernelFrameBuilder
             'subject_index' => null,
             'subject_label' => null,
             'set_at'        => null,
-            'status'        => 'empty',
+            'status'        => 'EMPTY',
             'locked'        => false,
             'rules'         => [
                 'creator'          => 'KernelFrameBuilder',
@@ -405,21 +405,23 @@ class KernelFrameBuilder
     {
         return [
             'ideas'  => [],
-            'status' => 'empty',
+            'status' => 'EMPTY',
             'locked' => false,
             'rules'  => [
-                'creator'          => 'KernelFrameBuilder',
-                'filler'           => 'Taxonomy (TaxonomyReader)',
-                'max_ideas'        => self::DOMINANT_IDEAS_MAX,
-                'scope'            => 'active_subject uniquement — aucune idée pour un sujet non actif',
-                'depends_on'       => ['active_subject'],
-                'read_by'          => ['active_dominant_idea', 'KEY_STRUCTURE', 'QuestionIntent'],
-                'write_access'     => 'Taxonomy (TaxonomyReader) uniquement',
-                'locked_after'     => 'jamais de verrouillage définitif — dominant_ideas se recharge quand active_subject change',
-                'rotation'         => 'Quand active_subject change → Taxonomy recharge dominant_ideas avec les 5 idées du nouveau sujet',
-                'transmitted_to'   => 'active_dominant_idea, KEY_STRUCTURE',
-                'forbidden'        => 'Idées générées uniquement pour active_subject. Max 5. Aucune autre brique ne peut modifier dominant_ideas.',
-                'expected_content' => 'ideas = [{index, label, filled_at}] — 1 à 5 entrées liées au sujet actif',
+                'creator'             => 'KernelFrameBuilder',
+                'filler'              => 'Taxonomy (TaxonomyReader)',
+                'max_ideas'           => self::DOMINANT_IDEAS_MAX,
+                'scope'               => 'active_subject uniquement — aucune idée pour un sujet non actif',
+                'depends_on'          => ['active_subject'],
+                'read_by'             => ['active_dominant_idea', 'KEY_STRUCTURE', 'QuestionIntent'],
+                'write_access'        => 'Taxonomy (TaxonomyReader) uniquement',
+                'locked_after'        => 'jamais de verrouillage définitif — dominant_ideas se recharge quand active_subject change',
+                'status_progression'  => 'EMPTY → FILLED (exactement 5 idées chargées) → EMPTY à nouveau si active_subject change',
+                'locked_semantics'    => 'LOCKED = verrouillé pour le cycle courant uniquement. Taxonomy peut réactiver quand active_subject change.',
+                'rotation'            => 'Quand active_subject change → Taxonomy recharge dominant_ideas avec les 5 idées du nouveau sujet',
+                'transmitted_to'      => 'active_dominant_idea, KEY_STRUCTURE',
+                'forbidden'           => 'Idées générées uniquement pour active_subject. Max 5. Aucune autre brique ne peut modifier dominant_ideas.',
+                'expected_content'    => 'ideas = [{index, label, filled_at}] — exactement 5 entrées quand FILLED, liées au sujet actif',
             ],
             'traces' => [],
         ];
@@ -446,7 +448,7 @@ class KernelFrameBuilder
             'idea_index' => null,
             'idea_label' => null,
             'set_at'     => null,
-            'status'     => 'empty',
+            'status'     => 'EMPTY',
             'locked'     => false,
             'rules'      => [
                 'creator'          => 'KernelFrameBuilder',
@@ -488,7 +490,7 @@ class KernelFrameBuilder
                 'question_slot' => [
                     'value'     => null,
                     'filled_at' => null,
-                    'status'    => 'empty',
+                    'status'    => 'EMPTY',
                     'locked'    => false,
                     'rules'     => [
                         'creator'          => 'KernelFrameBuilder',
@@ -524,7 +526,7 @@ class KernelFrameBuilder
                 'sv_slot' => [
                     'value'     => null,
                     'filled_at' => null,
-                    'status'    => 'empty',
+                    'status'    => 'EMPTY',
                     'locked'    => false,
                     'rules'     => [
                         'creator'          => 'KernelFrameBuilder',
@@ -551,7 +553,7 @@ class KernelFrameBuilder
                 'translation_slots' => $this->buildCognitiveTranslationSlots($isTf),
 
                 // ── statut et traces du cognitif ──────────────────────────
-                'status' => 'empty',
+                'status' => 'EMPTY',
                 'rules'  => [
                     'creator'          => 'KernelFrameBuilder',
                     'filler'           => 'Phase1 (KernelContentBuilder)',
@@ -601,7 +603,7 @@ class KernelFrameBuilder
         $answerSlot = fn() => [
             'value'     => null,
             'filled_at' => null,
-            'status'    => 'empty',
+            'status'    => 'EMPTY',
             'locked'    => false,
             'rules'     => $answerRules,
             'traces'    => [],
@@ -647,7 +649,7 @@ class KernelFrameBuilder
             $svMax     = $isZh ? self::SV_MAX_ZH : ($isAr ? self::SV_MAX_AR : self::SV_MAX);
 
             $slots[$lang] = [
-                'status'             => 'pending',
+                'status'             => 'EMPTY',
                 'filled_at'          => null,
                 'locked'             => false,
                 'question_text'      => null,
@@ -705,9 +707,11 @@ class KernelFrameBuilder
 
             // ── Hiérarchie des statuts ─────────────────────────────────────
             'statuses_hierarchy'              => [
-                'kernel_level' => 'statuses{} — 10 étapes pipeline (rotation/taxonomy/ks/kld/intent/phase1-4/ready_bank), chacune null|pending|ok|failed|skipped',
-                'slot_level'   => 'chaque slot expose son propre status — depth_slot.status, domain_slot.status, question_slot.status, translation_slot.status, etc.',
-                'rule'         => 'kernel_level = avancement global du noyau ; slot_level = état local du slot. Les deux coexistent.',
+                'kernel_level'   => 'statuses{} — 10 étapes pipeline (rotation/taxonomy/ks/kld/intent/phase1-4/ready_bank), chacune null|pending|ok|failed|skipped',
+                'slot_level'     => 'chaque slot expose son propre status — depth_slot.status, domain_slot.status, question_slot.status, translation_slot.status, etc.',
+                'slot_enum'      => ['EMPTY', 'FILLED', 'VALIDATED_OK', 'LOCKED', 'REJECTED', 'CORRECTION_NEEDED'],
+                'locked_semantics' => 'LOCKED ≠ verrou définitif global. Certains slots sont LOCKED pour une étape donnée mais peuvent être réactivés par leur propriétaire officiel selon le cycle du noyau. Ex: active_subject devient LOCKED après activation, mais Taxonomy peut le changer quand les 5 idées sont épuisées.',
+                'rule'           => 'kernel_level = avancement global du noyau ; slot_level = état local du slot. Les deux coexistent.',
             ],
 
             // ── Hiérarchie des traces ──────────────────────────────────────
@@ -890,7 +894,7 @@ class KernelFrameBuilder
             'cognitive_contract'    => $this->buildCognitiveContract($variantKey),
             'gameplay_constraints'  => $this->buildGameplayConstraints($questionType),
             'translation_slots'     => $this->buildTranslationSlots(),
-            'status'                => 'pending',
+            'status'                => 'EMPTY',
         ];
     }
 
@@ -932,7 +936,7 @@ class KernelFrameBuilder
                 'correct_answer_key' => null,
                 'explanation'        => null,
                 'saviez_vous'        => null,
-                'status'             => 'pending',
+                'status'             => 'EMPTY',
             ];
         }
 

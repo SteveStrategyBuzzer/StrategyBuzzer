@@ -121,7 +121,7 @@ class KernelFrameBuilderBlueprintTest extends TestCase
         $slot = $this->skeleton()['kernel_code'];
 
         $this->assertNull($slot['value']);
-        $this->assertSame('empty', $slot['status']);
+        $this->assertSame('EMPTY', $slot['status']);
         $this->assertFalse($slot['locked']);
         $this->assertSame('yy-xx-xxx-xxx-xxx-zz', $slot['format']);
     }
@@ -188,7 +188,7 @@ class KernelFrameBuilderBlueprintTest extends TestCase
         $this->assertSame(4, $slot['actual_depth']);
         $this->assertSame('legacy_intent', $slot['selection_source']);
         $this->assertNull($slot['filled_at']);
-        $this->assertSame('filled', $slot['status']);
+        $this->assertSame('FILLED', $slot['status']);
         $this->assertTrue($slot['locked']);
     }
 
@@ -201,7 +201,7 @@ class KernelFrameBuilderBlueprintTest extends TestCase
         $this->assertNull($slot['actual_depth']);
         $this->assertNull($slot['selection_source']);
         $this->assertNull($slot['filled_at']);
-        $this->assertSame('empty', $slot['status']);
+        $this->assertSame('EMPTY', $slot['status']);
         $this->assertFalse($slot['locked']);
     }
 
@@ -249,7 +249,7 @@ class KernelFrameBuilderBlueprintTest extends TestCase
         $this->assertSame('Géographie', $slot['actual_domain']);
         $this->assertSame('legacy_intent', $slot['selection_source']);
         $this->assertNull($slot['filled_at']);
-        $this->assertSame('filled', $slot['status']);
+        $this->assertSame('FILLED', $slot['status']);
         $this->assertTrue($slot['locked']);
     }
 
@@ -262,7 +262,7 @@ class KernelFrameBuilderBlueprintTest extends TestCase
         $this->assertNull($slot['actual_domain']);
         $this->assertNull($slot['selection_source']);
         $this->assertNull($slot['filled_at']);
-        $this->assertSame('empty', $slot['status']);
+        $this->assertSame('EMPTY', $slot['status']);
         $this->assertFalse($slot['locked']);
     }
 
@@ -309,7 +309,7 @@ class KernelFrameBuilderBlueprintTest extends TestCase
         $this->assertSame('Capitales', $slot['actual_sub_domain']);
         $this->assertSame('legacy_intent', $slot['selection_source']);
         $this->assertNull($slot['filled_at']);
-        $this->assertSame('filled', $slot['status']);
+        $this->assertSame('FILLED', $slot['status']);
         $this->assertTrue($slot['locked']);
     }
 
@@ -322,7 +322,7 @@ class KernelFrameBuilderBlueprintTest extends TestCase
         $this->assertNull($slot['actual_sub_domain']);
         $this->assertNull($slot['selection_source']);
         $this->assertNull($slot['filled_at']);
-        $this->assertSame('empty', $slot['status']);
+        $this->assertSame('EMPTY', $slot['status']);
         $this->assertFalse($slot['locked']);
     }
 
@@ -376,7 +376,7 @@ class KernelFrameBuilderBlueprintTest extends TestCase
             $this->assertNull($slot['label'],      "Slot {$i} label devrait être null.");
             $this->assertNull($slot['filled_at'],  "Slot {$i} filled_at devrait être null.");
             $this->assertFalse($slot['locked'],    "Slot {$i} locked devrait être false.");
-            $this->assertSame('available', $slot['status'], "Slot {$i} status devrait être 'available'.");
+            $this->assertSame('EMPTY', $slot['status'], "Slot {$i} status devrait être 'EMPTY'.");
             $this->assertSame($i + 1, $slot['index'], "Slot {$i} index devrait être " . ($i + 1) . ".");
         }
     }
@@ -420,7 +420,7 @@ class KernelFrameBuilderBlueprintTest extends TestCase
         $this->assertNull($slot['subject_index']);
         $this->assertNull($slot['subject_label']);
         $this->assertNull($slot['set_at']);
-        $this->assertSame('empty', $slot['status']);
+        $this->assertSame('EMPTY', $slot['status']);
         $this->assertFalse($slot['locked']);
     }
 
@@ -462,7 +462,7 @@ class KernelFrameBuilderBlueprintTest extends TestCase
         $slot = $this->skeleton()['dominant_ideas'];
 
         $this->assertSame([], $slot['ideas']);
-        $this->assertSame('empty', $slot['status']);
+        $this->assertSame('EMPTY', $slot['status']);
         $this->assertFalse($slot['locked']);
     }
 
@@ -483,6 +483,13 @@ class KernelFrameBuilderBlueprintTest extends TestCase
         $this->assertStringContainsString('active_subject change', $rules['locked_after']);
         $this->assertArrayHasKey('rotation',                       $rules);
         $this->assertStringContainsString('Taxonomy recharge',     $rules['rotation']);
+        $this->assertArrayHasKey('status_progression',             $rules);
+        $this->assertStringContainsString('EMPTY',                 $rules['status_progression']);
+        $this->assertStringContainsString('FILLED',                $rules['status_progression']);
+        $this->assertStringContainsString('5',                     $rules['status_progression']);
+        $this->assertArrayHasKey('locked_semantics',               $rules);
+        $this->assertStringContainsString('LOCKED',                $rules['locked_semantics']);
+        $this->assertStringContainsString('active_subject change', $rules['locked_semantics']);
         $this->assertStringContainsString('active_dominant_idea',  $rules['transmitted_to']);
         $this->assertStringContainsString('active_subject',        $rules['forbidden']);
         $this->assertStringContainsString('5',                     $rules['forbidden']);
@@ -511,7 +518,7 @@ class KernelFrameBuilderBlueprintTest extends TestCase
         $this->assertNull($slot['idea_index']);
         $this->assertNull($slot['idea_label']);
         $this->assertNull($slot['set_at']);
-        $this->assertSame('empty', $slot['status']);
+        $this->assertSame('EMPTY', $slot['status']);
         $this->assertFalse($slot['locked']);
     }
 
@@ -587,7 +594,7 @@ class KernelFrameBuilderBlueprintTest extends TestCase
             $this->assertNull($slot['question_slot']['value'],   "{$variantKey}.question_slot.value devrait être null.");
             $this->assertNull($slot['correct_answer_key'],       "{$variantKey}.correct_answer_key devrait être null.");
             $this->assertNull($slot['sv_slot']['value'],         "{$variantKey}.sv_slot.value devrait être null.");
-            $this->assertSame('empty', $slot['status'],          "{$variantKey}.status devrait être 'empty'.");
+            $this->assertSame('EMPTY', $slot['status'],          "{$variantKey}.status devrait être 'EMPTY'.");
         }
     }
 
@@ -599,7 +606,7 @@ class KernelFrameBuilderBlueprintTest extends TestCase
         foreach (['value', 'filled_at', 'status', 'locked', 'rules', 'traces'] as $key) {
             $this->assertArrayHasKey($key, $qs, "question_slot manque : {$key}");
         }
-        $this->assertSame('empty', $qs['status']);
+        $this->assertSame('EMPTY', $qs['status']);
         $this->assertFalse($qs['locked']);
         $this->assertNull($qs['filled_at']);
     }
@@ -629,7 +636,7 @@ class KernelFrameBuilderBlueprintTest extends TestCase
         foreach (['value', 'filled_at', 'status', 'locked', 'rules', 'traces'] as $key) {
             $this->assertArrayHasKey($key, $sv, "sv_slot manque : {$key}");
         }
-        $this->assertSame('empty', $sv['status']);
+        $this->assertSame('EMPTY', $sv['status']);
         $this->assertFalse($sv['locked']);
         $this->assertNull($sv['filled_at']);
     }
@@ -688,7 +695,7 @@ class KernelFrameBuilderBlueprintTest extends TestCase
             }
             $this->assertNull($ans[$ansKey]['value']);
             $this->assertNull($ans[$ansKey]['filled_at']);
-            $this->assertSame('empty', $ans[$ansKey]['status']);
+            $this->assertSame('EMPTY', $ans[$ansKey]['status']);
             $this->assertFalse($ans[$ansKey]['locked']);
         }
     }
@@ -728,13 +735,13 @@ class KernelFrameBuilderBlueprintTest extends TestCase
         }
     }
 
-    public function test_translation_slots_status_is_pending_at_construction(): void
+    public function test_translation_slots_status_is_empty_at_construction(): void
     {
         $slots = $this->skeleton()['cognitive_slots'];
 
         foreach ($slots as $variantKey => $slot) {
             foreach ($slot['translation_slots'] as $lang => $langSlot) {
-                $this->assertSame('pending', $langSlot['status'], "{$variantKey}.{$lang}.status devrait être 'pending'.");
+                $this->assertSame('EMPTY', $langSlot['status'], "{$variantKey}.{$lang}.status devrait être 'EMPTY'.");
             }
         }
     }
@@ -801,11 +808,26 @@ class KernelFrameBuilderBlueprintTest extends TestCase
     {
         $sh = $this->skeleton()['rules']['statuses_hierarchy'];
 
-        $this->assertArrayHasKey('kernel_level', $sh);
-        $this->assertArrayHasKey('slot_level',   $sh);
-        $this->assertArrayHasKey('rule',         $sh);
-        $this->assertStringContainsString('10',          $sh['kernel_level']);
-        $this->assertStringContainsString('depth_slot',  $sh['slot_level']);
+        $this->assertArrayHasKey('kernel_level',    $sh);
+        $this->assertArrayHasKey('slot_level',      $sh);
+        $this->assertArrayHasKey('slot_enum',       $sh);
+        $this->assertArrayHasKey('locked_semantics',$sh);
+        $this->assertArrayHasKey('rule',            $sh);
+
+        $this->assertStringContainsString('10',         $sh['kernel_level']);
+        $this->assertStringContainsString('depth_slot', $sh['slot_level']);
+
+        $enum = $sh['slot_enum'];
+        $this->assertContains('EMPTY',             $enum);
+        $this->assertContains('FILLED',            $enum);
+        $this->assertContains('VALIDATED_OK',      $enum);
+        $this->assertContains('LOCKED',            $enum);
+        $this->assertContains('REJECTED',          $enum);
+        $this->assertContains('CORRECTION_NEEDED', $enum);
+        $this->assertCount(6, $enum);
+
+        $this->assertStringContainsString('LOCKED',          $sh['locked_semantics']);
+        $this->assertStringContainsString('active_subject',  $sh['locked_semantics']);
     }
 
     public function test_rules_contains_traces_hierarchy(): void
@@ -925,7 +947,7 @@ class KernelFrameBuilderBlueprintTest extends TestCase
 
         $this->assertIsArray($decoded['kernel_code']);
         $this->assertNull($decoded['kernel_code']['value']);
-        $this->assertSame('empty', $decoded['kernel_code']['status']);
+        $this->assertSame('EMPTY', $decoded['kernel_code']['status']);
         $this->assertCount(50, $decoded['subjects_inventory']);
         $this->assertCount(7, $decoded['cognitive_slots']);
         $this->assertCount(10, $decoded['statuses']);
