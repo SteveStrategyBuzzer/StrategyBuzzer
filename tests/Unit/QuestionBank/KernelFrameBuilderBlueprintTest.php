@@ -84,6 +84,7 @@ class KernelFrameBuilderBlueprintTest extends TestCase
             'kernel_code',
             'depth_slot',
             'domain_slot',
+            'rotation_identifier',
             'sub_domain_slot',
             'subjects_inventory',
             'active_subject',
@@ -188,7 +189,7 @@ class KernelFrameBuilderBlueprintTest extends TestCase
 
         foreach ([
             'requested_depth', 'actual_depth', 'selection_source',
-            'filled_at', 'status', 'locked', 'rules', 'traces',
+            'filled_at', 'status', 'locked', 'slot_reference', 'traces',
         ] as $key) {
             $this->assertArrayHasKey($key, $slot, "depth_slot manque : {$key}");
         }
@@ -219,24 +220,29 @@ class KernelFrameBuilderBlueprintTest extends TestCase
         $this->assertFalse($slot['locked']);
     }
 
-    public function test_depth_slot_rules_declare_full_access_contract(): void
+    public function test_depth_slot_slot_reference_declares_full_contract(): void
     {
-        $rules = $this->skeleton()['depth_slot']['rules'];
+        $sr = $this->skeleton()['depth_slot']['slot_reference'];
 
-        $this->assertSame('KernelFrameBuilder',    $rules['creator']);
-        $this->assertSame('KernelRotationPlanner', $rules['filler']);
-        $this->assertSame('DepthNeedMatrix',        $rules['driven_by']);
-        $this->assertSame('Taxonomy',               $rules['transmitted_to']);
-        $this->assertIsArray($rules['depends_on']);
-        $this->assertEmpty($rules['depends_on'], 'depth_slot has no dependencies');
-        $this->assertContains('Taxonomy',        $rules['read_by']);
-        $this->assertContains('KEY_STRUCTURE',   $rules['read_by']);
-        $this->assertContains('QuestionIntent',  $rules['read_by']);
-        $this->assertContains('Phase1',          $rules['read_by']);
-        $this->assertContains('READY_BANK',      $rules['read_by']);
-        $this->assertStringContainsString('KernelRotationPlanner', $rules['write_access']);
-        $this->assertStringContainsString('depth_slot',            $rules['forbidden']);
-        $this->assertArrayHasKey('expected_content',               $rules);
+        $this->assertSame('Profondeur cognitive active du noyau.', $sr['purpose']);
+        $this->assertSame('KernelRotationPlanner', $sr['authority']);
+        $this->assertSame('KernelRotationPlanner', $sr['producer']);
+        $this->assertSame('DepthNeedMatrix',        $sr['value_source']);
+        $this->assertIsArray($sr['readable_by']);
+        $this->assertContains('Taxonomy',       $sr['readable_by']);
+        $this->assertContains('KEY_STRUCTURE',  $sr['readable_by']);
+        $this->assertContains('QuestionIntent', $sr['readable_by']);
+        $this->assertIsArray($sr['consumed_by']);
+        $this->assertContains('Taxonomy',      $sr['consumed_by']);
+        $this->assertContains('KEY_STRUCTURE', $sr['consumed_by']);
+        $this->assertIsArray($sr['constraints']);
+        $this->assertNotEmpty($sr['constraints']);
+        $this->assertIsArray($sr['forbidden']);
+        $this->assertNotEmpty($sr['forbidden']);
+        $this->assertIsArray($sr['dependencies']);
+        $this->assertContains('DepthNeedMatrix', $sr['dependencies']);
+        $this->assertSame('EMPTY -> FILLED -> LOCKED', $sr['lifecycle']);
+        $this->assertArrayHasKey('stored_value', $sr);
     }
 
     // =========================================================================
@@ -249,7 +255,7 @@ class KernelFrameBuilderBlueprintTest extends TestCase
 
         foreach ([
             'requested_domain', 'actual_domain', 'selection_source',
-            'filled_at', 'status', 'locked', 'rules', 'traces',
+            'filled_at', 'status', 'locked', 'slot_reference', 'traces',
         ] as $key) {
             $this->assertArrayHasKey($key, $slot, "domain_slot manque : {$key}");
         }
@@ -280,27 +286,106 @@ class KernelFrameBuilderBlueprintTest extends TestCase
         $this->assertFalse($slot['locked']);
     }
 
-    public function test_domain_slot_rules_declare_full_access_contract(): void
+    public function test_domain_slot_slot_reference_declares_full_contract(): void
     {
-        $rules = $this->skeleton()['domain_slot']['rules'];
+        $sr = $this->skeleton()['domain_slot']['slot_reference'];
 
-        $this->assertSame('KernelFrameBuilder',    $rules['creator']);
-        $this->assertSame('KernelRotationPlanner', $rules['filler']);
-        $this->assertSame('DomainCycle',           $rules['driven_by']);
-        $this->assertContains('depth_slot',        $rules['depends_on']);
-        $this->assertSame('Taxonomy',              $rules['transmitted_to']);
-        $this->assertContains('Taxonomy',        $rules['read_by']);
-        $this->assertContains('KEY_STRUCTURE',   $rules['read_by']);
-        $this->assertContains('QuestionIntent',  $rules['read_by']);
-        $this->assertContains('Phase1',          $rules['read_by']);
-        $this->assertContains('READY_BANK',      $rules['read_by']);
-        $this->assertStringContainsString('KernelRotationPlanner', $rules['write_access']);
-        $this->assertStringContainsString('domain_slot',           $rules['forbidden']);
-        $this->assertArrayHasKey('expected_content',               $rules);
+        $this->assertSame('Domaine actif du noyau.', $sr['purpose']);
+        $this->assertSame('KernelRotationPlanner', $sr['authority']);
+        $this->assertSame('KernelRotationPlanner', $sr['producer']);
+        $this->assertSame('DomainCycle',            $sr['value_source']);
+        $this->assertIsArray($sr['readable_by']);
+        $this->assertContains('Taxonomy',       $sr['readable_by']);
+        $this->assertContains('KEY_STRUCTURE',  $sr['readable_by']);
+        $this->assertContains('QuestionIntent', $sr['readable_by']);
+        $this->assertIsArray($sr['consumed_by']);
+        $this->assertContains('Taxonomy',      $sr['consumed_by']);
+        $this->assertContains('KEY_STRUCTURE', $sr['consumed_by']);
+        $this->assertIsArray($sr['constraints']);
+        $this->assertNotEmpty($sr['constraints']);
+        $this->assertIsArray($sr['forbidden']);
+        $this->assertNotEmpty($sr['forbidden']);
+        $this->assertIsArray($sr['dependencies']);
+        $this->assertContains('DomainCycle', $sr['dependencies']);
+        $this->assertSame('EMPTY -> FILLED -> LOCKED', $sr['lifecycle']);
+        $this->assertArrayHasKey('stored_value', $sr);
     }
 
     // =========================================================================
-    // 5. sub_domain_slot
+    // 5. rotation_identifier
+    // =========================================================================
+
+    public function test_rotation_identifier_slot_exists_in_frame(): void
+    {
+        $frame = $this->skeleton();
+        $this->assertArrayHasKey('rotation_identifier', $frame, 'rotation_identifier slot manquant dans le Blueprint Frame');
+    }
+
+    public function test_rotation_identifier_slot_has_required_keys(): void
+    {
+        $slot = $this->skeleton()['rotation_identifier'];
+
+        foreach (['value', 'status', 'slot_reference', 'traces'] as $key) {
+            $this->assertArrayHasKey($key, $slot, "rotation_identifier manque : {$key}");
+        }
+    }
+
+    public function test_rotation_identifier_slot_is_empty_by_default(): void
+    {
+        $slot = $this->skeleton()['rotation_identifier'];
+
+        $this->assertNull($slot['value']);
+        $this->assertSame('EMPTY', $slot['status']);
+        $this->assertIsArray($slot['traces']);
+        $this->assertEmpty($slot['traces']);
+    }
+
+    public function test_rotation_identifier_slot_reference_declares_full_contract(): void
+    {
+        $sr = $this->skeleton()['rotation_identifier']['slot_reference'];
+
+        $this->assertSame('Identifiant unique de la rotation.',  $sr['purpose']);
+        $this->assertSame('KernelRotationPlanner', $sr['authority']);
+        $this->assertSame('KernelRotationPlanner', $sr['producer']);
+        $this->assertIsArray($sr['readable_by']);
+        $this->assertContains('KEY_STRUCTURE', $sr['readable_by']);
+        $this->assertContains('KLD',           $sr['readable_by']);
+        $this->assertIsArray($sr['consumed_by']);
+        $this->assertContains('KEY_STRUCTURE', $sr['consumed_by']);
+        $this->assertContains('KLD',           $sr['consumed_by']);
+        $this->assertIsArray($sr['constraints']);
+        $this->assertNotEmpty($sr['constraints']);
+        $this->assertIsArray($sr['forbidden']);
+        $this->assertNotEmpty($sr['forbidden']);
+        $this->assertIsArray($sr['dependencies']);
+        $this->assertSame('EMPTY -> FILLED -> LOCKED', $sr['lifecycle']);
+        $this->assertArrayHasKey('stored_value', $sr);
+    }
+
+    public function test_rotation_identifier_forbidden_does_not_mention_yy_xx_as_format(): void
+    {
+        // rotation_identifier ne doit jamais imposer le format yy-xx du kernel_code
+        $sr = $this->skeleton()['rotation_identifier']['slot_reference'];
+
+        $constraintsText = implode(' ', $sr['constraints']);
+        $this->assertStringNotContainsString('yy-xx', $constraintsText, 'constraints ne doit pas imposer le format yy-xx');
+
+        // La contrainte d'absence de format doit être présente
+        $forbiddenText = implode(' ', $sr['forbidden']);
+        $this->assertStringContainsString('yy-xx', $forbiddenText, 'forbidden doit interdire explicitement le format yy-xx');
+    }
+
+    public function test_rotation_identifier_is_not_kernel_code(): void
+    {
+        $sr = $this->skeleton()['rotation_identifier']['slot_reference'];
+
+        $forbiddenText = implode(' ', $sr['forbidden']);
+        $this->assertStringContainsString('kernel_code', $forbiddenText,
+            'forbidden doit interdire l\'usage comme kernel_code');
+    }
+
+    // =========================================================================
+    // 6. sub_domain_slot
     // =========================================================================
 
     public function test_sub_domain_slot_has_required_keys(): void

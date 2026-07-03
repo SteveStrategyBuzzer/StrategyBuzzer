@@ -107,6 +107,7 @@ class KernelFrameBuilder
             'kernel_code'          => $this->buildKernelCodeSlot(),
             'depth_slot'           => $this->buildDepthSlot($intent),
             'domain_slot'          => $this->buildDomainSlot($intent),
+            'rotation_identifier'  => $this->buildRotationIdentifierSlot(),
             'sub_domain_slot'      => $this->buildSubDomainSlot($intent),
             'subjects_inventory'   => $this->buildSubjectsInventory(),
             'active_subject'       => $this->buildActiveSubjectSlot(),
@@ -137,7 +138,7 @@ class KernelFrameBuilder
      *
      * Construction PROGRESSIVE — 5 propriétaires successifs :
      *   Step 1 — KernelFrameBuilder   : réserve le slot (value=null)
-     *   Step 2 — KernelRotationPlanner: écrit le préfixe yy-xx (Depth+Domain)
+     *   Step 2 — KernelRotationPlanner: remplit depth_slot, domain_slot et rotation_identifier
      *   Step 3 — Taxonomy             : écrit le segment xxx-xxx-xxx (SubDomain+Sujet+Idée)
      *   Step 4 — KEY_STRUCTURE        : valide le pré-code + ks_hash
      *   Step 5 — KLD                  : complète le suffixe zz + kld_hash → verrouille
@@ -159,7 +160,7 @@ class KernelFrameBuilder
             'locked'  => false,
             'owners'  => [
                 ['step' => 1, 'component' => 'KernelFrameBuilder',       'action' => 'réserve le slot (value=null)'],
-                ['step' => 2, 'component' => 'KernelRotationPlanner',     'action' => 'écrit le préfixe yy-xx (Depth+Domain)'],
+                ['step' => 2, 'component' => 'KernelRotationPlanner',     'action' => 'remplit depth_slot, domain_slot et rotation_identifier'],
                 ['step' => 3, 'component' => 'Taxonomy (TaxonomyReader)', 'action' => 'écrit le segment xxx-xxx-xxx (SubDomain+Sujet+Idée)'],
                 ['step' => 4, 'component' => 'KEY_STRUCTURE',             'action' => 'valide le pré-code + pose ks_hash'],
                 ['step' => 5, 'component' => 'KLD',                       'action' => 'complète le suffixe zz + pose kld_hash → verrouille'],
@@ -205,18 +206,33 @@ class KernelFrameBuilder
             'filled_at'        => null,
             'status'           => $hasDepth ? 'FILLED' : 'EMPTY',
             'locked'           => $hasDepth,
-            'rules'            => [
-                'creator'          => 'KernelFrameBuilder',
-                'filler'           => 'KernelRotationPlanner',
-                'driven_by'        => 'DepthNeedMatrix',
-                'depends_on'       => [],
-                'allowed_values'   => '1–10',
-                'read_by'          => ['Taxonomy', 'KEY_STRUCTURE', 'QuestionIntent', 'Phase1', 'READY_BANK'],
-                'write_access'     => 'KernelRotationPlanner uniquement',
-                'locked_after'     => 'remplissage par KernelRotationPlanner',
-                'transmitted_to'   => 'Taxonomy',
-                'forbidden'        => 'Aucune autre brique ne peut modifier depth_slot.',
-                'expected_content' => 'requested_depth et actual_depth = entier 1–10',
+            'slot_reference' => [
+                'purpose'      => 'Profondeur cognitive active du noyau.',
+                'authority'    => 'KernelRotationPlanner',
+                'producer'     => 'KernelRotationPlanner',
+                'value_source' => 'DepthNeedMatrix',
+                'stored_value' => '{ depth: int }',
+                'readable_by'  => ['Taxonomy', 'KEY_STRUCTURE', 'QuestionIntent', 'Phase 1', 'Audit'],
+                'consumed_by'  => ['Taxonomy', 'KEY_STRUCTURE'],
+                'lifecycle'    => 'EMPTY -> FILLED -> LOCKED',
+                'constraints'  => [
+                    'Une seule profondeur active par noyau.',
+                    'Depth autorisés : 4, 6, 7, 8, 9.',
+                    'Depth 10 interdit.',
+                    'Depth 1-2 refusés.',
+                    "Tout autre depth non défini doit être refusé jusqu'à décision architecturale officielle.",
+                ],
+                'forbidden'    => [
+                    'Inventer une profondeur.',
+                    'Utiliser une profondeur hors DepthNeedMatrix.',
+                    'Modifier cette valeur par Taxonomy, KEY_STRUCTURE, KLD, QuestionIntent, Phase 1 ou toute brique aval.',
+                    'Créer ou modifier un sous-domaine, sujet, idée dominante, question, réponse ou cognitif.',
+                ],
+                'dependencies' => [
+                    'DepthNeedMatrix',
+                    'BankTarget',
+                    'Blueprint schema compatible',
+                ],
             ],
             'traces' => [],
         ];
@@ -248,18 +264,80 @@ class KernelFrameBuilder
             'filled_at'        => null,
             'status'           => $hasDomain ? 'FILLED' : 'EMPTY',
             'locked'           => $hasDomain,
-            'rules'            => [
-                'creator'          => 'KernelFrameBuilder',
-                'filler'           => 'KernelRotationPlanner',
-                'driven_by'        => 'DomainCycle',
-                'depends_on'       => ['depth_slot'],
-                'allowed_values'   => 'domaines valides dans taxonomy.json',
-                'read_by'          => ['Taxonomy', 'KEY_STRUCTURE', 'QuestionIntent', 'Phase1', 'READY_BANK'],
-                'write_access'     => 'KernelRotationPlanner uniquement',
-                'locked_after'     => 'remplissage par KernelRotationPlanner',
-                'transmitted_to'   => 'Taxonomy',
-                'forbidden'        => 'Aucune autre brique ne peut modifier domain_slot.',
-                'expected_content' => 'libellé domaine issu de taxonomy.json — ex: "Géographie"',
+            'slot_reference' => [
+                'purpose'      => 'Domaine actif du noyau.',
+                'authority'    => 'KernelRotationPlanner',
+                'producer'     => 'KernelRotationPlanner',
+                'value_source' => 'DomainCycle',
+                'stored_value' => '{ domain_id: string, domain_code: string }',
+                'readable_by'  => ['Taxonomy', 'KEY_STRUCTURE', 'QuestionIntent', 'Phase 1', 'Audit'],
+                'consumed_by'  => ['Taxonomy', 'KEY_STRUCTURE'],
+                'lifecycle'    => 'EMPTY -> FILLED -> LOCKED',
+                'constraints'  => [
+                    'Un seul domaine actif par noyau.',
+                    'Valeur exclusivement issue de DomainCycle.',
+                    'Aucun saut de cycle.',
+                    'Aucune optimisation locale.',
+                    'Aucune heuristique propre à KernelRotationPlanner.',
+                ],
+                'forbidden'    => [
+                    'Inventer un domaine.',
+                    'Choisir un domaine hors DomainCycle.',
+                    'Modifier cette valeur par Taxonomy, KEY_STRUCTURE, KLD, QuestionIntent, Phase 1 ou toute brique aval.',
+                ],
+                'dependencies' => [
+                    'DomainCycle',
+                    'RotationConfig',
+                    'Blueprint schema compatible',
+                ],
+            ],
+            'traces' => [],
+        ];
+    }
+
+    /**
+     * rotation_identifier — Identifiant unique de la rotation produit par KernelRotationPlanner.
+     *
+     * created_by    : KernelFrameBuilder (slot vide réservé)
+     * filled_by     : KernelRotationPlanner
+     * read_by       : KEY_STRUCTURE, KLD, QuestionIntent, Audit
+     * write_access  : KernelRotationPlanner uniquement
+     * locked_after  : remplissage par KernelRotationPlanner
+     * forbidden     : Ne doit jamais être traité comme kernel_code ou kernel_code_prefix
+     * status_initial: 'empty'
+     * traces        : append-only par KernelRotationPlanner
+     */
+    private function buildRotationIdentifierSlot(): array
+    {
+        return [
+            'value'  => null,
+            'status' => 'EMPTY',
+            'slot_reference' => [
+                'purpose'      => 'Identifiant unique de la rotation.',
+                'authority'    => 'KernelRotationPlanner',
+                'producer'     => 'KernelRotationPlanner',
+                'value_source' => 'Contexte de rotation produit à partir de depth_slot et domain_slot.',
+                'stored_value' => 'string',
+                'readable_by'  => ['Taxonomy', 'KEY_STRUCTURE', 'KLD', 'QuestionIntent', 'Audit'],
+                'consumed_by'  => ['KEY_STRUCTURE', 'KLD'],
+                'lifecycle'    => 'EMPTY -> FILLED -> LOCKED',
+                'constraints'  => [
+                    'Unique dans le périmètre de rotation.',
+                    'Aucun format imposé dans ce contrat.',
+                    'Ne doit jamais être traité comme kernel_code.',
+                    'Ne doit jamais être traité comme kernel_code_prefix.',
+                ],
+                'forbidden'    => [
+                    'Utiliser comme kernel_code.',
+                    'Utiliser comme préfixe de kernel_code.',
+                    'Utiliser comme fragment du futur kernel_code.',
+                    'Imposer un format yy-xx.',
+                    'Modifier cette valeur par Taxonomy, KEY_STRUCTURE, KLD, QuestionIntent, Phase 1 ou toute brique aval.',
+                ],
+                'dependencies' => [
+                    'depth_slot produit',
+                    'domain_slot produit',
+                ],
             ],
             'traces' => [],
         ];
@@ -1040,7 +1118,7 @@ class KernelFrameBuilder
     {
         return [
             'kernel_code_format'              => 'yy-xx-xxx-xxx-xxx-zz',
-            'kernel_code_builder'             => 'KernelRotationPlanner(yy-xx) + Taxonomy(xxx-xxx-xxx) + KEY_STRUCTURE(validation) + KLD(zz)',
+            'kernel_code_builder'             => 'KernelRotationPlanner(rotation_identifier) + Taxonomy(xxx-xxx-xxx) + KEY_STRUCTURE(validation) + KLD(zz)',
             'kernel_code_frozen_after'        => 'KLD validation (kld_hash posé)',
             'subjects_inventory_max'          => self::SUBJECTS_INVENTORY_MAX,
             'dominant_ideas_max'              => self::DOMINANT_IDEAS_MAX,
@@ -1103,6 +1181,7 @@ class KernelFrameBuilder
             'dependency_graph'                => [
                 'depth_slot'           => [],
                 'domain_slot'          => ['depth_slot'],
+                'rotation_identifier'  => ['depth_slot', 'domain_slot'],
                 'sub_domain_slot'      => ['depth_slot', 'domain_slot'],
                 'subjects_inventory'   => ['sub_domain_slot'],
                 'active_subject'       => ['subjects_inventory'],
@@ -1126,9 +1205,9 @@ class KernelFrameBuilder
     {
         return [
             'step_1_blueprint_frame'   => 'KernelFrameBuilder — crée le contenant vide (ce fichier)',
-            'step_2_depth_domain'      => 'KernelRotationPlanner (DepthNeedMatrix + DomainCycle) — remplit depth_slot + domain_slot + début kernel_code yy-xx',
+            'step_2_depth_domain'      => 'KernelRotationPlanner (DepthNeedMatrix + DomainCycle) — remplit depth_slot + domain_slot + rotation_identifier',
             'step_3_taxonomy'          => 'TaxonomyReader via KernelRotationPlanner — remplit sub_domain_slot + subjects_inventory + active_subject + dominant_ideas + active_dominant_idea + milieu kernel_code xxx-xxx-xxx',
-            'step_4_key_structure'     => 'IntentKeyBuilder.KEY_STRUCTURE — valide égrainage + cohérence + ks_hash + précode yy-xx-xxx-xxx-xxx',
+            'step_4_key_structure'     => 'IntentKeyBuilder.KEY_STRUCTURE — valide égrainage + cohérence + ks_hash + précode xxx-xxx-xxx',
             'step_5_kld'               => 'IntentKeyBuilder.KLD — anti-doublon directionnel + kld_hash + suffixe zz + verrouille kernel_code complet',
             'step_6_question_intent'   => 'QuestionIntent — verrouille intent_key + semantic_key + prépare 7 variant_keys',
             'step_7_phase1'            => 'KernelContentBuilder — remplit cognitive_slots (question_slot + answer_slots + sv_slot EN)',

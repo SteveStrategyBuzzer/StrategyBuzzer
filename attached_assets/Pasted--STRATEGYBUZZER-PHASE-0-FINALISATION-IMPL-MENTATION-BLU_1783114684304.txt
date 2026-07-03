@@ -1,0 +1,391 @@
+# STRATEGYBUZZER — PHASE 0 — FINALISATION IMPLÉMENTATION BLUEPRINT
+
+## Objectif
+
+Nous ne passons pas encore à KernelRotationPlanner.
+
+Avant toute nouvelle brique, il faut terminer l’implémentation réelle du **Kernel Blueprint**.
+
+Une brique StrategyBuzzer est considérée terminée uniquement lorsque les 4 niveaux sont complets :
+
+1. Architecture
+2. Contrat
+3. Implémentation
+4. Validation
+
+Pour le Blueprint :
+
+```text
+Architecture   ✅ terminée
+Contrat        ✅ verrouillé
+Implémentation ❌ partielle
+Validation     ❌ à faire
+```
+
+La tâche actuelle est donc :
+
+```text
+Aligner le code réel du Blueprint avec son contrat verrouillé.
+```
+
+---
+
+# RÈGLES ABSOLUES
+
+Ne pas extrapoler.
+
+Ne pas créer de nouvelle brique.
+
+Ne pas créer KernelRotationPlanner.
+
+Ne pas créer DepthNeedMatrix.
+
+Ne pas créer DomainCycle.
+
+Ne pas créer RotationConfig.
+
+Ne pas créer BankTarget.
+
+Ne pas modifier Taxonomy.
+
+Ne pas modifier KEY_STRUCTURE.
+
+Ne pas modifier KLD.
+
+Ne pas modifier QuestionIntent.
+
+Ne pas modifier Phase 1.
+
+Ne pas modifier READY_BANK.
+
+Ne pas modifier Gameplay.
+
+Ne pas inventer de statut.
+
+Ne pas inventer d’événement.
+
+Ne pas inventer de mécanisme d’écriture.
+
+---
+
+# CONTRAT BLUEPRINT À RESPECTER
+
+Le Kernel Blueprint est un objet de description, de stockage et de références métier textuelles non exécutables.
+
+Il définit la structure officielle d’un noyau.
+
+Il contient les slots officiels du noyau.
+
+Chaque slot doit contenir :
+
+* une valeur, si elle existe ;
+* un contrat `slot_reference` ;
+* des références métier textuelles servant de guide aux briques suivantes.
+
+Les références métier du Blueprint sont :
+
+* prescriptives ;
+* non exécutables.
+
+Le Blueprint ne choisit rien.
+
+Il ne calcule rien.
+
+Il ne valide rien.
+
+Il ne génère aucun contenu.
+
+Il ne déduit aucune valeur.
+
+Il stocke seulement ce que les briques autorisées produisent selon leur contrat.
+
+---
+
+# FORMAT OFFICIEL D’UN SLOT_REFERENCE
+
+Chaque `slot_reference` doit utiliser exactement ces 11 champs :
+
+```yaml
+slot_reference:
+  purpose:
+  authority:
+  producer:
+  value_source:
+  stored_value:
+  readable_by:
+  consumed_by:
+  lifecycle:
+  constraints:
+  forbidden:
+  dependencies:
+```
+
+Ne pas ajouter de champ.
+
+Ne pas supprimer de champ.
+
+Ne pas renommer de champ.
+
+---
+
+# CORRECTIONS BLUEPRINT OBLIGATOIRES
+
+Dans le code réel du Blueprint, corriger uniquement les éléments suivants :
+
+## 1. Supprimer les anciennes références interdites
+
+Supprimer ou remplacer toute référence qui associe la rotation à :
+
+```text
+yy-xx
+kernel_code_prefix
+préfixe kernel_code
+KernelRotationPlanner(yy-xx)
+```
+
+Ces notions sont interdites pour la phase Blueprint actuelle.
+
+---
+
+## 2. Remplacer par la notion officielle
+
+La notion officielle est :
+
+```text
+rotation_identifier
+```
+
+Règles :
+
+```text
+rotation_identifier n’est pas kernel_code.
+rotation_identifier n’est pas kernel_code_prefix.
+rotation_identifier n’est pas un fragment garanti du futur kernel_code.
+rotation_identifier n’a aucun format imposé dans ce contrat.
+rotation_identifier sert uniquement à identifier une rotation.
+```
+
+---
+
+## 3. Ajouter le slot `rotation_identifier`
+
+Ajouter `rotation_identifier` au Blueprint uniquement si le slice réel confirme l’emplacement naturel des slots.
+
+Le slot doit respecter ce contrat :
+
+```yaml
+rotation_identifier:
+  slot_reference:
+    purpose: "Identifiant unique de la rotation."
+    authority: "KernelRotationPlanner"
+    producer: "KernelRotationPlanner"
+    value_source: "Contexte de rotation produit à partir de depth_slot et domain_slot."
+    stored_value: "string"
+    readable_by:
+      - "Taxonomy"
+      - "KEY_STRUCTURE"
+      - "KLD"
+      - "QuestionIntent"
+      - "Audit"
+    consumed_by:
+      - "KEY_STRUCTURE"
+      - "KLD"
+    lifecycle: "EMPTY -> FILLED -> LOCKED"
+    constraints:
+      - "Unique dans le périmètre de rotation."
+      - "Aucun format imposé dans ce contrat."
+      - "Ne doit jamais être traité comme kernel_code."
+      - "Ne doit jamais être traité comme kernel_code_prefix."
+    forbidden:
+      - "Utiliser comme kernel_code."
+      - "Utiliser comme préfixe de kernel_code."
+      - "Utiliser comme fragment du futur kernel_code."
+      - "Imposer un format yy-xx."
+      - "Modifier cette valeur par Taxonomy, KEY_STRUCTURE, KLD, QuestionIntent, Phase 1 ou toute brique aval."
+    dependencies:
+      - "depth_slot produit"
+      - "domain_slot produit"
+```
+
+---
+
+## 4. Migrer `depth_slot`
+
+`depth_slot` doit utiliser exactement ce contrat :
+
+```yaml
+depth_slot:
+  slot_reference:
+    purpose: "Profondeur cognitive active du noyau."
+    authority: "KernelRotationPlanner"
+    producer: "KernelRotationPlanner"
+    value_source: "DepthNeedMatrix"
+    stored_value: "{ depth: int }"
+    readable_by:
+      - "Taxonomy"
+      - "KEY_STRUCTURE"
+      - "QuestionIntent"
+      - "Phase 1"
+      - "Audit"
+    consumed_by:
+      - "Taxonomy"
+      - "KEY_STRUCTURE"
+    lifecycle: "EMPTY -> FILLED -> LOCKED"
+    constraints:
+      - "Une seule profondeur active par noyau."
+      - "Depth autorisés : 4, 6, 7, 8, 9."
+      - "Depth 10 interdit."
+      - "Depth 1-2 refusés."
+      - "Tout autre depth non défini doit être refusé jusqu'à décision architecturale officielle."
+    forbidden:
+      - "Inventer une profondeur."
+      - "Utiliser une profondeur hors DepthNeedMatrix."
+      - "Modifier cette valeur par Taxonomy, KEY_STRUCTURE, KLD, QuestionIntent, Phase 1 ou toute brique aval."
+      - "Créer ou modifier un sous-domaine, sujet, idée dominante, question, réponse ou cognitif."
+    dependencies:
+      - "DepthNeedMatrix"
+      - "BankTarget"
+      - "Blueprint schema compatible"
+```
+
+---
+
+## 5. Migrer `domain_slot`
+
+`domain_slot` doit utiliser exactement ce contrat :
+
+```yaml
+domain_slot:
+  slot_reference:
+    purpose: "Domaine actif du noyau."
+    authority: "KernelRotationPlanner"
+    producer: "KernelRotationPlanner"
+    value_source: "DomainCycle"
+    stored_value: "{ domain_id: string, domain_code: string }"
+    readable_by:
+      - "Taxonomy"
+      - "KEY_STRUCTURE"
+      - "QuestionIntent"
+      - "Phase 1"
+      - "Audit"
+    consumed_by:
+      - "Taxonomy"
+      - "KEY_STRUCTURE"
+    lifecycle: "EMPTY -> FILLED -> LOCKED"
+    constraints:
+      - "Un seul domaine actif par noyau."
+      - "Valeur exclusivement issue de DomainCycle."
+      - "Aucun saut de cycle."
+      - "Aucune optimisation locale."
+      - "Aucune heuristique propre à KernelRotationPlanner."
+    forbidden:
+      - "Inventer un domaine."
+      - "Choisir un domaine hors DomainCycle."
+      - "Modifier cette valeur par Taxonomy, KEY_STRUCTURE, KLD, QuestionIntent, Phase 1 ou toute brique aval."
+    dependencies:
+      - "DomainCycle"
+      - "RotationConfig"
+      - "Blueprint schema compatible"
+```
+
+---
+
+# LIMITES STRICTES
+
+Cette tâche ne doit pas implémenter les composants suivants :
+
+```text
+KernelRotationPlanner
+DepthNeedMatrix
+DomainCycle
+RotationConfig
+BankTarget
+```
+
+Ils peuvent être mentionnés dans `slot_reference` comme contrats ou dépendances, mais ne doivent pas être créés maintenant.
+
+---
+
+# MÉTHODE OBLIGATOIRE
+
+Avant tout patch :
+
+```text
+GREP -> SLICE
+```
+
+Fournir les slices exacts de :
+
+1. `KernelFrameBuilder` autour des mentions `yy-xx`.
+2. `KernelFrameBuilder` autour des mentions `kernel_code_prefix`.
+3. `KernelFrameBuilder` autour de `buildDepthSlot`.
+4. `KernelFrameBuilder` autour de `buildDomainSlot`.
+5. L’emplacement réel où les slots Blueprint sont assemblés.
+6. Toute mention actuelle de `rotation_identifier`, s’il y en a une.
+
+Si un ancrage exact n’existe pas :
+
+```text
+BLOCAGE — ancrage absent
+```
+
+---
+
+# PATCH AUTORISÉ
+
+Après les slices seulement, produire un patch minimal qui fait uniquement :
+
+1. retrait/remplacement des anciennes références `yy-xx` ;
+2. retrait/remplacement des anciennes références `kernel_code_prefix` ;
+3. migration de `depth_slot` vers `slot_reference` 11 champs ;
+4. migration de `domain_slot` vers `slot_reference` 11 champs ;
+5. ajout de `rotation_identifier` au Blueprint si l’emplacement réel est confirmé.
+
+Aucun autre changement.
+
+---
+
+# VALIDATION OBLIGATOIRE APRÈS PATCH
+
+Après patch, exécuter :
+
+```bash
+php -l app/Services/QuestionBank/KernelFrameBuilder.php
+```
+
+Puis afficher :
+
+```bash
+grep -RIn "yy-xx\|kernel_code_prefix\|rotation_identifier\|slot_reference" app/Services/QuestionBank/KernelFrameBuilder.php
+```
+
+Puis afficher les zones modifiées avec :
+
+```bash
+nl -ba app/Services/QuestionBank/KernelFrameBuilder.php | sed -n 'ZONE_A,ZONE_Bp'
+```
+
+Adapter `ZONE_A,ZONE_B` aux lignes réellement modifiées.
+
+---
+
+# SORTIE ATTENDUE
+
+Répondre avec :
+
+1. Slices avant patch.
+2. Patch appliqué.
+3. Résultat `php -l`.
+4. Résultat `grep`.
+5. Slices après patch.
+6. Validation finale :
+
+```text
+Blueprint implementation alignment:
+Architecture: OK
+Contract: OK
+Implementation: OK / NON
+Validation: OK / NON
+```
+
+Ne pas passer à KernelRotationPlanner tant que cette validation n’est pas OK.
