@@ -524,6 +524,27 @@
     }
   },
 
+  "Science": {
+    "Sciences": {
+      "ADN": {
+        "knowledge_frequency": 7,
+        "idees_dominantes": ["double_hélice", "Watson", "Franklin", "génome", "transcription"]
+      },
+      "Trou_noir": {
+        "knowledge_frequency": 6,
+        "idees_dominantes": ["singularité", "Hawking", "horizon", "image", "Sagittarius"]
+      },
+      "Radioactivité": {
+        "knowledge_frequency": 6,
+        "idees_dominantes": ["Curie", "demi-vie", "isotope", "Becquerel", "fission"]
+      },
+      "Photosynthèse": {
+        "knowledge_frequency": 7,
+        "idees_dominantes": ["chlorophylle", "CO2", "lumière", "Calvin", "chloroplaste"]
+      }
+    }
+  },
+
   "Général": {
     "Sciences": {
       "ADN": {

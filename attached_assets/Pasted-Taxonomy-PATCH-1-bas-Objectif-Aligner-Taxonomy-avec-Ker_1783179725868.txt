@@ -1,0 +1,71 @@
+Taxonomy — PATCH 1 = bas
+
+Objectif :
+Aligner Taxonomy avec KernelRotationPlanner.
+
+Décision verrouillée :
+- science est un domaine Gameplay officiel.
+- KernelRotationPlanner reste inchangé.
+- general / Général n’est pas un domaine Gameplay.
+- Taxonomy doit contenir une racine "Science".
+- TaxonomyReader doit résoudre les domain_code du noyau vers les clés réelles de taxonomy.json.
+- Ne jamais mapper science vers Général.
+- Ne jamais utiliser Général comme fallback pour science.
+
+Fichiers concernés :
+1. resources/rotation/taxonomy.json
+2. app/Services/QuestionBank/Rotation/TaxonomyReader.php
+3. tests/Unit/QuestionBank/Rotation/TaxonomyReaderTest.php
+
+PATCH 1 = bas : resources/rotation/taxonomy.json
+
+Modification exacte :
+Ajouter une nouvelle racine "Science" au même niveau que :
+"Géographie", "Histoire", "Faune", "Art", "Sport", "Cinéma", "Cuisine", "Général"
+
+Données exactes à ajouter :
+utiliser le contenu actuellement sous :
+"Général" -> "Sciences"
+
+Nouvelle structure attendue :
+"Science": {
+  "Sciences": {
+    "ADN": {
+      "knowledge_frequency": 7,
+      "idees_dominantes": ["double_hélice", "Watson", "Franklin", "génome", "transcription"]
+    },
+    "Trou_noir": {
+      "knowledge_frequency": 6,
+      "idees_dominantes": ["singularité", "Hawking", "horizon", "image", "Sagittarius"]
+    },
+    "Radioactivité": {
+      "knowledge_frequency": 6,
+      "idees_dominantes": ["Curie", "demi-vie", "isotope", "Becquerel", "fission"]
+    },
+    "Photosynthèse": {
+      "knowledge_frequency": 7,
+      "idees_dominantes": ["chlorophylle", "CO2", "lumière", "Calvin", "chloroplaste"]
+    }
+  }
+}
+
+Règles :
+- Ne supprime pas "Général".
+- Ne renomme pas "Général".
+- Ne déplace pas encore les données hors de "Général".
+- Duplique seulement "Général" -> "Sciences" dans une nouvelle racine "Science".
+- Ne modifie aucun autre domaine.
+- Ne change pas KernelRotationPlanner.
+
+Avant patch, affiche :
+grep -n '"Cuisine"\|"Général"\|"Science"' resources/rotation/taxonomy.json
+nl -ba resources/rotation/taxonomy.json | sed -n '440,610p'
+
+Après patch, exécute :
+php -r 'json_decode(file_get_contents("resources/rotation/taxonomy.json"), true); echo json_last_error_msg(), PHP_EOL;'
+grep -n '"Science"\|"Général"' resources/rotation/taxonomy.json
+nl -ba resources/rotation/taxonomy.json | sed -n '520,640p'
+git diff -- resources/rotation/taxonomy.json
+
+Ne fais que ce patch.
+N’ajoute aucun mapping dans TaxonomyReader dans ce patch.
