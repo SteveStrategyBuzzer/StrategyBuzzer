@@ -1,0 +1,193 @@
+TaxonomyProgressManager — VALIDATION FINALE DU CONTRAT
+
+Le document technique est validé avec les corrections suivantes.
+
+===========================================================
+RESPONSABILITÉ UNIQUE
+===========================================================
+
+KernelRotationPlanner reste l'unique autorité de :
+
+- Depth
+- DomainCycle
+- domain_code
+- ordre de rotation
+
+TaxonomyProgressManager reste l'unique autorité de :
+
+- active_sub_domain
+- active_subject
+- active_dominant_idea
+
+Aucune autre brique ne peut :
+
+- changer de sous-domaine
+- changer de sujet
+- changer d'idée dominante
+- remettre le curseur à zéro
+- sauter une étape
+
+===========================================================
+SOURCE DE VÉRITÉ
+===========================================================
+
+taxonomy.json est l'unique source de vérité pour :
+
+- sous-domaines
+- sujets
+- idées dominantes
+- knowledge_frequency
+
+La base de données ne contient jamais une copie de taxonomy.json.
+
+taxonomy_progress ne mémorise que la progression.
+
+===========================================================
+CONTENU DU NOYAU
+===========================================================
+
+Le noyau final ne transporte jamais :
+
+- les 50 sujets
+- les 5 idées dominantes
+- les sous-domaines disponibles
+- les données de progression
+
+Il transporte uniquement :
+
+- depth
+- domain_code
+- sub_domain
+- subject
+- dominant_idea
+- knowledge_frequency
+
+===========================================================
+PROGRESSION
+===========================================================
+
+peekNext()
+
+= lecture uniquement
+
+Aucun déplacement du curseur.
+
+Deux appels successifs doivent retourner exactement la même paire.
+
+confirmConsumed()
+
+= unique méthode autorisée à faire avancer le curseur.
+
+Ordre de progression :
+
+Idée dominante suivante
+
+↓
+
+Sujet suivant
+
+↓
+
+Sous-domaine suivant
+
+↓
+
+EXHAUSTED
+
+Jamais l'inverse.
+
+===========================================================
+RÈGLE DE ROTATION
+===========================================================
+
+TaxonomyProgressManager ne connaît jamais :
+
+- le domaine précédent
+- le domaine suivant
+- le DomainCycle
+- le DepthCycle
+- la stratégie de rotation
+
+Il reçoit uniquement :
+
+depth
+domain_code
+
+Il retourne uniquement :
+
+sub_domain
+subject
+dominant_idea
+
+Le rythme est imposé exclusivement par KernelRotationPlanner.
+
+===========================================================
+TRANSACTION MÉTIER
+===========================================================
+
+Le curseur ne doit avancer que si le noyau est réellement créé.
+
+Le flux officiel devient :
+
+peekNext()
+
+↓
+
+KEY_LEARNING_DIRECTION
+
+↓
+
+KEY_STRUCTURE
+
+↓
+
+QuestionIntent créé avec succès
+
+↓
+
+confirmConsumed()
+
+Si une étape échoue :
+
+- KLD
+- KEY_STRUCTURE
+- QuestionIntent
+
+confirmConsumed() ne doit jamais être appelé.
+
+Le prochain peekNext() doit retourner exactement la même paire.
+
+===========================================================
+INTERDICTIONS
+===========================================================
+
+TaxonomyProgressManager ne peut jamais :
+
+- choisir un domaine
+- choisir un depth
+- modifier DomainCycle
+- modifier KernelRotationPlanner
+- modifier TaxonomyReader
+- accéder à READY_BANK
+- accéder à Phase 1
+- accéder aux cognitives
+- accéder aux traductions
+
+===========================================================
+VALIDATION
+===========================================================
+
+La brique est considérée fermée lorsque :
+
+✔ Migration validée
+✔ Service validé
+✔ Tests validés
+✔ Aucune modification des briques fermées
+✔ Contrat respecté
+✔ Responsabilités respectées
+
+À partir de maintenant, cette brique est la référence officielle de progression de la Taxonomy.
+
+La prochaine brique du pipeline est :
+
+KEY_LEARNING_DIRECTION

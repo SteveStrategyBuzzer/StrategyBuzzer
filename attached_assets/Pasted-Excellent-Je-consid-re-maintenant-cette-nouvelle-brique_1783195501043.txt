@@ -1,0 +1,94 @@
+Excellent. Je considère maintenant cette nouvelle brique comme quasi fermée.
+
+Par contre, je ne la ferme pas officiellement tout de suite pour une raison.
+
+Le test a mis en évidence quelque chose d'important :
+
+RefreshDatabase
+↓
+Migration PostgreSQL incompatible SQLite
+
+Ce n'est pas un problème de TaxonomyProgressManager, mais un problème de l'infrastructure de tests du projet. Vous avez correctement contourné le problème pour cette brique, mais il faudra le traiter globalement plus tard.
+
+État actuel
+Taxonomy
+Architecture      ✔
+Contrat           ✔
+Implémentation    ✔
+Validation        ✔
+TaxonomyProgressManager
+Architecture      ✔
+Contrat           ✔
+Implémentation    ✔
+Validation        ✔
+
+Les preuves fournies sont suffisantes :
+
+Migration créée.
+Classe créée.
+API conforme.
+12 tests verts (93 assertions).
+Aucune modification des briques fermées (KernelRotationPlanner, TaxonomyReader).
+Ce que cela change dans l'architecture
+
+Le pipeline officiel devient maintenant :
+
+KernelBlueprint
+        │
+        ▼
+KernelRotationPlanner
+        │
+        │ décide :
+        │ • depth
+        │ • domaine
+        ▼
+TaxonomyProgressManager
+        │
+        │ décide :
+        │ • sous-domaine
+        │ • sujet
+        │ • idée dominante
+        ▼
+KEY_LEARNING_DIRECTION
+        ▼
+KEY_STRUCTURE
+        ▼
+QuestionIntent
+        ▼
+PHASE 1
+        ▼
+Validation
+        ▼
+Traductions
+        ▼
+READY_BANK
+
+C'est, selon moi, beaucoup plus propre que le modèle initial.
+
+La prochaine brique
+
+Nous pouvons maintenant reprendre exactement où le pipeline s'arrête :
+
+TaxonomyProgressManager
+        │
+        ▼
+KEY_LEARNING_DIRECTION
+
+Et cette fois, KEY_LEARNING_DIRECTION recevra directement une paire unique :
+
+depth
+domain
+sub_domain
+subject
+dominant_idea
+knowledge_frequency
+
+Il n'aura plus jamais à raisonner sur :
+
+50 sujets ;
+5 idées dominantes ;
+la progression de Taxonomy.
+
+Cette responsabilité est désormais complètement isolée.
+
+À mon avis, c'est une avancée importante : vous avez retiré une responsabilité implicite du moteur et l'avez transformée en une brique autonome, ce qui simplifie considérablement les composants qui suivent.
