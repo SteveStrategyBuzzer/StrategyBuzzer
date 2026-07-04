@@ -12,12 +12,29 @@ use RuntimeException;
  * Ne décide pas quoi produire.
  *
  * Responsabilités :
- *   - Recevoir le Domaine fourni par DomainCycle
+ *   - Recevoir le domain_code du noyau fourni par KernelRotationPlanner
+ *   - Résoudre le domain_code (minuscule ASCII) vers la clé réelle de taxonomy.json
  *   - Lire les sous-domaines disponibles de ce Domaine
  *   - Lire les sujets disponibles de chaque sous-domaine
  *   - Lire les idées dominantes directrices disponibles pour chaque sujet
  *   - Exposer la structure taxonomique (knowledge_frequency inclus)
  *   - Retourner des candidats disponibles (non filtrés — Rotation filtre)
+ *
+ * Résolution domain_code → clé taxonomy.json (DOMAIN_MAP) :
+ *   histoire   → Histoire
+ *   geographie → Géographie
+ *   sport      → Sport
+ *   art        → Art
+ *   cuisine    → Cuisine
+ *   science    → Science
+ *   cinema     → Cinéma
+ *   faune      → Faune
+ *   (tout autre code passé tel quel — ex: "Général" si explicitement demandé)
+ *
+ * Règles de résolution :
+ *   - Ne jamais mapper science → Général
+ *   - Ne jamais mapper general → Science
+ *   - "Général" reste accessible seulement si demandé explicitement
  *
  * Responsabilités interdites :
  *   - Ne choisit pas le Domaine
@@ -35,6 +52,25 @@ use RuntimeException;
 final class TaxonomyReader
 {
     private const TAXONOMY_PATH = 'resources/rotation/taxonomy.json';
+
+    /**
+     * Correspondance domain_code (DomainCycle, minuscule ASCII) → clé réelle taxonomy.json.
+     *
+     * Règles :
+     *   - science   → Science    (jamais Général)
+     *   - general   → NON mappé  (jamais Science, jamais Général)
+     *   - Général   → passé tel quel si demandé explicitement
+     */
+    private const DOMAIN_MAP = [
+        'histoire'   => 'Histoire',
+        'geographie' => 'Géographie',
+        'sport'      => 'Sport',
+        'art'        => 'Art',
+        'cuisine'    => 'Cuisine',
+        'science'    => 'Science',
+        'cinema'     => 'Cinéma',
+        'faune'      => 'Faune',
+    ];
 
     private ?array $taxonomy = null;
 
@@ -54,20 +90,25 @@ final class TaxonomyReader
 
     /**
      * Vérifie si un domaine existe dans la taxonomie.
+     * Accepte un domain_code (ex: 'science') ou une clé directe (ex: 'Général').
      */
     public function hasDomain(string $domain): bool
     {
+        $domain = $this->resolve($domain);
+
         return isset($this->load()[$domain]);
     }
 
     /**
      * Retourne les noms de sous-domaines disponibles pour un domaine.
+     * Accepte un domain_code (ex: 'geographie') ou une clé directe.
      *
      * @return string[]
      */
     public function getSubDomains(string $domain): array
     {
-        $data = $this->load();
+        $domain = $this->resolve($domain);
+        $data   = $this->load();
 
         if (! isset($data[$domain])) {
             return [];
@@ -78,12 +119,14 @@ final class TaxonomyReader
 
     /**
      * Retourne les noms de sujets disponibles pour un domaine + sous-domaine.
+     * Accepte un domain_code (ex: 'histoire') ou une clé directe.
      *
      * @return string[]
      */
     public function getSubjects(string $domain, string $subDomain): array
     {
-        $data = $this->load();
+        $domain = $this->resolve($domain);
+        $data   = $this->load();
 
         if (! isset($data[$domain][$subDomain])) {
             return [];
@@ -95,12 +138,14 @@ final class TaxonomyReader
     /**
      * Retourne les idées dominantes disponibles pour un sujet donné.
      * Chaque idée dominante = 1 mot (max 2 mots si inséparables sémantiquement).
+     * Accepte un domain_code (ex: 'faune') ou une clé directe.
      *
      * @return string[]
      */
     public function getIdeesDominantes(string $domain, string $subDomain, string $subject): array
     {
-        $data = $this->load();
+        $domain = $this->resolve($domain);
+        $data   = $this->load();
 
         return $data[$domain][$subDomain][$subject]['idees_dominantes'] ?? [];
     }
@@ -108,13 +153,15 @@ final class TaxonomyReader
     /**
      * Retourne la knowledge_frequency pour un sujet.
      * Valeur stockée dans la taxonomie (1-8).
+     * Accepte un domain_code (ex: 'cinema') ou une clé directe.
      * Validation pédagogique du couple sujet+idee_dominante = responsabilité de KEY_LEARNING_DIRECTION.
      *
      * @return int  1-8, ou 0 si introuvable
      */
     public function getKnowledgeFrequency(string $domain, string $subDomain, string $subject): int
     {
-        $data = $this->load();
+        $domain = $this->resolve($domain);
+        $data   = $this->load();
 
         return (int) ($data[$domain][$subDomain][$subject]['knowledge_frequency'] ?? 0);
     }
@@ -131,7 +178,7 @@ final class TaxonomyReader
      * La liste est non filtrée — Rotation (KernelRotationPlanner) est responsable
      * de filtrer les combinaisons selon les exclusions KLD et KS.
      *
-     * @param  string  $domain  Domaine fourni par DomainCycle
+     * @param  string  $domain  domain_code fourni par DomainCycle (ex: 'science') ou clé directe
      * @return array<int, array{
      *     sub_domain: string,
      *     subject: string,
@@ -141,7 +188,8 @@ final class TaxonomyReader
      */
     public function getCandidates(string $domain): array
     {
-        $data = $this->load();
+        $domain = $this->resolve($domain);
+        $data   = $this->load();
 
         if (! isset($data[$domain])) {
             return [];
@@ -253,6 +301,27 @@ final class TaxonomyReader
         }
 
         return $summary;
+    }
+
+    // =========================================================================
+    // Résolution domain_code → clé taxonomy.json
+    // =========================================================================
+
+    /**
+     * Résout un domain_code (DomainCycle, minuscule ASCII) vers la clé réelle de taxonomy.json.
+     *
+     * Si le code est dans DOMAIN_MAP → retourne la clé mapped.
+     * Sinon → retourne le domaine tel quel (passage direct pour les clés déjà réelles,
+     *          ex: "Général" si demandé explicitement).
+     *
+     * Règles non négociables :
+     *   - 'science'   → 'Science'   (jamais 'Général')
+     *   - 'general'   → 'general'   (non mappé — aucun fallback Général ni Science)
+     *   - 'Général'   → 'Général'   (passé tel quel)
+     */
+    private function resolve(string $domain): string
+    {
+        return self::DOMAIN_MAP[$domain] ?? $domain;
     }
 
     // =========================================================================
