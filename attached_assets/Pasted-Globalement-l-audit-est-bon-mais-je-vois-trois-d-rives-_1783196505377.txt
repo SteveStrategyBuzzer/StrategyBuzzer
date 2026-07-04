@@ -1,0 +1,200 @@
+Globalement, l'audit est bon, mais je vois trois dérives que je corrigerais avant d'autoriser PATCH B.
+
+1. ❌ KLD ne doit pas connaître la base de données
+
+C'est la plus grosse dérive.
+
+Replit propose :
+
+hashExists()
+↓
+SELECT question_intents
+
+Je ne suis pas d'accord.
+
+On vient justement de passer plusieurs jours à découper les responsabilités.
+
+KLD est un moteur de validation.
+
+Pas un repository.
+
+Je préfère :
+
+QuestionIntentRepository
+
+↓
+
+KeyLearningDirection
+
+↓
+
+PASS / FAIL
+
+Autrement dit :
+
+QuestionIntentRepository
+
+↓
+
+donne à KLD
+les hashes déjà existants
+
+↓
+
+KLD décide
+
+Ainsi KLD reste :
+
+pur
+testable
+indépendant d'Eloquent
+2. ❌ computeHash()
+
+Là aussi je corrigerais.
+
+Aujourd'hui il écrit :
+
+sha256(
+domain
+subdomain
+subject
+idea
+)
+
+Nous avions justement créé :
+
+kernel_code
+
+ks_hash
+
+semantic_key
+
+kld_hash
+
+intent_key
+
+Chaque hash possède une responsabilité.
+
+Je ne veux pas que KLD choisisse son algorithme.
+
+Je veux :
+
+KLD construit
+
+la direction
+
+↓
+
+IntentKeyBuilder
+
+construit les hashes
+
+Sinon demain chaque service va fabriquer ses propres SHA256.
+
+3. ❌ KLD ne doit pas recevoir un tableau
+
+Il propose :
+
+check(array $pair)
+
+Je refuse.
+
+Nous avons passé énormément de temps à construire :
+
+SB_GAME_CONTEXT
+
+et surtout :
+
+KernelBlueprint
+
+Le contrat doit rester typé.
+
+Je préfère quelque chose comme :
+
+check(
+KernelFrame $frame
+)
+
+ou
+
+check(
+KernelBlueprint $kernel
+)
+
+Bref :
+
+pas un tableau anonyme.
+
+Ce qui est excellent
+
+Par contre, il a parfaitement compris :
+
+✔ les 6 règles
+
+✔ les motifs de rejet
+
+✔ KLD avant KS
+
+✔ aucune migration
+
+✔ 12 tests
+
+✔ aucune dépendance sur RotationPlanner
+
+✔ aucune dépendance sur TaxonomyProgressManager
+
+Ça je valide.
+
+Donc je renverrais ceci
+Validation presque complète.
+
+Trois corrections avant PATCH B.
+
+1.
+
+KEY_LEARNING_DIRECTION ne doit pas interroger directement QuestionIntent.
+
+Aucun accès Eloquent.
+
+Aucune requête SQL.
+
+Le service doit rester un moteur métier pur.
+
+Le lookup des données existantes sera fourni par une couche Repository/Provider appelée par l'orchestrateur.
+
+2.
+
+KEY_LEARNING_DIRECTION ne calcule pas lui-même les hashes.
+
+Il valide uniquement la direction pédagogique.
+
+La génération des différents hashes appartient au composant responsable des identifiants du noyau.
+
+Ne pas intégrer sha256() directement dans KLD.
+
+3.
+
+L'API publique ne doit pas recevoir un array.
+
+Utiliser un contrat typé représentant le noyau courant (KernelBlueprint / KernelFrame ou contrat équivalent déjà existant).
+
+Le reste du document est validé.
+
+Met à jour uniquement le document technique.
+
+Ne fais aucun patch.
+Je veux attirer ton attention sur un point
+
+Je crois qu'on vient de trouver un futur composant que nous n'avions jamais vraiment isolé :
+
+Aujourd'hui on parle de :
+
+kernel_code
+ks_hash
+kld_hash
+semantic_key
+intent_key
+
+En réalité, aucun de ces composants ne devrait fabriquer lui-même ses hashes.
+
+Je pense qu'il faudra, un peu plus tard, isoler un gestionnaire des identifiants du noyau qui sera l'unique autorité de génération de tous ces identifiants. Ce n'est pas KLD, et ce n'est pas le sujet de ce patch, mais je préfère le signaler maintenant pour éviter que cette logique se disperse dans plusieurs services.

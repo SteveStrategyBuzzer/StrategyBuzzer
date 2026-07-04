@@ -1,0 +1,185 @@
+KEY_LEARNING_DIRECTION — correction du document technique avant PATCH B
+
+Le document d’audit est presque validé, mais trois corrections sont obligatoires avant implémentation.
+
+Ne fais aucun patch.
+Ne crée aucun fichier.
+Ne modifie aucun code.
+
+===========================================================
+CORRECTION 1 — KLD reste un moteur métier pur
+===========================================================
+
+KEY_LEARNING_DIRECTION ne doit pas interroger directement :
+
+- QuestionIntent
+- Eloquent
+- DB
+- question_intents
+- migrations
+
+Donc supprimer du document :
+
+- hashExists()
+- toute requête SQL
+- toute dépendance Eloquent
+- toute lecture directe dans question_intents
+
+Le service KLD reçoit les directions déjà existantes via paramètre fourni par l’orchestrateur ou par un provider externe.
+
+===========================================================
+CORRECTION 2 — KLD ne fabrique pas les hashes
+===========================================================
+
+KEY_LEARNING_DIRECTION ne doit pas décider de l’algorithme de hash.
+
+Donc supprimer du document :
+
+- computeHash()
+- sha256()
+- génération directe de kld_hash
+
+KLD retourne seulement :
+
+- status : pass / fail
+- reason : null ou motif de rejet
+- canonical_direction : direction normalisée validée
+
+La génération de kld_hash appartient au futur composant responsable des identifiants du noyau.
+
+===========================================================
+CORRECTION 3 — pas d’array anonyme
+===========================================================
+
+L’API publique ne doit pas être :
+
+check(array $pair)
+
+Créer un contrat typé interne à la brique.
+
+Nom attendu :
+LearningDirectionInput
+
+Fichier attendu :
+app/Services/QuestionBank/Rotation/DTO/LearningDirectionInput.php
+
+Champs exacts :
+- depth: int
+- domainCode: string
+- subDomain: string
+- subject: string
+- dominantIdea: string
+- knowledgeFrequency: int
+- rotationIdentifier: string|null
+
+KEY_LEARNING_DIRECTION reçoit :
+
+check(
+  LearningDirectionInput $input,
+  array $existingDirections
+): array
+
+existingDirections contient les directions déjà validées, fournies par l’orchestrateur.
+
+===========================================================
+API PUBLIQUE CORRIGÉE
+===========================================================
+
+Fichier :
+app/Services/QuestionBank/Rotation/KeyLearningDirection.php
+
+Classe :
+final class KeyLearningDirection
+
+Méthode publique unique :
+public function check(
+    LearningDirectionInput $input,
+    array $existingDirections = []
+): array
+
+Retour exact :
+[
+  'status' => 'pass' | 'fail',
+  'reason' => string|null,
+  'canonical_direction' => array|null,
+]
+
+Motifs de rejet :
+- INVALID_MINIMAL_PAIR
+- DIRECT_PAIR_CONTEXT_DUPLICATE
+- REVERSED_PAIR_CONTEXT_DUPLICATE
+- CONCEPTUAL_COLLISION
+- CONTEXT_NOT_DISTINCT
+- PAIR_TOO_CLOSE_TO_EXISTING
+
+===========================================================
+RESPONSABILITÉS VALIDÉES
+===========================================================
+
+KLD doit :
+
+- valider la paire subject + dominantIdea
+- empêcher la répétition pédagogique
+- appliquer les équivalences métier
+- appliquer la règle de contexte distinct
+- appliquer le seuil de proximité 0.85
+- retourner PASS/FAIL déterministe
+
+KLD ne doit jamais :
+
+- choisir un domaine
+- choisir un sous-domaine
+- choisir un sujet
+- choisir une idée dominante
+- avancer TaxonomyProgressManager
+- créer QuestionIntent
+- générer kld_hash
+- générer kernel_code
+- générer semantic_key
+- lire la DB
+- écrire la DB
+
+===========================================================
+TESTS À METTRE À JOUR
+===========================================================
+
+Les tests doivent être unitaires purs.
+
+Aucun RefreshDatabase.
+Aucun Schema::create.
+Aucune DB.
+Aucun modèle Eloquent.
+
+Tests attendus :
+1. test_rejects_when_subject_equals_dominant_idea
+2. test_rejects_direct_duplicate_from_existing_directions
+3. test_rejects_reversed_duplicate_from_existing_directions
+4. test_rejects_business_equivalence_collision
+5. test_rejects_when_context_map_is_silent
+6. test_passes_when_context_map_declares_distinct_contexts
+7. test_rejects_when_pair_is_too_close_to_existing_direction
+8. test_passes_when_no_rule_triggers
+9. test_returns_canonical_direction_on_pass
+10. test_does_not_generate_hashes
+11. test_has_no_database_dependency
+12. test_accepts_typed_learning_direction_input
+
+===========================================================
+ORDRE DES PATCHS CORRIGÉ
+===========================================================
+
+PATCH B1 :
+Créer LearningDirectionInput DTO.
+
+PATCH B2 :
+Créer KeyLearningDirection service pur.
+
+PATCH C :
+Créer KeyLearningDirectionTest.
+
+Aucune migration.
+
+Aucun câblage BankWorker pour l’instant.
+
+Réponds uniquement avec le document technique corrigé.
+Ne fais aucun patch.
