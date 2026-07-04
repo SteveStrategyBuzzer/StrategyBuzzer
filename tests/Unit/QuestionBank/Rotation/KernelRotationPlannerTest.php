@@ -175,7 +175,7 @@ class KernelRotationPlannerTest extends TestCase
     // DomainCycle — loadDomains
     // =========================================================================
 
-    public function test_load_domains_returns_list_from_config(): void
+    public function test_load_domains_returns_non_empty_list(): void
     {
         $domains = $this->planner->loadDomains();
 
@@ -183,15 +183,33 @@ class KernelRotationPlannerTest extends TestCase
         $this->assertNotEmpty($domains);
     }
 
-    public function test_load_domains_contains_all_official_domains(): void
+    public function test_load_domains_returns_exactly_8_gameplay_domains(): void
     {
         $domains = $this->planner->loadDomains();
 
-        $expected = ['general', 'histoire', 'sport', 'geographie', 'art', 'cuisine', 'science', 'cinema', 'faune'];
+        $this->assertCount(8, $domains, 'DomainCycle Gameplay v1 doit contenir exactement 8 domaines');
+    }
+
+    public function test_load_domains_contains_all_8_official_gameplay_domains(): void
+    {
+        $domains = $this->planner->loadDomains();
+
+        $expected = ['histoire', 'geographie', 'sport', 'art', 'cuisine', 'science', 'cinema', 'faune'];
 
         foreach ($expected as $d) {
-            $this->assertContains($d, $domains, "Domaine officiel manquant : {$d}");
+            $this->assertContains($d, $domains, "Domaine Gameplay manquant : {$d}");
         }
+    }
+
+    public function test_load_domains_excludes_general(): void
+    {
+        $domains = $this->planner->loadDomains();
+
+        $this->assertNotContains(
+            'general',
+            $domains,
+            '"general" n\'est pas un domaine Gameplay — il ne doit pas apparaître dans DomainCycle'
+        );
     }
 
     // =========================================================================

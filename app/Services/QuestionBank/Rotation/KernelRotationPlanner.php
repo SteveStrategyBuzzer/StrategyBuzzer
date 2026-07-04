@@ -179,25 +179,38 @@ final class KernelRotationPlanner
     // =========================================================================
 
     /**
-     * Charge la liste officielle des domaines depuis la configuration.
+     * Charge la liste officielle des domaines Gameplay v1.
      *
-     * Source : config('question_bank_profiles.domains')
+     * "general" peut exister dans la config mais n'est PAS un domaine Gameplay.
+     * KernelRotationPlanner n'utilise que les 8 domaines Gameplay ci-dessous.
+     * DomainCycle Gameplay v1 — ordre officiel figé :
+     *
+     *   histoire, geographie, sport, art, cuisine, science, cinema, faune
      *
      * @return string[]
-     * @throws RuntimeException STOP si liste absente ou vide.
+     * @throws RuntimeException STOP si liste vide.
      */
     public function loadDomains(): array
     {
-        $domains = config('question_bank_profiles.domains', []);
+        $domains = [
+            'histoire',
+            'geographie',
+            'sport',
+            'art',
+            'cuisine',
+            'science',
+            'cinema',
+            'faune',
+        ];
 
         if (empty($domains)) {
             throw new RuntimeException(
                 '[KernelRotationPlanner] STOP — DomainCycle absent. '
-                . 'La liste de domaines est vide dans config/question_bank_profiles.php.'
+                . 'La liste de domaines Gameplay est vide.'
             );
         }
 
-        return array_values((array) $domains);
+        return $domains;
     }
 
     /**
