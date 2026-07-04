@@ -1,0 +1,147 @@
+Là, oui.
+
+Je pense qu'on a enfin trouvé la brique qui manquait depuis le début.
+
+Mais je veux faire une dernière remarque d'architecture qui est encore plus importante.
+
+Ce n'est plus seulement un tracker.
+
+En réalité, cette brique devient le gestionnaire de consommation de la Taxonomy.
+
+Sa responsabilité n'est pas uniquement de mémoriser un curseur.
+
+Elle garantit aussi ceci :
+
+Taxonomy
+↓
+
+Aucune idée dominante n'est oubliée
+
+↓
+
+Aucun sujet n'est sauté
+
+↓
+
+Aucun sous-domaine n'est oublié
+
+↓
+
+Chaque bassin est complètement exploité
+
+↓
+
+Puis seulement on passe au suivant
+
+Autrement dit, elle est responsable de la complétude de la Taxonomy.
+
+J'ajouterais donc une règle métier
+
+Ce n'est pas le Worker qui décide :
+
+je vais au sujet suivant
+
+Ce n'est pas KLD.
+
+Ce n'est pas KS.
+
+Ce n'est pas QuestionIntent.
+
+La règle est :
+
+TaxonomyProgressTracker est l'unique autorité de progression
+à l'intérieur d'un bassin Taxonomy.
+
+Comme :
+
+KernelRotationPlanner
+
+est l'unique autorité :
+
+des domaines
+des depth
+de l'ordre des rotations
+
+Le tracker devient l'unique autorité :
+
+du sous-domaine actif
+du sujet actif
+de l'idée dominante active
+
+Ainsi, aucune autre brique n'a le droit de dire :
+
+on saute au sujet suivant
+
+ou
+
+on recommence au début
+Je changerais également un point de vocabulaire
+
+Le nom :
+
+TaxonomyProgressTracker
+
+fonctionne.
+
+Mais je pense que le mot Tracker minimise son rôle.
+
+Parce qu'il ne fait pas qu'observer.
+
+Il décide de la progression à l'intérieur de la Taxonomy.
+
+Je verrais davantage un nom du type :
+
+TaxonomyProgressManager
+
+ou
+
+TaxonomyConsumptionManager
+
+ou
+
+TaxonomyProgressEngine
+
+Le plus important n'est pas le nom lui-même, mais qu'il reflète la responsabilité : ce composant gère la progression, il ne la constate pas simplement.
+
+Au final, l'architecture devient très lisible
+KernelBlueprint
+        │
+        ▼
+KernelRotationPlanner
+        │
+        │ décide :
+        │ - depth
+        │ - domaine
+        ▼
+TaxonomyProgressManager
+        │
+        │ décide :
+        │ - sous-domaine
+        │ - sujet
+        │ - idée dominante
+        ▼
+KEY_LEARNING_DIRECTION
+        ▼
+KEY_STRUCTURE
+        ▼
+QuestionIntent
+        ▼
+PHASE 1
+        ▼
+Validation
+        ▼
+Traductions
+        ▼
+READY_BANK
+
+Je trouve cette architecture plus solide que celle que nous avions au départ.
+
+Chaque composant a désormais une seule responsabilité clairement définie, sans chevauchement :
+
+KernelRotationPlanner : pilote la rotation globale (depth + domaine).
+TaxonomyProgressManager : pilote la progression interne de la Taxonomy.
+KEY_LEARNING_DIRECTION : valide la cohérence pédagogique de la paire Sujet + Idée dominante.
+KEY_STRUCTURE : valide la structure du noyau.
+QuestionIntent : verrouille l'identité du noyau.
+
+À mes yeux, cette séparation est plus cohérente et plus évolutive que le modèle initial où une partie de cette logique était implicite ou dispersée.
