@@ -1,0 +1,100 @@
+Parfait. Maintenant qu'on a fermé TaxonomyProgressManager, on applique exactement la même méthode à KEY_LEARNING_DIRECTION.
+
+Le premier objectif n'est pas de coder. Le premier objectif est de vérifier l'état réel de l'implémentation.
+
+Envoie ceci à Replit :
+
+KEY_LEARNING_DIRECTION — Audit d’implémentation avant patch
+
+Contexte :
+
+Les briques suivantes sont officiellement fermées :
+
+✔ KernelBlueprint
+✔ KernelRotationPlanner
+✔ TaxonomyReader
+✔ TaxonomyProgressManager
+
+Le pipeline officiel est désormais :
+
+KernelRotationPlanner
+↓
+TaxonomyReader
+↓
+TaxonomyProgressManager
+↓
+KEY_LEARNING_DIRECTION
+↓
+KEY_STRUCTURE
+↓
+QuestionIntent
+↓
+PHASE 1
+↓
+Validation
+↓
+Translations
+↓
+READY_BANK
+
+Objectif :
+
+Déterminer l'état réel d'implémentation de KEY_LEARNING_DIRECTION.
+
+Ne fais aucun patch.
+Ne crée aucun fichier.
+Ne modifie aucun code.
+
+Affiche uniquement :
+
+1.
+grep -RIn "KEY_LEARNING_DIRECTION\|KLD\|kld_hash\|learning_direction" app tests database resources
+
+2.
+grep -RIn "dominant_idea\|subject\|knowledge_frequency\|rotation_identifier\|semantic_key\|ks_hash\|intent_key" app/Services app/Models tests
+
+3.
+find app tests database -iname "*KLD*" -o -iname "*LearningDirection*" -o -iname "*Learning*" -o -iname "*IntentKey*"
+
+4.
+Pour chaque fichier trouvé :
+
+- classe
+- méthodes publiques
+- responsabilités
+- dépendances
+- état (utilisé / inutilisé)
+
+5.
+Conclusion obligatoire :
+
+Architecture :
+✔ / ✘
+
+Contrat :
+✔ / ✘
+
+Implémentation :
+✔ / ✘
+
+Validation :
+✔ / ✘
+
+6.
+S'il manque une implémentation :
+
+Fournis uniquement le document technique d'implémentation :
+
+- fichier exact
+- classe exacte
+- API publique
+- méthodes
+- responsabilités
+- dépendances
+- fichiers appelants
+- tests à créer
+- ordre des patchs
+
+Ne fais aucun patch.
+
+Cette fois, on ne sautera aucune étape. On va d'abord comparer ce que Replit trouve avec le contrat KLD que nous avons verrouillé, puis seulement après nous lancerons les patches. C'est ce qui nous permettra de fermer KLD avec le même niveau de rigueur que TaxonomyProgressManager.
