@@ -1,0 +1,89 @@
+Ce n’est pas :
+
+réserver une paire sujet/idée à chaque noyau
+
+C’est :
+
+remplir un bassin complet par depth + domaine
+puis passer au domaine suivant
+puis au depth suivant
+
+La logique corrigée à envoyer à Replit :
+
+REFUS — mauvais sens de consommation
+
+Le document proposé part sur une logique de ledger par paire individuelle.
+Ce n’est pas la stratégie verrouillée.
+
+Correction du contrat :
+
+La brique ne doit pas sélectionner une seule paire isolée au hasard ou par réservation.
+
+Elle doit gérer une progression de remplissage par bassin :
+
+1. KernelRotationPlanner demande :
+   - depth
+   - domain_code
+
+2. Taxonomy Consumption doit vérifier pour ce depth + domain_code :
+   - est-ce qu’un sous-domaine est déjà actif ?
+   - est-ce que ce sous-domaine a encore des sujets non exploités ?
+   - est-ce que le sujet actif a encore des idées dominantes non exploitées ?
+
+3. Si oui :
+   - continuer dans ce même sous-domaine
+   - continuer dans le même sujet jusqu’à ses 5 idées dominantes
+   - puis passer au sujet suivant
+
+4. Si le sous-domaine est épuisé :
+   - passer à un nouveau sous-domaine non encore utilisé pour ce depth + domain_code
+
+5. Si tous les sous-domaines sont épuisés :
+   - retourner EMPTY / EXHAUSTED pour ce depth + domain_code
+
+Règle de progression globale :
+- On remplit le depth demandé pour tous les domaines.
+- Chaque domaine garde son bassin propre.
+- On n’abandonne pas un sous-domaine pour en ouvrir un autre tant que le sous-domaine actif n’est pas épuisé.
+- On ne réutilise pas un sous-domaine déjà épuisé dans le même depth + domain_code.
+- Taxonomy.json reste la source de vérité.
+- La DB ne doit stocker que l’état de progression, pas recopier toute la taxonomy.
+
+Structure attendue :
+Une table de progression légère, pas un ledger complet de toutes les paires.
+
+Exemple de table :
+taxonomy_progress
+
+Colonnes minimales :
+- id
+- depth
+- domain_code
+- active_sub_domain
+- active_subject
+- dominant_idea_index
+- used_sub_domains JSON
+- status
+- created_at
+- updated_at
+
+Statuts :
+- active
+- exhausted
+
+La brique retourne au noyau seulement :
+- depth
+- domain_code
+- sub_domain
+- subject
+- dominant_idea
+- knowledge_frequency
+
+Le noyau final ne transporte jamais :
+- les 50 sujets
+- les 5 idées dominantes complètes
+- le suivi de progression
+
+Refais le document technique avec cette stratégie.
+Ne fais aucun patch.
+Ne crée aucun fichier.
