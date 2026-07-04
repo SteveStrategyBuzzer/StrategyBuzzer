@@ -1,0 +1,97 @@
+La structure correcte devient :
+
+KernelBlueprint = noyau léger
+
+Il ne transporte plus tout le bassin Taxonomy. Il transporte seulement la paire réellement consommée :
+
+depth
+domain
+sub_domain
+subject
+dominant_idea
+knowledge_frequency
+
+Ensuite :
+
+KernelRotationPlanner
+
+continue sa job actuelle :
+
+J’ai besoin maintenant de :
+Depth 4
+Domaine Géographie
+
+Puis :
+
+Taxonomy
+
+ne fait plus juste “lire un fichier”. Elle devient le sélecteur de matière disponible :
+
+Pour ce depth + domaine :
+- existe-t-il déjà un sous-domaine actif avec sujets/idées non consommés ?
+- oui → reprendre ce bassin
+- non → créer ou sélectionner un nouveau sous-domaine
+- sélectionner le prochain sujet disponible
+- sélectionner la prochaine idée dominante disponible
+- inscrire seulement cette paire dans le noyau
+
+Donc le flow devient :
+
+KernelRotationPlanner
+↓
+depth + domaine demandé
+↓
+Taxonomy Consumption
+↓
+sous-domaine + sujet + idée dominante disponibles
+↓
+noyau léger
+↓
+KEY_LEARNING_DIRECTION
+↓
+KEY_STRUCTURE
+↓
+QuestionIntent
+↓
+Phase 1 Création
+
+Et surtout :
+
+READY_BANK ne reçoit jamais les 50 sujets ni les 5 idées.
+
+Il reçoit seulement le noyau final consommé.
+
+Le suivi complet reste dans une structure séparée, par exemple :
+
+taxonomy_pool / taxonomy_progress / taxonomy_ledger
+
+Mais on ne l’invente pas encore comme nom de classe. On doit d’abord demander à Replit s’il existe déjà quelque chose.
+
+Ordre Replit à envoyer maintenant :
+
+Taxonomy Consumption — vérification avant contrat d’implémentation
+
+Objectif :
+Vérifier si une structure de suivi existe déjà pour savoir quels sous-domaines, sujets et idées dominantes ont été consommés par depth + domaine.
+
+Exécute uniquement :
+
+grep -RIn "subjects_inventory\|dominant_ideas\|active_subject\|active_dominant_idea\|knowledge_frequency\|consumed\|used\|exhausted\|ledger\|progress\|taxonomy" app database tests resources
+
+grep -RIn "question_intent_id\|kernel_code\|semantic_key\|intent_key\|kld_hash\|ks_hash\|rotation_identifier" app database tests
+
+find app database tests resources -iname "*Taxonomy*" -o -iname "*Ledger*" -o -iname "*Progress*" -o -iname "*Consumption*" -o -iname "*Kernel*"
+
+Ne fais aucun patch.
+Ne crée aucun fichier.
+Réponds uniquement avec :
+- fichiers trouvés
+- lignes trouvées
+- conclusion : suivi consommation absent / partiel / implanté
+
+Verdict actuel :
+
+Oui, tu as compris la bonne structure.
+Mais le suivi consommation Taxonomy n’est pas encore confirmé en code.
+
+On vérifie avant de patcher.
