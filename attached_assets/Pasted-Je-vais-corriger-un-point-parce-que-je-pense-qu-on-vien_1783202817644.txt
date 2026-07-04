@@ -1,0 +1,147 @@
+Je vais corriger un point, parce que je pense qu'on vient d'avoir une idée encore meilleure.
+
+La phrase :
+
+"le bassin contient les 8 domaines"
+
+n'est pas tout à fait exacte.
+
+En réalité, le bassin n'est pas un conteneur passif.
+
+Le bassin est le moteur Taxonomy.
+
+Je le représenterais plutôt comme ceci :
+
+                    DEPTH 4
+
+          ┌─────────────────────────────┐
+          │        BASSIN TAXONOMY      │
+          └─────────────────────────────┘
+
+     histoire
+        │
+        ├── Chargeur 1
+        │      Sous-domaine
+        │      Sujet 1...50
+        │
+        └── Chargeur 2
+               Sujet actif
+               Idée 1...5
+
+     géographie
+        ├── Chargeur 1
+        └── Chargeur 2
+
+     sport
+        ├── Chargeur 1
+        └── Chargeur 2
+
+     ...
+
+     faune
+        ├── Chargeur 1
+        └── Chargeur 2
+
+Ce n'est donc pas un seul chargeur.
+
+C'est 8 chargeurs doubles qui vivent dans le même bassin.
+
+Ce qui devient très intéressant
+
+Regarde ce qui se passe pendant la rotation.
+
+Au début :
+
+Depth 4
+
+Histoire
+Sujet 1
+Idée 1
+
+Géographie
+Sujet 1
+Idée 1
+
+Sport
+Sujet 1
+Idée 1
+
+...
+
+Faune
+Sujet 1
+Idée 1
+
+Puis :
+
+Depth 4
+
+Histoire
+Sujet 1
+Idée 2
+
+Géographie
+Sujet 1
+Idée 2
+
+...
+
+Faune
+Sujet 1
+Idée 2
+
+Puis :
+
+Idée 5
+
+Puis :
+
+Sujet 2
+Idée 1
+
+etc.
+
+Ce que ça implique
+
+On ne parle plus d'un simple curseur.
+
+On parle de 8 machines indépendantes qui avancent chacune à leur rythme, mais synchronisées par KernelRotationPlanner.
+
+C'est une différence énorme.
+
+Le bassin devient une sorte de magasin rotatif.
+
+Et je viens de voir encore une conséquence
+
+Tu avais dit il y a plusieurs semaines :
+
+"Je veux maximiser les noyaux avant de créer un nouveau sous-domaine."
+
+Avec cette architecture, c'est automatique.
+
+Parce que le chargeur 1 ne passe jamais au sous-domaine suivant tant que :
+
+les 50 sujets ne sont pas épuisés ;
+et pour chaque sujet, les 5 idées dominantes ne sont pas épuisées.
+
+Tu n'as plus besoin d'une règle spéciale.
+
+Le chargeur la garantit naturellement.
+
+Je changerais même le vocabulaire
+
+Je ne dirais plus :
+
+Chargeur 1 et Chargeur 2.
+
+Je dirais :
+
+Chargeur de sujets
+
+et
+
+Chargeur d'idées
+
+Parce que dans 6 mois, quelqu'un qui arrive sur le projet comprendra immédiatement leur rôle, sans avoir à apprendre ce que signifie "chargeur 1" ou "chargeur 2".
+
+À mon avis, cette représentation est la première qui décrit fidèlement le fonctionnement réel de Taxonomy. Elle explique naturellement la progression, la maximisation des noyaux et la séparation entre la génération des candidats et leur validation. C'est cette version que je considérerais désormais comme la référence architecturale.

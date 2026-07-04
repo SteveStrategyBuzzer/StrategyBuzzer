@@ -73,25 +73,41 @@ Le prochain `peekNext()` retourne exactement la même paire (retry automatique).
 - Le **noyau final** ne transporte QUE : depth, domain, sub_domain, subject, dominant_idea, knowledge_frequency
   — jamais les 8 domaines, les 50 sujets, les 5 idées, ni l'état des chargeurs
 
-## Structure du bassin Taxonomy (verrouillée 2026-07-04)
+## Structure du bassin Taxonomy (verrouillée 2026-07-04, vocabulaire corrigé)
 
-Le bassin Taxonomy est organisé par depth. Pour un depth donné, il contient les 8 domaines Gameplay :
+Le bassin Taxonomy est le **moteur Taxonomy** — pas un conteneur passif.
+Pour un depth donné, il contient 8 machines indépendantes (une par domaine Gameplay),
+chacune composée de 2 chargeurs nommés explicitement :
 
 ```
-Bassin Depth N
-├── histoire   → Chargeur 1 (sub_domain + sujets) + Chargeur 2 (idées sujet actif)
-├── geographie → Chargeur 1 + Chargeur 2
-├── sport      → Chargeur 1 + Chargeur 2
-├── art        → Chargeur 1 + Chargeur 2
-├── cuisine    → Chargeur 1 + Chargeur 2
-├── science    → Chargeur 1 + Chargeur 2
-├── cinema     → Chargeur 1 + Chargeur 2
-└── faune      → Chargeur 1 + Chargeur 2
+                    DEPTH N
+          ┌─────────────────────────────┐
+          │        BASSIN TAXONOMY      │   (moteur, pas conteneur)
+          └─────────────────────────────┘
+
+  histoire
+     ├── Chargeur de sujets   : sous-domaine actif → jusqu'à 50 sujets
+     └── Chargeur d'idées     : sujet actif → 5 idées dominantes
+
+  geographie
+     ├── Chargeur de sujets
+     └── Chargeur d'idées
+
+  sport / art / cuisine / science / cinema / faune
+     ├── Chargeur de sujets   (idem)
+     └── Chargeur d'idées     (idem)
 ```
+
+**8 machines indépendantes** — chacune avance à son propre rythme.
+KernelRotationPlanner synchronise quelle machine est active à chaque tirage.
+
+**Progression naturelle (garantie par le chargeur, sans règle spéciale) :**
+- Chargeur d'idées épuisé (5 idées) → sujet suivant dans le Chargeur de sujets
+- Chargeur de sujets épuisé (50 sujets) → sous-domaine suivant
+- Maximisation automatique : un sous-domaine ne change jamais avant que ses 50 sujets × 5 idées soient épuisés
 
 **Règles du bassin :**
-- KernelRotationPlanner demande un depth → Taxonomy doit remplir les 8 domaines de ce depth
-- Chaque domaine possède son propre bassin (chargeur 1 + chargeur 2) indépendant
+- KernelRotationPlanner demande un depth → le moteur Taxonomy active les 8 chargeurs de ce depth
 - Le moteur tire UNE idée candidate à la fois, selon la rotation des domaines
 - Un depth n'est complet que lorsque les 8 domaines de ce depth sont entièrement exploités
 
