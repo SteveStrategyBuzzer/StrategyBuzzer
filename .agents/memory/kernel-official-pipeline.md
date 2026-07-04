@@ -63,14 +63,37 @@ Le prochain `peekNext()` retourne exactement la même paire (retry automatique).
 
 ## Vocabulaire verrouillé (2026-07-04)
 
-- `TaxonomyProgressManager` = chargeur Taxonomy / Idea Loader
-  - Chargeur 1 : sous-domaine + sujets (jusqu'à 50)
+- `TaxonomyProgressManager` = gestionnaire des chargeurs Taxonomy par **depth + domain_code**
+  - Autorité de progression INTERNE — gère le bassin complet d'un depth
+  - Chargeur 1 : sous-domaine actif + jusqu'à 50 sujets
   - Chargeur 2 : idées dominantes du sujet actif (5)
   - Tire UNE idée candidate → l'envoie à KLD + KEY_STRUCTURE
   - Avance automatiquement : 5 idées épuisées → sujet suivant ; 50 sujets épuisés → sous-domaine suivant
 - `KLD` + `KEY_STRUCTURE` = filtres de validation, PAS des chargeurs
 - Le **noyau final** ne transporte QUE : depth, domain, sub_domain, subject, dominant_idea, knowledge_frequency
-  — jamais les 50 sujets, les 5 idées, ni la progression
+  — jamais les 8 domaines, les 50 sujets, les 5 idées, ni l'état des chargeurs
+
+## Structure du bassin Taxonomy (verrouillée 2026-07-04)
+
+Le bassin Taxonomy est organisé par depth. Pour un depth donné, il contient les 8 domaines Gameplay :
+
+```
+Bassin Depth N
+├── histoire   → Chargeur 1 (sub_domain + sujets) + Chargeur 2 (idées sujet actif)
+├── geographie → Chargeur 1 + Chargeur 2
+├── sport      → Chargeur 1 + Chargeur 2
+├── art        → Chargeur 1 + Chargeur 2
+├── cuisine    → Chargeur 1 + Chargeur 2
+├── science    → Chargeur 1 + Chargeur 2
+├── cinema     → Chargeur 1 + Chargeur 2
+└── faune      → Chargeur 1 + Chargeur 2
+```
+
+**Règles du bassin :**
+- KernelRotationPlanner demande un depth → Taxonomy doit remplir les 8 domaines de ce depth
+- Chaque domaine possède son propre bassin (chargeur 1 + chargeur 2) indépendant
+- Le moteur tire UNE idée candidate à la fois, selon la rotation des domaines
+- Un depth n'est complet que lorsque les 8 domaines de ce depth sont entièrement exploités
 
 ## Contenu exact transporté entre TaxonomyProgressManager et KLD
 

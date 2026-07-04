@@ -1,0 +1,86 @@
+Pour un depth donné, le bassin doit contenir les chargeurs des 8 domaines Gameplay :
+
+Depth 4
+
+Bassin Depth 4
+├── histoire
+│   ├── Chargeur 1 : sous-domaine + sujets
+│   └── Chargeur 2 : idées du sujet actif
+├── geographie
+│   ├── Chargeur 1
+│   └── Chargeur 2
+├── sport
+├── art
+├── cuisine
+├── science
+├── cinema
+└── faune
+
+Donc la logique devient :
+
+1. KernelRotationPlanner demande un depth.
+2. Pour ce depth, Taxonomy doit remplir les 8 domaines.
+3. Chaque domaine possède son propre bassin.
+4. Chaque bassin possède :
+   - chargeur 1 : sujets du sous-domaine actif
+   - chargeur 2 : idées dominantes du sujet actif
+5. Le système tire une idée candidate par domaine selon la rotation.
+6. Le depth n’est considéré complet que lorsque les 8 domaines sont complètement remplis/exploités.
+
+Correction importante :
+
+TaxonomyProgressManager ne doit pas être vu seulement comme un curseur isolé depth+domain.
+Il fait partie d’un bassin depth complet qui contient les 8 domaines.
+
+Formulation à envoyer à Replit :
+
+Correction architecture Taxonomy.
+
+Le bassin Taxonomy est organisé par depth.
+
+Pour un depth donné, le bassin doit contenir les 8 domaines Gameplay :
+
+histoire
+geographie
+sport
+art
+cuisine
+science
+cinema
+faune
+
+Chaque domaine du bassin possède un chargeur à 2 temps :
+
+Chargeur 1 :
+- sous-domaine actif
+- jusqu’à 50 sujets
+
+Chargeur 2 :
+- sujet actif
+- 5 idées dominantes
+
+Le moteur tire une seule idée dominante candidate à la fois.
+
+Le noyau final transporte seulement :
+- depth
+- domain_code
+- sub_domain
+- subject
+- dominant_idea
+- knowledge_frequency
+
+Le noyau final ne transporte jamais :
+- les 8 domaines
+- les 50 sujets
+- les 5 idées dominantes
+- l’état du bassin
+- l’état des chargeurs
+
+Un depth n’est complet que lorsque les 8 domaines de ce depth sont complètement remplis/exploités.
+
+TaxonomyProgressManager reste l’autorité de progression interne, mais il doit être compris comme le gestionnaire des chargeurs Taxonomy par depth + domain_code.
+
+Ne fais aucun patch.
+Met uniquement le document d’architecture à jour.
+
+Ça clarifie enfin la vraie mécanique.
