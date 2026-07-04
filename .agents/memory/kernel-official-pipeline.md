@@ -53,13 +53,24 @@ Le prochain `peekNext()` retourne exactement la même paire (retry automatique).
 
 ## Séparation stricte des responsabilités
 
-| Brique | Autorité exclusive |
-|---|---|
-| KernelRotationPlanner | depth, domain_code, DomainCycle |
-| TaxonomyProgressManager | sub_domain, subject, dominant_idea |
-| KLD | anti-répétition pédagogique (sub_domain/sujet/idée) |
-| KEY_STRUCTURE | qualité taxonomique + pré-code + appel KLD |
-| QuestionIntent | encodage passif de l'identité complète |
+| Brique | Rôle exact | Autorité exclusive |
+|---|---|---|
+| KernelRotationPlanner | Planificateur | depth, domain_code, DomainCycle |
+| TaxonomyProgressManager | **Chargeur Taxonomy / Idea Loader** (chargeur à 2 temps) | sub_domain → 50 sujets → sujet actif → 5 idées → 1 idée candidate |
+| KLD | **Filtre de validation** — anti-répétition pédagogique | sub_domain/sujet/idée — APRÈS tirage d'une idée candidate |
+| KEY_STRUCTURE | **Filtre de validation** — qualité taxonomique | pré-code yy-xx-xxx-xxx-xxx-zz |
+| QuestionIntent | Encodeur passif | identité complète du noyau |
+
+## Vocabulaire verrouillé (2026-07-04)
+
+- `TaxonomyProgressManager` = chargeur Taxonomy / Idea Loader
+  - Chargeur 1 : sous-domaine + sujets (jusqu'à 50)
+  - Chargeur 2 : idées dominantes du sujet actif (5)
+  - Tire UNE idée candidate → l'envoie à KLD + KEY_STRUCTURE
+  - Avance automatiquement : 5 idées épuisées → sujet suivant ; 50 sujets épuisés → sous-domaine suivant
+- `KLD` + `KEY_STRUCTURE` = filtres de validation, PAS des chargeurs
+- Le **noyau final** ne transporte QUE : depth, domain, sub_domain, subject, dominant_idea, knowledge_frequency
+  — jamais les 50 sujets, les 5 idées, ni la progression
 
 ## Contenu exact transporté entre TaxonomyProgressManager et KLD
 
