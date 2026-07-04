@@ -1,0 +1,175 @@
+Il y a encore une dérive importante dans la proposition de Replit.
+
+Et elle est directement liée à quelque chose que nous avons construit pendant plusieurs semaines.
+
+❌ Je refuse canonical_direction
+
+Il a remplacé kld_hash par :
+
+canonical_direction
+
+Je comprends pourquoi il l'a fait (pour retirer les hashes de KLD), mais ce n'est pas la bonne abstraction.
+
+Pourquoi ?
+
+Parce que nous avons un objet qui existe déjà :
+
+KernelBlueprint
+
+Le pipeline travaille sur un noyau.
+
+Pas sur une succession de tableaux.
+
+Donc KLD ne devrait jamais retourner :
+
+[
+    'status' => ...
+    'reason' => ...
+    'canonical_direction' => ...
+]
+
+Il devrait retourner un résultat métier.
+
+Par exemple :
+
+LearningDirectionResult
+
+avec :
+
+status
+
+reason
+
+normalizedSubject
+
+normalizedDominantIdea
+
+businessEquivalence
+
+contextValidated
+
+Ainsi, KEY_STRUCTURE reçoit un objet métier, pas un tableau.
+
+Deuxième dérive
+
+Il écrit :
+
+existingDirections
+
+Je trouve ce nom trop vague.
+
+En réalité, ce que KLD compare, ce sont des directions déjà validées.
+
+Je préférerais :
+
+validatedDirections
+
+ou
+
+knownLearningDirections
+
+Ça décrit beaucoup mieux le contrat.
+
+Troisième dérive
+
+Il a mis :
+
+equivalence_map
+context_map
+similarity_map
+
+embarqués dans la classe.
+
+Je ne suis pas convaincu.
+
+Nous avons justement commencé à isoler les responsabilités.
+
+Je préférerais que ces données deviennent des ressources métier :
+
+resources/questionbank/
+
+equivalence_map.php
+
+context_map.php
+
+similarity_rules.php
+
+ou une structure équivalente.
+
+Ainsi :
+
+elles sont versionnées ;
+elles sont testables ;
+elles peuvent évoluer sans modifier le moteur.
+Ce que j'enverrais à Replit
+Validation à 98%.
+
+Trois corrections finales.
+
+1.
+
+Ne pas retourner un tableau avec canonical_direction.
+
+Créer un résultat métier typé.
+
+Nom attendu :
+
+LearningDirectionResult
+
+Il contient :
+
+- status
+- reason
+- normalizedSubject
+- normalizedDominantIdea
+- businessEquivalence
+- contextValidated
+
+2.
+
+Renommer
+
+existingDirections
+
+en
+
+validatedDirections
+
+Le contrat devient plus explicite.
+
+3.
+
+Ne pas embarquer :
+
+equivalence_map
+context_map
+similarity_map
+
+dans la classe.
+
+Les déplacer dans des ressources métier dédiées.
+
+Le moteur KLD les consomme uniquement.
+
+Le reste du document est validé.
+
+Ne fais aucun patch.
+
+Ne crée aucun fichier.
+
+Met uniquement le document technique à jour.
+Mon avis
+
+On est vraiment arrivé à un niveau de maturité où les détails comptent.
+
+Au début du projet, ces nuances auraient eu peu d'impact.
+
+Aujourd'hui, avec :
+
+KernelRotationPlanner ✔
+TaxonomyReader ✔
+TaxonomyProgressManager ✔
+
+...on est en train de construire le noyau central du moteur de création.
+
+C'est justement maintenant qu'il faut être exigeant sur les contrats et les responsabilités, car ce sont eux qui vont conditionner toutes les briques suivantes (KEY_STRUCTURE, QuestionIntent, Phase 1, etc.).

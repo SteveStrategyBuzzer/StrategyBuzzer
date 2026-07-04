@@ -42,18 +42,42 @@ public function __construct(
 )
 ```
 
-## API publique KeyLearningDirection
+## API publique KeyLearningDirection (v2 — 2026-07-04)
 
 ```php
 final class KeyLearningDirection
 {
     public function check(
         LearningDirectionInput $input,
-        array $existingDirections = []
-    ): array
-    // Retour : ['status'=>'pass'|'fail', 'reason'=>string|null, 'canonical_direction'=>array|null]
+        array $validatedDirections = []   // LearningDirectionResult[] déjà validés
+    ): LearningDirectionResult
 }
 ```
+
+## LearningDirectionResult (DTO retour typé)
+
+```php
+final class LearningDirectionResult
+{
+    public readonly string  $status;               // 'pass' | 'fail'
+    public readonly ?string $reason;               // null si pass
+    public readonly string  $normalizedSubject;
+    public readonly string  $normalizedDominantIdea;
+    public readonly ?string $businessEquivalence;  // null si pas d'équivalence détectée
+    public readonly bool    $contextValidated;
+}
+```
+
+## Maps métier — resources/ (pas embarquées dans la classe)
+
+```
+resources/questionbank/equivalence_map.php    — équivalences métier par domaine
+resources/questionbank/context_map.php        — couples (sd_A, sd_B) distincts par idée
+resources/questionbank/similarity_rules.php   — seuils et paires proches
+```
+
+KLD consomme ces fichiers via injection ou chargement à la construction.
+Il ne les définit pas.
 
 ## Responsabilités KLD
 
