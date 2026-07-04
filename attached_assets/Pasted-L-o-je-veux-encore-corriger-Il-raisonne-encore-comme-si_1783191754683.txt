@@ -1,0 +1,206 @@
+Là où je veux encore corriger
+
+Il raisonne encore comme si la progression était :
+
+Depth 4
+Science
+
+↓
+
+Sujet 1
+
+↓
+
+Idée 1
+Idée 2
+Idée 3
+Idée 4
+Idée 5
+
+↓
+
+Sujet 2
+...
+
+Or ce n'est pas ce que tu m'as expliqué.
+
+Toi tu veux :
+
+Depth 4
+
+8 domaines
+
+↓
+
+Idée dominante 1
+
+de chaque domaine
+
+↓
+
+rotation complète
+
+Puis seulement :
+
+Idée dominante 2
+
+de chaque domaine
+
+↓
+
+rotation complète
+
+Puis :
+
+Idée dominante 3
+
+etc.
+
+Et seulement après :
+
+Sujet suivant
+
+C'est une différence énorme.
+
+Ta logique est en réalité
+
+Pour un couple :
+
+Depth 4
+Science
+
+le curseur n'est pas seulement :
+
+Sujet
+
+↓
+
+Idée
+
+Il est :
+
+Sous-domaine
+
+↓
+
+Sujet
+
+↓
+
+Position d'idée dominante
+
+mais la rotation globale doit être synchronisée avec tous les domaines.
+
+Autrement dit :
+
+Depth 4
+
+Science
+Sujet A
+Idée 1
+
+↓
+
+Depth 4
+
+Histoire
+Sujet A
+Idée 1
+
+↓
+
+Depth 4
+
+Sport
+Sujet A
+Idée 1
+
+↓
+
+...
+
+↓
+
+Tous les domaines terminés
+
+↓
+
+Science
+Sujet A
+Idée 2
+
+Pas :
+
+Science
+
+Idée 1
+
+Idée 2
+
+Idée 3
+
+Idée 4
+
+Idée 5
+
+↓
+
+Histoire
+Donc il manque un niveau
+
+Le tracker ne peut pas être complètement indépendant.
+
+Il doit respecter la cadence imposée par :
+
+KernelRotationPlanner
+
+Sinon Science va avancer beaucoup plus vite que les autres domaines.
+
+Le contrat que je donnerais à Replit
+
+Je remplacerais la logique de progression par cette règle :
+
+La progression interne d'un domaine ne peut avancer qu'une seule fois à chaque retour de ce domaine dans le DomainCycle.
+
+Exemple :
+
+Cycle 1
+Science
+→ Sujet 1
+→ Idée 1
+
+Le curseur Science attend ensuite le prochain passage du DomainCycle.
+
+Cycle suivant :
+
+Science
+→ Sujet 1
+→ Idée 2
+
+Puis attente.
+
+Ensuite :
+
+Science
+→ Sujet 1
+→ Idée 3
+
+...
+
+Quand les 5 idées sont terminées :
+
+Science
+→ Sujet 2
+→ Idée 1
+
+Et ainsi de suite.
+
+Le tracker ne déroule jamais tout un domaine d'un seul coup.
+Il progresse d'un seul cran à chaque fois que KernelRotationPlanner redemande ce domaine.
+C'est, à mon avis, le point qui manquait.
+
+Le curseur est correct.
+
+Mais son rythme d'avancement doit être piloté par le DomainCycle, pas par une boucle interne qui vide un domaine le plus vite possible.
+
+Je pense que c'est la dernière correction importante avant de passer à l'implémentation de cette nouvelle brique.

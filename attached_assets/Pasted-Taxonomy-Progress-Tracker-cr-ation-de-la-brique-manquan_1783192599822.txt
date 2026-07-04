@@ -1,0 +1,119 @@
+Taxonomy Progress Tracker — création de la brique manquante
+
+Contexte verrouillé :
+KernelBlueprint et KernelRotationPlanner sont fermés.
+TaxonomyReader est fermé.
+La brique manquante est le suivi de progression Taxonomy.
+
+REFUS de l’ancien modèle :
+- pas de ledger par paire
+- pas de duplication de taxonomy.json en DB
+- pas de table contenant toutes les combinaisons sujet/idée
+- pas de consommation complète d’un domaine d’un coup
+
+Stratégie officielle :
+Taxonomy.json reste la source de vérité.
+La DB stocke seulement un curseur de progression.
+
+Rôle de la brique :
+Quand KernelRotationPlanner demande :
+- depth
+- domain_code
+
+TaxonomyProgressTracker retourne une seule unité consommable :
+- depth
+- domain_code
+- sub_domain
+- subject
+- dominant_idea
+- knowledge_frequency
+
+Puis le noyau continue vers :
+KLD → KEY_STRUCTURE → QuestionIntent → Phase 1.
+
+Règle critique de rythme :
+Le tracker avance d’un seul cran uniquement quand KernelRotationPlanner revient sur ce même domain_code.
+
+Exemple :
+Cycle domain complet Depth 4 :
+histoire    → Sujet 1 / Idée 1
+geographie  → Sujet 1 / Idée 1
+sport       → Sujet 1 / Idée 1
+art         → Sujet 1 / Idée 1
+cuisine     → Sujet 1 / Idée 1
+science     → Sujet 1 / Idée 1
+cinema      → Sujet 1 / Idée 1
+faune       → Sujet 1 / Idée 1
+
+Cycle suivant Depth 4 :
+histoire    → Sujet 1 / Idée 2
+geographie  → Sujet 1 / Idée 2
+sport       → Sujet 1 / Idée 2
+art         → Sujet 1 / Idée 2
+cuisine     → Sujet 1 / Idée 2
+science     → Sujet 1 / Idée 2
+cinema      → Sujet 1 / Idée 2
+faune       → Sujet 1 / Idée 2
+
+Après les 5 idées du Sujet 1 :
+histoire    → Sujet 2 / Idée 1
+geographie  → Sujet 2 / Idée 1
+etc.
+
+Quand tous les sujets d’un sous-domaine sont épuisés :
+- marquer le sous-domaine comme utilisé
+- passer au prochain sous-domaine non utilisé pour ce depth + domain_code
+
+Quand tous les sous-domaines sont épuisés :
+- status = exhausted pour ce depth + domain_code
+
+Table attendue :
+taxonomy_progress
+
+Colonnes minimales :
+- id
+- depth
+- domain_code
+- active_sub_domain
+- active_subject
+- dominant_idea_index
+- used_sub_domains JSON
+- status
+- created_at
+- updated_at
+
+Statuts :
+- active
+- exhausted
+
+Classe attendue :
+app/Services/QuestionBank/Rotation/TaxonomyProgressTracker.php
+
+API publique attendue :
+- peekNext(int $depth, string $domainCode): ?array
+- confirmConsumed(int $depth, string $domainCode): void
+- isExhausted(int $depth, string $domainCode): bool
+- getStatus(int $depth, string $domainCode): ?array
+
+Règles :
+- peekNext() ne fait pas avancer le curseur
+- confirmConsumed() avance le curseur seulement après création réussie du QuestionIntent
+- si KLD ou KEY_STRUCTURE rejette, confirmConsumed() n’est pas appelé
+- le prochain peekNext() retourne donc la même paire
+- KernelRotationPlanner n’est pas modifié
+- TaxonomyReader n’est pas modifié
+- Général ne sert jamais de fallback à Science
+- Science utilise seulement la racine Science
+
+Avant patch :
+Fournis uniquement le plan technique final corrigé avec :
+- migration exacte
+- classe exacte
+- méthodes exactes
+- algorithme exact d’avancement
+- tests exacts
+- fichiers modifiés
+- ordre des patchs
+
+Ne fais aucun patch.
+Ne crée aucun fichier.
