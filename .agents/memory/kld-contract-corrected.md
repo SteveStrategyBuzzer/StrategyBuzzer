@@ -68,33 +68,30 @@ final class LearningDirectionResult
 }
 ```
 
-## Composants métier Knowledge (v3 — 2026-07-04)
+## Autorité des connaissances métier (v4 — 2026-07-04)
 
 ```
-app/Services/QuestionBank/Knowledge/EquivalenceMap.php    — équivalences métier par domaine
-app/Services/QuestionBank/Knowledge/ContextMap.php        — couples (sd_A, sd_B) distincts par idée
-app/Services/QuestionBank/Knowledge/SimilarityRules.php   — seuils et paires proches
+app/Services/QuestionBank/Knowledge/LearningKnowledgeBase.php
 ```
 
-Ce sont des classes métier, pas de la config. Elles peuvent évoluer avec méthodes, versions, tests, métriques.
-KLD les consomme via injection. Il ne les définit pas.
+Source unique officielle des connaissances pédagogiques de KLD.
+Expose : getEquivalences(), getContextRules(), getSimilarityRules().
+KLD la reçoit par injection. Il ne la définit pas.
 
-## Collection typée pour les directions déjà validées
+## Registre des directions validées (v4 — 2026-07-04)
 
-```php
-final class ValidatedLearningDirectionCollection
-{
-    // Contient les LearningDirectionResult passés (status='pass')
-    // fournis par l'orchestrateur.
-    // Extensible : recherche rapide, cache, stats, indexation.
-}
 ```
+app/Services/QuestionBank/Rotation/LearningDirectionRegistry.php
+```
+
+KLD interroge un contrat métier, pas un tableau.
+Expose : contains(), findEquivalent(), findReverse(), findContext().
 
 Signature finale :
 ```php
 public function check(
     LearningDirectionInput $input,
-    ValidatedLearningDirectionCollection $validatedDirections
+    LearningDirectionRegistry $registry
 ): LearningDirectionResult
 ```
 

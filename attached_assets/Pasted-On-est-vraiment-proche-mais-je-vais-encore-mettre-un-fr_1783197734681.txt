@@ -1,0 +1,159 @@
+On est vraiment proche, mais je vais encore mettre un frein avant PATCH B1.
+
+Je vois une dérive d'architecture qui risque de nous créer un couplage inutile.
+
+❌ Je refuse les composants Knowledge/
+
+On est parti de :
+
+resources/
+
+Puis on est passé à :
+
+Knowledge/
+
+Mais en y réfléchissant, je pense qu'on est en train de créer des classes qui n'ont aucune logique.
+
+Regarde :
+
+EquivalenceMap
+ContextMap
+SimilarityRules
+
+Aujourd'hui, ce ne sont pas des moteurs.
+
+Ce sont des jeux de données.
+
+Si demain EquivalenceMap ne fait que retourner :
+
+[
+   'Capitale' => ['Statut']
+]
+
+on vient de créer une classe pour encapsuler un tableau.
+
+Je pense que ce n'est pas la bonne abstraction.
+
+Je proposerais plutôt
+
+Créer une brique dédiée :
+
+KnowledgeBase
+
+ou
+
+LearningKnowledgeBase
+
+qui devient la source officielle des connaissances métier.
+
+Elle expose par exemple :
+
+getEquivalences()
+
+getContextRules()
+
+getSimilarityRules()
+
+Là, on a une vraie responsabilité.
+
+Au lieu de trois classes isolées, on a une seule autorité.
+
+Deuxième point
+
+Je ne suis toujours pas convaincu par :
+
+ValidatedLearningDirectionCollection
+
+Pourquoi ?
+
+Parce qu'on est encore dans une logique "collection".
+
+Or KLD ne veut pas une collection.
+
+Il veut une base de référence.
+
+Je verrais davantage quelque chose comme :
+
+LearningDirectionRegistry
+
+ou
+
+LearningDirectionCatalog
+
+qui pourrait offrir :
+
+contains()
+
+findEquivalent()
+
+findReverse()
+
+findContext()
+
+Ainsi KLD ne parcourt pas un tableau.
+
+Il interroge un contrat métier.
+
+Donc je corrigerais encore le document
+Validation finale.
+
+Deux ajustements.
+
+1.
+
+Remplacer :
+
+EquivalenceMap
+ContextMap
+SimilarityRules
+
+par une autorité unique :
+
+LearningKnowledgeBase
+
+Elle expose :
+
+- getEquivalences()
+- getContextRules()
+- getSimilarityRules()
+
+2.
+
+Remplacer :
+
+ValidatedLearningDirectionCollection
+
+par :
+
+LearningDirectionRegistry
+
+Le contrat devient :
+
+check(
+    LearningDirectionInput $input,
+    LearningDirectionRegistry $registry
+): LearningDirectionResult
+
+Le registry expose les opérations métier nécessaires :
+
+- contains()
+- findEquivalent()
+- findReverse()
+- findContext()
+
+KLD reste un moteur pur.
+
+Le reste du document est validé.
+
+Ne fais aucun patch.
+
+Met uniquement le document technique à jour.
+Pourquoi je pousse autant sur ces détails ?
+
+Parce qu'on est en train de construire le cœur du moteur de génération.
+
+Une fois KLD et KEY_STRUCTURE terminés, pratiquement toutes les briques suivantes vont dépendre de leurs contrats.
+
+Si on verrouille les bonnes abstractions maintenant, on évitera des refactorings coûteux plus tard.
+
+À ce stade, je préfère passer une heure de plus sur le contrat que plusieurs jours à recâbler tout le pipeline ensuite.
