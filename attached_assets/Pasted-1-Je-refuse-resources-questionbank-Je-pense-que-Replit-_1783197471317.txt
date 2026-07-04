@@ -1,0 +1,126 @@
+1. Je refuse resources/questionbank/
+
+Je pense que Replit est retombé dans une logique Laravel "configuration".
+
+Or, ces fichiers ne sont pas de la configuration.
+
+Ce sont des données métier du moteur.
+
+Par exemple :
+
+Capitale ≈ Statut
+
+n'est pas une config.
+
+C'est une règle pédagogique.
+
+Même chose pour :
+
+context_map
+
+Ce n'est pas une config.
+
+C'est une connaissance métier.
+
+Je préférerais une structure comme :
+
+app/
+└── Services/
+    └── QuestionBank/
+        └── Knowledge/
+            ├── EquivalenceMap.php
+            ├── ContextMap.php
+            └── SimilarityRules.php
+
+Pourquoi ?
+
+Parce que ces éléments vont probablement évoluer avec des méthodes, des versions, des tests, des métriques, etc.
+
+Je ne les vois pas rester de simples tableaux PHP.
+
+2. validatedDirections est encore trop faible
+
+Je pense qu'on peut aller encore plus loin.
+
+Le service KLD ne devrait pas recevoir :
+
+array $validatedDirections
+
+Pourquoi ?
+
+Parce que nous venons justement d'éliminer les tableaux anonymes.
+
+Je préférerais :
+
+ValidatedLearningDirectionCollection
+
+Même si, au début, cette classe ne fait que contenir un tableau.
+
+Ainsi :
+
+check(
+    LearningDirectionInput $input,
+    ValidatedLearningDirectionCollection $directions
+)
+
+Dans un an, si tu ajoutes :
+
+recherche rapide ;
+cache ;
+statistiques ;
+indexation ;
+
+tu n'auras pas à changer la signature de KLD.
+
+Donc je renverrais encore une petite correction
+Validation à 99%.
+
+Deux corrections finales.
+
+1.
+
+Ne pas placer :
+
+equivalence_map
+context_map
+similarity_rules
+
+dans resources/.
+
+Créer des composants métier dédiés :
+
+app/Services/QuestionBank/Knowledge/
+
+EquivalenceMap.php
+ContextMap.php
+SimilarityRules.php
+
+KEY_LEARNING_DIRECTION consomme ces composants.
+
+2.
+
+Ne pas utiliser :
+
+array $validatedDirections
+
+Créer :
+
+ValidatedLearningDirectionCollection
+
+La signature devient :
+
+check(
+    LearningDirectionInput $input,
+    ValidatedLearningDirectionCollection $validatedDirections
+): LearningDirectionResult
+
+Le reste du document est validé.
+
+Ne fais aucun patch.
+
+Met uniquement le document technique à jour.
+Mon intuition
+
+Je pense qu'après cette correction, on aura un contrat KLD suffisamment solide pour qu'il ne bouge pratiquement plus.
+
+Et je veux souligner un point : ce que nous faisons depuis TaxonomyProgressManager est exactement la bonne méthode. On ne dessine plus seulement une architecture, on ferme réellement les briques avant de passer à la suivante. C'est ce qui va éviter que les responsabilités se mélangent plus tard dans le moteur.

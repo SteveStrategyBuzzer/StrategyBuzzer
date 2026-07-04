@@ -68,16 +68,35 @@ final class LearningDirectionResult
 }
 ```
 
-## Maps métier — resources/ (pas embarquées dans la classe)
+## Composants métier Knowledge (v3 — 2026-07-04)
 
 ```
-resources/questionbank/equivalence_map.php    — équivalences métier par domaine
-resources/questionbank/context_map.php        — couples (sd_A, sd_B) distincts par idée
-resources/questionbank/similarity_rules.php   — seuils et paires proches
+app/Services/QuestionBank/Knowledge/EquivalenceMap.php    — équivalences métier par domaine
+app/Services/QuestionBank/Knowledge/ContextMap.php        — couples (sd_A, sd_B) distincts par idée
+app/Services/QuestionBank/Knowledge/SimilarityRules.php   — seuils et paires proches
 ```
 
-KLD consomme ces fichiers via injection ou chargement à la construction.
-Il ne les définit pas.
+Ce sont des classes métier, pas de la config. Elles peuvent évoluer avec méthodes, versions, tests, métriques.
+KLD les consomme via injection. Il ne les définit pas.
+
+## Collection typée pour les directions déjà validées
+
+```php
+final class ValidatedLearningDirectionCollection
+{
+    // Contient les LearningDirectionResult passés (status='pass')
+    // fournis par l'orchestrateur.
+    // Extensible : recherche rapide, cache, stats, indexation.
+}
+```
+
+Signature finale :
+```php
+public function check(
+    LearningDirectionInput $input,
+    ValidatedLearningDirectionCollection $validatedDirections
+): LearningDirectionResult
+```
 
 ## Responsabilités KLD
 
