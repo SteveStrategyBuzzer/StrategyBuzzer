@@ -131,23 +131,37 @@ Il n'y a pas de deuxième KLD après consommation.
 **Mission :** Empêcher qu'un même sujet enseigne deux fois la même **direction d'apprentissage**
 sous une formulation différente. KLD ne compare pas des mots — il compare des directions.
 
+**Rôle :** filtre rapide + émetteur d'alerte de risque. KEY_STRUCTURE est le juge structurel final.
+
 **Position** : à l'intérieur du cycle de remplissage du chargeur d'idées — PAS étape standalone.
 
 Entrée : `active_subject` · `proposed_dominant_idea` · `current_sub_domain` ·
          `domain_code` · `depth` · directions déjà validées (LearningDirectionRegistry)
 
-Sortie : PASS ou FAIL + reason
+**3 sorties (v5 — 2026-07-05) :**
 
-Mécanisme (5 règles, déterministe) :
+| Sortie | Sens | Règle |
+|---|---|---|
+| `FAIL` | Doublon certain | KLD-1 à KLD-5 |
+| `REVIEW_STRUCTURE` | Risque contextuel → KEY_STRUCTURE tranche | KLD-6 |
+| `PASS` | Direction inédite | aucune règle déclenchée |
+
+Mécanisme (6 règles, déterministe) :
 1. normaliser subject + idée
-2. KLD-1 subject == dominant_idea → INVALID_MINIMAL_PAIR
-3. KLD-2 paire directe déjà dans registry → DIRECT_PAIR_CONTEXT_DUPLICATE
-4. KLD-3 paire inversée → REVERSED_PAIR_CONTEXT_DUPLICATE
-5. KLD-4 même direction détectée via lexique LearningDirectionLexicon::getSynonyms()
-         (voiture≈auto≈char≈bagnole = même dossier pédagogique) → CONCEPTUAL_COLLISION
-6. KLD-5 sub_domain différent + LearningDirectionLexicon::getContextRules() silencieux → CONTEXT_NOT_DISTINCT
-7. concept voisin NON synonyme (camion≠voiture) → KLD LAISSE PASSER → KEY_STRUCTURE analyse
-8. sinon → PASS
+2. KLD-1 subject == dominant_idea → **FAIL** `INVALID_MINIMAL_PAIR`
+3. KLD-2 paire directe exacte dans registry → **FAIL** `DIRECT_PAIR_CONTEXT_DUPLICATE`
+4. KLD-3 paire inversée → **FAIL** `REVERSED_PAIR_CONTEXT_DUPLICATE`
+5. KLD-4 synonyme direct via `LearningDirectionLexicon::getSynonyms()` → **FAIL** `CONCEPTUAL_COLLISION`
+6. KLD-5 sub_domain différent + `getContextRules()` silencieux → **FAIL** `CONTEXT_NOT_DISTINCT`
+7. KLD-6 voisin non synonyme via `LearningDirectionLexicon::getNeighbors()` → **REVIEW_STRUCTURE** `POSSIBLE_CONTEXTUAL_DUPLICATE`
+8. sinon → **PASS**
+
+Cycle chargeur d'idées :
+```
+FAIL            → rejeter, Taxonomy propose une autre idée
+REVIEW_STRUCTURE → forward KEY_STRUCTURE avec alerte POSSIBLE_CONTEXTUAL_DUPLICATE
+PASS            → forward KEY_STRUCTURE (chemin normal)
+```
 
 Ne choisit rien. Ne remplit aucun slot. Ne lit pas la DB. Ne génère aucun hash.
 Appelé autant de fois que nécessaire jusqu'à remplir les 5 slots.

@@ -54,19 +54,24 @@ final class KeyLearningDirection
 }
 ```
 
-## LearningDirectionResult (DTO retour typé)
+## LearningDirectionResult (DTO retour typé — v5, 2026-07-05)
 
 ```php
 final class LearningDirectionResult
 {
-    public readonly string  $status;               // 'pass' | 'fail'
-    public readonly ?string $reason;               // null si pass
+    public readonly string  $status;               // 'pass' | 'fail' | 'review_structure'
+    public readonly ?string $reason;               // null si pass ; POSSIBLE_CONTEXTUAL_DUPLICATE si review_structure
     public readonly string  $normalizedSubject;
     public readonly string  $normalizedDominantIdea;
-    public readonly ?string $businessEquivalence;  // null si pas d'équivalence détectée
+    public readonly ?string $synonymDetected;      // null si pas de synonyme détecté (renommé depuis businessEquivalence)
     public readonly bool    $contextValidated;
 }
 ```
+
+**3 statuts officiels :**
+- `'pass'` — direction inédite, KEY_STRUCTURE vérifie la structure sans alerte
+- `'fail'` — doublon certain, KEY_STRUCTURE n'est pas appelé
+- `'review_structure'` — risque contextuel, KEY_STRUCTURE tranche avec l'alerte KLD
 
 ## Autorité des connaissances métier (v4 — 2026-07-04)
 
@@ -95,19 +100,20 @@ public function check(
 ): LearningDirectionResult
 ```
 
-## Frontière KLD / KEY_STRUCTURE (verrouillée 2026-07-04)
+## Frontière KLD / KEY_STRUCTURE (v5 — 2026-07-05)
 
-KLD = détecteur de **synonymes directs** (doublons cachés).
-KEY_STRUCTURE = **moteur de contexte complet** (cohérence, depth, décorticage, collision structurelle).
+KLD = **filtre rapide + émetteur d'alerte de risque** (3 sorties).
+KEY_STRUCTURE = **juge structurel final**.
 
 ```
-transport + voiture → transport + auto     → KLD FAIL  (synonyme direct)
-transport + voiture → transport + camion   → KLD PASS  → KEY_STRUCTURE analyse
-idea hors depth                            → KLD PASS  → KEY_STRUCTURE FAIL
+transport + voiture → transport + auto     → KLD FAIL             (synonyme direct — doublon certain)
+transport + voiture → transport + camion   → KLD REVIEW_STRUCTURE (voisin — KEY_STRUCTURE tranche)
+transport + voiture → transport + avion    → KLD PASS             (direction distincte)
+idea hors depth                            → KLD PASS             → KEY_STRUCTURE FAIL
 ```
 
 KLD ne juge jamais si une idée est pédagogiquement bonne.
-Il juge uniquement : même dossier pédagogique sous un nom différent = doublon caché.
+Il juge : même dossier = FAIL ; risque de collision = REVIEW_STRUCTURE ; direction inédite = PASS.
 
 ## LearningDirectionLexicon (renommé, 2026-07-04)
 
@@ -126,11 +132,11 @@ Responsabilité unique : "voiture = auto = char = bagnole". Ce n'est pas une bas
 ## Responsabilités KLD
 
 DOIT :
-- Empêcher qu'un même sujet enseigne deux fois la même direction d'apprentissage sous formulation différente
-- Appliquer lexique de synonymes directs via LearningDirectionLexicon::getSynonyms()
-- Appliquer context_map via LearningDirectionLexicon::getContextRules()
-- Retourner PASS/FAIL déterministe
-- Laisser passer les concepts voisins non synonymes → KEY_STRUCTURE les analyse
+- Empêcher qu'un même sujet enseigne deux fois la même direction d'apprentissage
+- Appliquer lexique de synonymes directs via `LearningDirectionLexicon::getSynonyms()` → FAIL si synonyme
+- Appliquer détection de voisins via `LearningDirectionLexicon::getNeighbors()` → REVIEW_STRUCTURE si voisin
+- Appliquer context_map via `LearningDirectionLexicon::getContextRules()` → arbitrage KLD-5
+- Retourner PASS | FAIL | REVIEW_STRUCTURE déterministe
 
 NE DOIT JAMAIS :
 - Lire/écrire DB
@@ -139,23 +145,40 @@ NE DOIT JAMAIS :
 - Créer QuestionIntent
 - Choisir domaine/sous-domaine/sujet/idée
 
-## 6 motifs de rejet
-INVALID_MINIMAL_PAIR, DIRECT_PAIR_CONTEXT_DUPLICATE, REVERSED_PAIR_CONTEXT_DUPLICATE,
-CONCEPTUAL_COLLISION, CONTEXT_NOT_DISTINCT, PAIR_TOO_CLOSE_TO_EXISTING
+## Motifs par sortie
 
-## Tests — 12 tests purs (aucune DB, aucun Eloquent)
+**FAIL :**
+`INVALID_MINIMAL_PAIR`, `DIRECT_PAIR_CONTEXT_DUPLICATE`, `REVERSED_PAIR_CONTEXT_DUPLICATE`,
+`CONCEPTUAL_COLLISION`, `CONTEXT_NOT_DISTINCT`
+
+**REVIEW_STRUCTURE :**
+`POSSIBLE_CONTEXTUAL_DUPLICATE`
+
+**PASS :**
+reason = null
+
+## LearningDirectionLexicon — méthodes (v5)
+
+| Méthode | Rôle | Sortie KLD |
+|---|---|---|
+| `getSynonyms()` | voiture≈auto≈char≈bagnole | → FAIL |
+| `getNeighbors()` | voiture→{camion, moto, bus} (voisins non synonymes) | → REVIEW_STRUCTURE |
+| `getContextRules()` | couples (subDomainA, subDomainB) distincts (KLD-5) | arbitrage FAIL/PASS |
+
+## Tests — 13 tests purs (aucune DB, aucun Eloquent)
 1. rejects_when_subject_equals_dominant_idea
 2. rejects_direct_duplicate_from_existing_directions
 3. rejects_reversed_duplicate_from_existing_directions
-4. rejects_business_equivalence_collision
+4. rejects_direct_synonym_via_lexicon
 5. rejects_when_context_map_is_silent
 6. passes_when_context_map_declares_distinct_contexts
-7. rejects_when_pair_is_too_close_to_existing_direction
+7. returns_review_structure_for_neighboring_idea              ← nouveau
 8. passes_when_no_rule_triggers
 9. returns_canonical_direction_on_pass
 10. does_not_generate_hashes
 11. has_no_database_dependency
 12. accepts_typed_learning_direction_input
+13. review_structure_carries_possible_contextual_duplicate_reason  ← nouveau
 
 ## Ordre des patches
 PATCH B1 : LearningDirectionInput DTO (pas de migration)
