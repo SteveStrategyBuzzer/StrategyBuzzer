@@ -69,26 +69,55 @@ Le Blueprint est terminé **uniquement après QuestionIntent**.
 ---
 
 ### KernelRotationPlanner
-**Rôle exact : planificateur de rotation + compteur d'achèvement des depth**
+**Rôle exact : machine d'état persistante de la rotation globale**
 
 Remplit dans le Blueprint : `depth` · `domain_code` · `rotation_identifier`
 
-Mécanisme complet :
-1. Lire l'état des besoins / progression (DepthNeedMatrix)
-2. Identifier le depth courant
-3. Agréger les états d'épuisement des 8 domaines pour ce depth
-   (source : TaxonomyProgressManager.isExhausted() par domain_code)
-4. Si les 8 domaines du depth courant sont épuisés → déclarer le depth complet,
-   passer au prochain depth
-5. Choisir le prochain domain_code (DomainCycle : histoire → geographie → sport →
-   art → cuisine → science → cinema → faune)
-6. Générer rotation_identifier
-7. Écrire depth · domain_code · rotation_identifier dans Blueprint
+#### État interne persistant (source de vérité unique)
 
-Séparation des responsabilités :
-- KernelRotationPlanner → décide QUAND passer au prochain depth, choisit le domaine
-- TaxonomyProgressManager → expose isExhausted(depth, domain_code) par module
-- KernelRotationPlanner → agrège les 8 états, déclare le depth complet
+```
+current_depth       int       — depth actif (ex : 4)
+current_domain      string    — domain_code actif (ex : "cinema")
+completed_domains   int       — compteur 0..8 dans le depth courant
+rotation_identifier string    — ex : "D4-CIN-0034"
+```
+
+Cet état est **persisté** (DB ou Redis). En cas de redémarrage du worker,
+la rotation reprend exactement là où elle s'était arrêtée — sans interroger
+à nouveau les 8 domaines, sans recalculer la progression.
+
+#### Mécanisme complet (par rotation)
+
+```
+1. Charger l'état persisté (current_depth, current_domain, completed_domains)
+2. Interroger TaxonomyProgressManager :
+       isExhausted(current_depth, current_domain) → bool
+   (UNE seule requête — jamais de scan des 8 domaines)
+3. Si EXHAUSTED :
+       completed_domains++
+       persister
+4. Si completed_domains == 8 :
+       current_depth    = DepthNeedMatrix.next()
+       completed_domains = 0
+       réinitialiser DomainCycle
+       persister
+5. Avancer DomainCycle → prochain domain_code
+       current_domain = DomainCycle.next()
+       persister
+6. Générer rotation_identifier (ex : "D4-CIN-0034")
+7. Écrire depth · domain_code · rotation_identifier dans Blueprint
+```
+
+#### Séparation des responsabilités (définitive)
+
+| Brique | Responsabilité | Ne connaît PAS |
+|---|---|---|
+| `TaxonomyProgressManager` | Répond : ce domaine précis est-il épuisé ? (oui/non) | L'état global, les autres domaines |
+| `KernelRotationPlanner` | Maintient current_depth · current_domain · completed_domains · DomainCycle | Le contenu interne des modules Taxonomy |
+
+**KernelRotationPlanner n'interroge jamais les 8 domaines en même temps.**
+Il interroge **un seul** domaine par rotation (le current_domain), et incrémente
+son propre compteur quand ce domaine répond EXHAUSTED.
 
 Ne touche jamais les chargeurs internes de Taxonomy.
 N'écrit jamais sub_domain, active_subject, active_dominant_idea.

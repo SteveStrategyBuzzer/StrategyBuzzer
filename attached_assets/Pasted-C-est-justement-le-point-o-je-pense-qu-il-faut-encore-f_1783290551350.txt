@@ -1,0 +1,141 @@
+C'est justement le point où je pense qu'il faut encore faire évoluer l'architecture. Aujourd'hui, la réponse "il interroge les 8 domaines" est incomplète.
+
+À mon avis, KernelRotationPlanner ne devrait jamais scanner les 8 domaines à chaque rotation. Il devrait maintenir son propre état de progression.
+
+Je verrais plutôt ceci :
+
+KernelRotationPlanner
+│
+├── current_depth = 4
+├── completed_domains = 5
+├── current_domain = Science
+└── DomainCycle
+
+Le dialogue devient alors :
+
+KernelRotationPlanner
+        │
+        │ demande
+        ▼
+TaxonomyProgressManager
+(depth=4, domain=Science)
+        │
+        ▼
+EXHAUSTED = true
+
+À ce moment-là, KernelRotationPlanner met à jour son propre compteur :
+
+completed_domains++
+
+completed_domains = 6
+
+Il ne rescannera plus jamais les cinq domaines déjà terminés.
+
+Puis il continue :
+
+Domain suivant
+↓
+
+Cinéma
+
+Quand Cinéma répond :
+
+EXHAUSTED = true
+completed_domains = 7
+
+Puis :
+
+Faune
+↓
+
+EXHAUSTED = true
+completed_domains = 8
+
+Et c'est le compteur interne qui déclenche automatiquement :
+
+if (completed_domains == 8) {
+
+    current_depth = DepthNeedMatrix.next();
+
+    completed_domains = 0;
+
+    réinitialiser DomainCycle;
+
+}
+
+Donc le mécanisme devient :
+
+Depth 4
+
+completed_domains = 0
+
+↓
+
+Histoire terminé
+
+↓
+
+1
+
+↓
+
+Géographie terminé
+
+↓
+
+2
+
+↓
+
+...
+
+↓
+
+Faune terminé
+
+↓
+
+8
+
+↓
+
+PASSAGE AUTOMATIQUE AU DEPTH SUIVANT
+Pourquoi je préfère cette approche
+
+Parce qu'elle respecte la responsabilité de chaque brique :
+
+TaxonomyProgressManager
+
+Répond uniquement :
+
+Ce domaine est-il épuisé ?
+
+Oui / Non.
+
+Il ne connaît rien d'autre.
+
+KernelRotationPlanner
+
+Possède toute la vision globale :
+
+depth courant ;
+prochain depth ;
+DomainCycle ;
+nombre de domaines terminés.
+
+C'est donc lui qui peut dire :
+
+completed_domains == 8
+
+↓
+
+Depth terminé.
+
+Je pousserais même l'idée un peu plus loin : au lieu de recalculer completed_domains, KernelRotationPlanner devrait persister cet état. Il deviendrait alors la seule source de vérité de la rotation globale :
+
+current_depth = 4
+current_domain = Cinema
+completed_domains = 6
+rotation_identifier = D4-CIN-0034
+
+Ainsi, si le processus est interrompu (redémarrage du worker, arrêt de la VM, etc.), la rotation reprend exactement où elle s'était arrêtée, sans devoir redemander l'état des huit domaines ni recalculer la progression. C'est une architecture plus robuste et plus simple à raisonner.
