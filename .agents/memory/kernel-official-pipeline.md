@@ -69,15 +69,29 @@ Le Blueprint est terminé **uniquement après QuestionIntent**.
 ---
 
 ### KernelRotationPlanner
-Remplit **uniquement** : `depth` · `domain_code` · `rotation_identifier`
+**Rôle exact : planificateur de rotation + compteur d'achèvement des depth**
 
-Mécanisme :
-1. choisir le prochain depth requis (DepthNeedMatrix)
-2. choisir le prochain domain_code (DomainCycle : histoire → geographie → sport → art → cuisine → science → cinema → faune)
-3. générer rotation_identifier
-4. écrire ces 3 valeurs dans Blueprint
+Remplit dans le Blueprint : `depth` · `domain_code` · `rotation_identifier`
 
-Ne lit jamais Taxonomy. Ne touche jamais les chargeurs.
+Mécanisme complet :
+1. Lire l'état des besoins / progression (DepthNeedMatrix)
+2. Identifier le depth courant
+3. Agréger les états d'épuisement des 8 domaines pour ce depth
+   (source : TaxonomyProgressManager.isExhausted() par domain_code)
+4. Si les 8 domaines du depth courant sont épuisés → déclarer le depth complet,
+   passer au prochain depth
+5. Choisir le prochain domain_code (DomainCycle : histoire → geographie → sport →
+   art → cuisine → science → cinema → faune)
+6. Générer rotation_identifier
+7. Écrire depth · domain_code · rotation_identifier dans Blueprint
+
+Séparation des responsabilités :
+- KernelRotationPlanner → décide QUAND passer au prochain depth, choisit le domaine
+- TaxonomyProgressManager → expose isExhausted(depth, domain_code) par module
+- KernelRotationPlanner → agrège les 8 états, déclare le depth complet
+
+Ne touche jamais les chargeurs internes de Taxonomy.
+N'écrit jamais sub_domain, active_subject, active_dominant_idea.
 
 ---
 
@@ -96,7 +110,7 @@ Chaque module est autonome et contient :
 - `consumed_subjects` / `consumed_sub_domains`
 - `status` (active | exhausted)
 
-Les 8 modules d'un depth avancent de manière **autonome**, coordonnés par KernelRotationPlanner.
+Les 8 modules d'un depth avancent de manière **autonome** ; KernelRotationPlanner agrège leurs états isExhausted() pour détecter la complétion du depth.
 
 #### Chargeur de sujets
 1. si vide : créer/sélectionner jusqu'à 50 sujets conformes au depth + sub_domain
