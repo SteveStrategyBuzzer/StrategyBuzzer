@@ -146,22 +146,26 @@ Entrée : `active_subject` · `proposed_dominant_idea` · `current_sub_domain` �
 | `REVIEW_STRUCTURE` | Risque contextuel → KEY_STRUCTURE tranche | KLD-6 |
 | `PASS` | Direction inédite | aucune règle déclenchée |
 
-Mécanisme (6 règles, déterministe) :
-1. normaliser subject + idée
-2. KLD-1 subject == dominant_idea → **FAIL** `INVALID_MINIMAL_PAIR`
-3. KLD-2 paire directe exacte dans registry → **FAIL** `DIRECT_PAIR_CONTEXT_DUPLICATE`
-4. KLD-3 paire inversée → **FAIL** `REVERSED_PAIR_CONTEXT_DUPLICATE`
-5. KLD-4 synonyme direct via `LearningDirectionLexicon::getSynonyms()` → **FAIL** `CONCEPTUAL_COLLISION`
-6. KLD-5 sub_domain différent + `getContextRules()` silencieux → **FAIL** `CONTEXT_NOT_DISTINCT`
-7. KLD-6 voisin non synonyme via `LearningDirectionLexicon::getNeighbors()` → **REVIEW_STRUCTURE** `POSSIBLE_CONTEXTUAL_DUPLICATE`
-8. sinon → **PASS**
+Mécanisme en 7 étapes (déterministe, sans DB, sans IA) :
+```
+1. Normaliser sujet           → subject_key
+2. Normaliser idée            → idea_key
+3. Résoudre via getSynonyms() → idea_canonical_key
+4. direction_key = subject_key + "::" + idea_canonical_key
+5. registry.contains(direction_key) → FAIL  DIRECT_PAIR_CONTEXT_DUPLICATE
+6. registry.hasSubject(subject_key) → REVIEW_STRUCTURE  POSSIBLE_CONTEXTUAL_DUPLICATE
+7.                                  → PASS
+```
 
 Cycle chargeur d'idées :
 ```
-FAIL            → rejeter, Taxonomy propose une autre idée
-REVIEW_STRUCTURE → forward KEY_STRUCTURE avec alerte POSSIBLE_CONTEXTUAL_DUPLICATE
-PASS            → forward KEY_STRUCTURE (chemin normal)
+FAIL             → rejeter, Taxonomy propose une autre idée
+REVIEW_STRUCTURE → forward KEY_STRUCTURE + alerte POSSIBLE_CONTEXTUAL_DUPLICATE
+PASS             → forward KEY_STRUCTURE (chemin normal)
 ```
+
+LearningDirectionLexicon : getSynonyms() uniquement.
+LearningDirectionRegistry : contains(direction_key) + hasSubject(subject_key).
 
 Ne choisit rien. Ne remplit aucun slot. Ne lit pas la DB. Ne génère aucun hash.
 Appelé autant de fois que nécessaire jusqu'à remplir les 5 slots.

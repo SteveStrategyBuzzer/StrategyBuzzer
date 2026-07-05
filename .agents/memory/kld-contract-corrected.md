@@ -90,7 +90,7 @@ app/Services/QuestionBank/Rotation/LearningDirectionRegistry.php
 ```
 
 KLD interroge un contrat métier, pas un tableau.
-Expose : contains(), findEquivalent(), findReverse(), findContext().
+Expose : `contains(string $directionKey): bool`, `hasSubject(string $subjectKey): bool`.
 
 Signature finale :
 ```php
@@ -100,34 +100,46 @@ public function check(
 ): LearningDirectionResult
 ```
 
+## Mécanisme en 7 étapes (verrouillé 2026-07-05)
+
+```
+1. Normaliser le sujet                 → subject_key
+2. Normaliser l'idée                   → idea_key
+3. Résoudre idea_key via getSynonyms() → idea_canonical_key
+4. Construire direction_key = subject_key + "::" + idea_canonical_key
+5. registry.contains(direction_key) ?  → oui → FAIL  DIRECT_PAIR_CONTEXT_DUPLICATE
+6. registry.hasSubject(subject_key) ?  → oui → REVIEW_STRUCTURE  POSSIBLE_CONTEXTUAL_DUPLICATE
+7.                                     → sinon → PASS
+```
+
 ## Frontière KLD / KEY_STRUCTURE (v5 — 2026-07-05)
 
-KLD = **filtre rapide + émetteur d'alerte de risque** (3 sorties).
+KLD = **registre de dossiers pédagogiques + synonymes directs**. Mécanisme déterministe en 7 étapes.
 KEY_STRUCTURE = **juge structurel final**.
 
 ```
-transport + voiture → transport + auto     → KLD FAIL             (synonyme direct — doublon certain)
-transport + voiture → transport + camion   → KLD REVIEW_STRUCTURE (voisin — KEY_STRUCTURE tranche)
-transport + voiture → transport + avion    → KLD PASS             (direction distincte)
-idea hors depth                            → KLD PASS             → KEY_STRUCTURE FAIL
+transport + voiture → transport + auto     → KLD FAIL             (résolu vers transport::voiture)
+transport + voiture → transport + camion   → KLD REVIEW_STRUCTURE (sujet transport:: déjà utilisé)
+transport + voiture → transport + avion    → KLD REVIEW_STRUCTURE (sujet transport:: déjà utilisé)
+sujet inédit + idée inédite               → KLD PASS
+idea hors depth                           → KLD PASS → KEY_STRUCTURE FAIL
 ```
 
 KLD ne juge jamais si une idée est pédagogiquement bonne.
-Il juge : même dossier = FAIL ; risque de collision = REVIEW_STRUCTURE ; direction inédite = PASS.
+Il juge : même dossier (via résolution synonyme) = FAIL ; sujet déjà utilisé = REVIEW_STRUCTURE ; inédit = PASS.
 
-## LearningDirectionLexicon (renommé, 2026-07-04)
+## LearningDirectionLexicon (v5 — 2026-07-05)
 
 **Fichier :** `app/Services/QuestionBank/Knowledge/LearningDirectionLexicon.php`
 
-Ancienne classe `LearningKnowledgeBase` — **renommée** car sa responsabilité est maintenant un lexique métier spécialisé au service de KLD, pas une base de connaissances générale.
-
-| Méthode | Contenu |
+| Méthode | Rôle |
 |---|---|
-| `getSynonyms()` | Lexique de synonymes directs par domaine (voiture≈auto≈char≈bagnole) — détecte la même direction d'apprentissage sous nom différent |
-| `getContextRules()` | Couples (subDomainA, subDomainB) déclarés pédagogiquement distincts pour une idée dominante (KLD-5) |
+| `getSynonyms()` | Groupes de synonymes directs par domaine — résout idea_key vers idea_canonical_key |
+| ~~`getContextRules()`~~ | **SUPPRIMÉ** — remplacé par le mécanisme hasSubject + KEY_STRUCTURE |
+| ~~`getNeighbors()`~~ | **JAMAIS CRÉÉ** — retiré avant implémentation (trop spéculatif) |
 | ~~`getSimilarityRules()`~~ | **SUPPRIMÉ** — seuil 0.85 abandonné |
 
-Responsabilité unique : "voiture = auto = char = bagnole". Ce n'est pas une base de connaissances, c'est un **lexique métier spécialisé**.
+Responsabilité unique : résoudre `voiture → voiture`, `auto → voiture`, `char → voiture`, `bagnole → voiture`.
 
 ## Responsabilités KLD
 
@@ -145,40 +157,28 @@ NE DOIT JAMAIS :
 - Créer QuestionIntent
 - Choisir domaine/sous-domaine/sujet/idée
 
-## Motifs par sortie
+## Motifs par sortie (v5)
 
 **FAIL :**
-`INVALID_MINIMAL_PAIR`, `DIRECT_PAIR_CONTEXT_DUPLICATE`, `REVERSED_PAIR_CONTEXT_DUPLICATE`,
-`CONCEPTUAL_COLLISION`, `CONTEXT_NOT_DISTINCT`
+`DIRECT_PAIR_CONTEXT_DUPLICATE` (étape 5 — direction_key déjà dans registry)
 
 **REVIEW_STRUCTURE :**
-`POSSIBLE_CONTEXTUAL_DUPLICATE`
+`POSSIBLE_CONTEXTUAL_DUPLICATE` (étape 6 — sujet déjà utilisé, autre direction)
 
 **PASS :**
 reason = null
 
-## LearningDirectionLexicon — méthodes (v5)
-
-| Méthode | Rôle | Sortie KLD |
-|---|---|---|
-| `getSynonyms()` | voiture≈auto≈char≈bagnole | → FAIL |
-| `getNeighbors()` | voiture→{camion, moto, bus} (voisins non synonymes) | → REVIEW_STRUCTURE |
-| `getContextRules()` | couples (subDomainA, subDomainB) distincts (KLD-5) | arbitrage FAIL/PASS |
-
-## Tests — 13 tests purs (aucune DB, aucun Eloquent)
-1. rejects_when_subject_equals_dominant_idea
-2. rejects_direct_duplicate_from_existing_directions
-3. rejects_reversed_duplicate_from_existing_directions
-4. rejects_direct_synonym_via_lexicon
-5. rejects_when_context_map_is_silent
-6. passes_when_context_map_declares_distinct_contexts
-7. returns_review_structure_for_neighboring_idea              ← nouveau
-8. passes_when_no_rule_triggers
-9. returns_canonical_direction_on_pass
-10. does_not_generate_hashes
-11. has_no_database_dependency
-12. accepts_typed_learning_direction_input
-13. review_structure_carries_possible_contextual_duplicate_reason  ← nouveau
+## Tests — 10 tests purs (aucune DB, aucun Eloquent)
+1. passes_when_subject_and_idea_are_both_new
+2. fails_when_direction_key_already_exists_exactly
+3. fails_when_idea_resolves_to_existing_canonical_via_synonym
+4. returns_review_structure_when_subject_already_has_a_direction
+5. passes_when_subject_is_also_new
+6. resolves_synonym_to_canonical_before_building_direction_key
+7. does_not_generate_hashes
+8. has_no_database_dependency
+9. accepts_typed_learning_direction_input
+10. review_structure_carries_possible_contextual_duplicate_reason
 
 ## Ordre des patches
 PATCH B1 : LearningDirectionInput DTO (pas de migration)
