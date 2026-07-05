@@ -11,35 +11,38 @@ use Tests\TestCase;
 /**
  * Tests unitaires pour TaxonomyProgressManager.
  *
+ * CURSEUR SUJET : le curseur pointe sur le sujet actif uniquement.
+ * dominant_idea_index est une colonne DB résiduelle (toujours 0) — plus un curseur métier.
+ * 1 confirmConsumed() = 1 sujet entièrement consommé → avance au sujet suivant.
+ *
  * DB : SQLite in-memory (Tests\TestCase).
- * PAS de RefreshDatabase : la migration 2026_03_15_100004_fix_bot_qualification_events_constraint
- * utilise ADD CONSTRAINT ... CHECK, syntaxe incompatible SQLite.
+ * PAS de RefreshDatabase : la migration 2026_03_15_100004 utilise ADD CONSTRAINT CHECK,
+ * syntaxe incompatible SQLite.
  * → La table taxonomy_progress est créée manuellement dans setUp() et détruite dans tearDown().
- * Aucun accès Neon / production.
  *
  * TaxonomyReader lit taxonomy.json réel via base_path() (source de vérité, pas de DB).
  *
  * Domaine de référence : 'science' → Science → Sciences
- *   Sujets : ADN, Trou_noir, Radioactivité, Photosynthèse (4 sujets × 5 idées = 20 paires)
- *   ADN ideas : double_hélice, Watson, Franklin, génome, transcription
+ *   Sujets : ADN, Trou_noir, Radioactivité, Photosynthèse (4 sujets)
+ *   4 confirmConsumed pour épuiser le bassin science entier.
  *
- * Domaine secondaire : 'Général' (clé directe, 4 sous-domaines)
- *   Utilisé pour tester la transition de sous-domaine (tests 5 et 6).
+ * Domaine secondaire : 'Général' (4 sous-domaines × 4 sujets = 16 sujets)
+ *   Sciences → Technologies → Économie → Philosophie
+ *   4 confirmConsumed pour épuiser le sous-domaine Sciences.
  */
 class TaxonomyProgressManagerTest extends TestCase
 {
     private TaxonomyProgressManager $manager;
 
-    // Paire attendue pour 'science' → Sciences → ADN → idée[0]
-    private const SCIENCE_FIRST_PAIR = [
+    // Premier sujet attendu pour 'science'
+    private const SCIENCE_FIRST = [
         'sub_domain'          => 'Sciences',
         'subject'             => 'ADN',
-        'dominant_idea'       => 'double_hélice',
         'knowledge_frequency' => 7,
     ];
 
-    // Idées dominantes de ADN dans l'ordre de taxonomy.json
-    private const ADN_IDEAS = ['double_hélice', 'Watson', 'Franklin', 'génome', 'transcription'];
+    // Sujets de Sciences dans l'ordre de taxonomy.json
+    private const SCIENCES_SUBJECTS = ['ADN', 'Trou_noir', 'Radioactivité', 'Photosynthèse'];
 
     // =========================================================================
     // Lifecycle
@@ -49,7 +52,6 @@ class TaxonomyProgressManagerTest extends TestCase
     {
         parent::setUp();
 
-        // Créer uniquement la table nécessaire (pas de migrate --all)
         Schema::create('taxonomy_progress', function (Blueprint $table) {
             $table->id();
             $table->unsignedTinyInteger('depth');
@@ -78,22 +80,21 @@ class TaxonomyProgressManagerTest extends TestCase
 
     public function test_peek_next_initialises_on_first_call(): void
     {
-        $pair = $this->manager->peekNext(4, 'science');
+        $peek = $this->manager->peekNext(4, 'science');
 
-        $this->assertNotNull($pair, 'peekNext doit retourner une paire sur un bassin vide');
-        $this->assertSame(4,                                            $pair['depth']);
-        $this->assertSame('science',                                    $pair['domain']);
-        $this->assertSame(self::SCIENCE_FIRST_PAIR['sub_domain'],      $pair['sub_domain']);
-        $this->assertSame(self::SCIENCE_FIRST_PAIR['subject'],         $pair['subject']);
-        $this->assertSame(self::SCIENCE_FIRST_PAIR['dominant_idea'],   $pair['dominant_idea']);
-        $this->assertSame(self::SCIENCE_FIRST_PAIR['knowledge_frequency'], $pair['knowledge_frequency']);
+        $this->assertNotNull($peek, 'peekNext doit retourner une entrée sur un bassin vide');
+        $this->assertSame(4,                                              $peek['depth']);
+        $this->assertSame('science',                                      $peek['domain']);
+        $this->assertSame(self::SCIENCE_FIRST['sub_domain'],             $peek['sub_domain']);
+        $this->assertSame(self::SCIENCE_FIRST['subject'],                $peek['subject']);
+        $this->assertSame(self::SCIENCE_FIRST['knowledge_frequency'],    $peek['knowledge_frequency']);
+        $this->assertArrayNotHasKey('dominant_idea', $peek,
+            'dominant_idea ne doit plus exister dans peekNext — curseur sujet uniquement');
 
-        // La ligne de progression doit exister en DB
         $status = $this->manager->getStatus(4, 'science');
         $this->assertNotNull($status);
         $this->assertSame('Sciences', $status['active_sub_domain']);
         $this->assertSame('ADN',      $status['active_subject']);
-        $this->assertSame(0,          $status['dominant_idea_index']);
         $this->assertSame('active',   $status['status']);
         $this->assertSame([],         $status['used_sub_domains']);
     }
@@ -109,88 +110,52 @@ class TaxonomyProgressManagerTest extends TestCase
         $third  = $this->manager->peekNext(4, 'science');
 
         $this->assertNotNull($first);
-        $this->assertSame($first['dominant_idea'], $second['dominant_idea'],
-            'Double peekNext sans confirmConsumed doit retourner la même idée dominante');
-        $this->assertSame($first['dominant_idea'], $third['dominant_idea'],
-            'Triple peekNext sans confirmConsumed doit retourner la même idée dominante');
-        $this->assertSame($first['subject'],    $second['subject']);
+        $this->assertSame($first['subject'],    $second['subject'],
+            'Double peekNext sans confirmConsumed doit retourner le même sujet');
+        $this->assertSame($first['subject'],    $third['subject'],
+            'Triple peekNext sans confirmConsumed doit retourner le même sujet');
         $this->assertSame($first['sub_domain'], $second['sub_domain']);
-
-        // dominant_idea_index doit rester à 0
-        $status = $this->manager->getStatus(4, 'science');
-        $this->assertSame(0, $status['dominant_idea_index'],
-            'dominant_idea_index ne doit pas bouger sans confirmConsumed');
+        $this->assertSame($first['sub_domain'], $third['sub_domain']);
     }
 
     // =========================================================================
-    // Test 3 — confirmConsumed avance l'index d'un seul cran
+    // Test 3 — confirmConsumed avance d'UN SEUL SUJET (sémantique sujet)
     // =========================================================================
 
-    public function test_confirm_consumed_advances_idea_index_by_one(): void
-    {
-        // Initialise + avance 1 cran
-        $this->manager->peekNext(4, 'science');
-        $this->manager->confirmConsumed(4, 'science');
-
-        $status = $this->manager->getStatus(4, 'science');
-        $this->assertSame(1, $status['dominant_idea_index'],
-            'dominant_idea_index doit passer de 0 à 1 après un confirmConsumed');
-        $this->assertSame('ADN',      $status['active_subject'],    'Le sujet ne doit pas changer');
-        $this->assertSame('Sciences', $status['active_sub_domain'], 'Le sous-domaine ne doit pas changer');
-
-        // peekNext retourne maintenant la 2e idée (index 1)
-        $pair = $this->manager->peekNext(4, 'science');
-        $this->assertSame(self::ADN_IDEAS[1], $pair['dominant_idea'],
-            'La 2e idée dominante de ADN doit être Watson');
-
-        // Encore un cran
-        $this->manager->confirmConsumed(4, 'science');
-        $status2 = $this->manager->getStatus(4, 'science');
-        $this->assertSame(2, $status2['dominant_idea_index']);
-
-        $pair2 = $this->manager->peekNext(4, 'science');
-        $this->assertSame(self::ADN_IDEAS[2], $pair2['dominant_idea']);
-    }
-
-    // =========================================================================
-    // Test 4 — Changement de sujet après épuisement des 5 idées du sujet actif
-    // =========================================================================
-
-    public function test_confirm_consumed_changes_subject_after_all_ideas_exhausted(): void
+    public function test_confirm_consumed_advances_to_next_subject(): void
     {
         $this->manager->peekNext(4, 'science');
-
-        // 5 confirmConsumed épuisent les idées de ADN → transition T2 vers Trou_noir
-        for ($i = 0; $i < 5; $i++) {
-            $this->manager->confirmConsumed(4, 'science');
-        }
+        $this->manager->confirmConsumed(4, 'science');
 
         $status = $this->manager->getStatus(4, 'science');
         $this->assertSame('Trou_noir', $status['active_subject'],
-            'Après 5 confirmConsumed, le sujet actif doit passer de ADN à Trou_noir');
-        $this->assertSame(0, $status['dominant_idea_index'],
-            'dominant_idea_index doit être remis à 0 sur le nouveau sujet');
+            'Après 1 confirmConsumed, le sujet actif doit passer de ADN à Trou_noir');
         $this->assertSame('Sciences', $status['active_sub_domain'],
             'Le sous-domaine ne doit pas changer lors du changement de sujet');
 
-        $pair = $this->manager->peekNext(4, 'science');
-        $this->assertSame('Trou_noir',   $pair['subject']);
-        $this->assertSame('singularité', $pair['dominant_idea'],
-            'La première idée de Trou_noir doit être singularité');
+        $peek = $this->manager->peekNext(4, 'science');
+        $this->assertSame('Trou_noir', $peek['subject']);
+        $this->assertArrayNotHasKey('dominant_idea', $peek,
+            'dominant_idea ne doit pas apparaître après avancement');
+
+        // Deuxième confirm : Trou_noir → Radioactivité
+        $this->manager->confirmConsumed(4, 'science');
+        $peek2 = $this->manager->peekNext(4, 'science');
+        $this->assertSame('Radioactivité', $peek2['subject'],
+            'Après 2 confirmConsumed, le sujet doit être Radioactivité');
     }
 
     // =========================================================================
-    // Test 5 — Changement de sous-domaine après épuisement de tous les sujets
+    // Test 4 — Changement de sous-domaine après épuisement de tous les sujets
     //           Utilise 'Général' (4 sous-domaines : Sciences > Technologies > …)
     // =========================================================================
 
     public function test_confirm_consumed_changes_subdomain_after_all_subjects_exhausted(): void
     {
-        // 'Général' a 4 sous-domaines. Sciences = premier sous-domaine.
-        // Sciences → 4 sujets × 5 idées = 20 paires pour épuiser Sciences.
+        // 'Général' Sciences = 4 sujets → 4 confirmConsumed épuisent Sciences
         $this->manager->peekNext(4, 'Général');
 
-        for ($i = 0; $i < 20; $i++) {
+        for ($i = 0; $i < 4; $i++) {
             $this->manager->confirmConsumed(4, 'Général');
         }
 
@@ -201,25 +166,25 @@ class TaxonomyProgressManagerTest extends TestCase
             'Le sous-domaine actif ne doit plus être Sciences');
         $this->assertNotNull($status['active_sub_domain'],
             'Un nouveau sous-domaine doit être actif');
-        $this->assertSame(0, $status['dominant_idea_index'],
-            'dominant_idea_index doit être remis à 0 sur le nouveau sous-domaine');
+        $this->assertSame('Internet', $status['active_subject'],
+            'Premier sujet du sous-domaine Technologies = Internet');
 
-        $pair = $this->manager->peekNext(4, 'Général');
-        $this->assertNotNull($pair);
-        $this->assertNotSame('Sciences', $pair['sub_domain'],
+        $peek = $this->manager->peekNext(4, 'Général');
+        $this->assertNotNull($peek);
+        $this->assertNotSame('Sciences', $peek['sub_domain'],
             'La paire retournée ne doit pas appartenir à Sciences (épuisé)');
     }
 
     // =========================================================================
-    // Test 6 — Le sous-domaine épuisé est ajouté dans used_sub_domains
+    // Test 5 — Le sous-domaine épuisé est ajouté dans used_sub_domains
     // =========================================================================
 
     public function test_exhausted_subdomain_added_to_used_list(): void
     {
-        // Épuiser Sciences dans 'Général' (20 paires)
+        // Épuiser Sciences dans 'Général' (4 sujets)
         $this->manager->peekNext(4, 'Général');
 
-        for ($i = 0; $i < 20; $i++) {
+        for ($i = 0; $i < 4; $i++) {
             $this->manager->confirmConsumed(4, 'Général');
         }
 
@@ -227,19 +192,19 @@ class TaxonomyProgressManagerTest extends TestCase
         $this->assertContains('Sciences', $status['used_sub_domains'],
             'Sciences doit être dans used_sub_domains après épuisement complet');
         $this->assertNotContains('Technologies', $status['used_sub_domains'],
-            'Technologies ne doit pas être dans used_sub_domains (encore actif ou non démarré)');
+            'Technologies ne doit pas être dans used_sub_domains (encore actif)');
     }
 
     // =========================================================================
-    // Test 7 — status = exhausted quand tous les sous-domaines sont épuisés
+    // Test 6 — status = exhausted quand tous les sous-domaines sont épuisés
     // =========================================================================
 
     public function test_status_becomes_exhausted_when_all_subdomains_done(): void
     {
-        // 'science' n'a qu'un seul sous-domaine (Sciences) → 20 paires → exhausted
+        // 'science' n'a qu'un seul sous-domaine (Sciences) → 4 sujets → exhausted
         $this->manager->peekNext(4, 'science');
 
-        for ($i = 0; $i < 20; $i++) {
+        for ($i = 0; $i < 4; $i++) {
             $this->manager->confirmConsumed(4, 'science');
         }
 
@@ -256,27 +221,25 @@ class TaxonomyProgressManagerTest extends TestCase
     }
 
     // =========================================================================
-    // Test 8 — peekNext retourne null quand le bassin est exhausted
+    // Test 7 — peekNext retourne null quand le bassin est exhausted
     // =========================================================================
 
     public function test_peek_returns_null_when_exhausted(): void
     {
         $this->manager->peekNext(4, 'science');
 
-        for ($i = 0; $i < 20; $i++) {
+        for ($i = 0; $i < 4; $i++) {
             $this->manager->confirmConsumed(4, 'science');
         }
 
-        $pair = $this->manager->peekNext(4, 'science');
-        $this->assertNull($pair,
-            'peekNext doit retourner null quand le bassin est exhausted');
-
-        // Deuxième appel aussi null
-        $this->assertNull($this->manager->peekNext(4, 'science'));
+        $peek = $this->manager->peekNext(4, 'science');
+        $this->assertNull($peek, 'peekNext doit retourner null quand le bassin est exhausted');
+        $this->assertNull($this->manager->peekNext(4, 'science'),
+            'Deuxième appel aussi null');
     }
 
     // =========================================================================
-    // Test 9 — science n'utilise jamais les sous-domaines de Général
+    // Test 8 — science n'utilise jamais les sous-domaines de Général
     // =========================================================================
 
     public function test_science_never_uses_general_subdomains(): void
@@ -286,20 +249,18 @@ class TaxonomyProgressManagerTest extends TestCase
         $seenSubDomains = [];
         $seenSubjects   = [];
 
-        // Traverser toutes les 20 paires du bassin science
-        for ($i = 0; $i < 20; $i++) {
-            $pair = $this->manager->peekNext(4, 'science');
-            $this->assertNotNull($pair, "La paire #{$i} ne doit pas être null");
+        // Traverser les 4 sujets du bassin science
+        for ($i = 0; $i < 4; $i++) {
+            $peek = $this->manager->peekNext(4, 'science');
+            $this->assertNotNull($peek, "Le sujet #{$i} ne doit pas être null");
 
-            $seenSubDomains[] = $pair['sub_domain'];
-            $seenSubjects[]   = $pair['subject'];
+            $seenSubDomains[] = $peek['sub_domain'];
+            $seenSubjects[]   = $peek['subject'];
 
             $this->manager->confirmConsumed(4, 'science');
         }
 
         $uniqueSubDomains = array_values(array_unique($seenSubDomains));
-
-        // Seul sous-domaine autorisé : Sciences (racine Science, PAS Général)
         $this->assertSame(['Sciences'], $uniqueSubDomains,
             'science ne doit retourner que le sous-domaine Sciences (jamais Technologies/Économie/Philosophie)');
 
@@ -307,29 +268,26 @@ class TaxonomyProgressManagerTest extends TestCase
         $this->assertNotContains('Économie',     $uniqueSubDomains);
         $this->assertNotContains('Philosophie',  $uniqueSubDomains);
 
-        // Les 4 sujets attendus
-        $uniqueSubjects = array_values(array_unique($seenSubjects));
-        sort($uniqueSubjects);
+        sort($seenSubjects);
         $this->assertSame(
             ['ADN', 'Photosynthèse', 'Radioactivité', 'Trou_noir'],
-            $uniqueSubjects,
-            'Seuls les 4 sujets de Science→Sciences doivent apparaître'
+            $seenSubjects,
+            'Les 4 sujets de Science→Sciences doivent tous apparaître exactement une fois'
         );
     }
 
     // =========================================================================
-    // Test 10 — Deux domaines différents ont des curseurs indépendants (même depth)
+    // Test 9 — Deux domaines différents ont des curseurs indépendants (même depth)
     // =========================================================================
 
     public function test_two_domains_have_independent_cursors(): void
     {
-        $sciencePair  = $this->manager->peekNext(4, 'science');
-        $histoirePair = $this->manager->peekNext(4, 'histoire');
+        $sciencePeek  = $this->manager->peekNext(4, 'science');
+        $histoirePeek = $this->manager->peekNext(4, 'histoire');
 
-        $this->assertNotNull($sciencePair,  'science doit retourner une paire');
-        $this->assertNotNull($histoirePair, 'histoire doit retourner une paire');
+        $this->assertNotNull($sciencePeek,  'science doit retourner un sujet');
+        $this->assertNotNull($histoirePeek, 'histoire doit retourner un sujet');
 
-        // Chaque domaine a sa propre ligne en DB
         $this->assertNotNull($this->manager->getStatus(4, 'science'));
         $this->assertNotNull($this->manager->getStatus(4, 'histoire'));
 
@@ -339,10 +297,10 @@ class TaxonomyProgressManagerTest extends TestCase
         $scienceStatus  = $this->manager->getStatus(4, 'science');
         $histoireStatus = $this->manager->getStatus(4, 'histoire');
 
-        $this->assertSame(1, $scienceStatus['dominant_idea_index'],
-            'science doit avoir avancé à index=1');
-        $this->assertSame(0, $histoireStatus['dominant_idea_index'],
-            'histoire doit rester à index=0 — indépendant de science');
+        $this->assertSame('Trou_noir', $scienceStatus['active_subject'],
+            'science doit avoir avancé au sujet suivant (Trou_noir)');
+        $this->assertSame('Ottoman', $histoireStatus['active_subject'],
+            'histoire doit rester sur Ottoman — curseur indépendant de science');
 
         // Avancer histoire n'affecte pas science
         $this->manager->confirmConsumed(4, 'histoire');
@@ -350,27 +308,26 @@ class TaxonomyProgressManagerTest extends TestCase
         $scienceStatus2  = $this->manager->getStatus(4, 'science');
         $histoireStatus2 = $this->manager->getStatus(4, 'histoire');
 
-        $this->assertSame(1, $scienceStatus2['dominant_idea_index'],
+        $this->assertSame('Trou_noir', $scienceStatus2['active_subject'],
             'science ne doit pas avoir bougé après avancement de histoire');
-        $this->assertSame(1, $histoireStatus2['dominant_idea_index'],
-            'histoire doit avoir avancé à index=1');
+        $this->assertSame('Mongol', $histoireStatus2['active_subject'],
+            'histoire doit avoir avancé à Mongol');
     }
 
     // =========================================================================
-    // Test 11 — Deux depths différents ont des curseurs indépendants (même domain)
+    // Test 10 — Deux depths différents ont des curseurs indépendants (même domain)
     // =========================================================================
 
     public function test_two_depths_have_independent_cursors(): void
     {
-        $pair4 = $this->manager->peekNext(4, 'science');
-        $pair6 = $this->manager->peekNext(6, 'science');
+        $peek4 = $this->manager->peekNext(4, 'science');
+        $peek6 = $this->manager->peekNext(6, 'science');
 
-        $this->assertNotNull($pair4, 'depth=4 doit retourner une paire');
-        $this->assertNotNull($pair6, 'depth=6 doit retourner une paire');
+        $this->assertNotNull($peek4, 'depth=4 doit retourner un sujet');
+        $this->assertNotNull($peek6, 'depth=6 doit retourner un sujet');
 
-        // Les deux démarrent à la même paire initiale (première idée de ADN)
-        $this->assertSame($pair4['dominant_idea'], $pair6['dominant_idea'],
-            'Les deux depths commencent à la même paire initiale');
+        $this->assertSame($peek4['subject'], $peek6['subject'],
+            'Les deux depths commencent au même premier sujet (ADN)');
 
         // Avancer depth=4 n'affecte pas depth=6
         $this->manager->confirmConsumed(4, 'science');
@@ -378,10 +335,10 @@ class TaxonomyProgressManagerTest extends TestCase
         $status4 = $this->manager->getStatus(4, 'science');
         $status6 = $this->manager->getStatus(6, 'science');
 
-        $this->assertSame(1, $status4['dominant_idea_index'],
-            'depth=4 doit avoir avancé à index=1');
-        $this->assertSame(0, $status6['dominant_idea_index'],
-            'depth=6 doit rester à index=0 — curseur indépendant');
+        $this->assertSame('Trou_noir', $status4['active_subject'],
+            'depth=4 doit avoir avancé à Trou_noir');
+        $this->assertSame('ADN', $status6['active_subject'],
+            'depth=6 doit rester sur ADN — curseur indépendant');
 
         // Avancer depth=6 deux fois n'affecte pas depth=4
         $this->manager->confirmConsumed(6, 'science');
@@ -390,54 +347,63 @@ class TaxonomyProgressManagerTest extends TestCase
         $status4b = $this->manager->getStatus(4, 'science');
         $status6b = $this->manager->getStatus(6, 'science');
 
-        $this->assertSame(1, $status4b['dominant_idea_index'],
+        $this->assertSame('Trou_noir', $status4b['active_subject'],
             'depth=4 ne doit pas avoir bougé');
-        $this->assertSame(2, $status6b['dominant_idea_index'],
-            'depth=6 doit être à index=2');
+        $this->assertSame('Radioactivité', $status6b['active_subject'],
+            'depth=6 doit être sur Radioactivité (2 avances depuis ADN)');
     }
 
     // =========================================================================
-    // Test 12 — Un rejet (pas de confirmConsumed) laisse le curseur inchangé
+    // Test 11 — Un rejet (pas de confirmConsumed) laisse le curseur sujet inchangé
     // =========================================================================
 
     public function test_confirm_not_called_on_rejection_leaves_cursor_unchanged(): void
     {
-        // Simulation : peekNext retourne la paire, KLD/KS rejette → confirmConsumed non appelé
-        $pairBefore = $this->manager->peekNext(4, 'science');
-        $this->assertNotNull($pairBefore);
+        $peekBefore = $this->manager->peekNext(4, 'science');
+        $this->assertNotNull($peekBefore);
+        $this->assertSame('ADN', $peekBefore['subject']);
 
-        // Premier rejet — pas de confirmConsumed
-        $pairAfterReject = $this->manager->peekNext(4, 'science');
-        $this->assertSame(
-            $pairBefore['dominant_idea'],
-            $pairAfterReject['dominant_idea'],
-            'Après un rejet, la même idée dominante doit être retournée'
-        );
-        $this->assertSame($pairBefore['subject'],    $pairAfterReject['subject']);
-        $this->assertSame($pairBefore['sub_domain'], $pairAfterReject['sub_domain']);
+        // Rejets multiples sans confirmConsumed (simulation FAIL KLD ou KEY_STRUCTURE)
+        $peekAfterReject  = $this->manager->peekNext(4, 'science');
+        $peekAfterReject2 = $this->manager->peekNext(4, 'science');
 
-        // Deuxième rejet — encore la même paire
-        $pairAfterSecondReject = $this->manager->peekNext(4, 'science');
-        $this->assertSame(
-            $pairBefore['dominant_idea'],
-            $pairAfterSecondReject['dominant_idea'],
-            'Un double rejet doit toujours retourner la même paire'
-        );
+        $this->assertSame('ADN', $peekAfterReject['subject'],
+            'Après un rejet, le même sujet doit être retourné');
+        $this->assertSame('ADN', $peekAfterReject2['subject'],
+            'Après un double rejet, toujours le même sujet');
 
-        // Maintenant on confirme → curseur avance
+        // Confirmation → sujet avance
         $this->manager->confirmConsumed(4, 'science');
-        $pairAfterConfirm = $this->manager->peekNext(4, 'science');
+        $peekAfterConfirm = $this->manager->peekNext(4, 'science');
 
-        $this->assertNotSame(
-            $pairBefore['dominant_idea'],
-            $pairAfterConfirm['dominant_idea'],
-            'Après confirmConsumed, la paire doit changer'
-        );
-        $this->assertSame(self::ADN_IDEAS[1], $pairAfterConfirm['dominant_idea'],
-            'Après un confirmConsumed, Watson (idée 2 de ADN) doit être retourné'
-        );
+        $this->assertSame('Trou_noir', $peekAfterConfirm['subject'],
+            'Après confirmConsumed, le sujet doit avancer à Trou_noir');
+    }
 
-        $status = $this->manager->getStatus(4, 'science');
-        $this->assertSame(1, $status['dominant_idea_index']);
+    // =========================================================================
+    // Test 12 — Traversal complet : les 4 sujets apparaissent dans le bon ordre
+    // =========================================================================
+
+    public function test_subjects_are_traversed_in_order(): void
+    {
+        $this->manager->peekNext(4, 'science');
+
+        $subjects = [];
+        foreach (self::SCIENCES_SUBJECTS as $expected) {
+            $peek = $this->manager->peekNext(4, 'science');
+            $this->assertNotNull($peek, "Le sujet '{$expected}' ne doit pas être null");
+            $subjects[] = $peek['subject'];
+            $this->assertSame($expected, $peek['subject'],
+                "Ordre de traversal incorrect : attendu={$expected}, obtenu={$peek['subject']}");
+            $this->manager->confirmConsumed(4, 'science');
+        }
+
+        $this->assertSame(self::SCIENCES_SUBJECTS, $subjects,
+            'Les 4 sujets de Sciences doivent être traversés dans leur ordre taxonomy.json');
+
+        // Après le 4e sujet, bassin épuisé
+        $this->assertNull($this->manager->peekNext(4, 'science'),
+            'Après traversal complet, peekNext doit retourner null');
+        $this->assertTrue($this->manager->isExhausted(4, 'science'));
     }
 }

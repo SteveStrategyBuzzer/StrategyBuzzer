@@ -1,0 +1,109 @@
+Il ne doit pas poser ces deux questions. Elles ont déjà la réponse dans ton architecture.
+
+Réponse à Replit :
+
+REFUS — ne demande pas de choix déjà décidés.
+
+1. Mode IdeaSlotLoader
+
+Réponse :
+LAZY.
+
+Les 5 idées dominantes ne sont PAS simplement lues comme tableau fixe depuis taxonomy.json.
+
+Le chargeur d’idées fonctionne ainsi :
+
+Sujet actif
+↓
+slot 1 vide
+↓
+Taxonomy crée / propose une idée dominante selon les règles du depth
+↓
+KLD vérifie
+↓
+FAIL → idée rejetée, Taxonomy crée / propose une autre idée pour le même slot
+PASS ou REVIEW_STRUCTURE → slot rempli
+↓
+slot suivant
+↓
+jusqu’à 5 slots remplis
+
+Donc :
+- getIdeesDominantes() peut servir de source initiale / fallback legacy
+- mais le mécanisme cible est LAZY : génération/proposition d’idée slot par slot
+- KLD ne valide jamais un tableau de 5 idées préexistant
+- KLD intervient avant chaque insertion de slot
+
+2. Refactor TPM
+
+Réponse :
+Refactor in-place.
+
+Ne crée pas SubjectCursorManager.
+
+TaxonomyProgressManager reste la brique officielle.
+Mais sa responsabilité change :
+
+Avant :
+curseur depth + domain + subject + dominant_idea_index
+
+Maintenant :
+curseur depth + domain + subject uniquement
+
+Donc :
+- conserver TaxonomyProgressManager
+- supprimer la logique métier basée sur dominant_idea_index
+- ne plus retourner dominant_idea dans peekNext()
+- confirmConsumed() signifie maintenant :
+  sujet entier consommé
+- advance() passe :
+  sujet suivant
+  sinon sous-domaine suivant
+  sinon exhausted
+
+Règle :
+Ne crée pas une couche nouvelle si la responsabilité appartient déjà à TaxonomyProgressManager.
+
+3. Patch attendu
+
+Commence Étape 1 maintenant.
+
+PATCH D1 — Refactor TaxonomyProgressManager curseur sujet
+
+Objectif :
+Transformer TaxonomyProgressManager en curseur de sujet uniquement.
+
+À faire :
+- peekNext() retourne :
+  depth
+  domain
+  sub_domain
+  subject
+  knowledge_frequency
+
+- peekNext() ne retourne plus :
+  dominant_idea
+
+- confirmConsumed() signifie :
+  le sujet actif complet a été consommé
+
+- advance() ne gère plus :
+  dominant_idea_index++
+
+- advance() gère seulement :
+  sujet suivant
+  sous-domaine suivant
+  exhausted
+
+- dominant_idea_index peut rester en DB pour compatibilité temporaire, mais ne doit plus être lu comme curseur métier
+
+Validation :
+- modifier les tests TaxonomyProgressManagerTest
+- php -l
+- vendor/bin/phpunit --filter TaxonomyProgressManagerTest
+- vendor/bin/phpunit --filter KernelRotationPlannerStateTest
+- git diff --stat
+- git diff TaxonomyProgressManager.php + test
+
+Ne documente pas seulement.
+Implémente.

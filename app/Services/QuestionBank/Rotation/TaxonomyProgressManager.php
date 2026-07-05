@@ -10,32 +10,38 @@ use RuntimeException;
 /**
  * TaxonomyProgressManager
  *
- * Autorité unique de progression interne d'un bassin Taxonomy.
+ * Autorité unique de progression par SUJET dans un bassin Taxonomy.
  *
  * Responsabilités :
- *   - Maintenir un curseur de progression par couple (depth, domain_code)
- *   - Retourner la prochaine paire consommable : sub_domain + subject + dominant_idea
- *   - Avancer le curseur d'un seul cran après création réussie du noyau
- *   - Garantir qu'aucun sujet ni idée dominante ne soit sauté ou oublié
+ *   - Maintenir un curseur de SUJET par couple (depth, domain_code)
+ *   - Retourner le sujet courant : sub_domain + subject + knowledge_frequency
+ *   - Avancer le curseur d'un sujet après que le chargeur d'idées a produit
+ *     et que le gameplay a consommé les 5 slots du sujet actif
+ *   - Garantir qu'aucun sujet ne soit sauté ou oublié
  *
  * Responsabilités interdites :
  *   - Ne choisit pas le domain_code (autorité : KernelRotationPlanner)
  *   - Ne choisit pas le depth (autorité : KernelRotationPlanner)
  *   - Ne connaît pas l'ordre du DomainCycle
  *   - Ne connaît pas les autres domaines ni les autres depths
- *   - Ne stocke pas les paires elles-mêmes (source de vérité : taxonomy.json via TaxonomyReader)
+ *   - Ne stocke pas les sujets eux-mêmes (source de vérité : taxonomy.json via TaxonomyReader)
+ *   - Ne connaît PAS les idées dominantes (responsabilité : IdeaSlotLoader)
  *   - N'appelle JAMAIS confirmConsumed() suite à un FAIL KLD ou KEY_STRUCTURE
  *
- * Règle de rythme :
- *   Le curseur avance d'UN SEUL CRAN à chaque appel confirmConsumed().
- *   peekNext() est idempotent : retourne toujours la même paire sans avancer.
+ * Curseur :
+ *   Le curseur pointe sur le SUJET ACTIF — jamais sur une idée.
+ *   Les idées dominantes sont gérées en aval par le chargeur d'idées (IdeaSlotLoader).
+ *   Un sujet est déclaré consommé quand le chargeur a rempli ses 5 slots
+ *   et que le gameplay les a tous consommés. Alors seulement confirmConsumed() est appelé.
  *
- * Séparation des couches (IMPORTANT) :
- *   Cette classe gère le CURSEUR DE SUJET — elle ne sait pas ce que KLD décide.
- *   KLD opère à la couche de remplissage des slots d'idées, en amont de confirmConsumed().
- *   Un FAIL KLD signifie "générer une autre idée pour ce slot", pas "avancer le curseur".
- *   confirmConsumed() est réservé exclusivement aux idées ayant traversé :
- *     KLD → KEY_STRUCTURE → QuestionIntent → création réussie.
+ * Règle de rythme :
+ *   Le curseur avance d'UN SEUL SUJET à chaque appel confirmConsumed().
+ *   peekNext() est idempotent : retourne toujours le même sujet sans avancer.
+ *
+ * Note sur dominant_idea_index :
+ *   La colonne existe en DB pour compatibilité ascendante.
+ *   Elle n'est plus un curseur métier et reste à 0.
+ *   Ne pas la lire comme logique de progression.
  *
  * Table : taxonomy_progress (une ligne par couple depth × domain_code)
  */
@@ -53,19 +59,18 @@ final class TaxonomyProgressManager implements DomainExhaustionChecker
     // =========================================================================
 
     /**
-     * Retourne la paire courante SANS avancer le curseur.
+     * Retourne le sujet courant SANS avancer le curseur.
      *
      * Si aucune ligne n'existe pour ce couple → initialise le bassin automatiquement.
      * Si status = 'exhausted' → retourne null.
      *
-     * Garantie : deux appels successifs sans confirmConsumed() retournent la MÊME paire.
+     * Garantie : deux appels successifs sans confirmConsumed() retournent le MÊME sujet.
      *
      * @return array{
      *     depth: int,
      *     domain: string,
      *     sub_domain: string,
      *     subject: string,
-     *     dominant_idea: string,
      *     knowledge_frequency: int
      * }|null
      */
@@ -77,19 +82,7 @@ final class TaxonomyProgressManager implements DomainExhaustionChecker
             return null;
         }
 
-        $idees = $this->taxonomy->getIdeesDominantes(
-            $domainCode,
-            $row->active_sub_domain,
-            $row->active_subject,
-        );
-
-        if (empty($idees) || $row->dominant_idea_index >= count($idees)) {
-            // Incohérence entre le curseur et taxonomy.json — ne pas crasher
-            return null;
-        }
-
-        $dominantIdea = $idees[$row->dominant_idea_index];
-        $kf           = $this->taxonomy->getKnowledgeFrequency(
+        $kf = $this->taxonomy->getKnowledgeFrequency(
             $domainCode,
             $row->active_sub_domain,
             $row->active_subject,
@@ -100,20 +93,21 @@ final class TaxonomyProgressManager implements DomainExhaustionChecker
             'domain'              => $domainCode,
             'sub_domain'          => $row->active_sub_domain,
             'subject'             => $row->active_subject,
-            'dominant_idea'       => $dominantIdea,
             'knowledge_frequency' => $kf,
         ];
     }
 
     /**
-     * Avance le curseur d'UN SEUL CRAN après création réussie du QuestionIntent.
+     * Avance le curseur d'UN SEUL SUJET après consommation complète de ce sujet.
      *
      * Transitions (dans l'ordre) :
-     *   1. dominant_idea_index++ si d'autres idées existent pour le sujet actif
-     *   2. Sujet suivant + index=0 si d'autres sujets existent dans le sous-domaine actif
-     *   3. Sous-domaine suivant + premier sujet + index=0 si disponible
+     *   1. Sujet suivant dans le sous-domaine actif
+     *   2. Sous-domaine suivant + premier sujet si disponible
      *      (active_sub_domain ajouté dans used_sub_domains avant de changer)
-     *   4. Aucune transition possible → status='exhausted'
+     *   3. Aucune transition possible → status='exhausted'
+     *
+     * Sémantique : le sujet actif a été entièrement consommé
+     * (5 slots IdeaSlotLoader produits et consommés par le gameplay).
      *
      * JAMAIS appelé si KLD ou KEY_STRUCTURE ont rejeté.
      *
@@ -161,6 +155,9 @@ final class TaxonomyProgressManager implements DomainExhaustionChecker
      * Retourne le snapshot de progression pour audit / reporting.
      * Retourne null si le bassin n'a jamais été initialisé.
      *
+     * Note : dominant_idea_index est retourné pour compatibilité DB mais
+     * n'est plus un curseur métier (toujours 0).
+     *
      * @return array{
      *     depth: int,
      *     domain_code: string,
@@ -198,7 +195,7 @@ final class TaxonomyProgressManager implements DomainExhaustionChecker
     // =========================================================================
 
     /**
-     * Trouve la ligne de progression ou la crée (premier sous-domaine, premier sujet, index=0).
+     * Trouve la ligne de progression ou la crée (premier sous-domaine, premier sujet).
      * Retourne null si taxonomy.json ne contient aucun candidat pour ce domain_code.
      */
     private function findOrInitialise(int $depth, string $domainCode): ?object
@@ -212,7 +209,6 @@ final class TaxonomyProgressManager implements DomainExhaustionChecker
             return $existing;
         }
 
-        // Pas encore de curseur — initialiser depuis TaxonomyReader
         $subDomains = $this->taxonomy->getSubDomains($domainCode);
 
         if (empty($subDomains)) {
@@ -251,32 +247,12 @@ final class TaxonomyProgressManager implements DomainExhaustionChecker
     // =========================================================================
 
     /**
-     * Avance le curseur d'un seul cran selon les 4 transitions.
+     * Avance le curseur d'un sujet selon les 3 transitions.
      * Appelé à l'intérieur d'une transaction DB (lockForUpdate déjà posé).
      */
     private function advance(object $row, int $depth, string $domainCode): void
     {
-        $idees = $this->taxonomy->getIdeesDominantes(
-            $domainCode,
-            $row->active_sub_domain,
-            $row->active_subject,
-        );
-
-        $nextIndex = (int) $row->dominant_idea_index + 1;
-
-        // ── Transition 1 : idée suivante dans le sujet actif ─────────────────
-        if ($nextIndex < count($idees)) {
-            DB::table(self::TABLE)
-                ->where('depth', $depth)
-                ->where('domain_code', $domainCode)
-                ->update([
-                    'dominant_idea_index' => $nextIndex,
-                    'updated_at'          => now(),
-                ]);
-            return;
-        }
-
-        // ── Transition 2 : sujet suivant dans le sous-domaine actif ──────────
+        // ── Transition 1 : sujet suivant dans le sous-domaine actif ──────────
         $sujets       = $this->taxonomy->getSubjects($domainCode, $row->active_sub_domain);
         $posSujet     = array_search($row->active_subject, $sujets, true);
         $nextSujetIdx = ($posSujet !== false) ? $posSujet + 1 : count($sujets);
@@ -286,18 +262,19 @@ final class TaxonomyProgressManager implements DomainExhaustionChecker
                 ->where('depth', $depth)
                 ->where('domain_code', $domainCode)
                 ->update([
-                    'active_subject'      => $sujets[$nextSujetIdx],
-                    'dominant_idea_index' => 0,
-                    'updated_at'          => now(),
+                    'active_subject' => $sujets[$nextSujetIdx],
+                    'updated_at'     => now(),
                 ]);
             return;
         }
 
-        // ── Transition 3 : sous-domaine suivant non épuisé ───────────────────
-        $usedSubDomains    = json_decode($row->used_sub_domains, true) ?? [];
-        $usedSubDomains[]  = $row->active_sub_domain;
-        $tousSubDomains    = $this->taxonomy->getSubDomains($domainCode);
-        $disponibles       = array_values(array_diff($tousSubDomains, $usedSubDomains));
+        // T1 échoue → tous les sujets du sous-domaine courant sont consommés
+        $usedSubDomains   = json_decode($row->used_sub_domains, true) ?? [];
+        $usedSubDomains[] = $row->active_sub_domain;
+
+        // ── Transition 2 : sous-domaine suivant non épuisé ───────────────────
+        $tousSubDomains = $this->taxonomy->getSubDomains($domainCode);
+        $disponibles    = array_values(array_diff($tousSubDomains, $usedSubDomains));
 
         if (! empty($disponibles)) {
             $nextSd       = $disponibles[0];
@@ -308,27 +285,25 @@ final class TaxonomyProgressManager implements DomainExhaustionChecker
                     ->where('depth', $depth)
                     ->where('domain_code', $domainCode)
                     ->update([
-                        'active_sub_domain'   => $nextSd,
-                        'active_subject'      => $premierSujet,
-                        'dominant_idea_index' => 0,
-                        'used_sub_domains'    => json_encode($usedSubDomains),
-                        'updated_at'          => now(),
+                        'active_sub_domain' => $nextSd,
+                        'active_subject'    => $premierSujet,
+                        'used_sub_domains'  => json_encode($usedSubDomains),
+                        'updated_at'        => now(),
                     ]);
                 return;
             }
         }
 
-        // ── Transition 4 : bassin épuisé ─────────────────────────────────────
+        // ── Transition 3 : bassin épuisé ─────────────────────────────────────
         DB::table(self::TABLE)
             ->where('depth', $depth)
             ->where('domain_code', $domainCode)
             ->update([
-                'status'              => self::STATUS_EXHAUSTED,
-                'active_sub_domain'   => null,
-                'active_subject'      => null,
-                'dominant_idea_index' => 0,
-                'used_sub_domains'    => json_encode($usedSubDomains),
-                'updated_at'          => now(),
+                'status'            => self::STATUS_EXHAUSTED,
+                'active_sub_domain' => null,
+                'active_subject'    => null,
+                'used_sub_domains'  => json_encode($usedSubDomains),
+                'updated_at'        => now(),
             ]);
     }
 }
