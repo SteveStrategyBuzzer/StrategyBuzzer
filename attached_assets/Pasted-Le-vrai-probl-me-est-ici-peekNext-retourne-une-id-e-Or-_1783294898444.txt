@@ -1,0 +1,150 @@
+Le vrai problème est ici :
+
+peekNext() retourne une idée.
+
+Or, dans la nouvelle architecture, ce n'est plus vrai.
+
+Tu as complètement changé la philosophie du Bassin Taxonomy.
+
+Le Bassin ne doit plus fonctionner comme :
+
+Sujet
+↓
+Idée 1
+↓
+confirmConsumed()
+↓
+Idée 2
+
+Il fonctionne maintenant comme ceci :
+
+Sujet actif
+        │
+        ▼
+Chargeur d'idées VIDE
+        │
+        ▼
+Créer une idée candidate
+        │
+        ▼
+KLD
+        │
+   ┌────┴────┐
+ FAIL       PASS / REVIEW_STRUCTURE
+   │              │
+Créer une autre   ▼
+idée         remplir Slot 1
+                     │
+                     ▼
+Créer une nouvelle idée
+                     │
+                     ▼
+KLD
+                     │
+...
+
+jusqu'à :
+
+Slot1
+Slot2
+Slot3
+Slot4
+Slot5
+
+Puis seulement :
+
+Chargeur d'idées COMPLET
+
+À ce moment-là seulement :
+
+Gameplay / Phase 1
+consomme
+
+Idée1
+Idée2
+Idée3
+Idée4
+Idée5
+
+Quand les 5 sont consommées :
+
+Sujet consommé
+
+Le chargeur devient vide :
+
+Chargeur d'idées vide
+
+Alors Taxonomy fait :
+
+Créer 5 nouvelles idées
+↓
+
+KLD après CHAQUE création
+
+↓
+
+remplir les 5 slots
+
+Donc le vrai changement est beaucoup plus profond.
+
+Aujourd'hui le code fait implicitement :
+
+TPM
+↓
+
+cursor idée
+↓
+
+confirmConsumed()
+
+Demain il devra faire :
+
+TPM
+
+↓
+
+Sujet actif
+
+↓
+
+Chargeur d'idées
+    slot1
+    slot2
+    slot3
+    slot4
+    slot5
+
+↓
+
+consommation des slots
+
+↓
+
+Sujet suivant
+
+Le curseur ne pointe donc plus sur une idée.
+
+Le curseur pointe sur :
+
+Sujet actif
+
+Les idées deviennent simplement le contenu temporaire du chargeur.
+
+C'est beaucoup plus cohérent avec toute l'architecture que tu as définie ces derniers jours.
+
+C'est aussi pour cette raison que je t'avais dit plus tôt qu'il ne fallait plus raisonner avec :
+
+dominant_idea_index
+
+car il représente l'ancienne architecture.
+
+Dans la nouvelle architecture :
+
+le curseur est le Sujet actif ;
+les 5 idées sont recréées à chaque sujet puis chargées dans le chargeur ;
+KLD intervient pendant le remplissage du chargeur ;
+KEY_STRUCTURE intervient une fois le chargeur rempli pour vérifier l'ensemble du noyau ;
+ensuite seulement les 5 idées sont consommées une par une ;
+après la 5ᵉ consommation, le sujet est déclaré consommé et on passe au sujet suivant.
+
+À mon avis, c'est cette évolution qui manque actuellement au code. Le modèle actuel est encore construit autour d'un curseur d'idée, alors que ton architecture est désormais construite autour d'un curseur de sujet. C'est ce décalage qui explique pourquoi plusieurs mécanismes (KLD, remplissage des slots, consommation et changement de depth) deviennent difficiles à exprimer avec la structure actuelle.
