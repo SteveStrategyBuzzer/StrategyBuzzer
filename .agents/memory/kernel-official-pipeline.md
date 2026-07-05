@@ -135,14 +135,14 @@ Entrée : `active_subject` · `proposed_dominant_idea` · `current_sub_domain` �
 
 Sortie : PASS ou FAIL + reason
 
-Mécanisme (6 règles, déterministe) :
+Mécanisme (5 règles, déterministe) :
 1. normaliser subject + idée
 2. KLD-1 subject == dominant_idea → INVALID_MINIMAL_PAIR
-3. KLD-2 paire directe déjà validée, même sub_domain → DIRECT_PAIR_CONTEXT_DUPLICATE
-4. KLD-3 paire inversée → REVERSED_PAIR_CONTEXT_DUPLICATE
-5. KLD-4 équivalence métier (EquivalenceMap) → CONCEPTUAL_COLLISION
+3. KLD-2 paire directe exacte déjà dans registry → DIRECT_PAIR_CONTEXT_DUPLICATE
+4. KLD-3 paire inversée exacte → REVERSED_PAIR_CONTEXT_DUPLICATE
+5. KLD-4 synonyme direct via lexique (voiture≈auto≈char≈bagnole) → CONCEPTUAL_COLLISION
 6. KLD-5 sub_domain différent + ContextMap silencieux → CONTEXT_NOT_DISTINCT
-7. KLD-6 proximité > 0.85 (SimilarityRules) → PAIR_TOO_CLOSE_TO_EXISTING
+7. KLD-6 RETIRÉ — concept voisin non synonyme (camion≠voiture) → KLD LAISSE PASSER → KEY_STRUCTURE analyse
 8. sinon → PASS
 
 Ne choisit rien. Ne remplit aucun slot. Ne lit pas la DB. Ne génère aucun hash.

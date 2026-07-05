@@ -95,14 +95,42 @@ public function check(
 ): LearningDirectionResult
 ```
 
+## Frontière KLD / KEY_STRUCTURE (verrouillée 2026-07-04)
+
+KLD = détecteur de **synonymes directs** (doublons cachés).
+KEY_STRUCTURE = **moteur de contexte complet** (cohérence, depth, décorticage, collision structurelle).
+
+```
+transport + voiture → transport + auto     → KLD FAIL  (synonyme direct)
+transport + voiture → transport + camion   → KLD PASS  → KEY_STRUCTURE analyse
+idea hors depth                            → KLD PASS  → KEY_STRUCTURE FAIL
+```
+
+KLD ne juge jamais si une idée est pédagogiquement bonne.
+Il juge uniquement : même dossier pédagogique sous un nom différent = doublon caché.
+
+## Composants Knowledge — rôles affinés
+
+```
+app/Services/QuestionBank/Knowledge/LearningKnowledgeBase.php
+```
+
+| Méthode | Contenu |
+|---|---|
+| `getEquivalences()` | Lexique de synonymes directs par domaine (voiture≈auto≈char≈bagnole ; capitale≈statut) |
+| `getContextRules()` | Couples (subDomainA, subDomainB) distincts pour une idée dominante |
+| `getSimilarityRules()` | **ABANDONNÉ** — le seuil 0.85 est retiré. La synonymie est décidée par lexique, pas par distance statistique |
+
+`getSimilarityRules()` peut être retiré ou réduit à une coquille vide en PATCH B2.
+
 ## Responsabilités KLD
 
 DOIT :
-- Valider subject + dominantIdea (non égaux, non répétition, non inversé, non équivalent, non proche)
-- Appliquer equivalence_map (équivalences métier par domaine)
-- Appliquer context_map (sous-domaines distincts)
-- Appliquer seuil de proximité 0.85
-- Retourner PASS/FAIL déterministe avec canonical_direction
+- Valider subject + dominantIdea (non égaux, non répétition directe/inversée, non synonyme direct)
+- Appliquer lexique de synonymes directs via LearningKnowledgeBase::getEquivalences()
+- Appliquer context_map via LearningKnowledgeBase::getContextRules()
+- Retourner PASS/FAIL déterministe
+- Laisser passer les concepts voisins non synonymes → KEY_STRUCTURE les analyse avec canonical_direction
 
 NE DOIT JAMAIS :
 - Lire/écrire DB
