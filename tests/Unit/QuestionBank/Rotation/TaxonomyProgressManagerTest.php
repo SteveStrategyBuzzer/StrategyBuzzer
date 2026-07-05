@@ -2,6 +2,11 @@
 
 namespace Tests\Unit\QuestionBank\Rotation;
 
+use App\Services\QuestionBank\Knowledge\LearningDirectionLexicon;
+use App\Services\QuestionBank\Knowledge\LearningIdeaFamilyIndex;
+use App\Services\QuestionBank\Rotation\DTO\LearningDirectionResult;
+use App\Services\QuestionBank\Rotation\KeyLearningDirection;
+use App\Services\QuestionBank\Rotation\LearningDirectionRegistry;
 use App\Services\QuestionBank\Rotation\TaxonomyProgressManager;
 use App\Services\QuestionBank\Rotation\TaxonomyReader;
 use Illuminate\Database\Schema\Blueprint;
@@ -28,7 +33,9 @@ use Tests\TestCase;
  */
 class TaxonomyProgressManagerTest extends TestCase
 {
-    private TaxonomyProgressManager $manager;
+    private TaxonomyProgressManager  $manager;
+    private KeyLearningDirection     $kld;
+    private LearningDirectionLexicon $lexicon;
 
     // Paire attendue pour 'science' → Sciences → ADN → idée[0]
     private const SCIENCE_FIRST_PAIR = [
@@ -63,7 +70,9 @@ class TaxonomyProgressManagerTest extends TestCase
             $table->unique(['depth', 'domain_code']);
         });
 
-        $this->manager = new TaxonomyProgressManager(new TaxonomyReader());
+        $this->lexicon  = new LearningDirectionLexicon();
+        $this->kld      = new KeyLearningDirection($this->lexicon, new LearningIdeaFamilyIndex());
+        $this->manager  = new TaxonomyProgressManager(new TaxonomyReader());
     }
 
     protected function tearDown(): void
@@ -439,5 +448,94 @@ class TaxonomyProgressManagerTest extends TestCase
 
         $status = $this->manager->getStatus(4, 'science');
         $this->assertSame(1, $status['dominant_idea_index']);
+    }
+
+    // =========================================================================
+    // Test 13 — peekNextApproved : registry vide → PASS + kld_result présent,
+    //           curseur intact (aucun confirmConsumed interne)
+    // =========================================================================
+
+    public function test_peek_next_approved_returns_pass_with_empty_registry(): void
+    {
+        $registry = new LearningDirectionRegistry();
+
+        $approved = $this->manager->peekNextApproved(4, 'science', $registry, $this->kld);
+
+        $this->assertNotNull($approved, 'peekNextApproved doit retourner une paire avec registry vide');
+
+        // Même paire que peekNext brut
+        $raw = $this->manager->peekNext(4, 'science');
+        $this->assertSame($raw['dominant_idea'], $approved['dominant_idea']);
+        $this->assertSame($raw['subject'],       $approved['subject']);
+        $this->assertSame($raw['sub_domain'],    $approved['sub_domain']);
+
+        // kld_result doit être présent et PASS
+        $this->assertArrayHasKey('kld_result', $approved);
+        $this->assertInstanceOf(LearningDirectionResult::class, $approved['kld_result']);
+        $this->assertTrue($approved['kld_result']->isPass(), 'kld_result doit être PASS avec registry vide');
+
+        // Curseur intact : aucun confirmConsumed interne ne doit avoir eu lieu
+        $status = $this->manager->getStatus(4, 'science');
+        $this->assertSame(0, $status['dominant_idea_index'],
+            'peekNextApproved PASS ne doit pas avancer le curseur');
+    }
+
+    // =========================================================================
+    // Test 14 — peekNextApproved : FAIL → saut définitif → retourne l'idée suivante
+    //           Le curseur avance exactement une fois (pour le saut KLD).
+    // =========================================================================
+
+    public function test_peek_next_approved_skips_kld_fail_and_returns_next_idea(): void
+    {
+        // Pré-remplir le registry avec la première idée de ADN (double_hélice)
+        // → KLD retournera FAIL pour cette idée → peekNextApproved doit la sauter
+        $registry  = new LearningDirectionRegistry();
+        $subjectKey   = $this->lexicon->normalize('ADN');            // 'adn'
+        $ideaCanonical = $this->lexicon->resolve('double_hélice');   // 'double_hélice' (pas de synonyme)
+        $directionKey  = $subjectKey . '::' . $ideaCanonical;        // 'adn::double_hélice'
+        $registry->add($directionKey, $subjectKey, $ideaCanonical);
+
+        $approved = $this->manager->peekNextApproved(4, 'science', $registry, $this->kld);
+
+        $this->assertNotNull($approved, 'peekNextApproved doit trouver une idée approuvée');
+
+        // L'idée retournée doit être Watson (idée[1] de ADN), pas double_hélice (idée[0])
+        $this->assertSame(
+            self::ADN_IDEAS[1],
+            $approved['dominant_idea'],
+            "L'idée[0] (double_hélice) doit être sautée ; Watson (idée[1]) doit être retournée"
+        );
+        $this->assertSame('ADN', $approved['subject']);
+        $this->assertTrue($approved['kld_result']->isPass());
+
+        // Le curseur doit avoir avancé une fois (saut de double_hélice)
+        // et être maintenant pointé sur Watson (index=1), mais peekNextApproved
+        // NE confirme PAS l'idée approuvée → curseur reste à index=1 (après saut).
+        $status = $this->manager->getStatus(4, 'science');
+        $this->assertSame(1, $status['dominant_idea_index'],
+            'Le curseur doit être à index=1 après un saut KLD (double_hélice sauté)');
+    }
+
+    // =========================================================================
+    // Test 15 — peekNextApproved retourne null quand le bassin est exhausted
+    // =========================================================================
+
+    public function test_peek_next_approved_returns_null_when_basin_exhausted(): void
+    {
+        // Épuiser complètement le bassin 'science' (20 paires)
+        $this->manager->peekNext(4, 'science');
+        for ($i = 0; $i < 20; $i++) {
+            $this->manager->confirmConsumed(4, 'science');
+        }
+
+        $this->assertTrue($this->manager->isExhausted(4, 'science'));
+
+        // peekNextApproved doit retourner null (bassin épuisé)
+        $result = $this->manager->peekNextApproved(
+            4, 'science', new LearningDirectionRegistry(), $this->kld
+        );
+
+        $this->assertNull($result,
+            'peekNextApproved doit retourner null quand le bassin est exhausted');
     }
 }

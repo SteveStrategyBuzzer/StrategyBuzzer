@@ -1,7 +1,10 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services\QuestionBank\Rotation;
 
+use App\Services\QuestionBank\Rotation\DTO\LearningDirectionInput;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
@@ -23,11 +26,16 @@ use RuntimeException;
  *   - Ne connaît pas les autres domaines ni les autres depths
  *   - Ne stocke pas les paires elles-mêmes (source de vérité : taxonomy.json via TaxonomyReader)
  *
- * Règle de rythme :
+ * Règle de rythme — peekNext() (brut) :
  *   Le curseur avance d'UN SEUL CRAN à chaque appel confirmConsumed().
  *   peekNext() est idempotent : retourne toujours la même paire sans avancer.
- *   Si KLD ou KEY_STRUCTURE rejettent, confirmConsumed() n'est PAS appelé.
- *   Le prochain peekNext() retourne alors la même paire (retry automatique).
+ *
+ * Règle de rythme — peekNextApproved() (avec KLD) :
+ *   Boucle interne jusqu'à trouver une idée approuvée par KLD.
+ *   FAIL KLD → confirmConsumed() appelé en interne (saut définitif), retry immédiat.
+ *   PASS/REVIEW_STRUCTURE → retourne la paire + kld_result ; confirmConsumed() reste
+ *   à la charge de l'appelant (après création réussie du QuestionIntent).
+ *   Max MAX_PEEK_ATTEMPTS sauts par appel pour éviter une boucle infinie.
  *
  * Table : taxonomy_progress (une ligne par couple depth × domain_code)
  */
@@ -37,6 +45,9 @@ final class TaxonomyProgressManager
 
     private const STATUS_ACTIVE    = 'active';
     private const STATUS_EXHAUSTED = 'exhausted';
+
+    /** Garde anti-boucle infinie dans peekNextApproved(). */
+    private const MAX_PEEK_ATTEMPTS = 500;
 
     public function __construct(private readonly TaxonomyReader $taxonomy) {}
 
@@ -95,6 +106,75 @@ final class TaxonomyProgressManager
             'dominant_idea'       => $dominantIdea,
             'knowledge_frequency' => $kf,
         ];
+    }
+
+    /**
+     * Retourne la prochaine paire APPROUVÉE PAR KLD, en sautant automatiquement
+     * les idées rejetées (FAIL).
+     *
+     * Comportement :
+     *   - Appelle peekNext() pour obtenir le candidat courant.
+     *   - Soumet le candidat à KeyLearningDirection::check().
+     *   - FAIL  → confirmConsumed() interne (saut définitif du curseur) + retry.
+     *   - PASS / REVIEW_STRUCTURE → retourne le candidat avec 'kld_result' ajouté.
+     *   - null de peekNext() (bassin exhausted) → retourne null.
+     *   - Après MAX_PEEK_ATTEMPTS sauts sans candidat approuvé → retourne null (garde).
+     *
+     * Contrat appelant :
+     *   Après réception d'un candidat PASS/REVIEW_STRUCTURE, l'appelant DOIT :
+     *     1. Créer le QuestionIntent.
+     *     2. Appeler confirmConsumed() pour avancer le curseur.
+     *     3. Appeler LearningDirectionRegistry::add() pour enregistrer la direction.
+     *
+     * @return array{
+     *     depth: int,
+     *     domain: string,
+     *     sub_domain: string,
+     *     subject: string,
+     *     dominant_idea: string,
+     *     knowledge_frequency: int,
+     *     kld_result: \App\Services\QuestionBank\Rotation\DTO\LearningDirectionResult
+     * }|null
+     */
+    public function peekNextApproved(
+        int                       $depth,
+        string                    $domainCode,
+        LearningDirectionRegistry $registry,
+        KeyLearningDirection      $kld,
+    ): ?array {
+        $maxAttempts = self::MAX_PEEK_ATTEMPTS;
+
+        for ($attempt = 0; $attempt < $maxAttempts; $attempt++) {
+            $candidate = $this->peekNext($depth, $domainCode);
+
+            if ($candidate === null) {
+                return null;
+            }
+
+            $input = new LearningDirectionInput(
+                depth:              $depth,
+                domainCode:         $domainCode,
+                subDomain:          $candidate['sub_domain'],
+                subject:            $candidate['subject'],
+                dominantIdea:       $candidate['dominant_idea'],
+                knowledgeFrequency: $candidate['knowledge_frequency'],
+            );
+
+            $result = $kld->check($input, $registry);
+
+            if ($result->isFail()) {
+                // Saut définitif : cette idée est un doublon pédagogique certain.
+                // On avance le curseur sans enregistrer dans le registry.
+                $this->confirmConsumed($depth, $domainCode);
+                continue;
+            }
+
+            // PASS ou REVIEW_STRUCTURE → candidat approuvé, curseur intact.
+            return array_merge($candidate, ['kld_result' => $result]);
+        }
+
+        // Garde : MAX_PEEK_ATTEMPTS sauts consécutifs sans approbation.
+        return null;
     }
 
     /**
