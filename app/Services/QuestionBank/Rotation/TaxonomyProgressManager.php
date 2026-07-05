@@ -39,7 +39,7 @@ use RuntimeException;
  *
  * Table : taxonomy_progress (une ligne par couple depth × domain_code)
  */
-final class TaxonomyProgressManager
+final class TaxonomyProgressManager implements DomainExhaustionChecker
 {
     private const TABLE = 'taxonomy_progress';
 

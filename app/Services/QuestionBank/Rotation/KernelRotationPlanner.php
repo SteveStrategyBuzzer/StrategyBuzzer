@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services\QuestionBank\Rotation;
 
 use Illuminate\Support\Facades\DB;
@@ -9,22 +11,30 @@ use RuntimeException;
 /**
  * KernelRotationPlanner
  *
- * Première brique décisionnelle après Blueprint Phase 0.
+ * Machine d'état persistante de la rotation globale.
  *
- * Produit exclusivement :
- *   - depth_slot          : profondeur choisie selon DepthNeedMatrix
- *   - domain_slot         : domaine choisi selon DomainCycle
- *   - rotation_identifier : UUID unique de la rotation (≠ kernel_code)
+ * Responsabilités :
+ *   - Maintenir l'état global de la rotation (current_depth, current_domain_index, completed_domains)
+ *   - Interroger TaxonomyProgressManager (via DomainExhaustionChecker) sur UN seul domaine par rotation
+ *   - Incrémenter completed_domains quand ce domaine répond EXHAUSTED
+ *   - Déclencher le passage au prochain depth quand completed_domains atteint 8
+ *   - Écrire depth · domain_code · rotation_identifier dans le Blueprint
  *
  * Interdictions absolues :
- *   Ne crée / ne modifie JAMAIS : sous-domaine, sujet, idée dominante,
- *   question, réponse, cognitif, traduction, semantic_key, QuestionIntent,
- *   READY_BANK, gameplay, kernel_code, kernel_code_prefix.
+ *   - Ne scan jamais les 8 domaines en même temps
+ *   - Ne crée / ne modifie JAMAIS sous-domaine, sujet, idée, question, cognitif,
+ *     traduction, semantic_key, QuestionIntent, READY_BANK, gameplay, kernel_code
+ *
+ * Cycle de vie :
+ *   1. initialize(?int $startDepth) — appelé une seule fois au démarrage du worker
+ *   2. plan(DomainExhaustionChecker $checker) — appelé à chaque rotation
  *
  * Gestion d'erreur : RuntimeException (STOP) — jamais de fallback, jamais de retry.
  */
 final class KernelRotationPlanner
 {
+    private const STATE_TABLE = 'kernel_rotation_state';
+
     /**
      * Depths autorisés. Tout depth absent de cette liste est refusé.
      */
@@ -43,45 +53,128 @@ final class KernelRotationPlanner
     ];
 
     // =========================================================================
-    // Point d'entrée principal
+    // Initialisation — appelée une seule fois par le worker au démarrage
     // =========================================================================
 
     /**
-     * Produit le contexte de rotation.
+     * Initialise l'état de rotation persistant.
      *
-     * @param  int|null  $currentDomainIndex  Index courant dans le cycle domaine.
-     *                                        null = début du cycle (retourne index 0).
+     * Si l'état existe déjà → no-op (idempotent).
+     * Si $startDepth est null → choisit le depth selon DepthNeedMatrix (interroge question_groups).
+     *
+     * @throws RuntimeException STOP si aucun depth disponible.
+     */
+    public function initialize(?int $startDepth = null): void
+    {
+        if (DB::table(self::STATE_TABLE)->exists()) {
+            return;
+        }
+
+        if ($startDepth === null) {
+            $existingByDepth = $this->loadExistingKernelCounts();
+            $matrix          = $this->buildDepthNeedMatrix($existingByDepth);
+            $startDepth      = $this->chooseDepth($matrix);
+        }
+
+        DB::table(self::STATE_TABLE)->insert([
+            'current_depth'            => $startDepth,
+            'current_domain_index'     => 0,
+            'completed_domains'        => 0,
+            'last_rotation_identifier' => null,
+            'created_at'               => now(),
+            'updated_at'               => now(),
+        ]);
+    }
+
+    // =========================================================================
+    // Point d'entrée principal — une rotation
+    // =========================================================================
+
+    /**
+     * Produit le contexte de rotation pour la prochaine création de noyau.
+     *
+     * Mécanisme (par rotation) :
+     *   1. Charger l'état persisté
+     *   2. Interroger DomainExhaustionChecker : isExhausted(current_depth, current_domain) ?
+     *      — UNE seule requête, jamais de scan des 8 domaines
+     *   3. Si EXHAUSTED → completed_domains++
+     *      a. completed_domains == 8 → depth suivant (DepthNeedMatrix), reset DomainCycle
+     *      b. sinon → domaine suivant (DomainCycle.advance)
+     *      Persister l'état dans les deux cas.
+     *   4. Générer rotation_identifier
+     *   5. Retourner depth · domain_code · rotation_identifier
      *
      * @return array{
      *     rotation_context: array{
      *         depth_slot:          array{depth: int},
      *         domain_slot:         array{domain_id: string, domain_code: string},
      *         rotation_identifier: string
-     *     },
-     *     next_domain_index: int
+     *     }
      * }
      *
-     * @throws RuntimeException STOP — aucun recovery, aucun fallback.
+     * @throws RuntimeException STOP si état non initialisé ou aucun depth disponible.
      */
-    public function plan(?int $currentDomainIndex = null): array
+    public function plan(DomainExhaustionChecker $checker): array
     {
-        $existingByDepth = $this->loadExistingKernelCounts();
-        $matrix          = $this->buildDepthNeedMatrix($existingByDepth);
-        $depth           = $this->chooseDepth($matrix);
+        $state = DB::table(self::STATE_TABLE)->first();
 
-        $domains = $this->loadDomains();
-        $nextIdx = $this->advanceDomainIndex($currentDomainIndex, $domains);
-        $domain  = $domains[$nextIdx];
+        if ($state === null) {
+            throw new RuntimeException(
+                '[KernelRotationPlanner] STOP — état non initialisé. '
+                . 'Appeler initialize() avant le premier plan().'
+            );
+        }
+
+        $domains       = $this->loadDomains();
+        $currentDepth  = (int) $state->current_depth;
+        $currentIdx    = (int) $state->current_domain_index;
+        $currentDomain = $domains[$currentIdx];
+
+        if ($checker->isExhausted($currentDepth, $currentDomain)) {
+            $completedDomains = (int) $state->completed_domains + 1;
+
+            if ($completedDomains >= 8) {
+                // ── Depth cycle complet → passer au prochain depth ────────────
+                $existingByDepth = $this->loadExistingKernelCounts();
+                $matrix          = $this->buildDepthNeedMatrix($existingByDepth);
+                $nextDepth       = $this->chooseDepth($matrix);
+
+                DB::table(self::STATE_TABLE)->update([
+                    'current_depth'        => $nextDepth,
+                    'current_domain_index' => 0,
+                    'completed_domains'    => 0,
+                    'updated_at'           => now(),
+                ]);
+
+                $currentDepth  = $nextDepth;
+                $currentDomain = $domains[0];
+            } else {
+                // ── Avancer vers le prochain domaine dans le DomainCycle ──────
+                $nextIdx = $this->advanceDomainIndex($currentIdx, $domains);
+
+                DB::table(self::STATE_TABLE)->update([
+                    'current_domain_index' => $nextIdx,
+                    'completed_domains'    => $completedDomains,
+                    'updated_at'           => now(),
+                ]);
+
+                $currentDomain = $domains[$nextIdx];
+            }
+        }
 
         $rotationIdentifier = (string) Str::uuid();
 
+        DB::table(self::STATE_TABLE)->update([
+            'last_rotation_identifier' => $rotationIdentifier,
+            'updated_at'               => now(),
+        ]);
+
         return [
             'rotation_context' => [
-                'depth_slot'          => ['depth' => $depth],
-                'domain_slot'         => ['domain_id' => $domain, 'domain_code' => $domain],
+                'depth_slot'          => ['depth' => $currentDepth],
+                'domain_slot'         => ['domain_id' => $currentDomain, 'domain_code' => $currentDomain],
                 'rotation_identifier' => $rotationIdentifier,
             ],
-            'next_domain_index' => $nextIdx,
         ];
     }
 
@@ -157,7 +250,6 @@ final class KernelRotationPlanner
             );
         }
 
-        // Highest remaining first ; tie-break = lowest depth
         usort($candidates, static function (array $a, array $b): int {
             $cmp = (int) $b['remaining_kernels'] <=> (int) $a['remaining_kernels'];
             return $cmp !== 0 ? $cmp : ((int) $a['depth'] <=> (int) $b['depth']);
@@ -179,13 +271,12 @@ final class KernelRotationPlanner
     // =========================================================================
 
     /**
-     * Charge la liste officielle des domaines Gameplay v1.
+     * Charge la liste officielle des 8 domaines Gameplay.
      *
-     * "general" peut exister dans la config mais n'est PAS un domaine Gameplay.
-     * KernelRotationPlanner n'utilise que les 8 domaines Gameplay ci-dessous.
      * DomainCycle Gameplay v1 — ordre officiel figé :
-     *
      *   histoire, geographie, sport, art, cuisine, science, cinema, faune
+     *
+     * "general" n'est PAS un domaine Gameplay et n'apparaît jamais ici.
      *
      * @return string[]
      * @throws RuntimeException STOP si liste vide.

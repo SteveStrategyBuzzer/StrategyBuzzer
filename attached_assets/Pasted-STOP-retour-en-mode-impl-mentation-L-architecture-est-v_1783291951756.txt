@@ -1,0 +1,76 @@
+STOP — retour en mode implémentation.
+
+L’architecture est verrouillée. Tu ne dois plus seulement documenter.
+
+Tu dois corriger le code existant et supprimer/remplacer ce qui ne respecte plus la structure actuelle.
+
+Source de vérité :
+
+Une rotation d’un depth est complète seulement quand les 8 domaines Gameplay ont terminé leur première création complète :
+
+- sous-domaine actif
+- jusqu’à 50 sujets
+- chaque sujet avec ses idées dominantes validées/consommées
+- domaine marqué exhausted
+
+Quand les 8 domaines du depth sont exhausted :
+KernelRotationPlanner passe au prochain depth.
+
+À corriger maintenant :
+
+1. Audit rapide du code réel :
+- KernelRotationPlanner
+- TaxonomyProgressManager
+- KeyLearningDirection
+- tests associés
+
+2. Identifier ce qui est faux ou obsolète :
+- ancienne logique de rotation
+- logique qui scanne mal les domaines
+- logique qui considère un depth complet trop tôt
+- logique qui consomme une idée rejetée
+- logique qui ne respecte pas le chargeur sujets/idées
+
+3. Appliquer les corrections nécessaires.
+
+Règle :
+KernelRotationPlanner est l’autorité globale :
+- current_depth
+- current_domain_index
+- completed_domains
+- passage au depth suivant
+
+TaxonomyProgressManager est l’autorité locale :
+- savoir si un couple depth + domain_code est exhausted
+- gérer le chargeur de sujets
+- gérer le chargeur d’idées
+- ne jamais décider du prochain depth
+
+KLD :
+- vérifie le dossier Sujet + Idée
+- FAIL = idée rejetée
+- REVIEW_STRUCTURE = risque à envoyer à KEY_STRUCTURE
+- PASS = idée admissible
+- ne consomme rien
+
+confirmConsumed() :
+- uniquement après KEY_STRUCTURE PASS + QuestionIntent créé
+
+PATCH attendu :
+Commence par KernelRotationPlanner.
+
+Montre :
+grep -RIn "class KernelRotationPlanner\|completed_domains\|current_depth\|current_domain\|next_domain\|advance" app tests database
+nl -ba app/Services/QuestionBank/Rotation/KernelRotationPlanner.php | sed -n '1,320p'
+
+Puis corrige pour intégrer la machine d’état persistante si elle manque.
+
+Après patch :
+git diff --stat
+git diff -- app/Services/QuestionBank/Rotation/KernelRotationPlanner.php
+php -l app/Services/QuestionBank/Rotation/KernelRotationPlanner.php
+vendor/bin/phpunit --filter KernelRotationPlannerTest
+nl -ba app/Services/QuestionBank/Rotation/KernelRotationPlanner.php | sed -n '1,360p'
+
+Ne repars pas en documentation.
+Implémente.
