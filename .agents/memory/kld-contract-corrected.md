@@ -90,7 +90,9 @@ app/Services/QuestionBank/Rotation/LearningDirectionRegistry.php
 ```
 
 KLD interroge un contrat métier, pas un tableau.
-Expose : `contains(string $directionKey): bool`, `hasSubject(string $subjectKey): bool`.
+Expose :
+- `contains(string $directionKey): bool`
+- `getIdeasForSubject(string $subjectKey): array` — retourne les idea_canonical_keys déjà validées pour ce sujet
 
 Signature finale :
 ```php
@@ -103,51 +105,74 @@ public function check(
 ## Mécanisme en 7 étapes (verrouillé 2026-07-05)
 
 ```
-1. Normaliser le sujet                 → subject_key
-2. Normaliser l'idée                   → idea_key
-3. Résoudre idea_key via getSynonyms() → idea_canonical_key
-4. Construire direction_key = subject_key + "::" + idea_canonical_key
-5. registry.contains(direction_key) ?  → oui → FAIL  DIRECT_PAIR_CONTEXT_DUPLICATE
-6. registry.hasSubject(subject_key) ?  → oui → REVIEW_STRUCTURE  POSSIBLE_CONTEXTUAL_DUPLICATE
-7.                                     → sinon → PASS
+1. Normaliser le sujet                              → subject_key
+2. Normaliser l'idée                                → idea_key
+3. Résoudre idea_key via getSynonyms()              → idea_canonical_key
+4. direction_key = subject_key + "::" + idea_canonical_key
+5. registry.contains(direction_key) ?
+   → oui → FAIL  DIRECT_PAIR_CONTEXT_DUPLICATE
+6. registry.getIdeasForSubject(subject_key) → existing_ideas[]
+   Pour chaque existing_idea :
+     familyIndex.sameFamily(domain_code, idea_canonical_key, existing_idea) ?
+   → oui → REVIEW_STRUCTURE  POSSIBLE_CONTEXTUAL_DUPLICATE
+7. → PASS
 ```
 
-## Frontière KLD / KEY_STRUCTURE (v5 — 2026-07-05)
+## Frontière KLD / KEY_STRUCTURE (v6 — 2026-07-05)
 
-KLD = **registre de dossiers pédagogiques + synonymes directs**. Mécanisme déterministe en 7 étapes.
+KLD = **registre de dossiers pédagogiques + synonymes directs + familles d'idées**. Mécanisme déterministe en 7 étapes.
 KEY_STRUCTURE = **juge structurel final**.
 
 ```
-transport + voiture → transport + auto     → KLD FAIL             (résolu vers transport::voiture)
-transport + voiture → transport + camion   → KLD REVIEW_STRUCTURE (sujet transport:: déjà utilisé)
-transport + voiture → transport + avion    → KLD REVIEW_STRUCTURE (sujet transport:: déjà utilisé)
-sujet inédit + idée inédite               → KLD PASS
-idea hors depth                           → KLD PASS → KEY_STRUCTURE FAIL
+transport + auto     → FAIL             (synonyme direct de voiture)
+transport + camion   → REVIEW_STRUCTURE (même famille véhicules_routiers que voiture)
+transport + autobus  → REVIEW_STRUCTURE (même famille véhicules_routiers que voiture)
+transport + train    → PASS             (famille différente — transport_ferroviaire)
+transport + avion    → PASS             (famille différente — transport_aérien)
+idée hors depth      → PASS             → KEY_STRUCTURE FAIL
 ```
 
-KLD ne juge jamais si une idée est pédagogiquement bonne.
-Il juge : même dossier (via résolution synonyme) = FAIL ; sujet déjà utilisé = REVIEW_STRUCTURE ; inédit = PASS.
+Règle précise :
+- même sujet + synonyme direct → FAIL
+- même sujet + idée dans même famille → REVIEW_STRUCTURE
+- même sujet + idée de famille différente/inconnue → PASS
 
-## LearningDirectionLexicon (v5 — 2026-07-05)
+## LearningDirectionLexicon (v6 — 2026-07-05)
 
 **Fichier :** `app/Services/QuestionBank/Knowledge/LearningDirectionLexicon.php`
 
 | Méthode | Rôle |
 |---|---|
-| `getSynonyms()` | Groupes de synonymes directs par domaine — résout idea_key vers idea_canonical_key |
-| ~~`getContextRules()`~~ | **SUPPRIMÉ** — remplacé par le mécanisme hasSubject + KEY_STRUCTURE |
-| ~~`getNeighbors()`~~ | **JAMAIS CRÉÉ** — retiré avant implémentation (trop spéculatif) |
-| ~~`getSimilarityRules()`~~ | **SUPPRIMÉ** — seuil 0.85 abandonné |
+| `getSynonyms()` | Groupes de synonymes directs — résout idea_key → idea_canonical_key |
 
-Responsabilité unique : résoudre `voiture → voiture`, `auto → voiture`, `char → voiture`, `bagnole → voiture`.
+Responsabilité unique : résoudre `auto → voiture`, `char → voiture`, `bagnole → voiture`.
+
+## LearningIdeaFamilyIndex (nouveau — 2026-07-05)
+
+**Fichier :** `app/Services/QuestionBank/Knowledge/LearningIdeaFamilyIndex.php`
+
+| Méthode | Rôle |
+|---|---|
+| `sameFamily(string $domainCode, string $ideaA, string $ideaB): bool` | Retourne true si ideaA et ideaB appartiennent à la même famille pour ce domaine |
+
+Structure interne (données statiques) :
+```
+transport:
+  véhicules_routiers: [voiture, camion, autobus, pickup]
+  transport_ferroviaire: [train, métro, tramway]
+  transport_aérien: [avion, hélicoptère]
+  transport_maritime: [bateau, navire, ferry]
+```
+
+Responsabilité unique : déclarer les familles d'idées trop proches pour un même sujet.
+KLD s'en sert uniquement pour détecter le risque (REVIEW_STRUCTURE) — jamais pour trancher.
 
 ## Responsabilités KLD
 
 DOIT :
 - Empêcher qu'un même sujet enseigne deux fois la même direction d'apprentissage
-- Appliquer lexique de synonymes directs via `LearningDirectionLexicon::getSynonyms()` → FAIL si synonyme
-- Appliquer détection de voisins via `LearningDirectionLexicon::getNeighbors()` → REVIEW_STRUCTURE si voisin
-- Appliquer context_map via `LearningDirectionLexicon::getContextRules()` → arbitrage KLD-5
+- Résoudre synonymes directs via `LearningDirectionLexicon::getSynonyms()` → même direction_key → FAIL
+- Détecter familles d'idées proches via `LearningIdeaFamilyIndex::sameFamily()` → REVIEW_STRUCTURE
 - Retourner PASS | FAIL | REVIEW_STRUCTURE déterministe
 
 NE DOIT JAMAIS :
@@ -157,28 +182,29 @@ NE DOIT JAMAIS :
 - Créer QuestionIntent
 - Choisir domaine/sous-domaine/sujet/idée
 
-## Motifs par sortie (v5)
+## Motifs par sortie (v6)
 
 **FAIL :**
-`DIRECT_PAIR_CONTEXT_DUPLICATE` (étape 5 — direction_key déjà dans registry)
+`DIRECT_PAIR_CONTEXT_DUPLICATE` — direction_key déjà dans registry (via résolution synonyme incluse)
 
 **REVIEW_STRUCTURE :**
-`POSSIBLE_CONTEXTUAL_DUPLICATE` (étape 6 — sujet déjà utilisé, autre direction)
+`POSSIBLE_CONTEXTUAL_DUPLICATE` — idée dans même famille qu'une direction existante pour ce sujet
 
 **PASS :**
-reason = null
+reason = null — direction inédite, famille différente ou inconnue
 
-## Tests — 10 tests purs (aucune DB, aucun Eloquent)
-1. passes_when_subject_and_idea_are_both_new
-2. fails_when_direction_key_already_exists_exactly
-3. fails_when_idea_resolves_to_existing_canonical_via_synonym
-4. returns_review_structure_when_subject_already_has_a_direction
-5. passes_when_subject_is_also_new
-6. resolves_synonym_to_canonical_before_building_direction_key
-7. does_not_generate_hashes
-8. has_no_database_dependency
-9. accepts_typed_learning_direction_input
-10. review_structure_carries_possible_contextual_duplicate_reason
+## Tests — 11 tests purs (aucune DB, aucun Eloquent)
+1.  passes_when_subject_and_idea_are_both_new
+2.  fails_when_direction_key_already_exists_exactly
+3.  fails_when_idea_resolves_to_existing_canonical_via_synonym
+4.  returns_review_structure_when_idea_is_in_same_family_as_existing
+5.  passes_when_idea_is_in_different_family_from_existing
+6.  passes_when_idea_family_is_unknown
+7.  resolves_synonym_to_canonical_before_building_direction_key
+8.  does_not_generate_hashes
+9.  has_no_database_dependency
+10. accepts_typed_learning_direction_input
+11. review_structure_carries_possible_contextual_duplicate_reason
 
 ## Ordre des patches
 PATCH B1 : LearningDirectionInput DTO (pas de migration)

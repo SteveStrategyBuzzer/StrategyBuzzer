@@ -148,14 +148,23 @@ Entrée : `active_subject` · `proposed_dominant_idea` · `current_sub_domain` �
 
 Mécanisme en 7 étapes (déterministe, sans DB, sans IA) :
 ```
-1. Normaliser sujet           → subject_key
-2. Normaliser idée            → idea_key
-3. Résoudre via getSynonyms() → idea_canonical_key
+1. Normaliser sujet                              → subject_key
+2. Normaliser idée                               → idea_key
+3. Résoudre via LearningDirectionLexicon::getSynonyms() → idea_canonical_key
 4. direction_key = subject_key + "::" + idea_canonical_key
-5. registry.contains(direction_key) → FAIL  DIRECT_PAIR_CONTEXT_DUPLICATE
-6. registry.hasSubject(subject_key) → REVIEW_STRUCTURE  POSSIBLE_CONTEXTUAL_DUPLICATE
-7.                                  → PASS
+5. registry.contains(direction_key) ?
+   → oui → FAIL  DIRECT_PAIR_CONTEXT_DUPLICATE
+6. registry.getIdeasForSubject(subject_key) → existing_ideas[]
+   Pour chaque existing_idea :
+     LearningIdeaFamilyIndex::sameFamily(domain_code, idea_canonical_key, existing_idea) ?
+   → oui → REVIEW_STRUCTURE  POSSIBLE_CONTEXTUAL_DUPLICATE
+7. → PASS
 ```
+
+Règle précise :
+- même sujet + synonyme direct → FAIL
+- même sujet + idée dans même famille → REVIEW_STRUCTURE
+- même sujet + idée de famille différente/inconnue → PASS
 
 Cycle chargeur d'idées :
 ```
@@ -164,8 +173,10 @@ REVIEW_STRUCTURE → forward KEY_STRUCTURE + alerte POSSIBLE_CONTEXTUAL_DUPLICAT
 PASS             → forward KEY_STRUCTURE (chemin normal)
 ```
 
-LearningDirectionLexicon : getSynonyms() uniquement.
-LearningDirectionRegistry : contains(direction_key) + hasSubject(subject_key).
+Composants :
+- LearningDirectionLexicon : `getSynonyms()` — résout auto/char/bagnole → voiture
+- LearningIdeaFamilyIndex : `sameFamily(domainCode, ideaA, ideaB): bool` — voiture et camion dans véhicules_routiers
+- LearningDirectionRegistry : `contains(direction_key)` + `getIdeasForSubject(subject_key)`
 
 Ne choisit rien. Ne remplit aucun slot. Ne lit pas la DB. Ne génère aucun hash.
 Appelé autant de fois que nécessaire jusqu'à remplir les 5 slots.
