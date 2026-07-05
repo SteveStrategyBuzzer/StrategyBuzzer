@@ -5,9 +5,23 @@ description: Scope verrouillé de KEY_LEARNING_DIRECTION dans le pipeline noyau 
 
 # KEY_LEARNING_DIRECTION — responsabilité exacte (verrouillée)
 
-⚠️ MAJ 2026-06-19 (voir `rotation-par-noyau-complet.md`) : ORDRE CHANGÉ — **KEY_STRUCTURE intervient AVANT KLD** (auparavant KLD→KEY_STRUCTURE). KLD n'est plus la première garde : c'est KEY_STRUCTURE qui détecte une collision de pré-code `yy-xx-xxx-xxx-xxx` puis APPELLE KLD pour trancher (même sujet+idée = FAIL → idée/sujet/sous-domaine suivant ; sujet/idée réellement différent = PASS → KEY_STRUCTURE attribue un `zz`). KLD signale aussi « sous-domaine épuisé ». Le reste de ce fichier (scope anti-répétition pédagogique) reste valable mais s'exécute APRÈS KEY_STRUCTURE.
+⚠️ Note archivée (2026-06-19 — OBSOLÈTE) : ancienne note sur l'ordre KLD/KEY_STRUCTURE. Remplacée par pipeline v2 (2026-07-04) : KLD est le **garde d'entrée du chargeur d'idées**, appelé à l'intérieur de Taxonomy pendant le remplissage slot par slot.
 
-KLD est un **garde anti-répétition de direction pédagogique**, PAS un garde anti-question.
+## Mission officielle (verrouillée 2026-07-04)
+
+**Empêcher qu'un même sujet enseigne deux fois la même direction d'apprentissage sous une formulation différente.**
+
+KLD ne compare pas des mots. **KLD compare des directions d'apprentissage.**
+
+Les synonymes directs (voiture/auto/char/bagnole) ne sont qu'un **outil de détection** d'une direction déjà utilisée. Ce qu'il protège, c'est le dossier pédagogique :
+
+```
+Transport → Voiture   = dossier pédagogique X
+Transport → Auto      = MÊME dossier → FAIL
+Transport → Camion    = autre direction → PASS → KEY_STRUCTURE analyse
+```
+
+KLD est le **garde d'entrée du chargeur d'idées**, PAS un garde anti-question.
 
 ## Stade du pipeline
 À ce point : aucune question, aucune réponse, aucun Saviez-vous n'existe encore. Tout cela appartient à APRÈS QuestionIntent / PHASE 1.

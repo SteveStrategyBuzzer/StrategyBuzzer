@@ -128,21 +128,25 @@ Il n'y a pas de deuxième KLD après consommation.
 
 ### KEY_LEARNING_DIRECTION (garde d'entrée du chargeur d'idées)   [NEXT]
 
+**Mission :** Empêcher qu'un même sujet enseigne deux fois la même **direction d'apprentissage**
+sous une formulation différente. KLD ne compare pas des mots — il compare des directions.
+
 **Position** : à l'intérieur du cycle de remplissage du chargeur d'idées — PAS étape standalone.
 
 Entrée : `active_subject` · `proposed_dominant_idea` · `current_sub_domain` ·
-         `domain_code` · `depth` · directions déjà validées pour ce contexte (LearningDirectionRegistry)
+         `domain_code` · `depth` · directions déjà validées (LearningDirectionRegistry)
 
 Sortie : PASS ou FAIL + reason
 
 Mécanisme (5 règles, déterministe) :
 1. normaliser subject + idée
 2. KLD-1 subject == dominant_idea → INVALID_MINIMAL_PAIR
-3. KLD-2 paire directe exacte déjà dans registry → DIRECT_PAIR_CONTEXT_DUPLICATE
-4. KLD-3 paire inversée exacte → REVERSED_PAIR_CONTEXT_DUPLICATE
-5. KLD-4 synonyme direct via lexique (voiture≈auto≈char≈bagnole) → CONCEPTUAL_COLLISION
-6. KLD-5 sub_domain différent + ContextMap silencieux → CONTEXT_NOT_DISTINCT
-7. KLD-6 RETIRÉ — concept voisin non synonyme (camion≠voiture) → KLD LAISSE PASSER → KEY_STRUCTURE analyse
+3. KLD-2 paire directe déjà dans registry → DIRECT_PAIR_CONTEXT_DUPLICATE
+4. KLD-3 paire inversée → REVERSED_PAIR_CONTEXT_DUPLICATE
+5. KLD-4 même direction détectée via lexique LearningDirectionLexicon::getSynonyms()
+         (voiture≈auto≈char≈bagnole = même dossier pédagogique) → CONCEPTUAL_COLLISION
+6. KLD-5 sub_domain différent + LearningDirectionLexicon::getContextRules() silencieux → CONTEXT_NOT_DISTINCT
+7. concept voisin NON synonyme (camion≠voiture) → KLD LAISSE PASSER → KEY_STRUCTURE analyse
 8. sinon → PASS
 
 Ne choisit rien. Ne remplit aucun slot. Ne lit pas la DB. Ne génère aucun hash.

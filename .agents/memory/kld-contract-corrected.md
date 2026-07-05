@@ -109,28 +109,28 @@ idea hors depth                            → KLD PASS  → KEY_STRUCTURE FAIL
 KLD ne juge jamais si une idée est pédagogiquement bonne.
 Il juge uniquement : même dossier pédagogique sous un nom différent = doublon caché.
 
-## Composants Knowledge — rôles affinés
+## LearningDirectionLexicon (renommé, 2026-07-04)
 
-```
-app/Services/QuestionBank/Knowledge/LearningKnowledgeBase.php
-```
+**Fichier :** `app/Services/QuestionBank/Knowledge/LearningDirectionLexicon.php`
+
+Ancienne classe `LearningKnowledgeBase` — **renommée** car sa responsabilité est maintenant un lexique métier spécialisé au service de KLD, pas une base de connaissances générale.
 
 | Méthode | Contenu |
 |---|---|
-| `getEquivalences()` | Lexique de synonymes directs par domaine (voiture≈auto≈char≈bagnole ; capitale≈statut) |
-| `getContextRules()` | Couples (subDomainA, subDomainB) distincts pour une idée dominante |
-| `getSimilarityRules()` | **ABANDONNÉ** — le seuil 0.85 est retiré. La synonymie est décidée par lexique, pas par distance statistique |
+| `getSynonyms()` | Lexique de synonymes directs par domaine (voiture≈auto≈char≈bagnole) — détecte la même direction d'apprentissage sous nom différent |
+| `getContextRules()` | Couples (subDomainA, subDomainB) déclarés pédagogiquement distincts pour une idée dominante (KLD-5) |
+| ~~`getSimilarityRules()`~~ | **SUPPRIMÉ** — seuil 0.85 abandonné |
 
-`getSimilarityRules()` peut être retiré ou réduit à une coquille vide en PATCH B2.
+Responsabilité unique : "voiture = auto = char = bagnole". Ce n'est pas une base de connaissances, c'est un **lexique métier spécialisé**.
 
 ## Responsabilités KLD
 
 DOIT :
-- Valider subject + dominantIdea (non égaux, non répétition directe/inversée, non synonyme direct)
-- Appliquer lexique de synonymes directs via LearningKnowledgeBase::getEquivalences()
-- Appliquer context_map via LearningKnowledgeBase::getContextRules()
+- Empêcher qu'un même sujet enseigne deux fois la même direction d'apprentissage sous formulation différente
+- Appliquer lexique de synonymes directs via LearningDirectionLexicon::getSynonyms()
+- Appliquer context_map via LearningDirectionLexicon::getContextRules()
 - Retourner PASS/FAIL déterministe
-- Laisser passer les concepts voisins non synonymes → KEY_STRUCTURE les analyse avec canonical_direction
+- Laisser passer les concepts voisins non synonymes → KEY_STRUCTURE les analyse
 
 NE DOIT JAMAIS :
 - Lire/écrire DB

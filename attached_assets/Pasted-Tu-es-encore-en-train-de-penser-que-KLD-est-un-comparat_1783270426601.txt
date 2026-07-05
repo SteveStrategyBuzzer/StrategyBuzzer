@@ -1,0 +1,86 @@
+Tu es encore en train de penser que KLD est un comparateur de texte.
+Ce n'est pas son rôle.
+KLD protège une direction d'apprentissage.
+Par exemple :
+Sujet : Transport
+Idée : Voiture
+Il crée le dossier pédagogique :
+Transport
+└── Voiture
+Plus tard :
+Transport
+└── Auto
+Il ne compare pas simplement "voiture" et "auto".
+Il répond à la question :
+Est-ce que cette nouvelle idée ferait apprendre exactement la même chose que ce qui est déjà enregistré pour ce sujet ?
+Si oui :
+FAIL
+
+Par contre :
+Transport
+└── Camion
+Ce n'est pas la même direction pédagogique.
+Même si les deux sont des véhicules.
+Donc :
+PASS
+Puis :
+KEY_STRUCTURE
+décide si :
+le depth est respecté ;
+le découpage est logique ;
+le noyau est suffisamment distinct ;
+il existe déjà un noyau structurel équivalent.
+
+Je reformulerais donc le rôle de KLD comme ceci :
+KEY_LEARNING_DIRECTION
+
+Mission :
+
+Empêcher qu'un même sujet enseigne deux fois la même direction
+d'apprentissage sous une formulation différente.
+
+KLD ne compare pas uniquement des mots.
+
+KLD compare des directions d'apprentissage.
+
+Les synonymes directs ne sont qu'un moyen de détecter une direction
+déjà utilisée.
+
+Exemple :
+
+Transport → Voiture
+Transport → Auto
+Transport → Char
+Transport → Bagnole
+
+représentent la même direction d'apprentissage.
+
+Transport → Camion
+
+représente une autre direction d'apprentissage.
+
+KLD laisse donc passer.
+
+KEY_STRUCTURE analysera ensuite si cette nouvelle direction est
+structurellement pertinente.
+Il y a aussi une autre correction que je ferais
+Tu écris encore :
+LearningKnowledgeBase::getEquivalences()
+Je ne suis plus convaincu que ce nom soit bon.
+Ce n'est plus une Knowledge Base.
+Ce fichier ne contient plus de connaissances.
+Il contient uniquement un lexique pédagogique.
+Je le renommerais plutôt en quelque chose comme :
+LearningSynonymLexicon
+ou
+LearningDirectionLexicon
+parce que son unique responsabilité est de dire :
+voiture
+=
+auto
+=
+char
+=
+bagnole
+Ce n'est plus une base de connaissances, c'est un lexique métier spécialisé au service de KLD.
+À mon avis, cette séparation est beaucoup plus propre et évitera que tu transformes progressivement cette classe en un "gros fourre-tout" de règles.
