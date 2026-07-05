@@ -1,0 +1,127 @@
+Je ne fermerais pas PATCH D dans cet état. Il y a une incohérence architecturale importante avec ce qu'on a établi ensemble.
+
+Le point principal est ici :
+
+kld.check() → FAIL
+→ confirmConsumed() interne
+→ retry
+
+C'est précisément ce qu'on avait fini par corriger.
+
+Pourquoi c'est un problème
+
+Le rôle de confirmConsumed() est très clair dans notre architecture :
+
+Cette idée dominante a été VALIDÉE,
+utilisée pour fabriquer un noyau,
+on peut maintenant la consommer.
+
+Un FAIL KLD ne signifie pas que l'idée a été consommée.
+
+Il signifie :
+
+Cette idée n'est pas acceptable.
+
+Ce n'est pas la même chose.
+
+Sinon on perd définitivement une idée dominante parce qu'elle a été rejetée par la logique actuelle.
+
+Deuxième incohérence
+
+On avait redéfini le chargeur d'idées.
+
+Le mécanisme est :
+
+Sujet actif
+↓
+Créer une idée
+↓
+KLD
+
+Si FAIL :
+
+jeter cette proposition
+↓
+créer une AUTRE idée
+↓
+KLD
+↓
+...
+jusqu'à remplir les 5 slots
+
+Il ne faut jamais avancer le curseur du chargeur pour ça.
+
+Le curseur avance uniquement quand une idée validée est réellement consommée par le pipeline.
+
+Troisième incohérence
+
+La méthode :
+
+peekNextApproved()
+
+n'est probablement plus la bonne abstraction.
+
+Aujourd'hui notre architecture est devenue :
+
+Chargeur de sujets
+↓
+Sujet actif
+
+↓
+
+Créer une idée
+
+↓
+
+KLD
+
+↓
+
+FAIL
+→ recréer une idée
+
+PASS
+→ remplir un slot
+
+REVIEW_STRUCTURE
+→ envoyer à KS
+
+Autrement dit :
+
+KLD agit pendant le remplissage des 5 slots, pas pendant la consommation.
+
+Ce n'est plus le même moment du pipeline.
+
+Je demanderais à Replit de rouvrir PATCH D
+
+Pas pour tout refaire.
+
+Mais pour réaligner le mécanisme.
+
+Le contrat devrait devenir quelque chose comme :
+
+Le Bassin Taxonomy ne doit jamais appeler confirmConsumed()
+à la suite d'un FAIL KLD.
+
+FAIL KLD signifie :
+
+- l'idée candidate est rejetée
+- une nouvelle idée dominante est générée
+- le même slot est retenté
+
+confirmConsumed() reste réservé exclusivement
+à une idée dominante qui a traversé :
+
+KLD
+↓
+KEY_STRUCTURE
+↓
+QuestionIntent
+
+et qui est effectivement consommée.
+
+Le chargeur d'idées et le curseur de consommation sont deux mécanismes distincts.
+
+Ne pas les fusionner.
+
+À mon avis, c'est la dernière incohérence importante avant que cette brique soit vraiment alignée avec l'architecture que vous avez construite.
