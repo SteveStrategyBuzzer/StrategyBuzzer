@@ -1,0 +1,315 @@
+MISE À JOUR ARCHITECTURE — Taxonomy / Bassin / KLD / KS
+
+Objectif :
+Corriger la compréhension du pipeline
+===========================================================
+PIPELINE OFFICIEL
+===========================================================
+
+KernelBlueprint
+↓
+KernelRotationPlanner
+↓
+Taxonomy / Bassin Taxonomy
+↓
+KEY_LEARNING_DIRECTION
+↓
+Consommation des idées
+↓
+KEY_STRUCTURE
+↓
+QuestionIntent
+↓
+Phase 1 Création
+
+===========================================================
+1. KernelBlueprint
+===========================================================
+
+Rôle :
+Créer le frame vide avec les slots nécessaires.
+
+Ne décide rien.
+Ne génère rien.
+Ne valide rien.
+
+Il est le support vivant du pipeline.
+
+===========================================================
+2. KernelRotationPlanner
+===========================================================
+
+Rôle :
+Injecter uniquement :
+
+- depth
+- domain_code
+- rotation_identifier
+
+Depth = consigne de création.
+Ce n’est pas une étiquette ajoutée après.
+
+Exemple :
+Depth 4 + Histoire signifie :
+Taxonomy doit créer un bassin Histoire conforme aux règles du Depth 4.
+
+===========================================================
+3. Taxonomy / Bassin Taxonomy
+===========================================================
+
+Taxonomy n’est pas un simple lecteur.
+Taxonomy est le moteur qui crée et remplit le bassin.
+
+Pour un depth + domain_code reçu :
+
+Taxonomy crée/remplit :
+
+- un sous-domaine actif
+- jusqu’à 50 sujets conformes au depth demandé
+- un chargeur d’idées pour le sujet actif
+
+Le bassin est organisé par depth.
+Pour un depth donné, les 8 domaines Gameplay ont chacun leur propre module :
+
+- histoire
+- geographie
+- sport
+- art
+- cuisine
+- science
+- cinema
+- faune
+
+Chaque module domaine possède :
+
+A. Chargeur de sujets
+- sous-domaine actif
+- jusqu’à 50 sujets
+- les sujets sont créés selon les règles du depth demandé
+
+B. Chargeur d’idées
+- sujet actif
+- 5 slots d’idées dominantes
+- les idées sont créées selon les règles du depth demandé
+
+===========================================================
+4. Remplissage du chargeur d’idées
+===========================================================
+
+Le chargeur d’idées ne reçoit jamais 5 idées générées puis vérifiées en bloc.
+
+Le remplissage se fait slot par slot.
+
+Cycle exact :
+
+Sujet actif
+↓
+Slot idée 1 vide
+↓
+Taxonomy propose 1 idée dominante selon les règles du depth
+↓
+KEY_LEARNING_DIRECTION vérifie la paire Sujet / Idée
+↓
+si PASS :
+  remplir slot idée 1
+si FAIL :
+  rejeter l’idée
+  Taxonomy propose une autre idée
+↓
+Slot idée 2 vide
+↓
+Même logique
+↓
+Jusqu’à ce que les 5 slots soient remplis
+
+Donc :
+
+while slots_remplis < 5:
+    Taxonomy propose une idée dominante
+    KLD vérifie doublon / collision / proximité
+    si PASS:
+        remplir le prochain slot
+    si FAIL:
+        rejeter et recommencer
+
+KEY_LEARNING_DIRECTION est le garde d’entrée du chargeur d’idées.
+
+===========================================================
+5. KEY_LEARNING_DIRECTION
+===========================================================
+
+Rôle :
+Vérifier chaque paire :
+
+Sujet + Idée dominante
+
+avant insertion dans un slot du chargeur d’idées.
+
+Il vérifie notamment :
+
+- doublon direct
+- doublon inversé
+- collision conceptuelle
+- proximité trop forte
+- contexte non distinct
+- sujet identique à l’idée dominante
+
+KLD ne remplit pas 5 idées.
+KLD ne choisit pas les idées.
+KLD ne consomme rien.
+KLD ne crée pas QuestionIntent.
+KLD ne génère aucun hash.
+KLD ne lit pas la DB.
+
+Il dit seulement :
+
+PASS
+ou
+FAIL + raison
+
+===========================================================
+6. Consommation des idées
+===========================================================
+
+Quand les 5 slots du chargeur d’idées sont remplis :
+
+Sujet actif
+├── Idée 1 → consommée
+├── Idée 2 → consommée
+├── Idée 3 → consommée
+├── Idée 4 → consommée
+└── Idée 5 → consommée
+
+Quand Idée 5 est consommée :
+
+- sujet consommé
+- passer au sujet suivant
+- créer/remplir ses 5 slots d’idées avec KLD avant chaque insertion
+
+Quand les 50 sujets sont consommés :
+
+- sous-domaine consommé
+- passer au sous-domaine suivant
+
+===========================================================
+7. KEY_STRUCTURE
+===========================================================
+
+KEY_STRUCTURE intervient après la cartouche Sujet / Idée validée par KLD.
+
+Rôle :
+Vérifier la structure complète du noyau.
+
+Il vérifie :
+
+- le domaine respecte le depth demandé
+- le sous-domaine appartient bien au domaine
+- le sujet appartient bien au sous-domaine
+- l’idée dominante appartient bien au sujet
+- le découpage Domaine → Sous-domaine → Sujet → Idée est logique
+- les règles du depth ont été respectées
+- aucun autre noyau n’a exactement le même décorticage
+
+KEY_STRUCTURE ne choisit rien.
+KEY_STRUCTURE ne remplit pas le chargeur.
+KEY_STRUCTURE ne fait pas le rôle de KLD.
+
+===========================================================
+8. QuestionIntent
+===========================================================
+
+QuestionIntent intervient seulement après :
+
+- Taxonomy a produit le sujet et l’idée
+- KLD a validé la paire Sujet / Idée
+- KEY_STRUCTURE a validé le noyau complet
+
+QuestionIntent encode ensuite l’identité du noyau :
+
+- kernel_code
+- ks_hash
+- kld_hash
+- semantic_key
+- intent_key
+
+QuestionIntent ne choisit rien.
+QuestionIntent ne valide pas la Taxonomy.
+QuestionIntent ne modifie pas les chargeurs.
+
+===========================================================
+9. Noyau final léger
+===========================================================
+
+Le noyau final ne transporte jamais :
+
+- les 8 domaines
+- les 50 sujets
+- les 5 idées complètes non consommées
+- l’état du bassin
+- l’état des chargeurs
+
+Il transporte uniquement la cartouche validée :
+
+- depth
+- domain_code
+- sub_domain
+- subject
+- dominant_idea
+- knowledge_frequency si nécessaire comme métadonnée Taxonomy
+
+===========================================================
+10. Vocabulaire officiel
+===========================================================
+
+Utiliser :
+
+- Bassin Taxonomy
+- Module domaine
+- Chargeur de sujets
+- Chargeur d’idées
+- Slot d’idée dominante
+- Sujet consommé
+- Sous-domaine consommé
+- KLD = garde d’entrée du chargeur d’idées
+- KEY_STRUCTURE = vérificateur de structure du noyau
+
+Ne plus utiliser :
+
+- Chargeur 1
+- Chargeur 2
+- Candidate Blueprint
+- deuxième KLD
+- KLD après consommation
+- TaxonomyReader comme moteur complet
+- Bassin produit un noyau
+
+===========================================================
+11. Point critique
+===========================================================
+
+KLD apparaît une seule fois dans le flow.
+
+Il intervient pendant le remplissage du chargeur d’idées, avant chaque insertion de slot.
+
+Il n’y a pas de deuxième KLD.
+
+Après consommation d’une idée, on va vers KEY_STRUCTURE pour valider l’ensemble.
+
+===========================================================
+12. À faire maintenant
+===========================================================
+
+Avant de coder KLD, mets à jour le document technique avec cette structure.
+
+Réponds uniquement avec :
+
+- pipeline corrigé
+- rôles corrigés
+- règles corrigées
+- impact sur TaxonomyProgressManager
+- impact sur KLD
+- impact sur KEY_STRUCTURE
+- impact sur QuestionIntent
+- ordre des futurs patchs
+
+Ne fais aucun patch.

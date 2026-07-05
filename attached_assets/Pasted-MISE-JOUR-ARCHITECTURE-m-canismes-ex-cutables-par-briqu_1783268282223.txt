@@ -1,0 +1,520 @@
+MISE À JOUR ARCHITECTURE — mécanismes exécutables par brique
+
+Objectif :
+Cette architecture devient la source de vérité.
+
+Analyse toutes les briques suivantes :
+
+- KernelBlueprint
+- KernelRotationPlanner
+- TaxonomyReader
+- TaxonomyProgressManager
+- KEY_LEARNING_DIRECTION
+- KEY_STRUCTURE
+- QuestionIntent
+
+Pour chacune :
+
+1. ce qui est conforme
+2. ce qui ne l'est plus
+3. les classes à modifier
+4. les méthodes à modifier
+5. les nouvelles structures à créer
+6. les structures à supprimer
+7. les tests à adapter
+
+Puis propose un ordre de patchs minimal.
+
+Ensuite, implémente les patchs dans cet ordre.
+
+Après chaque patch :
+
+- git diff --stat
+- git diff
+- php -l
+- phpunit ciblé
+- grep
+- slice avant/après
+
+Aucune spéculation.
+
+Toute modification doit respecter exactement le mécanisme décrit.
+
+
+===========================================================
+0. PRINCIPE GLOBAL
+===========================================================
+
+Le moteur fonctionne avec un Blueprint vivant.
+
+Chaque brique reçoit le Blueprint courant, lit uniquement les slots nécessaires, écrit uniquement ses slots propriétaires, puis retourne le Blueprint.
+
+Aucune brique ne modifie les slots d’une autre brique.
+
+===========================================================
+1. KernelBlueprint — mécanisme
+===========================================================
+
+Entrée :
+- aucune
+
+Sortie :
+- Blueprint vide initialisé
+
+Mécanisme :
+1. créer la structure complète du noyau
+2. initialiser tous les slots à null / empty
+3. définir les sections :
+   - rotation
+   - taxonomy
+   - kld
+   - key_structure
+   - question_intent
+   - phase_1
+   - traces / metadata si déjà existants
+
+Slots créés :
+- depth
+- domain_code
+- rotation_identifier
+- sub_domain
+- subjects_loader
+- active_subject
+- ideas_loader
+- active_dominant_idea
+- knowledge_frequency
+- kld_status
+- kld_reason
+- structure_status
+- structure_reason
+- kernel_code
+- ks_hash
+- kld_hash
+- semantic_key
+- intent_key
+
+Ne fait jamais :
+- choix de depth
+- choix de domaine
+- choix Taxonomy
+- validation KLD
+- validation KS
+- création Phase 1
+
+===========================================================
+2. KernelRotationPlanner — mécanisme
+===========================================================
+
+Entrée :
+- état des besoins de production
+- DomainCycle officiel
+- DepthNeedMatrix
+
+Sortie :
+- Blueprint avec rotation remplie
+
+Mécanisme :
+1. choisir le prochain depth requis selon DepthNeedMatrix
+2. choisir le prochain domain_code selon DomainCycle
+3. générer rotation_identifier
+4. écrire dans Blueprint :
+   - depth
+   - domain_code
+   - rotation_identifier
+
+Règles :
+- Depth = consigne de création
+- domain_code = domaine Gameplay officiel
+- ne jamais choisir sous-domaine / sujet / idée
+- ne jamais lire Taxonomy
+- ne jamais modifier le bassin
+
+DomainCycle officiel :
+- histoire
+- geographie
+- sport
+- art
+- cuisine
+- science
+- cinema
+- faune
+
+===========================================================
+3. Taxonomy / Bassin Taxonomy — mécanisme général
+===========================================================
+
+Entrée :
+- Blueprint contenant :
+  - depth
+  - domain_code
+  - rotation_identifier
+
+Sortie :
+- Blueprint avec cartouche Taxonomy courante remplie :
+  - sub_domain
+  - active_subject
+  - active_dominant_idea
+  - knowledge_frequency
+
+Mécanisme global :
+1. lire depth + domain_code dans Blueprint
+2. ouvrir le module domaine correspondant dans le bassin du depth
+3. vérifier si un sous-domaine actif existe
+4. si aucun sous-domaine actif :
+   - créer / sélectionner un sous-domaine conforme au depth + domain_code
+   - initialiser le chargeur de sujets
+5. vérifier si le chargeur de sujets contient un sujet actif
+6. si aucun sujet actif :
+   - créer / sélectionner jusqu’à 50 sujets conformes au depth
+   - activer le premier sujet non consommé
+7. vérifier si le chargeur d’idées du sujet actif est rempli
+8. si non rempli :
+   - remplir les 5 slots avec le mécanisme KLD slot par slot
+9. consommer la prochaine idée disponible
+10. écrire dans Blueprint :
+   - sub_domain
+   - active_subject
+   - active_dominant_idea
+   - knowledge_frequency
+11. retourner Blueprint
+
+===========================================================
+4. Module Domaine — mécanisme
+===========================================================
+
+Un module domaine existe pour chaque domain_code dans un depth donné.
+
+Exemple :
+depth=4, domain_code=histoire
+
+Le module domaine contient :
+- current_sub_domain
+- subjects_loader
+- current_subject_index
+- ideas_loader
+- current_idea_index
+- consumed_subjects
+- consumed_sub_domains
+- status
+
+Mécanisme :
+1. garder la progression propre à ce domain_code + depth
+2. ne jamais partager son état avec un autre domaine
+3. ne jamais avancer si l’idée n’est pas consommée avec succès
+4. quand le chargeur d’idées est vide :
+   - recharger les 5 idées pour le sujet actif
+5. quand les 5 idées sont consommées :
+   - marquer le sujet actif consommé
+   - passer au sujet suivant
+6. quand les 50 sujets sont consommés :
+   - marquer le sous-domaine consommé
+   - passer au sous-domaine suivant
+7. quand tous les sous-domaines sont consommés :
+   - status = exhausted
+
+===========================================================
+5. Chargeur de sujets — mécanisme
+===========================================================
+
+Entrée :
+- depth
+- domain_code
+- current_sub_domain
+
+Sortie :
+- liste jusqu’à 50 sujets conformes au depth
+- active_subject
+
+Mécanisme :
+1. si subjects_loader vide :
+   - créer / sélectionner jusqu’à 50 sujets
+   - chaque sujet doit respecter :
+     - domain_code
+     - current_sub_domain
+     - règles du depth demandé
+2. définir active_subject = premier sujet non consommé
+3. garder l’ordre stable
+4. ne pas recréer un nouveau sous-domaine tant que les 50 sujets ne sont pas consommés
+
+Règles :
+- 50 sujets = capacité maximale du chargeur
+- le Blueprint final ne transporte pas les 50 sujets
+- l’état reste dans le bassin Taxonomy
+
+===========================================================
+6. Chargeur d’idées — mécanisme
+===========================================================
+
+Entrée :
+- active_subject
+- depth
+- domain_code
+- current_sub_domain
+
+Sortie :
+- 5 slots d’idées dominantes valides
+- active_dominant_idea consommable
+
+Mécanisme de remplissage :
+1. si ideas_loader contient encore des idées non consommées :
+   - ne pas régénérer
+   - consommer la prochaine idée disponible
+2. si ideas_loader vide :
+   - initialiser 5 slots vides
+3. pour chaque slot vide :
+   a. Taxonomy propose 1 idée dominante conforme au depth
+   b. appeler KEY_LEARNING_DIRECTION sur la paire :
+      - active_subject
+      - idée proposée
+   c. si KLD = PASS :
+      - remplir ce slot avec l’idée
+   d. si KLD = FAIL :
+      - rejeter l’idée
+      - demander une autre idée
+   e. répéter jusqu’à ce que le slot soit rempli
+4. continuer jusqu’à obtenir 5 slots remplis
+5. consommer la première idée non consommée
+6. écrire active_dominant_idea dans Blueprint
+
+Règle critique :
+KLD vérifie avant chaque insertion de slot.
+KLD ne vérifie pas les 5 idées en bloc.
+
+===========================================================
+7. KEY_LEARNING_DIRECTION — mécanisme
+===========================================================
+
+Entrée :
+- active_subject
+- proposed_dominant_idea
+- current_sub_domain
+- domain_code
+- depth
+- directions déjà validées pour ce contexte
+
+Sortie :
+- PASS
+ou
+- FAIL + reason
+
+Mécanisme :
+1. normaliser subject et proposed_dominant_idea
+2. vérifier subject == dominant_idea
+   - si oui : FAIL INVALID_MINIMAL_PAIR
+3. vérifier doublon direct sujet/idée
+   - si oui : FAIL DIRECT_PAIR_CONTEXT_DUPLICATE
+4. vérifier doublon inversé idée/sujet
+   - si oui : FAIL REVERSED_PAIR_CONTEXT_DUPLICATE
+5. vérifier collision conceptuelle
+   - si oui : FAIL CONCEPTUAL_COLLISION
+6. vérifier contexte distinct si nécessaire
+   - si non distinct : FAIL CONTEXT_NOT_DISTINCT
+7. vérifier proximité trop forte
+   - si trop proche : FAIL PAIR_TOO_CLOSE_TO_EXISTING
+8. sinon PASS
+
+Règles :
+- KLD ne choisit jamais l’idée
+- KLD ne remplit jamais le slot lui-même
+- KLD ne lit pas la DB
+- KLD ne génère aucun hash
+- KLD ne consomme rien
+- KLD est appelé autant de fois que nécessaire jusqu’à remplir les 5 slots
+
+Motifs officiels :
+- INVALID_MINIMAL_PAIR
+- DIRECT_PAIR_CONTEXT_DUPLICATE
+- REVERSED_PAIR_CONTEXT_DUPLICATE
+- CONCEPTUAL_COLLISION
+- CONTEXT_NOT_DISTINCT
+- PAIR_TOO_CLOSE_TO_EXISTING
+
+===========================================================
+8. Consommation des idées — mécanisme
+===========================================================
+
+Entrée :
+- ideas_loader rempli avec 5 idées validées
+- current_idea_index
+
+Sortie :
+- active_dominant_idea consommée dans Blueprint
+
+Mécanisme :
+1. prendre l’idée à current_idea_index
+2. écrire cette idée dans Blueprint.active_dominant_idea
+3. envoyer Blueprint vers KEY_STRUCTURE
+4. si KEY_STRUCTURE + QuestionIntent réussissent :
+   - confirmer consommation
+   - current_idea_index++
+5. si current_idea_index > 5 :
+   - marquer active_subject consommé
+   - vider ideas_loader
+   - passer au sujet suivant
+6. si KEY_STRUCTURE ou QuestionIntent échoue :
+   - ne pas confirmer consommation
+   - garder la même idée disponible ou appliquer stratégie de rejet définie plus tard
+
+Règle :
+Une idée est consommée seulement après validation complète aval.
+
+===========================================================
+9. KEY_STRUCTURE — mécanisme
+===========================================================
+
+Entrée :
+- Blueprint avec :
+  - depth
+  - domain_code
+  - sub_domain
+  - active_subject
+  - active_dominant_idea
+  - knowledge_frequency
+
+Sortie :
+- PASS
+ou
+- FAIL + reason
+
+Mécanisme :
+1. vérifier que domain_code est officiel
+2. vérifier que sub_domain appartient au domain_code
+3. vérifier que active_subject appartient au sub_domain
+4. vérifier que active_dominant_idea appartient au subject
+5. vérifier que le découpage Domaine → Sous-domaine → Sujet → Idée est logique
+6. vérifier que les règles du depth ont été respectées
+7. vérifier qu’aucun noyau existant n’a exactement le même décorticage
+8. si tout est valide :
+   - PASS
+9. sinon :
+   - FAIL + reason
+
+Règles :
+- KEY_STRUCTURE ne choisit rien
+- KEY_STRUCTURE ne modifie pas les chargeurs
+- KEY_STRUCTURE ne remplace pas KLD
+- KEY_STRUCTURE vérifie l’ensemble du noyau
+- KEY_STRUCTURE intervient après KLD et après sélection de l’idée consommable
+
+===========================================================
+10. QuestionIntent — mécanisme
+===========================================================
+
+Entrée :
+- Blueprint validé par KLD et KEY_STRUCTURE
+
+Sortie :
+- Blueprint avec identité du noyau remplie
+
+Mécanisme :
+1. recevoir :
+   - depth
+   - domain_code
+   - sub_domain
+   - active_subject
+   - active_dominant_idea
+2. créer/verrouiller :
+   - intent_key
+   - semantic_key
+   - kernel_code
+   - ks_hash
+   - kld_hash
+3. associer ces identifiants au Blueprint
+4. retourner Blueprint prêt pour Phase 1
+
+Règles :
+- QuestionIntent ne valide pas la Taxonomy
+- QuestionIntent ne choisit rien
+- QuestionIntent ne remplit aucun chargeur
+- QuestionIntent ne génère pas de contenu Phase 1
+- QuestionIntent encode seulement l’identité
+
+===========================================================
+11. Transaction officielle
+===========================================================
+
+Flow de succès :
+1. Rotation remplit depth + domain_code
+2. Taxonomy prépare chargeurs
+3. KLD valide chaque idée avant insertion de slot
+4. Chargeur d’idées fournit active_dominant_idea
+5. KEY_STRUCTURE valide le noyau complet
+6. QuestionIntent encode l’identité
+7. consommation confirmée
+8. prochaine idée au prochain passage
+
+Flow d’échec KLD :
+1. idée proposée
+2. KLD FAIL
+3. idée rejetée
+4. Taxonomy propose une autre idée
+5. aucun slot rempli tant que KLD ne passe pas
+
+Flow d’échec KEY_STRUCTURE :
+1. idée déjà dans slot
+2. KEY_STRUCTURE FAIL
+3. consommation non confirmée
+4. stratégie de rejet / remplacement de cette idée à définir dans patch dédié
+
+Flow d’échec QuestionIntent :
+1. KEY_STRUCTURE PASS
+2. QuestionIntent FAIL
+3. consommation non confirmée
+4. même idée reste disponible ou stratégie de récupération à définir
+
+===========================================================
+12. Vocabulaire officiel
+===========================================================
+
+Utiliser :
+- Blueprint vivant
+- Bassin Taxonomy
+- Module domaine
+- Chargeur de sujets
+- Chargeur d’idées
+- Slot d’idée dominante
+- Idée proposée
+- Idée validée
+- Idée consommée
+- Sujet consommé
+- Sous-domaine consommé
+- KLD = garde d’entrée du chargeur d’idées
+- KEY_STRUCTURE = vérificateur du noyau complet
+
+Ne pas utiliser :
+- Candidate Blueprint
+- deuxième KLD
+- KLD après consommation
+- Chargeur 1 / Chargeur 2
+- Bassin produit un noyau
+- TaxonomyReader = moteur complet
+
+===========================================================
+13. Impact sur les prochains patchs
+===========================================================
+
+Avant de coder KLD, Replit doit mettre à jour le document technique pour refléter ce mécanisme.
+
+Le contrat KLD doit être ajusté :
+- il est appelé avant chaque insertion de slot idée
+- il peut être appelé plusieurs fois pour remplir un seul chargeur d’idées
+- il ne travaille pas après consommation
+- il ne valide pas le noyau complet
+
+Le contrat KEY_STRUCTURE doit être ajusté :
+- il intervient après sélection d’une idée consommable
+- il valide tout le décorticage
+- il détecte les noyaux identiques
+
+Le contrat TaxonomyProgressManager doit être ajusté :
+- il ne fait pas seulement avancer un curseur
+- il gère le remplissage des chargeurs
+- il appelle KLD avant insertion des slots
+
+Réponds uniquement avec :
+- document corrigé
+- mécanisme par brique
+- impacts sur KLD / KS / TaxonomyProgressManager
+- ordre de patch mis à jour
+
+Ne fais aucun patch.
