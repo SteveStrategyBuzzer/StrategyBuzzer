@@ -1,0 +1,194 @@
+Il y a juste une correction fondamentale que je ferais au document avant de continuer.
+
+Ce n'est pas le bassin qui produit le noyau.
+
+Le bassin produit une cartouche.
+
+Le noyau n'existe pas encore.
+
+Regarde le pipeline :
+
+KernelBlueprint
+        │
+        ▼
+KernelRotationPlanner
+        │
+        ▼
+Bassin Taxonomy
+        │
+        ▼
+Cartouche candidate
+        │
+        ▼
+KLD
+        │
+        ▼
+KEY_STRUCTURE
+        │
+        ▼
+QuestionIntent
+        │
+        ▼
+Kernel Blueprint rempli
+        │
+        ▼
+PHASE 1
+
+Autrement dit :
+
+Le Bassin Taxonomy ne fait qu'alimenter le Blueprint.
+
+Le noyau est encore incomplet tant que KLD, KS et QuestionIntent ne sont pas passés.
+
+Deuxième correction
+
+Je changerais aussi cette phrase :
+
+"8 machines indépendantes."
+
+Ce n'est pas totalement vrai.
+
+Elles sont autonomes, mais pas indépendantes.
+
+Elles sont synchronisées par :
+
+KernelRotationPlanner
+
+Donc je dirais :
+
+8 chargeurs autonomes
+
+coordonnés
+
+par KernelRotationPlanner
+
+C'est beaucoup plus précis.
+
+Troisième correction (très importante)
+
+Tu viens sans le vouloir de redonner un rôle au Blueprint.
+
+Regarde :
+
+Aujourd'hui :
+
+Blueprint
+
+↓
+
+Rotation
+
+↓
+
+Taxonomy
+
+↓
+
+...
+
+En réalité :
+
+Blueprint
+
+est le châssis vide.
+
+Chaque composant vient remplir ses propres slots.
+
+Par exemple :
+
+Blueprint
+
+↓
+
+Rotation
+remplit :
+- depth
+- domain
+
+↓
+
+Taxonomy
+remplit :
+- sub_domain
+- subject
+- dominant_idea
+- knowledge_frequency
+
+↓
+
+KLD
+remplit :
+- learning_direction_status
+- rejection_reason éventuelle
+
+↓
+
+KEY_STRUCTURE
+remplit :
+- structure_status
+- validations
+
+↓
+
+QuestionIntent
+remplit :
+- intent_key
+- semantic_key
+- ks_hash
+- kld_hash
+- kernel_code
+
+Tu comprends ce que ça implique ?
+
+Le Blueprint est vivant.
+
+Ce n'est pas juste un objet créé au début.
+
+C'est le support commun sur lequel chaque brique écrit sa partie.
+
+Et ça, je trouve que c'est encore plus élégant que tout ce qu'on avait décrit jusqu'à maintenant.
+
+Je crois qu'on tient enfin le vrai pipeline
+KernelBlueprint (vide)
+        │
+        ▼
+KernelRotationPlanner
+        │
+        │ remplit :
+        │ depth
+        │ domain
+        ▼
+Bassin Taxonomy
+        │
+        │ remplit :
+        │ sub_domain
+        │ subject
+        │ dominant_idea
+        │ knowledge_frequency
+        ▼
+KEY_LEARNING_DIRECTION
+        │
+        │ remplit :
+        │ learning_direction
+        ▼
+KEY_STRUCTURE
+        │
+        │ remplit :
+        │ structure_validation
+        ▼
+QuestionIntent
+        │
+        │ remplit :
+        │ kernel_code
+        │ ks_hash
+        │ kld_hash
+        │ semantic_key
+        │ intent_key
+        ▼
+PHASE 1
+
+Et là, tout devient cohérent.
+
+Chaque brique a une seule responsabilité, mais surtout chaque brique remplit uniquement les slots dont elle est propriétaire.
+
+À mon avis, c'est cette représentation qu'il faut désormais considérer comme la référence architecturale du moteur de création. C'est plus fidèle à ce que tu voulais depuis le début et ça explique naturellement pourquoi le KernelBlueprint existe : il sert de support unique à toutes les étapes, jusqu'à obtenir un noyau complet prêt pour la Phase 1.

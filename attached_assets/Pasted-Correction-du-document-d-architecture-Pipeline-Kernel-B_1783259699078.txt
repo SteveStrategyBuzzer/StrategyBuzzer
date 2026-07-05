@@ -1,0 +1,288 @@
+Correction du document d'architecture — Pipeline Kernel Blueprint
+
+Le document est validé à plus de 99 %.
+
+Les corrections suivantes deviennent officielles.
+
+Ne fais aucun patch.
+Ne crée aucun fichier.
+Met uniquement le document d'architecture à jour.
+
+===========================================================
+CORRECTION 1
+Le Bassin Taxonomy ne produit PAS un noyau.
+===========================================================
+
+Le Bassin Taxonomy produit uniquement une cartouche candidate.
+
+Cette cartouche contient uniquement :
+
+- depth
+- domain_code
+- sub_domain
+- subject
+- dominant_idea
+- knowledge_frequency
+
+Le noyau n'existe pas encore à cette étape.
+
+Le noyau est construit progressivement dans le KernelBlueprint.
+
+Modifier le vocabulaire partout dans le document.
+
+Remplacer :
+
+"le Bassin produit un noyau"
+
+par
+
+"le Bassin produit une cartouche candidate."
+
+===========================================================
+CORRECTION 2
+Le KernelBlueprint devient le support vivant du pipeline.
+===========================================================
+
+Le KernelBlueprint n'est pas uniquement créé au début.
+
+Il accompagne toute la chaîne de création.
+
+Chaque brique remplit uniquement les slots dont elle est propriétaire.
+
+Le Blueprint est la structure commune qui circule dans tout le pipeline.
+
+===========================================================
+CORRECTION 3
+Responsabilité de chaque brique
+===========================================================
+
+KernelBlueprint
+
+↓
+
+Frame vide contenant tous les slots nécessaires
+aux étapes suivantes.
+
+Aucune logique métier.
+
+===========================================================
+
+KernelRotationPlanner
+
+↓
+
+Remplit uniquement :
+
+- depth
+- domain_code
+- rotation_identifier
+
+Ne remplit rien d'autre.
+
+===========================================================
+
+Bassin Taxonomy
+
+↓
+
+Le Bassin est le moteur Taxonomy.
+
+Il contient, pour un depth donné,
+les huit domaines Gameplay.
+
+Chaque domaine possède deux chargeurs autonomes :
+
+Chargeur de sujets
+
+↓
+
+Sous-domaine actif
+
+↓
+
+jusqu'à 50 sujets
+
+Chargeur d'idées
+
+↓
+
+Sujet actif
+
+↓
+
+5 idées dominantes
+
+Les huit domaines avancent de manière autonome.
+
+Ils sont coordonnés exclusivement
+par KernelRotationPlanner.
+
+Le Bassin ne crée jamais un noyau.
+
+Il produit uniquement une cartouche candidate.
+
+Il remplit uniquement les slots Blueprint suivants :
+
+- sub_domain
+- subject
+- dominant_idea
+- knowledge_frequency
+
+===========================================================
+
+KEY_LEARNING_DIRECTION
+
+↓
+
+Consomme la cartouche candidate.
+
+Valide la cohérence pédagogique.
+
+Remplit uniquement :
+
+- learning_direction_status
+- learning_direction_reason
+
+Aucun hash.
+
+Aucune DB.
+
+Aucune progression Taxonomy.
+
+===========================================================
+
+KEY_STRUCTURE
+
+↓
+
+Valide la structure du noyau.
+
+Remplit uniquement :
+
+- structure_status
+- structure_reason
+
+Ne modifie jamais :
+
+- depth
+- domain
+- subject
+- dominant_idea
+
+===========================================================
+
+QuestionIntent
+
+↓
+
+Dernière étape avant Phase 1.
+
+Responsable uniquement de l'identité du noyau.
+
+Remplit :
+
+- kernel_code
+- ks_hash
+- kld_hash
+- semantic_key
+- intent_key
+
+Ne valide rien.
+
+Ne choisit rien.
+
+Ne modifie jamais la Taxonomy.
+
+===========================================================
+CORRECTION 4
+Pipeline officiel
+===========================================================
+
+KernelBlueprint (frame vide)
+
+↓
+
+KernelRotationPlanner
+
+↓
+
+Bassin Taxonomy
+
+↓
+
+Cartouche candidate
+
+↓
+
+KEY_LEARNING_DIRECTION
+
+↓
+
+KEY_STRUCTURE
+
+↓
+
+QuestionIntent
+
+↓
+
+KernelBlueprint complètement rempli
+
+↓
+
+PHASE 1
+
+↓
+
+Validation
+
+↓
+
+Translations
+
+↓
+
+READY_BANK
+
+===========================================================
+CORRECTION 5
+Vocabulaire officiel
+===========================================================
+
+Utiliser désormais :
+
+- Bassin Taxonomy
+- Chargeur de sujets
+- Chargeur d'idées
+- Cartouche candidate
+- Blueprint vivant
+
+Ne plus utiliser :
+
+- Chargeur 1
+- Chargeur 2
+- Le Bassin produit un noyau
+- 8 machines indépendantes
+
+Utiliser :
+
+"8 chargeurs autonomes coordonnés par KernelRotationPlanner."
+
+===========================================================
+OBJECTIF
+===========================================================
+
+Le Blueprint devient le support unique
+sur lequel chaque brique écrit uniquement
+les informations dont elle est propriétaire.
+
+Aucune brique ne modifie les slots
+d'une autre brique.
+
+Le Blueprint est considéré terminé
+uniquement après QuestionIntent.
+
+Réponds uniquement avec
+le document d'architecture corrigé.
+
+Ne fais aucun patch.
