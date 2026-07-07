@@ -1,0 +1,94 @@
+Oui, et c'est une nuance importante. Je comprends mieux ce que tu veux faire.
+
+En fait, on parlait de deux choses différentes :
+
+les données de travail (qui changent à chaque noyau),
+la structure permanente du Blueprint (qui ne change jamais).
+
+Les cognitive_slots ne sont pas des données générées par Phase 1. Ce sont des emplacements permanents du Blueprint.
+
+Autrement dit :
+
+KernelBlueprint
+
+QCM_Recognition
+QCM_Reasoning
+QCM_DeceptiveTrap
+TF_Recognition
+TF_Reasoning
+SV
+Réponses
+Traductions
+...
+
+Ils sont toujours présents.
+
+Ils sont vides au départ.
+
+Puis Phase 1 les remplit.
+
+Mais surtout, ils servent déjà de contrat moteur.
+
+Par exemple :
+
+QCM_Recognition
+
+Contrat :
+- 4 réponses
+- 1 correcte
+- lecture directe
+- règles gameplay
+- contraintes de longueur
+- contraintes Depth
+- contraintes de traduction
+...
+
+Donc Phase 1 n'a pas à demander :
+
+"Qu'est-ce que je dois créer ?"
+
+Elle regarde simplement :
+
+Blueprint
+↓
+
+Slot :
+QCM_Recognition
+
+↓
+
+Contrat associé
+
+↓
+
+Créer le contenu correspondant.
+
+C'est exactement la même philosophie que pour :
+
+depth
+domain
+subject
+dominant_idea
+
+Le Blueprint contient les emplacements, les contrats, les règles, mais pas encore le contenu.
+
+C'est là que je corrige ce que je disais précédemment :
+
+Les cognitive_slots ont leur place dans le Blueprint, non pas parce qu'ils transportent déjà les questions, mais parce qu'ils définissent la structure permanente du moteur. Ils sont les interfaces que les phases suivantes vont remplir.
+
+Je pousserais même cette logique un peu plus loin.
+
+Le Blueprint devient alors un véritable contrat de fabrication :
+
+Rotation remplit ses champs.
+Taxonomy remplit ses champs.
+KLD remplit son résultat.
+KEY_STRUCTURE remplit son résultat.
+QuestionIntent remplit ses identifiants.
+Phase 1 remplit les slots cognitifs.
+Phase 2 complète les validations.
+Phase 3 remplit les traductions.
+
+À aucun moment une phase n'invente une nouvelle structure. Elle ne fait que remplir les emplacements qui existent déjà dans le Blueprint.
+
+C'est une architecture beaucoup plus robuste, parce que le Blueprint devient la source unique du contrat de fabrication du noyau. C'est cohérent avec la manière dont tu décris l'ensemble du pipeline depuis plusieurs jours.
