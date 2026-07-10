@@ -1,0 +1,302 @@
+Évolution architecturale — KernelBlueprint (Partie 1)
+Changement de perspective
+
+Nous ne sommes plus en train de concevoir une classe PHP, un DTO ou une structure technique.
+
+Nous sommes en train de définir l'architecture officielle du pipeline intellectuel de StrategyBuzzer.
+
+Le KernelBlueprint est le contrat vivant qui accompagne un noyau pendant toute sa création.
+
+Il constitue l'unique enveloppe de travail commune à tous les moteurs.
+
+Il est :
+
+créé une seule fois au début d'une rotation ;
+conservé vivant pendant tout le pipeline ;
+jamais recréé ;
+progressivement enrichi par les moteurs successifs.
+
+Le Blueprint :
+
+ne crée rien ;
+ne décide rien ;
+ne valide rien ;
+transporte uniquement les informations du noyau actif.
+
+Chaque moteur respecte obligatoirement les règles suivantes :
+
+lit uniquement les slots dont il a besoin ;
+écrit uniquement les slots dont il est propriétaire ;
+ne modifie jamais les slots appartenant à un autre moteur.
+Partie 1 du KernelBlueprint (structure officielle)
+KernelBlueprint:
+
+  depth:
+
+  domain:
+
+  subdomain_active:
+
+  subject_active:
+
+  dominant_idea_active:
+
+  kernel_code:
+
+Cette première partie représente uniquement l'identité intellectuelle du noyau.
+
+Répartition officielle des responsabilités
+1. KernelRotationPlanner
+Mission
+
+Créer un nouveau KernelBlueprint vide au début de chaque rotation et déterminer le contexte général du noyau.
+
+Écrit dans le Blueprint
+depth
+domain
+Lit
+
+Aucune donnée du Blueprint (premier moteur).
+
+Règles moteur — depth
+Doit provenir de la rotation officielle des Depth.
+Détermine le DepthContract utilisé par tous les moteurs suivants.
+Aucun moteur suivant ne peut modifier cette valeur.
+Règles moteur — domain
+Doit provenir du DomainCycle officiel.
+Domaines autorisés :
+Géographie
+Histoire
+Faune
+Art
+Sport
+Cinéma
+Cuisine
+Général
+Le domaine actif détermine le réservoir qui sera exploité par Taxonomy.
+Aucun moteur suivant ne peut modifier cette valeur.
+2. DepthContract
+
+Le DepthContract n'est pas un moteur.
+
+Il s'agit d'un contrat architectural utilisé par les moteurs.
+
+Chaque moteur prend automatiquement le contrat correspondant à la valeur :
+
+Blueprint.depth
+
+Exemple :
+
+depth = 6
+        ↓
+DepthContract[6]
+
+Le DepthContract contient notamment :
+
+les objectifs pédagogiques ;
+le niveau de précision attendu ;
+le niveau de raisonnement attendu ;
+les contraintes de création ;
+les contraintes de validation ;
+les règles associées à KnowledgeFrequency.
+KnowledgeFrequency
+
+KnowledgeFrequency ne constitue pas un moteur indépendant.
+
+Il représente un ensemble de contraintes complémentaires au Depth.
+
+Il :
+
+est défini par le DepthContract ;
+n'est jamais choisi librement par Gemini ;
+complète les règles du Depth ;
+guide Taxonomy dans le dégrainage :
+Sous-domaines
+Sujets
+Idées dominantes ;
+guide ensuite DominantIdeaValidator puis les moteurs suivants.
+
+KnowledgeFrequency ne remplace jamais le Depth.
+
+3. Taxonomy
+Mission
+
+À partir du :
+
+depth
+domain
+
+Taxonomy prend le DepthContract correspondant, travaille dans le réservoir associé au couple :
+
+(depth + domain)
+
+et construit progressivement :
+
+Sous-domaines
+        ↓
+Sujets
+        ↓
+Idées dominantes
+
+Les réservoirs restent entièrement dans Taxonomy.
+
+Ils ne transitent jamais dans le Blueprint.
+
+Lorsque le noyau actif est déterminé, Taxonomy écrit uniquement :
+
+subdomain_active
+subject_active
+dominant_idea_active
+Règles moteur — subdomain_active
+
+Propriétaire : Taxonomy
+
+Le sous-domaine :
+
+doit découler du domaine actif ;
+doit être un mot ou un mot composé ;
+doit être plus précis que le domaine ;
+ne doit pas être un sujet déguisé ;
+ne doit pas simplement répéter le domaine ;
+ne doit pas être trop vague ;
+doit respecter simultanément :
+le Depth,
+KnowledgeFrequency,
+le domaine actif.
+
+Une fois sélectionné, il est inscrit dans le Blueprint.
+
+Règles moteur — subject_active
+
+Propriétaire : Taxonomy
+
+Le sujet :
+
+doit appartenir au sous-domaine actif ;
+doit être court ;
+doit être fermé ;
+doit pouvoir produire plusieurs idées dominantes ;
+ne doit contenir :
+aucune réponse,
+aucun indice,
+aucune formulation pédagogique,
+aucune date, sauf si elle constitue officiellement le sujet ;
+ne doit jamais absorber l'idée dominante.
+
+Une fois sélectionné, il est inscrit dans le Blueprint.
+
+Règles moteur — dominant_idea_active
+
+Propriétaire :
+
+Taxonomy propose ;
+DominantIdeaValidator valide.
+
+L'idée dominante :
+
+doit obtenir PASS avant d'être inscrite dans le Blueprint ;
+doit être rattachée au sujet actif ;
+doit être cohérente avec :
+le domaine,
+le sous-domaine,
+le sujet ;
+ne doit pas répéter le sujet ;
+ne doit pas être un synonyme du sujet ;
+ne doit pas être trop proche d'une idée dominante déjà validée pour ce sujet ;
+doit respecter :
+le Depth,
+KnowledgeFrequency.
+
+En cas de :
+
+FAIL
+
+le même slot reste actif ;
+Gemini propose une nouvelle idée dominante.
+
+En cas de :
+
+NO_MORE_IDEAS
+
+le sujet est considéré comme terminé ;
+il n'est pas invalide ;
+Taxonomy passe simplement au sujet suivant.
+
+Une fois validée, l'idée dominante est inscrite dans le Blueprint.
+
+4. KernelCodeEngine (à spécifier ultérieurement)
+Mission
+
+Construire l'identifiant unique du noyau.
+
+Lit dans le Blueprint
+depth
+domain
+subdomain_active
+subject_active
+dominant_idea_active
+Écrit
+kernel_code
+Règles
+ne peut être exécuté qu'après validation de :
+subdomain_active,
+subject_active,
+dominant_idea_active ;
+produit un identifiant unique du noyau ;
+suit le KernelCodeContract officiel ;
+aucun autre moteur ne peut modifier kernel_code.
+Évolution du KernelBlueprint
+
+Le Blueprint n'est pas terminé après cette première partie.
+
+Cette Partie 1 représente uniquement l'identité intellectuelle du noyau.
+
+Les sections suivantes seront ajoutées progressivement au fur et à mesure de la conception des moteurs.
+
+Partie 1
+Identité du noyau
+(depth, domain, subdomain, subject, dominant idea, kernel code)
+
+        ↓
+
+Partie 2
+Phase 1
+(Création des contenus cognitifs)
+
+        ↓
+
+Partie 3
+Validation Phase 1
+
+        ↓
+
+Partie 4
+Phase 2
+
+        ↓
+
+Partie 5
+Validation Phase 2
+
+        ↓
+
+Partie 6
+READY_BANK
+
+Chaque nouvelle partie sera ajoutée au même KernelBlueprint, qui restera vivant pendant tout le pipeline.
+
+État actuel
+
+À cette étape, aucun nouveau mécanisme ne doit être implémenté.
+
+Nous ne demandons pas :
+
+de nouvelles API ;
+de nouvelles méthodes ;
+des stubs temporaires.
+
+Nous demandons uniquement que l'architecture soit préparée pour respecter cette philosophie :
+
+un KernelBlueprint unique est créé au début de chaque rotation ;
+il devient l'unique support d'échange entre les moteurs ;
+chaque moteur enrichit progressivement cette même enveloppe selon son contrat de responsabilité.

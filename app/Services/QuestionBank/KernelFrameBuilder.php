@@ -12,39 +12,35 @@ use App\Models\QuestionIntent;
  * Pure function — lit le QuestionIntent (pour les champs legacy), retourne un array.
  * N'écrit jamais en DB.
  *
- * ══ ARCHITECTURE BLUEPRINT (2026-07-07) ═══════════════════════════════════════
+ * ══ PÉRIMÈTRE — OPTION C (pipeline officiel) ══════════════════════════════════
  *
- * Le Blueprint est un INSTRUMENT PASSIF et ULTRA-LÉGER.
- * Il ne contient que l'élément courant consommé par les fonctions — jamais le réservoir.
+ * KernelFrameBuilder est responsable des sections C–G + Legacy du pipeline.
+ * Il est DISTINCT de KernelBlueprint (contrat vivant officiel — Partie 1).
  *
- * Séparation fondamentale :
- *   RÉSERVOIR TAXONOMIE (externe) = 8 SD × 50 sujets × 250 idées, géré par
- *                                   TaxonomyProgressManager + IdeaSlotLoader + TaxonomyReader.
- *   BLUEPRINT (ticket courant)    = 1 sujet + 1 idée à la fois, poussé "goutte à goutte"
- *                                   par Taxonomy dans ce ticket.
+ * ┌─────────────────────────────────────────────────────────────────────────┐
+ * │  PARTIE 1 OFFICIELLE  →  KernelBlueprint                               │
+ * │  (depth, domain, subdomain_active, subject_active,                      │
+ * │   dominant_idea_active, kernel_code)                                    │
+ * │                                                                         │
+ * │  KernelFrameBuilder opère sur un pipeline différent :                   │
+ * │  QuestionIntent → buildSkeleton() → array (sections C–G + legacy)      │
+ * └─────────────────────────────────────────────────────────────────────────┘
  *
- * Sections du Blueprint :
- *   A — ROTATION        : depth, domain_code, rotation_identifier
- *                         (rempli par KernelRotationPlanner, une fois par cycle)
- *   B — CONTENU COURANT : sub_domain, subject, dominant_idea, knowledge_frequency
- *                         (poussé goutte à goutte par Taxonomy)
+ * Sections du frame (legacy pipeline) :
+ *   A — ROTATION        : depth, domain_code¹, rotation_identifier¹
+ *   B — CONTENU COURANT : sub_domain¹, subject¹, dominant_idea¹, knowledge_frequency¹
  *   C — MÉCANISMES      : kld_result, ks_result, ks_hash
- *                         (mis à jour par KLD puis KEY_STRUCTURE)
  *   D — INTENT          : semantic_key, intent_hash, intent_keys
- *                         (produits par QuestionIntent)
  *   E — COGNITIFS       : cognitive_slots (7 variants, remplis par Phase1-4)
- *   F — IDENTITÉ        : kernel_code (construit progressivement par le pipeline)
+ *   F — IDENTITÉ        : kernel_code (construit progressivement)
  *   G — PIPELINE        : statuses, traces
  *   LEGACY              : kernel_core, translation_constraints, variants
- *                         (conservés pour compatibilité pipeline existant)
  *
- * Ce qui N'EST PAS dans le Blueprint (appartient au réservoir externe) :
- *   - subjects_inventory (50 coquilles) → TaxonomyProgressManager
- *   - dominant_ideas (liste 5 idées)    → IdeaSlotLoader
- *   - active_subject (pointeur)         → TaxonomyProgressManager
- *   - active_dominant_idea (pointeur)   → IdeaSlotLoader
- *   - history, remaining_subjects, remaining_ideas → état réservoir
- *   - object_contracts, relation_map, rules, mechanisms, constraints → documentation
+ * ¹ Champs legacy (ancienne nomenclature) — ne représentent PAS la Partie 1
+ *   officielle de KernelBlueprint. La Partie 1 officielle utilise :
+ *   domain (≠ domain_code), subdomain_active (≠ sub_domain),
+ *   subject_active (≠ subject), dominant_idea_active (≠ dominant_idea).
+ *   knowledge_frequency et rotation_identifier sont absents de KernelBlueprint.
  *
  * ══ RÈGLE FONDAMENTALE ════════════════════════════════════════════════════════
  *

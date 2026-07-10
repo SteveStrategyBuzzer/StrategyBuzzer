@@ -3,72 +3,150 @@
 namespace App\Services\QuestionBank;
 
 /**
- * KernelBlueprint — enveloppe vivante du noyau (Partie 1).
+ * KernelBlueprint — contrat vivant du noyau intellectuel.
  *
- * ══ RÔLE ══════════════════════════════════════════════════════════════════════
+ * ══ PHILOSOPHIE ═══════════════════════════════════════════════════════════════
  *
- * Le Blueprint transporte uniquement les valeurs actives du noyau courant.
- * Il n'est pas un slot. Il n'est pas un conteneur de règles.
- * Il ne connaît ni DepthContract, ni RotationRules, ni TaxonomyRules,
- * ni KernelCodeFormat. Ces règles restent dans leurs composants respectifs.
+ * Le KernelBlueprint n'est pas un DTO, ni un objet de transfert, ni un slot.
  *
- * ══ STRUCTURE PARTIE 1 (6 champs) ═════════════════════════════════════════════
+ * Il constitue l'unique enveloppe de travail commune à tous les moteurs du pipeline.
+ * Il est créé UNE SEULE FOIS au début d'une rotation par KernelRotationPlanner.
+ * Il est conservé vivant pendant tout le pipeline, jamais recréé.
+ * Il est progressivement enrichi par les moteurs successifs selon leur contrat.
  *
- *   depth               — rempli par KernelRotationPlanner
- *   domain              — rempli par KernelRotationPlanner
- *   subdomain_active    — rempli par Taxonomy
- *   subject_active      — rempli par Taxonomy
- *   dominant_idea_active— rempli par Taxonomy
- *   kernel_code         — rempli par KernelCodeEngine
+ * Le Blueprint :
+ *   - ne crée rien ;
+ *   - ne décide rien ;
+ *   - ne valide rien ;
+ *   - transporte uniquement les informations du noyau actif.
  *
- * ══ RESPONSABILITÉS D'ÉCRITURE ════════════════════════════════════════════════
+ * ══ CONTRAT DE CHAQUE MOTEUR ══════════════════════════════════════════════════
  *
- *   KernelRotationPlanner  → fillRotation(depth, domain)
- *   Taxonomy               → fillTaxonomy(subdomain, subject, dominantIdea)
- *   KernelCodeEngine       → fillKernelCode(kernelCode)
+ * Chaque moteur respecte obligatoirement :
+ *   - lit uniquement les slots dont il a besoin ;
+ *   - écrit uniquement les slots dont il est propriétaire ;
+ *   - ne modifie jamais les slots appartenant à un autre moteur.
+ *
+ * ══ CYCLE DE VIE ══════════════════════════════════════════════════════════════
+ *
+ *   Création      KernelRotationPlanner crée le Blueprint et le remet au pipeline.
+ *   Partie 1      Identité intellectuelle du noyau (ce fichier).
+ *   Partie 2      Création des contenus cognitifs (Phase 1) — à venir.
+ *   Partie 3      Validation Phase 1 — à venir.
+ *   Partie 4      Phase 2 — à venir.
+ *   Partie 5      Validation Phase 2 — à venir.
+ *   Partie 6      READY_BANK — à venir.
+ *
+ * Chaque nouvelle partie sera ajoutée au MÊME Blueprint, qui restera vivant
+ * pendant tout le pipeline.
+ *
+ * ══ PARTIE 1 — IDENTITÉ INTELLECTUELLE DU NOYAU (6 champs) ═══════════════════
+ *
+ *   depth               — créé + écrit par KernelRotationPlanner
+ *   domain              — créé + écrit par KernelRotationPlanner
+ *   subdomain_active    — écrit par Taxonomy
+ *   subject_active      — écrit par Taxonomy
+ *   dominant_idea_active— écrit par Taxonomy (après validation DominantIdeaValidator)
+ *   kernel_code         — écrit par KernelCodeEngine
+ *
+ * ══ RÉPARTITION OFFICIELLE DES RESPONSABILITÉS ════════════════════════════════
+ *
+ *   KernelRotationPlanner
+ *     Crée le Blueprint, écrit depth + domain.
+ *     Premier moteur — ne lit aucune donnée du Blueprint.
+ *     Aucun moteur suivant ne peut modifier depth ni domain.
+ *
+ *   DepthContract[depth]
+ *     N'est pas un moteur. Contrat architectural pris automatiquement
+ *     par chaque moteur selon Blueprint.depth.
+ *     Contient : objectifs pédagogiques, niveau de précision, règles
+ *     KnowledgeFrequency. Reste entièrement externe au Blueprint.
+ *
+ *   Taxonomy
+ *     Lit depth + domain. Travaille dans le réservoir (depth × domain).
+ *     Les réservoirs ne transitent jamais dans le Blueprint.
+ *     Écrit subdomain_active + subject_active + dominant_idea_active.
+ *     dominant_idea_active n'est écrit QU'APRÈS validation DominantIdeaValidator.
+ *     En cas de FAIL → Taxonomy propose une nouvelle idée, même slot.
+ *     En cas de NO_MORE_IDEAS → passe au sujet suivant.
+ *
+ *   KernelCodeEngine (à spécifier ultérieurement)
+ *     Lit les 5 champs d'identité (depth, domain, subdomain_active,
+ *     subject_active, dominant_idea_active).
+ *     Écrit kernel_code — seul propriétaire de ce champ.
+ *     Ne peut s'exécuter qu'après validation complète de l'identité.
  *
  * ══ RÈGLES ARCHITECTURALES ════════════════════════════════════════════════════
  *
- *   - Chaque composant écrit UNIQUEMENT ses champs désignés.
- *   - Taxonomy lit depth + domain, ne les modifie jamais.
- *   - KernelCodeEngine lit les 5 premiers champs, ne les modifie jamais.
- *   - Taxonomy ne crée pas le domaine et ne décide pas le domaine.
- *   - Taxonomy ne remplit pas depth.
  *   - Aucune règle n'est stockée dans le Blueprint.
- *   - DepthContract reste externe (dans son composant dédié).
+ *   - DepthContract reste entièrement externe.
  *   - RotationRules restent dans KernelRotationPlanner.
  *   - TaxonomyRules restent dans Taxonomy.
- *   - KernelCodeFormat / KernelCodeRules restent dans KernelCodeEngine.
+ *   - KernelCodeFormat / KernelCodeContract restent dans KernelCodeEngine.
+ *   - KnowledgeFrequency est défini par DepthContract — jamais dans le Blueprint.
+ *   - rotation_identifier ne transite jamais dans le Blueprint.
+ *   - knowledge_frequency ne transite jamais dans le Blueprint.
  */
 class KernelBlueprint
 {
-    // ─── 6 champs de la Partie 1 ─────────────────────────────────────────────
+    // ─── Partie 1 — 6 champs de l'identité intellectuelle ────────────────────
 
-    /** Rempli par KernelRotationPlanner */
+    /**
+     * Propriétaire : KernelRotationPlanner.
+     * Détermine le DepthContract utilisé par tous les moteurs suivants.
+     * Immuable après écriture initiale.
+     */
     public ?int $depth = null;
 
-    /** Rempli par KernelRotationPlanner */
+    /**
+     * Propriétaire : KernelRotationPlanner.
+     * Détermine le réservoir exploité par Taxonomy.
+     * Domaines autorisés : Géographie, Histoire, Faune, Art, Sport, Cinéma, Cuisine, Général.
+     * Immuable après écriture initiale.
+     */
     public ?string $domain = null;
 
-    /** Rempli par Taxonomy */
+    /**
+     * Propriétaire : Taxonomy.
+     * Découle du domaine actif. Plus précis que le domaine, jamais un sujet déguisé.
+     * Immuable après écriture initiale.
+     */
     public ?string $subdomain_active = null;
 
-    /** Rempli par Taxonomy */
+    /**
+     * Propriétaire : Taxonomy.
+     * Appartient au sous-domaine actif. Court, fermé, sans réponse ni indice.
+     * Immuable après écriture initiale.
+     */
     public ?string $subject_active = null;
 
-    /** Rempli par Taxonomy */
+    /**
+     * Propriétaire : Taxonomy (propose) + DominantIdeaValidator (valide).
+     * N'est inscrit dans le Blueprint QU'APRÈS obtention d'un PASS de DominantIdeaValidator.
+     * En cas de FAIL → même slot actif, nouvelle proposition de Taxonomy.
+     * En cas de NO_MORE_IDEAS → sujet considéré terminé, Taxonomy avance.
+     * Immuable après écriture initiale.
+     */
     public ?string $dominant_idea_active = null;
 
-    /** Rempli par KernelCodeEngine (après rotation + taxonomy complètes) */
+    /**
+     * Propriétaire : KernelCodeEngine.
+     * Produit uniquement après validation complète des 5 champs d'identité.
+     * Format : yy-xx-xxx-xxx-xxx-zz (KernelCodeContract).
+     * Immuable après écriture initiale.
+     */
     public ?string $kernel_code = null;
 
     // ═════════════════════════════════════════════════════════════════════════
-    // Méthodes d'écriture — une méthode par responsabilité
+    // Méthodes d'écriture — une méthode par contrat de responsabilité
     // ═════════════════════════════════════════════════════════════════════════
 
     /**
-     * Appelée par KernelRotationPlanner uniquement.
-     * Remplit depth et domain. Ne touche pas aux champs Taxonomy ni kernel_code.
+     * Appelée par KernelRotationPlanner uniquement — premier moteur.
+     *
+     * KernelRotationPlanner crée le Blueprint puis appelle cette méthode.
+     * Remplit depth + domain. Ne touche pas aux champs Taxonomy ni kernel_code.
+     * Aucun moteur suivant ne peut modifier ces deux champs.
      */
     public function fillRotation(int $depth, string $domain): void
     {
@@ -77,8 +155,10 @@ class KernelBlueprint
     }
 
     /**
-     * Appelée par Taxonomy uniquement.
-     * Lit depth + domain (déjà remplis). Remplit les 3 champs actifs Taxonomy.
+     * Appelée par Taxonomy uniquement — après validation DominantIdeaValidator.
+     *
+     * Taxonomy lit depth + domain (déjà écrits par KernelRotationPlanner).
+     * dominant_idea_active ne doit être passé ici QU'APRÈS obtention d'un PASS.
      * Ne touche pas à depth, domain, kernel_code.
      */
     public function fillTaxonomy(
@@ -93,8 +173,10 @@ class KernelBlueprint
 
     /**
      * Appelée par KernelCodeEngine uniquement.
-     * Lit depth + domain + subdomain_active + subject_active + dominant_idea_active.
-     * Remplit kernel_code. Ne touche pas aux 5 champs d'identité.
+     *
+     * Précondition : isIdentityComplete() === true.
+     * Lit les 5 champs d'identité — ne les modifie jamais.
+     * Aucun autre moteur ne peut modifier kernel_code.
      */
     public function fillKernelCode(string $kernelCode): void
     {
@@ -106,7 +188,7 @@ class KernelBlueprint
     // ═════════════════════════════════════════════════════════════════════════
 
     /**
-     * Vérifie que KernelRotationPlanner a rempli sa partie.
+     * Vérifie que KernelRotationPlanner a rempli sa partie (depth + domain).
      */
     public function isRotationFilled(): bool
     {
@@ -114,7 +196,9 @@ class KernelBlueprint
     }
 
     /**
-     * Vérifie que Taxonomy a rempli sa partie.
+     * Vérifie que Taxonomy a rempli sa partie
+     * (subdomain_active + subject_active + dominant_idea_active).
+     * dominant_idea_active est garanti PASS de DominantIdeaValidator si true.
      */
     public function isTaxonomyFilled(): bool
     {
@@ -124,8 +208,8 @@ class KernelBlueprint
     }
 
     /**
-     * Vérifie que les 5 champs d'identité (rotation + taxonomy) sont remplis.
-     * Précondition pour que KernelCodeEngine puisse générer kernel_code.
+     * Vérifie que les 5 champs d'identité sont remplis.
+     * Précondition obligatoire pour que KernelCodeEngine puisse écrire kernel_code.
      */
     public function isIdentityComplete(): bool
     {
@@ -133,7 +217,8 @@ class KernelBlueprint
     }
 
     /**
-     * Vérifie que le noyau est entièrement identifié (kernel_code inclus).
+     * Vérifie que la Partie 1 est entièrement complète (kernel_code inclus).
+     * Précondition pour passer à la Partie 2 du pipeline.
      */
     public function isComplete(): bool
     {
@@ -141,7 +226,7 @@ class KernelBlueprint
     }
 
     /**
-     * Exporte les 6 champs sous forme de tableau.
+     * Exporte les 6 champs de la Partie 1 sous forme de tableau.
      * Aucune règle, aucun contrat, aucune métadonnée.
      */
     public function toArray(): array
