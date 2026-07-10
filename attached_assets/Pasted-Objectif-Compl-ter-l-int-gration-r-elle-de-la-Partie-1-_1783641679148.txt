@@ -1,0 +1,132 @@
+Objectif :
+Compléter l’intégration réelle de la Partie 1 du KernelBlueprint, sans encore injecter les règles détaillées de DepthContract, rotation ou Taxonomy.
+
+État validé conceptuellement :
+
+KernelBlueprint:
+  depth:
+  domain:
+  subdomain_active:
+  subject_active:
+  dominant_idea_active:
+  kernel_code:
+
+Logique officielle :
+
+1. KernelRotationPlanner
+   - lit ses propres règles de rotation
+   - décide depth + domain
+   - écrit uniquement :
+     - depth
+     - domain
+
+2. Taxonomy
+   - lit dans le Blueprint :
+     - depth
+     - domain
+   - prend :
+     - DepthContract[depth]
+   - travaille dans le réservoir du couple :
+     - depth + domain
+   - produit uniquement :
+     - subdomain_active
+     - subject_active
+     - dominant_idea_active
+
+3. KernelCodeEngine
+   - lit dans le Blueprint :
+     - depth
+     - domain
+     - subdomain_active
+     - subject_active
+     - dominant_idea_active
+   - écrit uniquement :
+     - kernel_code
+
+À corriger / compléter :
+
+1. Éliminer l’isolement du DTO KernelBlueprint
+   - KernelBlueprint ne doit pas rester seulement testé en isolation.
+   - Il doit devenir la structure réellement alimentée par les moteurs concernés.
+
+2. Aligner KernelRotationPlanner
+   - Aujourd’hui il retourne encore :
+     - domain_code
+     - rotation_identifier
+   - Il doit alimenter le Blueprint avec :
+     - depth
+     - domain
+   - rotation_identifier ne doit pas entrer dans le Blueprint.
+
+3. Aligner TaxonomyProgressManager
+   - Aujourd’hui il retourne encore :
+     - sub_domain
+     - subject
+     - dominant_idea / ou équivalent
+     - kf / knowledge_frequency
+   - Il doit alimenter le Blueprint avec :
+     - subdomain_active
+     - subject_active
+     - dominant_idea_active
+   - knowledge_frequency ne doit pas entrer dans le Blueprint.
+   - Taxonomy lit depth + domain, mais ne les décide jamais.
+
+4. Créer ou préparer KernelCodeEngine
+   - Il n’existe pas encore.
+   - Il doit être le seul propriétaire de kernel_code.
+   - Il lit les 5 champs actifs :
+     - depth
+     - domain
+     - subdomain_active
+     - subject_active
+     - dominant_idea_active
+   - Il écrit :
+     - kernel_code
+   - KernelCodeFormat et KernelCodeRules doivent rester dans KernelCodeEngine / KernelCodeContract, pas dans le Blueprint.
+
+5. Clarifier KernelFrameBuilder
+   - KernelFrameBuilder contient encore :
+     - domain_code
+     - rotation_identifier
+     - knowledge_frequency
+     - sub_domain
+     - subject
+     - dominant_idea
+     - règles embarquées
+   - Il ne doit pas créer une deuxième structure concurrente.
+   - Proposer avant modification :
+     A) soit KernelFrameBuilder est remplacé progressivement par KernelBlueprint,
+     B) soit il devient un adaptateur temporaire qui lit KernelBlueprint,
+     C) soit il est limité aux phases suivantes, mais sans redéfinir la Partie 1.
+
+6. Résoudre les divergences de nommage
+   - domain_code → domain
+   - sub_domain → subdomain_active
+   - subject → subject_active
+   - dominant_idea → dominant_idea_active
+
+7. Préserver les exclusions officielles
+   - Ne pas ajouter dans KernelBlueprint :
+     - knowledge_frequency
+     - rotation_identifier
+     - rules
+     - validation_results
+     - ready_bank_payload
+     - reservoirs
+     - DepthContract
+     - TaxonomyContract
+
+8. Tests attendus
+   Ajouter des tests prouvant que :
+   - KernelRotationPlanner alimente réellement depth + domain dans KernelBlueprint.
+   - TaxonomyProgressManager alimente réellement subdomain_active + subject_active + dominant_idea_active.
+   - KernelCodeEngine alimente réellement kernel_code.
+   - Aucun champ interdit n’apparaît dans KernelBlueprint.
+   - Les anciens noms ne sont pas exposés dans KernelBlueprint.
+   - KernelFrameBuilder ne contredit pas KernelBlueprint.
+
+Important :
+Avant d’implémenter, montre le plan fichier par fichier.
+Ne pas faire de patch massif.
+Ne pas injecter encore les règles détaillées.
+On veut seulement l’intégration propre de la structure et des responsabilités.
