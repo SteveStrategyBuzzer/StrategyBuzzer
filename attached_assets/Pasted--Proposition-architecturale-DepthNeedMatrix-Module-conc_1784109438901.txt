@@ -1,0 +1,1154 @@
+# Proposition architecturale — DepthNeedMatrix
+
+**Module concerné :** `02_KernelRotationPlanner`
+**Statut :** `UNDER_REVIEW`
+**Nature :** proposition à valider
+**Implantation :** interdite
+
+---
+
+# Décision architecturale centrale
+
+La `DepthNeedMatrix` représente :
+
+> **A. Une cible externe de production destinée à remplir ReadyBank, indépendante de la capacité réelle des réservoirs Taxonomy.**
+
+Elle ne représente jamais le nombre d’unités disponibles dans Taxonomy.
+
+Architecture officielle proposée :
+
+```text
+BankTarget
+→ définit les kernel_target
+
+ReadyBank
+→ fournit les Blueprints réellement reçus
+
+DepthNeedMatrix
+→ calcule le besoin restant
+
+Taxonomy
+→ indique la capacité réelle à poursuivre
+
+KernelRotationPlanner
+→ combine besoin + capacité
+→ choisit seul la prochaine rotation
+```
+
+Cette séparation est nécessaire pour distinguer :
+
+```text
+Ce que StrategyBuzzer veut produire
+```
+
+de :
+
+```text
+Ce que Taxonomy peut encore fournir
+```
+
+Un besoin non satisfait peut donc exister lorsque Taxonomy devient vide. La politique terminale au niveau du Depth sera définie ensuite, dans le contrat consacré au `DEPTH_COMPLETE_WITH_SHORTFALL`.
+
+---
+
+# 1. Mission
+
+## 1.1 Responsabilité métier
+
+La `DepthNeedMatrix` détermine, pour chaque couple :
+
+```text
+Depth + Domaine
+```
+
+combien de Blueprints canoniques doivent encore atteindre ReadyBank afin de satisfaire la cible de production officielle.
+
+Elle fournit au KernelRotationPlanner une représentation déterministe du besoin :
+
+```text
+kernel_target
+kernel_received
+kernel_remaining
+cell_state
+```
+
+## 1.2 Ce qu’elle représente
+
+Elle représente un besoin quantitatif de production par cellule.
+
+Exemple conceptuel :
+
+```text
+Depth 4 + Histoire
+kernel_target    = cible officielle
+kernel_received  = Blueprints déjà reçus dans ReadyBank
+kernel_remaining = Blueprints encore nécessaires
+```
+
+## 1.3 Ce qu’elle ne représente jamais
+
+La DepthNeedMatrix ne représente pas :
+
+* la quantité de sujets disponible dans Taxonomy ;
+* la quantité d’idées dominantes disponible ;
+* l’état `AVAILABLE` ou `EMPTY` des réservoirs ;
+* la jouabilité des slots cognitifs ;
+* le nombre de slots `OK` ;
+* le nombre de slots `FAIL` ;
+* le nombre de questions ;
+* la consommation des joueurs ;
+* les copies présentes dans Quarantine ;
+* le domaine actuellement actif ;
+* la position dans le DomainCycle ;
+* la décision du prochain domaine.
+
+Elle ne crée aucun Blueprint et ne décide aucune rotation.
+
+---
+
+# 2. Propriété
+
+## 2.1 Propriétaire
+
+La DepthNeedMatrix est une structure interne persistante du `KernelRotationPlanner`.
+
+Le KernelRotationPlanner :
+
+* l’instancie au début d’une rotation ;
+* fixe sa version active ;
+* charge ses cibles ;
+* initialise ses comptes depuis ReadyBank ;
+* actualise ses comptes après chaque réception ;
+* la consulte pour sélectionner les besoins encore ouverts.
+
+## 2.2 Origine des cibles
+
+Les valeurs `kernel_target` proviennent d’une configuration métier officielle conceptuellement nommée :
+
+```text
+BankTarget
+```
+
+`BankTarget` définit la quantité souhaitée de noyaux par `Depth + Domaine`.
+
+Le KernelRotationPlanner ne doit jamais inventer une cible.
+
+## 2.3 Autorités respectives
+
+### KernelRotationPlanner
+
+Il possède l’instance active de la Matrix et effectue les mises à jour opérationnelles.
+
+### ReadyBank
+
+ReadyBank est l’autorité sur les Blueprints canoniques réellement reçus.
+
+ReadyBank ne modifie pas directement la Matrix. Il transmet les réceptions au Planner.
+
+### Taxonomy
+
+Taxonomy est l’autorité sur l’état de ses réservoirs.
+
+Taxonomy ne lit pas, ne modifie pas et ne recalcule pas les cibles de la Matrix.
+
+### BankTarget
+
+BankTarget est l’autorité sur les valeurs configurées de `kernel_target`.
+
+---
+
+# 3. Unité de comptage
+
+## 3.1 Unité officielle
+
+L’unité comptée est :
+
+> un KernelBlueprint canonique reçu par ReadyBank.
+
+Un Blueprint vaut exactement une unité.
+
+## 3.2 Niveau de comptage
+
+Le compteur porte sur le noyau complet.
+
+Il ne porte jamais sur :
+
+* les sept slots cognitifs ;
+* les traductions ;
+* les réponses ;
+* les validations ;
+* les questions individuelles.
+
+```text
+1 Blueprint canonique reçu
+=
+1 unité kernel_received
+```
+
+## 3.3 Blueprint avec slots FAIL
+
+Un Blueprint contenant un ou plusieurs slots `FAIL` compte dans la cible dès que ReadyBank confirme sa réception canonique.
+
+```text
+Blueprint reçu dans ReadyBank
++
+slots OK ou FAIL
+↓
+kernel_received + 1
+```
+
+La correction Quarantine ne crée pas une nouvelle unité de production.
+
+Elle corrige et réintègre le même noyau canonique grâce à son identité.
+
+---
+
+# 4. Clé exacte
+
+## 4.1 Clé logique
+
+Dans une Matrix donnée, chaque cellule possède la clé logique :
+
+```text
+Depth + Domaine
+```
+
+Exemple :
+
+```text
+Depth 2 + Géographie
+Depth 2 + Histoire
+Depth 4 + Géographie
+```
+
+## 4.2 Clé persistante
+
+Comme plusieurs versions de Matrix peuvent exister, la clé persistante complète est :
+
+```text
+matrix_version
++
+depth
++
+domain
+```
+
+Il ne peut exister qu’une seule cellule pour un même couple `Depth + Domaine` dans une même version.
+
+## 4.3 Identité du domaine
+
+`domain` utilise l’identifiant canonique du domaine réel de création.
+
+La Matrix ne doit pas réintroduire un `domain_code` transporté dans le Blueprint.
+
+## 4.4 Domaine Général
+
+`Général` est explicitement interdit dans la Matrix.
+
+Raison :
+
+```text
+Général
+=
+composition gameplay de noyaux provenant des domaines réels
+```
+
+Il ne possède donc :
+
+* aucun réservoir Taxonomy de création ;
+* aucune cible de production ;
+* aucune cellule DepthNeedMatrix ;
+* aucune position dans le DomainCycle.
+
+## 4.5 Depths autorisés
+
+```text
+2
+4
+6
+7
+8
+9
+```
+
+Depth 1 est refusé.
+
+Depth 10 est interdit.
+
+---
+
+# 5. kernel_target
+
+## 5.1 Définition
+
+`kernel_target` représente le nombre total de Blueprints canoniques souhaité dans ReadyBank pour un couple `Depth + Domaine`.
+
+Il s’agit d’une cible cumulative de remplissage de la banque.
+
+## 5.2 Provenance
+
+La valeur provient exclusivement de la configuration officielle `BankTarget`.
+
+Elle n’est calculée ni par :
+
+* KernelRotationPlanner ;
+* Taxonomy ;
+* ReadyBank ;
+* Quarantine ;
+* Phase 1 ;
+* les validations.
+
+## 5.3 Nature
+
+La valeur est :
+
+```text
+configurée
++
+versionnée
++
+immuable pendant une rotation active
+```
+
+Elle n’est pas calculée à partir de la taille des réservoirs Taxonomy.
+
+## 5.4 Autorité de définition
+
+La valeur peut seulement être définie ou modifiée par le processus officiel de configuration métier de production.
+
+Le KernelRotationPlanner peut la lire, jamais la modifier arbitrairement.
+
+## 5.5 Verrouillage
+
+Au démarrage d’une nouvelle rotation, le Planner :
+
+1. sélectionne une version officielle de BankTarget ;
+2. crée un instantané de DepthNeedMatrix ;
+3. associe `matrix_version` au RotationState ;
+4. verrouille les cibles de cette version.
+
+## 5.6 Changement pendant une rotation active
+
+Une cible ne change jamais à l’intérieur d’une rotation active.
+
+Une nouvelle configuration produit une nouvelle `matrix_version`.
+
+```text
+Rotation active
+→ conserve sa matrix_version
+
+Nouvelle configuration publiée
+→ reste en attente
+
+Nouvelle rotation
+→ peut utiliser la nouvelle matrix_version
+```
+
+Il est interdit de mélanger deux versions de cibles dans la même rotation.
+
+## 5.7 Valeurs numériques
+
+Les nombres exacts de noyaux demandés par `Depth + Domaine` ne peuvent pas être déduits de l’architecture actuelle.
+
+Ils devront être définis dans la configuration BankTarget officielle.
+
+---
+
+# 6. kernel_received
+
+## 6.1 Définition
+
+`kernel_received` représente le nombre réel de Blueprints canoniques présents ou comptabilisés dans ReadyBank pour une cellule `Depth + Domaine`.
+
+## 6.2 Premier démarrage
+
+Lors du premier démarrage d’une rotation, le Planner demande à ReadyBank le nombre réel de Blueprints correspondant à chaque cellule.
+
+```text
+ReadyBank
+→ comptage par Depth + Domaine
+→ initialisation de kernel_received
+```
+
+Il est interdit de présumer :
+
+```text
+kernel_received = 0
+```
+
+sans consulter ReadyBank.
+
+## 6.3 Reprise après interruption
+
+Après interruption, le RotationState fournit le dernier compte persisté.
+
+Cependant, ce compte est un état opérationnel de reprise, pas la vérité finale.
+
+Le Planner doit réconcilier le compte avec ReadyBank avant de reprendre la production.
+
+## 6.4 Source de vérité
+
+En cas de divergence :
+
+```text
+ReadyBank
+>
+RotationState
+```
+
+pour la quantité de Blueprints réellement reçus.
+
+ReadyBank constitue la vérité matérielle.
+
+RotationState constitue la mémoire opérationnelle du Planner.
+
+Le Planner corrige donc sa Matrix selon ReadyBank avant de créer un nouveau Blueprint.
+
+## 6.5 Comptage cumulatif
+
+`kernel_received` inclut tous les Blueprints canoniques pertinents déjà reçus dans ReadyBank, et pas uniquement ceux créés depuis le dernier redémarrage du Planner.
+
+---
+
+# 7. kernel_remaining
+
+## 7.1 Calcul
+
+Le besoin mathématique brut est :
+
+```text
+kernel_gap
+=
+kernel_target
+-
+kernel_received
+```
+
+La valeur opérationnelle exposée est :
+
+```text
+kernel_remaining
+=
+maximum de 0 et kernel_gap
+```
+
+Ainsi :
+
+```text
+kernel_remaining ≥ 0
+```
+
+## 7.2 Pourquoi ne pas autoriser une valeur négative
+
+Un compteur négatif n’exprime pas un besoin.
+
+Lorsque :
+
+```text
+kernel_received > kernel_target
+```
+
+la cellule passe dans un état spécifique :
+
+```text
+NEED_EXCEEDED
+```
+
+Le dépassement est conservé comme anomalie ou comme conséquence d’une nouvelle cible inférieure, mais `kernel_remaining` reste égal à zéro.
+
+## 7.3 Invariant
+
+Le Planner ne doit jamais sélectionner une cellule lorsque :
+
+```text
+kernel_remaining = 0
+```
+
+---
+
+# 8. Mise à jour
+
+## 8.1 Événement incrémental
+
+Après l’initialisation ou la réconciliation, le seul événement pouvant incrémenter le compte est :
+
+```text
+CURRENT_KERNEL_RECEIVED
+```
+
+émis par ReadyBank.
+
+## 8.2 Mise à jour atomique
+
+La réception déclenche une seule opération atomique :
+
+```text
+vérifier l’identité du Blueprint
+↓
+vérifier Depth + Domaine
+↓
+vérifier qu’il n’a pas déjà été compté
+↓
+enregistrer sa réception
+↓
+kernel_received + 1
+↓
+recalculer kernel_gap
+↓
+recalculer kernel_remaining
+↓
+recalculer cell_state
+```
+
+## 8.3 Identité de déduplication
+
+L’identité principale de déduplication est :
+
+```text
+blueprint_reference
+```
+
+Elle est créée avec le Blueprint et demeure immuable.
+
+`kernel_code` sert de contrôle secondaire de cohérence.
+
+Règle :
+
+```text
+blueprint_reference
+→ autorité d’identité du Blueprint
+
+kernel_code
+→ identité métier unique vérifiée à la réception
+```
+
+## 8.4 Réception répétée
+
+Si ReadyBank transmet deux fois la même `blueprint_reference` :
+
+* la deuxième réception est reconnue comme duplication ;
+* aucun compteur n’est modifié ;
+* aucun nouveau Blueprint n’est créé à cause de cette duplication ;
+* l’événement peut être journalisé.
+
+## 8.5 Identités contradictoires
+
+Si une même `blueprint_reference` est associée à deux `kernel_code`, ou inversement :
+
+* le Blueprint n’est pas comptabilisé une deuxième fois ;
+* le Planner entre dans un état d’anomalie ;
+* aucune rotation suivante n’est créée avant réconciliation.
+
+---
+
+# 9. Relation avec Taxonomy
+
+## 9.1 Séparation des responsabilités
+
+La DepthNeedMatrix représente le besoin de production.
+
+Taxonomy représente la capacité réelle à produire une nouvelle unité intellectuelle.
+
+```text
+DepthNeedMatrix
+→ combien faut-il encore produire ?
+
+Taxonomy
+→ peut-on encore produire ?
+```
+
+## 9.2 Informations Taxonomy
+
+Pour chaque `Depth + Domaine`, Taxonomy transmet au minimum :
+
+```text
+AVAILABLE
+```
+
+ou :
+
+```text
+EMPTY
+```
+
+Taxonomy ne modifie jamais :
+
+```text
+kernel_target
+kernel_received
+kernel_remaining
+matrix_version
+```
+
+## 9.3 Besoin ouvert et réservoir disponible
+
+```text
+kernel_remaining > 0
+AND
+reservoir_status = AVAILABLE
+```
+
+La cellule possède encore un besoin et le domaine peut être considéré par le Planner pour une prochaine rotation.
+
+## 9.4 Besoin satisfait et réservoir disponible
+
+```text
+kernel_remaining = 0
+AND
+reservoir_status = AVAILABLE
+```
+
+Le Planner ne sélectionne plus ce couple.
+
+Le contenu Taxonomy restant ne force pas la création de noyaux supplémentaires.
+
+## 9.5 Besoin ouvert et réservoir vide
+
+```text
+kernel_remaining > 0
+AND
+reservoir_status = EMPTY
+```
+
+La Matrix conserve :
+
+```text
+cell_state = NEED_OPEN
+kernel_remaining > 0
+```
+
+Elle ne transforme pas artificiellement la cible en cible atteinte.
+
+Le KernelRotationPlanner :
+
+* retire temporairement ou définitivement ce domaine des choix exploitables du Depth courant ;
+* conserve le déficit non satisfait ;
+* ne crée aucun contenu artificiel ;
+* ne réduit pas `kernel_remaining` ;
+* transmet cette situation au mécanisme de fermeture du Depth.
+
+La décision de passer au Depth suivant, d’attendre un réalimentage ou de déclarer un shortfall appartient au prochain contrat architectural.
+
+---
+
+# 10. États d’une cellule
+
+Les états de la DepthNeedMatrix doivent uniquement exprimer le besoin quantitatif.
+
+Ils ne doivent pas reproduire les états opérationnels du KernelRotationPlanner ou de Taxonomy.
+
+## 10.1 États officiels proposés
+
+### `UNINITIALIZED`
+
+La cible est chargée, mais le nombre réel de Blueprints ReadyBank n’a pas encore été réconcilié.
+
+Condition d’entrée :
+
+```text
+kernel_target chargé
+kernel_received non confirmé
+```
+
+Condition de sortie :
+
+```text
+réconciliation ReadyBank terminée
+```
+
+---
+
+### `NEED_OPEN`
+
+La cellule possède encore un besoin de production.
+
+Condition :
+
+```text
+kernel_received < kernel_target
+```
+
+Donc :
+
+```text
+kernel_remaining > 0
+```
+
+---
+
+### `NEED_SATISFIED`
+
+La cible est exactement atteinte.
+
+Condition :
+
+```text
+kernel_received = kernel_target
+```
+
+Donc :
+
+```text
+kernel_remaining = 0
+```
+
+---
+
+### `NEED_EXCEEDED`
+
+ReadyBank contient plus de Blueprints que la cible configurée.
+
+Condition :
+
+```text
+kernel_received > kernel_target
+```
+
+Donc :
+
+```text
+kernel_remaining = 0
+```
+
+---
+
+### `INVALID`
+
+La cellule ne peut pas être activée en raison d’une configuration invalide.
+
+Exemples :
+
+* cible absente ;
+* cible négative ;
+* Depth interdit ;
+* domaine inconnu ;
+* domaine Général ;
+* cellule dupliquée.
+
+## 10.2 États qui n’appartiennent pas à la Matrix
+
+Les états suivants ne doivent pas être placés dans la DepthNeedMatrix :
+
+```text
+SELECTABLE
+ACTIVE
+RESERVOIR_EMPTY
+EMPTY_BEFORE_TARGET
+```
+
+Ils expriment l’état combiné du Planner et de Taxonomy, pas le besoin quantitatif de la Matrix.
+
+La sélection est calculée par le Planner :
+
+```text
+cell_state = NEED_OPEN
+AND
+reservoir_status = AVAILABLE
+AND
+aucun Blueprint actif
+↓
+couple sélectionnable
+```
+
+---
+
+# 11. Versionnement
+
+## 11.1 Identité de version
+
+Chaque configuration officielle possède une version immuable :
+
+```text
+matrix_version
+```
+
+Exemple de principe :
+
+```text
+1.0
+1.1
+2.0
+```
+
+## 11.2 Version épinglée
+
+Le RotationState conserve :
+
+```text
+active_matrix_version
+```
+
+Cette version reste utilisée pendant toute la rotation :
+
+```text
+Depth 2
+↓
+Depth 4
+↓
+Depth 6
+↓
+Depth 7
+↓
+Depth 8
+↓
+Depth 9
+```
+
+## 11.3 Nouvelle version publiée
+
+Une nouvelle version publiée pendant une rotation active :
+
+* ne remplace pas les cibles actives ;
+* ne recalcule pas le besoin courant ;
+* ne modifie pas le Depth actif ;
+* ne modifie pas les domaines déjà fermés ;
+* reste disponible pour la prochaine rotation explicitement démarrée.
+
+## 11.4 Nouvelle rotation
+
+Au début d’une nouvelle rotation :
+
+1. le Planner choisit la dernière version officielle autorisée ;
+2. il crée un nouvel instantané ;
+3. il recompte ReadyBank ;
+4. il calcule les nouveaux besoins.
+
+---
+
+# 12. Persistance
+
+## 12.1 Configuration persistante
+
+La configuration BankTarget conserve :
+
+```text
+matrix_version
+allowed_depths
+allowed_domains
+kernel_target par Depth + Domaine
+status de la version
+date de publication
+```
+
+## 12.2 Instantané de rotation
+
+Le RotationState conserve au minimum :
+
+```text
+active_matrix_version
+depth
+domain
+kernel_target
+kernel_received
+kernel_remaining
+cell_state
+date de dernière réconciliation
+```
+
+pour chaque cellule.
+
+## 12.3 Registre des réceptions
+
+La déduplication doit reposer sur un registre persistant contenant au minimum :
+
+```text
+blueprint_reference
+kernel_code
+depth
+domain
+readybank_received_at
+rotation_reference
+```
+
+## 12.4 Écritures atomiques
+
+Les opérations suivantes doivent être atomiques :
+
+### Activation de la Matrix
+
+```text
+choix matrix_version
++
+création de l’instantané
++
+association au RotationState
+```
+
+### Réconciliation ReadyBank
+
+```text
+lecture du nombre réel
++
+mise à jour kernel_received
++
+recalcul remaining
++
+mise à jour cell_state
+```
+
+### Réception d’un Blueprint
+
+```text
+vérification de déduplication
++
+enregistrement de la réception
++
+incrément kernel_received
++
+recalcul remaining
++
+mise à jour cell_state
+```
+
+Une interruption ne doit jamais produire un Blueprint enregistré sans compteur correspondant, ou un compteur incrémenté sans réception enregistrée.
+
+---
+
+# 13. Cas limites
+
+## 13.1 kernel_target absent
+
+La version entière de Matrix est invalide si une cellule obligatoire manque.
+
+Résultat :
+
+```text
+activation refusée
+```
+
+Une absence n’équivaut jamais à zéro.
+
+## 13.2 kernel_target égal à zéro
+
+Une cible explicitement égale à zéro est valide.
+
+La cellule est initialisée comme :
+
+```text
+NEED_SATISFIED
+```
+
+si ReadyBank ne contient aucun Blueprint, ou :
+
+```text
+NEED_EXCEEDED
+```
+
+si ReadyBank en contient déjà.
+
+Le domaine est ignoré pour la production de cette version.
+
+## 13.3 kernel_target négatif
+
+Configuration invalide.
+
+La version ne peut pas devenir active.
+
+## 13.4 Domaine inconnu
+
+Configuration invalide.
+
+La version ne peut pas devenir active.
+
+## 13.5 Domaine Général
+
+Configuration interdite.
+
+La version ne peut pas devenir active tant que la cellule Général n’est pas retirée.
+
+## 13.6 Depth interdit
+
+Toute cellule utilisant Depth 1, Depth 10 ou une valeur non officielle rend la configuration invalide.
+
+## 13.7 ReadyBank contient plus de noyaux que la cible
+
+La réalité ReadyBank est conservée.
+
+```text
+cell_state = NEED_EXCEEDED
+kernel_remaining = 0
+```
+
+Le Planner ne produit aucun noyau supplémentaire pour cette cellule.
+
+## 13.8 Même Blueprint reçu deux fois
+
+La deuxième réception est ignorée de manière idempotente.
+
+Aucun compteur n’est modifié.
+
+## 13.9 RotationState perdu ou corrompu
+
+Le Planner ne crée pas immédiatement un nouveau Blueprint.
+
+Il entre dans un état sécurisé de réconciliation.
+
+Il doit reconstruire :
+
+* la version active depuis l’enregistrement durable de la rotation ;
+* les comptes depuis ReadyBank ;
+* l’existence d’un Blueprint actif depuis le registre canonique des Blueprints ;
+* la position exploitable suivante depuis le DepthCycle et le DomainCycle.
+
+Si plusieurs Blueprints actifs incompatibles sont détectés, la rotation reste bloquée jusqu’à correction.
+
+## 13.10 Divergence ReadyBank / RotationState
+
+ReadyBank gagne pour le nombre réellement reçu.
+
+Le registre persistant des réceptions gagne pour la déduplication.
+
+RotationState est corrigé avant la reprise.
+
+## 13.11 Réservoir EMPTY avant cible
+
+La cellule reste :
+
+```text
+NEED_OPEN
+```
+
+Le Planner conserve le besoin non satisfait.
+
+Il ne marque pas la cible comme atteinte.
+
+La politique de fermeture du Depth sera déterminée séparément.
+
+## 13.12 Cible modifiée pendant une rotation
+
+La nouvelle cible crée une nouvelle version.
+
+Elle ne modifie jamais la rotation active.
+
+---
+
+# 14. Sortie vers KernelRotationPlanner
+
+Pour chaque cellule, la DepthNeedMatrix transmet exactement :
+
+```text
+matrix_version
+depth
+domain
+kernel_target
+kernel_received
+kernel_remaining
+cell_state
+```
+
+Exemple conceptuel :
+
+```text
+matrix_version   = 1.0
+depth            = 4
+domain           = Histoire
+kernel_target    = valeur configurée
+kernel_received  = valeur ReadyBank
+kernel_remaining = besoin restant
+cell_state       = NEED_OPEN
+```
+
+La Matrix ne transmet pas :
+
+* le prochain domaine ;
+* la prochaine position ;
+* le statut Taxonomy ;
+* la décision de créer un Blueprint ;
+* le statut du Blueprint actif.
+
+Le KernelRotationPlanner combine ensuite :
+
+```text
+DepthNeedMatrix.cell_state
++
+Taxonomy.reservoir_status
++
+DomainCycle.position
++
+absence ou présence d’un Blueprint actif
+```
+
+pour déterminer la prochaine action.
+
+---
+
+# Conséquences architecturales
+
+## Pour KernelRotationPlanner
+
+Le Planner devient l’autorité de combinaison :
+
+```text
+besoin quantitatif
++
+capacité Taxonomy
++
+ordre du DomainCycle
++
+état du Blueprint courant
+```
+
+Il ne calcule jamais les cibles et ne suppose jamais la capacité Taxonomy.
+
+## Pour Taxonomy
+
+Taxonomy reste entièrement indépendante des objectifs de production.
+
+Elle indique seulement si elle peut encore fournir une nouvelle combinaison valide pour le couple actif.
+
+## Pour ReadyBank
+
+ReadyBank reste l’autorité sur les Blueprints canoniques reçus.
+
+Il compte un Blueprint indépendamment de l’état individuel de ses slots et confirme cette réception au Planner.
+
+## Pour Quarantine
+
+Quarantine ne modifie pas les compteurs de la Matrix.
+
+La réintégration d’une correction dans le même noyau ne crée pas une nouvelle unité.
+
+---
+
+# Contrat condensé
+
+```text
+BankTarget
+→ fixe kernel_target
+
+ReadyBank
+→ fournit kernel_received
+
+DepthNeedMatrix
+→ calcule kernel_remaining
+→ exprime NEED_OPEN / NEED_SATISFIED / NEED_EXCEEDED
+
+Taxonomy
+→ fournit AVAILABLE / EMPTY
+
+KernelRotationPlanner
+→ combine les informations
+→ choisit seul le prochain Depth + Domaine
+```
+
+---
+
+# Décision proposée
+
+La DepthNeedMatrix est une matrice persistante de besoin de production, possédée opérationnellement par KernelRotationPlanner.
+
+Elle est alimentée par :
+
+```text
+BankTarget
+→ cible souhaitée
+
+ReadyBank
+→ quantité réellement reçue
+```
+
+Elle reste indépendante de Taxonomy.
+
+Taxonomy ne définit pas le besoin. Elle définit seulement la possibilité réelle de poursuivre la production.
+
+Cette architecture rend possible l’existence d’un besoin non satisfait lorsque Taxonomy devient vide, sans décider encore de la politique terminale applicable au Depth.
