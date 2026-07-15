@@ -40,14 +40,27 @@ different reconstruction, different DECEPTIVETRAP_SIGNATURE.
 **Total: 685 000 kernels × 7 = 4 795 000 questions**
 The 685 000 figure is the official target — expressed in kernels, never in questions.
 
-## Production priority
+## DepthCycle officiel — ordre de rotation (DEC-057, OFFICIAL, 2026-07-14)
+
+```
+2 → 4 → 6 → 7 → 8 → 9
+```
+
+- Depth 2 : premier Depth du cycle (active_depth=2, depth_position=0)
+- Depth 1 : refusé
+- Depth 10 : interdit dans le DepthCycle
+- La séquence `6→4→8→7→9→2→10` (ancienne "priorité prod") est invalidée par DEC-057.
+
+**Why:** DepthCycle = ordre de progression du KernelRotationPlanner. Distinct de la
+DepthNeedMatrix (kernel_target par couple) et de la priorité de remplissage métier.
+
+## Production priority (business — bank filling order, distinct du DepthCycle)
 1. Depth 6  (Solo actif + Duo + MJ intermédiaire — highest traffic)
 2. Depth 4  (Duo Novice + MJ Novice)
 3. Depth 8  (Duo Expert + Boss 40-60)
 4. Depth 7  (Solo 61-79 + Ligue Platine)
 5. Depth 9  (Boss 70-90 + Ligue Légende)
 6. Depth 2  (Solo early + Ligue Bronze)
-7. Depth 10 (Boss 100 prestige)
 
 ## Phased rollout (from spec)
 1. Minimum opérationnel
