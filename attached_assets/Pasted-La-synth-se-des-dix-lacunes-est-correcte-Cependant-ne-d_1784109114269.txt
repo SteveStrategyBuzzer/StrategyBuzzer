@@ -1,0 +1,161 @@
+La synthèse des dix lacunes est correcte.
+
+Cependant, ne demande pas quelle section traiter en premier. La prochaine étape est déjà déterminée.
+
+Nous travaillons maintenant uniquement sur :
+
+DepthNeedMatrix
+
+Puis, seulement lorsque son contrat sera fermé :
+
+DEPTH_COMPLETE_WITH_SHORTFALL
+
+Ne modifie aucun fichier.
+
+Ne sauvegarde aucun nouveau document.
+
+Ne commence aucun audit du code.
+
+Produis maintenant une proposition architecturale complète de la DepthNeedMatrix répondant exactement aux points suivants :
+
+1. Mission
+
+* Quelle responsabilité métier possède la DepthNeedMatrix ?
+* Que représente-t-elle précisément ?
+* Que ne doit-elle jamais représenter ?
+
+2. Propriété
+
+* Quel module la possède ?
+* KernelRotationPlanner la lit-il ou la possède-t-il ?
+* Taxonomy peut-elle la modifier ?
+* ReadyBank peut-elle la modifier ?
+
+3. Unité de comptage
+
+* L’unité est-elle un Blueprint canonique reçu dans ReadyBank ?
+* Le compteur porte-t-il sur le noyau complet ou sur les slots cognitifs ?
+* Un Blueprint contenant des slots FAIL compte-t-il dans la cible ?
+
+4. Clé exacte
+
+* La clé est-elle :
+  Depth + Domaine ?
+* Existe-t-il une cellule unique par couple Depth + Domaine ?
+* Général doit-il être explicitement interdit dans les clés ?
+
+5. kernel_target
+
+* D’où provient-il ?
+* Est-il fixe, configuré ou calculé ?
+* Qui peut le définir ?
+* À quel moment devient-il verrouillé pour une rotation ?
+* Peut-il changer pendant un Depth actif ?
+
+6. kernel_received
+
+* Comment est-il initialisé au premier démarrage ?
+* Comment est-il restauré après interruption ?
+* Est-il calculé à partir de ReadyBank ou uniquement conservé dans RotationState ?
+* Comment réconcilier une divergence entre ReadyBank et RotationState ?
+
+7. kernel_remaining
+
+* Confirmer la formule :
+
+# kernel_remaining
+
+## kernel_target
+
+kernel_received
+
+* Le compteur peut-il devenir négatif ?
+* Quelle réaction est obligatoire si une incohérence produit une valeur négative ?
+
+8. Mise à jour
+
+* Quel événement exact incrémente kernel_received ?
+* Confirmer que seul CURRENT_KERNEL_RECEIVED déclenche la comptabilisation.
+* Comment empêcher qu’un même Blueprint soit compté deux fois ?
+* Quelle identité est utilisée :
+  blueprint_reference,
+  kernel_code,
+  ou les deux ?
+
+9. Relation avec Taxonomy
+
+* La DepthNeedMatrix représente-t-elle le besoin de production indépendamment de la capacité des réservoirs ?
+* Taxonomy transmet-elle uniquement AVAILABLE ou EMPTY ?
+* Que fait le Planner lorsque :
+  kernel_remaining > 0
+  mais
+  reservoir_status = EMPTY ?
+
+10. États d’une cellule
+    Définir précisément les états nécessaires, leurs conditions d’entrée et de sortie.
+
+Par exemple, sans les considérer encore comme définitifs :
+
+PENDING
+SELECTABLE
+ACTIVE
+TARGET_COMPLETE
+RESERVOIR_EMPTY
+EMPTY_BEFORE_TARGET
+
+11. Versionnement
+
+* Comment la Matrix est-elle versionnée ?
+* Une rotation active conserve-t-elle la version avec laquelle elle a commencé ?
+* Que se passe-t-il si une nouvelle configuration de cible est publiée pendant un Depth actif ?
+* La nouvelle cible s’applique-t-elle immédiatement ou uniquement à une prochaine rotation ?
+
+12. Persistance
+
+* Où les valeurs sont-elles conservées ?
+* Quelles valeurs appartiennent à la configuration ?
+* Quelles valeurs appartiennent au RotationState ?
+* Quelles mises à jour doivent être atomiques ?
+
+13. Cas limites
+    Traiter au minimum :
+
+* kernel_target absent ;
+* kernel_target égal à zéro ;
+* kernel_target négatif ;
+* domaine inconnu ;
+* domaine Général ;
+* Depth interdit ;
+* ReadyBank contient déjà plus de noyaux que la cible ;
+* même Blueprint reçu deux fois ;
+* RotationState perdu ;
+* divergence ReadyBank / RotationState ;
+* réservoir EMPTY avant cible ;
+* cible modifiée pendant une rotation.
+
+14. Sortie vers KernelRotationPlanner
+    Définir exactement les informations que le Planner reçoit pour chaque couple :
+
+depth
+domain
+kernel_target
+kernel_received
+kernel_remaining
+cell_state
+matrix_version
+
+Ne présume pas encore que DEPTH_COMPLETE_WITH_SHORTFALL existe obligatoirement.
+
+Le contrat de la DepthNeedMatrix doit d’abord trancher cette question centrale :
+
+La Matrix représente-t-elle :
+
+A. une cible externe de production, indépendante de la quantité réellement disponible dans Taxonomy ;
+
+ou
+
+B. le nombre réel d’unités encore disponibles dans les réservoirs Taxonomy ?
+
+Présente une seule architecture recommandée, avec sa justification et ses conséquences sur KernelRotationPlanner, Taxonomy et ReadyBank.
+
+Aucune écriture documentaire avant validation.
