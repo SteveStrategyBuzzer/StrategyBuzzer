@@ -1,0 +1,364 @@
+Oui. Tes corrections rendent maintenant trois décisions complètes et la quatrième seulement partiellement complète. Elles corrigent aussi une erreur importante : la DepthNeedMatrix ne se contente pas d’exposer des chiffres, elle exécute la logique de rotation des besoins en intégrant immédiatement les informations de Taxonomy.
+
+Mécanisme que je comprends maintenant
+KernelRotationPlanner
+↓
+crée le KernelBlueprint canonique vide
+↓
+demande à DepthNeedMatrix le besoin actuel
+↓
+DepthNeedMatrix combine :
+- besoins du gameplay par Depth
+- position de rotation
+- domaines déjà déclarés vides par Taxonomy
+↓
+DepthNeedMatrix fournit le prochain Depth + Domaine
+↓
+KernelRotationPlanner écrit depth et domain
+↓
+le Blueprint quitte KernelRotationPlanner
+
+Pendant le traitement externe du Blueprint, Taxonomy transmet immédiatement à la DepthNeedMatrix les informations de réservoir nécessaires pour préparer les rotations futures.
+
+Lorsque ReadyBank envoie CURRENT_KERNEL_RECEIVED, le Planner est seulement autorisé à commencer le Blueprint suivant.
+
+1. La DepthNeedMatrix expose-t-elle ou exécute-t-elle la rotation ?
+Décision maintenant claire
+
+La DepthNeedMatrix exécute directement la rotation des besoins.
+
+Elle ne fournit pas simplement une liste passive au Planner.
+
+Elle possède et fait progresser :
+
+les besoins de questions du gameplay par Depth ;
+la progression entre les domaines ;
+la progression entre les Depths ;
+les domaines que Taxonomy a déclarés vides ;
+la position courante de la rotation ;
+le prochain couple Depth + Domaine devant être utilisé.
+
+La responsabilité exacte devient :
+
+DepthNeedMatrix
+→ calcule et fournit le prochain besoin Depth + Domaine
+KernelRotationPlanner
+→ crée le Blueprint
+→ demande le prochain besoin
+→ écrit le résultat dans depth et domain
+
+Le Planner ne doit donc pas refaire lui-même l’algorithme de sélection déjà exécuté par la Matrix.
+
+Formulation à corriger
+
+Il ne faut plus écrire seulement :
+
+KernelRotationPlanner consulte les données de la Matrix.
+
+Il faut écrire :
+
+Après la création du Blueprint canonique, KernelRotationPlanner demande à la DepthNeedMatrix d’exécuter la rotation courante et de lui fournir le prochain couple Depth + Domaine requis.
+
+2. Relation entre Taxonomy et DepthNeedMatrix
+Décision maintenant claire
+
+Taxonomy transmet ses informations de réservoir immédiatement, pendant son propre traitement.
+
+Elle n’attend pas CURRENT_KERNEL_RECEIVED.
+
+Exemple conceptuel :
+
+Taxonomy
+→ Domaine Histoire vide pour Depth 4
+↓
+DepthNeedMatrix enregistre immédiatement :
+Depth 4 + Histoire = vide
+
+La prochaine fois que KernelRotationPlanner demande un couple, la Matrix sait déjà qu’elle ne doit plus produire :
+
+Depth 4 + Histoire
+Ce que Taxonomy doit transmettre
+
+L’information métier réellement nécessaire est :
+
+Depth concerné
+Domaine concerné
+Réservoir vide : oui ou non
+
+Il n’est pas nécessaire d’inventer maintenant :
+
+taxonomy_state_reference
+observed_at
+
+Ces éléments techniques pourront être décidés pendant la spécification de Taxonomy ou lors de la persistance technique.
+
+Pour le contrat actuel, il suffit de réserver une communication intelligible par la machine, par exemple conceptuellement :
+
+DEPTH_DOMAIN_RESERVOIR_EMPTY
+depth = 4
+domain = Histoire
+
+Le nom exact du signal n’est pas encore verrouillé.
+
+Tous les domaines vides
+
+La DepthNeedMatrix conserve l’état des huit domaines du Depth courant.
+
+Géographie = vide ou non
+Histoire = vide ou non
+Faune = vide ou non
+Art = vide ou non
+Sport = vide ou non
+Cinéma = vide ou non
+Cuisine = vide ou non
+Science = vide ou non
+
+Lorsque les huit domaines sont déclarés vides, la Matrix sait que ce Depth ne peut plus produire.
+
+3. Rôle exact de CURRENT_KERNEL_RECEIVED
+Décision maintenant claire
+
+CURRENT_KERNEL_RECEIVED ne transporte pas les mises à jour Taxonomy.
+
+Ces mises à jour ont déjà été communiquées à la DepthNeedMatrix.
+
+Le signal signifie uniquement :
+
+Le Blueprint courant a terminé son parcours externe et a été reçu dans ReadyBank. KernelRotationPlanner peut maintenant créer le Blueprint suivant.
+
+Mécanisme :
+
+Blueprint actif
+↓
+traitement par les moteurs externes
+↓
+ReadyBank reçoit le Blueprint
+↓
+CURRENT_KERNEL_RECEIVED
+↓
+le Blueprint courant n’empêche plus la création suivante
+↓
+KernelRotationPlanner crée le Blueprint suivant
+↓
+DepthNeedMatrix exécute la prochaine rotation
+
+Il faut donc supprimer ou corriger les formulations disant que CURRENT_KERNEL_RECEIVED :
+
+reçoit l’état des réservoirs Taxonomy ;
+attend que Taxonomy mette à jour ses domaines ;
+détermine le prochain domaine ;
+déclenche lui-même un changement de Depth.
+
+Le signal déclenche seulement la prochaine exécution du Planner.
+
+La DepthNeedMatrix décide ensuite du besoin à attribuer.
+
+4. Identification et suivi du Blueprint actif
+Décision métier maintenant claire
+
+Le système produit un seul Blueprint canonique à la fois.
+
+Blueprint courant non reçu dans ReadyBank
+↓
+aucun autre Blueprint ne peut être créé
+CURRENT_KERNEL_RECEIVED
+↓
+le Blueprint courant est considéré comme ayant terminé le flow
+↓
+le prochain Blueprint peut être créé
+
+La formulation :
+
+libérer la référence du Blueprint actif
+
+doit être supprimée, car elle donne l’impression qu’une référence est détachée ou supprimée.
+
+La formulation correcte est :
+
+Après un CURRENT_KERNEL_RECEIVED valide, KernelRotationPlanner ferme l’état actif du Blueprint courant et autorise la création du Blueprint suivant.
+
+Vide technique restant
+
+Une identité demeure nécessaire pour vérifier que le signal ReadyBank concerne bien le Blueprint attendu.
+
+Mais son nom et sa forme ne sont pas encore décidés.
+
+Cela peut éventuellement être :
+
+une référence technique du Blueprint ;
+une identité interne du Blueprint ;
+une autre clé persistante.
+
+Il ne faut pas imposer maintenant le nom :
+
+active_blueprint_reference
+
+La nécessité métier est seulement :
+
+KernelRotationPlanner doit pouvoir reconnaître que CURRENT_KERNEL_RECEIVED concerne le Blueprint canonique actuellement attendu.
+
+5. Unité comptabilisée après CURRENT_KERNEL_RECEIVED
+Décision encore incomplète
+
+Ce point n’est pas entièrement fermé dans les corrections.
+
+Nous savons que CURRENT_KERNEL_RECEIVED confirme :
+
+un KernelBlueprint canonique terminé dans le flow
+
+Mais la DepthNeedMatrix gère des besoins de questions gameplay, tandis qu’un Blueprint contient plusieurs blocs cognitifs.
+
+Il faut donc encore décider si la Matrix comptabilise :
+
+Possibilité A — un noyau
+1 Blueprint reçu
+=
+1 noyau produit
+
+Puis les besoins gameplay sont convertis ailleurs en nombre de noyaux.
+
+Possibilité B — les cognitifs du Blueprint
+1 Blueprint reçu
+=
+plusieurs questions produites
+
+La Matrix déduit alors du besoin le nombre de blocs cognitifs contenus dans ce Blueprint.
+
+Possibilité C — seulement les blocs finalement exploitables
+
+Cette possibilité semble moins cohérente avec la décision antérieure selon laquelle ReadyBank confirme le Blueprint même avec des slots FAIL.
+
+Ce qui est certain
+
+La réception du même Blueprint ne peut être comptée qu’une fois.
+
+Mais la valeur exacte soustraite au besoin gameplay n’est pas encore définie.
+
+C’est le vide principal qui reste sur ce point.
+
+6. Déclaration officielle de la fin d’un Depth
+Décision maintenant beaucoup plus claire
+
+Un besoin gameplay satisfait ne signifie pas automatiquement que le Depth doit cesser immédiatement de produire.
+
+Ton exemple indique :
+
+les questions manquantes du Depth sont comblées
+↓
+mais la rotation continue
+↓
+jusqu’à ce que les réservoirs de tous les domaines soient vides
+
+Donc la règle précédente était incorrecte :
+
+besoin satisfait
+OU
+domaine vide
+→ domaine fermé
+
+La règle réelle est plutôt :
+
+Taxonomy déclare un domaine vide
+↓
+ce domaine est retiré de la rotation du Depth
+
+Puis :
+
+les huit domaines du Depth sont vides
+↓
+le Depth est terminé
+
+La satisfaction du besoin gameplay reste importante pour déterminer les besoins globaux de production, mais elle ne ferme pas à elle seule les réservoirs Taxonomy.
+
+Conséquence
+
+Même si la DepthNeedMatrix indique que le nombre de questions manquantes est atteint :
+
+la rotation du Depth peut continuer
+
+tant que Taxonomy possède encore des domaines ayant des possibilités de création.
+
+Fin globale de la production
+
+La fin générale n’est pas obligatoirement :
+
+fin de Depth 9
+
+Elle dépend des besoins gameplay conservés par la DepthNeedMatrix.
+
+Le dernier besoin à combler pourrait se trouver, par exemple, au Depth 6 ou au Depth 8.
+
+Lorsque le dernier besoin gameplay est comblé, le système continue néanmoins le Depth actif jusqu’à épuisement de tous ses domaines.
+
+Ensuite, la production intellectuelle peut être considérée terminée, sans obligation artificielle de terminer au Depth 9.
+
+Vide restant
+
+Il reste à formaliser l’algorithme exact déterminant :
+
+quel Depth est sélectionné en fonction des besoins gameplay ;
+si le DepthCycle 2 → 4 → 6 → 7 → 8 → 9 constitue toujours un ordre strict ;
+ou si la Matrix peut revenir vers un Depth dont le besoin gameplay est encore supérieur.
+
+Ton exemple du « dernier Depth à combler = Depth 6 » exige que cette relation soit précisée.
+
+Corrections à appliquer aux douze pages
+À conserver
+Blueprint créé avant la DepthNeedMatrix ;
+un seul Blueprint à la fois ;
+depth et domain écrits uniquement par KernelRotationPlanner ;
+DomainCycle ordonné ;
+Général interdit ;
+Taxonomy déclare les domaines vides ;
+la Matrix prépare le prochain couple ;
+CURRENT_KERNEL_RECEIVED autorise le Blueprint suivant.
+À modifier
+Ancienne formulation
+La Matrix expose le besoin.
+KernelRotationPlanner prend la décision.
+Nouvelle formulation
+La DepthNeedMatrix exécute la rotation des besoins
+et fournit le prochain couple Depth + Domaine.
+
+KernelRotationPlanner applique ce résultat au Blueprint canonique.
+Ancienne formulation
+Besoin satisfait
+OU
+Taxonomy EMPTY
+→ couple non sélectionnable
+Nouvelle formulation
+Taxonomy déclare le domaine vide
+→ domaine retiré de la rotation du Depth
+
+Le besoin gameplay satisfait ne suffit pas, à lui seul, à fermer le domaine.
+
+Ancienne formulation
+CURRENT_KERNEL_RECEIVED
+→ Taxonomy met à jour les réservoirs
+→ la Matrix choisit
+Nouvelle formulation
+Taxonomy met immédiatement à jour la DepthNeedMatrix
+pendant le traitement du Blueprint.
+
+Plus tard :
+
+CURRENT_KERNEL_RECEIVED
+→ autorise KernelRotationPlanner à créer le Blueprint suivant
+→ la DepthNeedMatrix exécute alors la prochaine rotation.
+Ancienne formulation
+Après Depth 9 :
+ROTATION_COMPLETE
+Nouvelle formulation
+La fin globale dépend des besoins gameplay
+gérés par la DepthNeedMatrix.
+
+Le Depth actif doit toutefois terminer sa rotation
+jusqu’à ce que ses huit domaines soient déclarés vides.
+Verdict sur les quatre décisions
+Décision	État
+La Matrix expose ou exécute la rotation	Claire : elle exécute la rotation
+Unité comptabilisée après ReadyBank	Encore à définir précisément
+Suivi du Blueprint actif	Mécanisme métier clair, identité technique à nommer
+Fin officielle d’un Depth	Claire : les huit domaines doivent être vides
+
+Le document corrigé apporte donc une architecture beaucoup plus cohérente. Le seul vide métier majeur est maintenant la conversion entre un Blueprint reçu et les besoins de questions gameplay gérés par la DepthNeedMatrix.
