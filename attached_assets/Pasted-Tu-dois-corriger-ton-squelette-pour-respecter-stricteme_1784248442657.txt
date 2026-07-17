@@ -1,0 +1,470 @@
+Tu dois corriger ton squelette pour respecter strictement ce mécanisme qui est que chaque titre est un entité distincte avec ces propres mécanismes qui doivent soit remplir ou soit vérifier dans le BluePrint :
+
+KernelRotationPlanner
+↓
+création du KernelBlueprint canonique
+↓
+DepthNeedMatrix exécute la rotation
+↓
+sélection du besoin Depth + Domaine
+↓
+écriture de depth et domain
+
+Aucune étape ne doit être déplacée.
+
+## 1. KernelRotationPlanner reçoit un déclencheur valide
+
+Le KernelRotationPlanner démarre dans seulement deux situations :
+
+* première exécution autorisée extérieurement ;
+* `CURRENT_KERNEL_RECEIVED` valide pour le Blueprint précédent.
+
+Avant toute création, il identifie uniquement :
+
+* qu’aucun Blueprint canonique actif n’existe déjà ;
+* que la production peut encore continuer.
+
+Cette vérification préalable ne sélectionne pas encore le prochain `Depth + Domaine`.
+
+Elle sert seulement à empêcher :
+
+* deux Blueprints actifs ;
+* une création après la fin de la production ;
+* une création sans déclencheur valide.
+
+## 2. Création du KernelBlueprint canonique
+
+Le KernelRotationPlanner crée d’abord le nouveau KernelBlueprint canonique.
+
+Cette création doit obligatoirement arriver avant l’exécution de la DepthNeedMatrix.
+
+À ce moment, la structure complète du Blueprint existe déjà, mais ses valeurs métier sont encore vides :
+
+```text
+depth = vide
+domain = vide
+subdomain_active = vide
+subject_active = vide
+dominant_idea_active = vide
+kernel_code = vide 
+
+Espace Création;
+
+QCM_RECOGNITION 
+→ question = vide 
+→ réponse = vide 
+→ SV = vide 
+→ traductions = model de chaque autres langues
+FR 
+→ question = vide 
+→ réponse = vide 
+→ SV = vide 
+etc
+
+
+QCM_REASONING 
+→ question = vide 
+→ réponse = vide 
+→ SV = vide 
+→ traductions = model de chaque autres langues
+FR 
+→ question = vide 
+→ réponse = vide 
+→ SV = vide 
+etc
+
+QCM_DECEPTIVE_TRAP 
+→ question = vide 
+→ réponse = vide 
+→ SV = vide 
+→ traductions = model de chaque autres langues
+FR 
+→ question = vide 
+→ réponse = vide 
+→ SV = vide 
+etc
+
+TF_RECOGNITION_TRUE 
+→ question = vide 
+→ réponse = vide 
+→ SV = vide 
+→ traductions = model de chaque autres langues
+FR 
+→ question = vide 
+→ réponse = vide 
+→ SV = vide 
+etc
+
+TF_RECOGNITION_FALSE 
+→ question = vide 
+→ réponse = vide 
+→ SV = vide 
+→ traductions = model de chaque autres langues
+FR 
+→ question = vide 
+→ réponse = vide 
+→ SV = vide 
+etc
+
+TF_REASONING_TRUE 
+→ question = vide 
+→ réponse = vide 
+→ SV = vide 
+→ traductions = model de chaque autres langues
+FR 
+→ question = vide 
+→ réponse = vide 
+→ SV = vide 
+etc
+
+TF_REASONING_FALSE 
+→ question = vide 
+→ réponse = vide 
+→ SV = vide 
+→ traductions = model de chaque autres langues
+FR 
+→ question = vide 
+→ réponse = vide 
+→ SV = vide 
+
+```
+
+Les blocs permanents de création existent également déjà, avec leurs questions, réponses, SV et modèles de langues vides.
+
+Le Blueprint créé est :
+
+* le seul Blueprint de cette rotation ;
+* le Blueprint canonique qui subira ensuite tout le flow ;
+* jamais un objet temporaire ;
+* jamais un candidat remplaçable ;
+* jamais une copie provisoire.
+
+Le Planner doit pouvoir reconnaître ce Blueprint comme le Blueprint actif attendu, mais le nom et le format exacts de cette identité technique restent à verrouiller.
+
+## 3. DepthNeedMatrix exécute la rotation
+
+Après la création du Blueprint, KernelRotationPlanner demande à la DepthNeedMatrix d’exécuter la rotation courante.
+
+La DepthNeedMatrix ne fournit pas simplement une liste passive.
+
+Elle possède la logique des besoins et détermine le prochain besoin à servir.
+
+Elle combine au minimum :
+
+* les besoins de questions gameplay par Depth ;
+* la quantité produite pour ces besoins ;
+* la quantité encore nécessaire ;
+* la position actuelle dans le DomainCycle ;
+* les domaines déclarés vides par Taxonomy ;
+* la progression entre les Depths.
+
+Taxonomy met directement à jour la DepthNeedMatrix lorsqu’un domaine est vide pour un Depth.
+
+Exemple conceptuel :
+
+```text
+Depth 4
+Domaine Histoire
+réservoir Taxonomy vide
+```
+
+La DepthNeedMatrix enregistre alors que :
+
+```text
+Depth 4 + Histoire
+ne doit plus être sélectionné
+```
+
+KernelRotationPlanner ne doit pas recevoir cette information pour ensuite la recopier dans la Matrix.
+
+La connexion conceptuelle est :
+
+```text
+Taxonomy
+→ information de domaine vide
+→ DepthNeedMatrix
+```
+
+La DepthNeedMatrix doit donc déjà connaître les domaines vides lorsque le Planner lui demande d’exécuter la prochaine rotation.
+
+## 4. Sélection du besoin Depth + Domaine
+
+La DepthNeedMatrix exécute la rotation et retourne un seul résultat :
+
+```text
+prochain Depth
++
+prochain Domaine
+```
+
+Elle doit respecter le DomainCycle officiel :
+
+```text
+Géographie
+↓
+Histoire
+↓
+Faune
+↓
+Art
+↓
+Sport
+↓
+Cinéma
+↓
+Cuisine
+↓
+Science
+↓
+retour à Géographie si nécessaire
+```
+
+`Général` est interdit.
+
+Elle ne doit pas sélectionner un domaine déjà déclaré vide par Taxonomy.
+
+Lorsqu’un domaine est vide, elle passe au domaine suivant.
+
+Lorsqu’elle a reçu les huit domaines vides pour le Depth courant, elle passe au prochain Depth.
+
+Le DepthCycle officiel est :
+
+```text
+2
+↓
+4
+↓
+6
+↓
+7
+↓
+8
+↓
+9
+```
+
+Cependant, la fin générale de la production n’est pas automatiquement liée au Depth 9.
+
+La production dépend des besoins gameplay conservés dans la DepthNeedMatrix.
+
+La règle comprise actuellement est :
+
+```text
+dernier besoin gameplay comblé
++
+Depth actif terminé avec ses huit domaines vides
+↓
+fin de la production
+```
+
+L’algorithme exact permettant de déterminer quel Depth possède encore un besoin gameplay reste à verrouiller.
+
+La DepthNeedMatrix ne doit jamais créer le Blueprint.
+
+Elle ne doit jamais écrire directement dans le Blueprint.
+
+Elle retourne seulement le besoin sélectionné.
+
+## 5. Écriture de depth et domain
+
+Lorsque la DepthNeedMatrix a fourni le couple sélectionné, KernelRotationPlanner écrit :
+
+```text
+depth
+domain
+```
+
+dans le Blueprint canonique déjà créé.
+
+KernelRotationPlanner est l’unique propriétaire de ces deux écritures.
+
+L’opération doit être atomique :
+
+```text
+association du besoin au Blueprint
++
+écriture de depth
++
+écriture de domain
++
+persistance de la position de rotation
+```
+
+Il ne doit jamais exister :
+
+```text
+depth rempli
++
+domain vide
+```
+
+ou :
+
+```text
+domain rempli
++
+depth vide
+```
+
+Avant l’écriture, le Planner doit vérifier :
+
+* que `depth` appartient aux valeurs autorisées ;
+* que `domain` appartient au DomainCycle officiel ;
+* que `domain` n’est pas `Général` ;
+* que le couple provient bien de la DepthNeedMatrix ;
+* que le domaine n’est pas déclaré vide ;
+* que `depth` et `domain` sont encore vides dans le Blueprint.
+
+Après l’écriture :
+
+```text
+depth
+domain
+```
+
+deviennent immuables pour ce Blueprint.
+
+Le même Blueprint ne peut pas être réutilisé avec un autre couple.
+
+## 6. Fin exacte de la responsabilité du Planner
+
+La sortie du KernelRotationPlanner est uniquement :
+
+```text
+KernelBlueprint canonique
++
+depth rempli
++
+domain rempli
+```
+
+À cet instant :
+
+```text
+subdomain_active = vide
+subject_active = vide
+dominant_idea_active = vide
+kernel_code = vide
+```
+
+Le KernelRotationPlanner s’arrête ici pour cette exécution.
+
+Il ne doit pas :
+
+* appeler directement Taxonomy ;
+* exécuter Taxonomy ;
+* appeler QuestionIntent ;
+* générer `kernel_code` ;
+* dispatcher Phase 1 ;
+* dispatcher les validations ;
+* piloter ReadyBank.
+
+Il produit seulement le Blueprint prêt pour le moteur suivant.
+
+Il conserve ensuite uniquement l’état nécessaire pour attendre le prochain :
+
+```text
+CURRENT_KERNEL_RECEIVED
+```
+
+## 7. Correction attendue dans ton code
+
+Ton code doit suivre cette structure conceptuelle :
+
+```php
+final class KernelRotationPlanner
+{
+    public function createNextKernel(): KernelBlueprint
+    {
+        $this->assertTriggerIsValid();
+        $this->assertNoActiveBlueprint();
+        $this->assertProductionCanContinue();
+
+        // 1. Le Blueprint est créé en premier.
+        $blueprint = $this->blueprintFactory
+            ->createCanonicalEmpty();
+
+        // 2. La DepthNeedMatrix exécute ensuite la rotation.
+        $need = $this->depthNeedMatrix
+            ->executeRotationAndProvideNextNeed();
+
+        // 3. Le Planner écrit uniquement depth et domain.
+        $blueprint->assignDepthAndDomain(
+            depth: $need->depth,
+            domain: $need->domain,
+        );
+
+        // 4. Persister le Blueprint actif et la position.
+        $this->rotationState->registerActiveBlueprint(
+            blueprint: $blueprint,
+            selectedNeed: $need,
+        );
+
+        // 5. Sortie du module.
+        return $blueprint;
+    }
+}
+```
+
+Cette structure est seulement une représentation du contrat.
+
+Elle ne doit pas encore inventer :
+
+* le format de l’identité technique du Blueprint ;
+* l’unité exacte retirée des besoins après `CURRENT_KERNEL_RECEIVED` ;
+* l’algorithme complet de sélection des Depths ;
+* la condition technique définitive de fin globale.
+
+## 8. Éléments à supprimer de ton squelette actuel
+
+Supprime de KernelRotationPlanner :
+
+```php
+TaxonomyInterface
+QuestionIntentInterface
+PipelineInterface
+```
+
+Supprime aussi les appels :
+
+```php
+$taxonomy->buildAndValidate(...)
+$questionIntent->encode(...)
+$pipeline->dispatch(...)
+```
+
+Supprime toute référence à :
+
+```text
+BankTarget
+```
+
+Supprime également le mécanisme :
+
+```php
+KernelRotationPlanner
+→ reçoit le statut Taxonomy
+→ met lui-même DepthNeedMatrix à jour
+```
+
+La DepthNeedMatrix reçoit directement l’information utile de Taxonomy.
+
+## Résumé obligatoire
+
+```text
+KernelRotationPlanner
+↓
+crée le Blueprint canonique vide
+↓
+DepthNeedMatrix exécute la rotation des besoins
+↓
+DepthNeedMatrix retourne un seul besoin Depth + Domaine
+↓
+KernelRotationPlanner écrit depth et domain
+↓
+fin de la responsabilité du module
+```
+
+Corrige ton squelette uniquement selon cette frontière.
+
+Ne développe pas encore Taxonomy, QuestionIntent, les phases ou ReadyBank.
