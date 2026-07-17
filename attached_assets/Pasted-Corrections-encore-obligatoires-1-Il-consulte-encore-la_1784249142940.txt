@@ -1,0 +1,387 @@
+Corrections encore obligatoires
+1. Il consulte encore la Matrix avant de créer le Blueprint
+
+Dans createNextKernel(), Replit exécute :
+
+$this->assertProductionCanContinue();
+
+avant :
+
+$blueprint = $this->blueprintFactory
+    ->createCanonicalEmpty();
+
+Or assertProductionCanContinue() appelle :
+
+$this->depthNeedMatrix->isProductionComplete()
+
+Cela constitue déjà une consultation de la DepthNeedMatrix avant la création du Blueprint.
+
+C’est contraire à l’ordre verrouillé :
+
+création du Blueprint
+↓
+DepthNeedMatrix
+Correction
+
+Avant la création, le Planner peut uniquement vérifier :
+
+déclencheur valide
++
+aucun Blueprint actif
+
+Il ne doit pas demander à la Matrix de sélectionner, calculer ou analyser la production avant la création.
+
+Le mécanisme doit devenir :
+
+public function createNextKernel(): KernelBlueprint
+{
+    $this->assertTriggerIsValid();
+    $this->assertNoActiveBlueprint();
+
+    // 1. Création en premier.
+    $blueprint = $this->blueprintFactory
+        ->createCanonicalEmpty();
+
+    // 2. Ensuite seulement, la Matrix exécute la rotation.
+    $need = $this->depthNeedMatrix
+        ->executeRotationAndProvideNextNeed();
+
+    // 3. Si aucun besoin n’est fourni, traiter le Blueprint
+    // créé selon une règle encore à verrouiller.
+}
+
+Mais cela révèle un vide important : que devient le Blueprint déjà créé si la Matrix répond qu’aucun besoin n’existe ?
+
+Cette règle doit être définie avant le code. Il ne faut pas contourner le problème en consultant la Matrix avant la création.
+
+2. createNextKernel() ne doit pas vérifier lui-même un déclencheur abstrait
+
+Replit conserve :
+
+$this->assertTriggerIsValid();
+
+mais aucun déclencheur concret n’est transmis à la méthode.
+
+Cela permettrait techniquement d’appeler :
+
+createNextKernel()
+
+depuis n’importe quel endroit.
+
+La distinction officielle est pourtant précise :
+
+première création
+→ autorisation extérieure unique
+créations suivantes
+→ CURRENT_KERNEL_RECEIVED
+Structure plus cohérente
+public function startInitialRotation(): KernelBlueprint
+{
+    $this->assertInitialStartAllowed();
+    $this->assertNoActiveBlueprint();
+
+    return $this->createCanonicalBlueprintAndAssignNeed();
+}
+public function onCurrentKernelReceived(
+    CurrentKernelReceived $signal
+): KernelBlueprint {
+    $this->verifyExpectedKernel($signal);
+    $this->ensureSignalNotAlreadyProcessed($signal);
+    $this->closeCurrentBlueprintState($signal);
+
+    return $this->createCanonicalBlueprintAndAssignNeed();
+}
+private function createCanonicalBlueprintAndAssignNeed(): KernelBlueprint
+{
+    $blueprint = $this->blueprintFactory
+        ->createCanonicalEmpty();
+
+    $need = $this->depthNeedMatrix
+        ->executeRotationAndProvideNextNeed();
+
+    $blueprint->assignDepthAndDomain(
+        depth: $need->depth,
+        domain: $need->domain,
+    );
+
+    $this->rotationState->registerActiveBlueprint(
+        blueprint: $blueprint,
+        selectedNeed: $need,
+    );
+
+    return $blueprint;
+}
+
+Ainsi, la source du déclenchement n’est jamais ambiguë.
+
+3. Replit redéfinit le KernelBlueprint dans le mauvais module
+
+Il inclut dans son squelette :
+
+final class KernelBlueprint
+
+et :
+
+final class CognitiveSlot
+
+Cela dépasse le périmètre de 02_KernelRotationPlanner.
+
+Le KernelBlueprint est le contrat d’entrée déjà construit par le module précédent. Le Planner doit l’utiliser, pas le redéfinir.
+
+Dans le code du Planner, il faut uniquement avoir une dépendance vers sa création :
+
+KernelBlueprintFactory
+
+ou vers le mécanisme officiellement verrouillé dans 01_KernelBlueprint.
+
+La structure cognitive complète peut être rappelée comme précondition du contrat, mais ne doit pas être réimplantée dans le fichier du Planner.
+
+Correction
+
+Supprimer du squelette 02_KernelRotationPlanner :
+
+final class KernelBlueprint
+final class CognitiveSlot
+
+Conserver seulement :
+
+$blueprint = $this->blueprintFactory
+    ->createCanonicalEmpty();
+
+Le Planner reçoit alors un Blueprint dont la structure complète existe déjà.
+
+4. Les dix langues ne sont pas un vide du Planner
+
+Replit ajoute :
+
+OUVERT_5 — liste exacte des dix langues
+
+Ce point n’appartient pas au KernelRotationPlanner.
+
+Le Planner ne crée ni ne remplit les modèles linguistiques. Il crée le Blueprint selon son contrat déjà défini.
+
+La liste des langues appartient :
+
+au KernelBlueprint pour la structure permanente ;
+aux phases de traduction pour leur remplissage.
+
+Elle ne doit pas apparaître dans les points ouverts de 02_KernelRotationPlanner.
+
+5. CURRENT_KERNEL_RECEIVED met encore directement à jour les besoins sans unité définie
+
+Replit exécute déjà :
+
+$this->depthNeedMatrix
+    ->registerBlueprintReceived($blueprintIdentity);
+
+alors qu’il reconnaît lui-même que l’unité comptabilisée est ouverte :
+
+A — un noyau
+B — plusieurs cognitifs
+C — cognitifs exploitables
+
+Il ne faut pas figer une méthode nommée registerBlueprintReceived() tant que nous ne savons pas ce que la Matrix doit réellement comptabiliser.
+
+Ce qui est certain
+
+CURRENT_KERNEL_RECEIVED :
+
+confirme que le Blueprint courant est arrivé dans ReadyBank ;
+ferme son état actif ;
+autorise la création du Blueprint suivant.
+Ce qui n’est pas encore certain
+
+Il reste à déterminer ce que cette réception communique à la Matrix concernant les besoins gameplay.
+
+La méthode doit donc rester conceptuelle, par exemple :
+
+$this->depthNeedMatrix
+    ->registerCompletedProduction($productionResult);
+
+Le type ProductionResult devra être défini après la décision sur l’unité.
+
+6. La Matrix ne doit pas recevoir seulement une identité de Blueprint
+
+Le code actuel propose :
+
+registerBlueprintReceived(mixed $blueprintIdentity)
+
+Une identité ne suffit pas à mettre à jour des besoins par Depth.
+
+La Matrix devra au minimum savoir :
+
+quel Depth a été produit ;
+quel domaine a été produit ;
+quelle quantité officielle a été ajoutée au besoin gameplay.
+
+Donc le futur contrat devra ressembler conceptuellement à :
+
+final class CompletedProduction
+{
+    public int $depth;
+    public string $domain;
+    public mixed $countedUnit;
+    public mixed $blueprintIdentity;
+}
+
+La forme exacte attend la fermeture de l’unité comptabilisée.
+
+7. La fin de production reste trop tôt transformée en code
+
+Replit définit déjà :
+
+public function isProductionComplete(): bool
+
+avec cette règle :
+
+dernier besoin gameplay comblé
++
+Depth actif terminé
+
+Le principe est compris, mais son algorithme exact n’est pas encore verrouillé.
+
+Il manque notamment :
+
+comment la Matrix détermine le dernier besoin gameplay ;
+si elle peut revenir vers un Depth précédemment parcouru ;
+comment elle choisit le prochain Depth demandé ;
+ce qu’elle retourne après avoir créé le Blueprint si aucun besoin n’existe.
+
+La méthode peut être réservée comme contrat, mais elle ne doit pas être considérée implantable.
+
+8. Le signal Taxonomy peut être simplifié
+
+Le code propose :
+
+onTaxonomyDomainEmpty(
+    int $depth,
+    string $domain
+)
+
+Cette forme correspond bien au besoin métier actuel :
+
+Taxonomy
+→ ce domaine est vide pour ce Depth
+→ DepthNeedMatrix
+
+Il n’est pas nécessaire d’ajouter maintenant :
+
+observed_at ;
+taxonomy_state_reference ;
+un état AVAILABLE ;
+une réalimentation.
+
+Le contrat minimal peut rester :
+
+public function markDomainEmpty(
+    int $depth,
+    string $domain
+): void;
+
+La Matrix compte ensuite les domaines vides du Depth.
+
+Lorsque les huit domaines sont vides, elle ferme ce Depth.
+
+Squelette corrigé attendu
+final class KernelRotationPlanner
+{
+    public function __construct(
+        private readonly KernelBlueprintFactory $blueprintFactory,
+        private readonly DepthNeedMatrix $depthNeedMatrix,
+        private readonly RotationStateStore $rotationState,
+    ) {}
+
+    public function startInitialRotation(): KernelBlueprint
+    {
+        $this->assertInitialStartAllowed();
+        $this->assertNoActiveBlueprint();
+
+        return $this->createAndFillRotationContext();
+    }
+
+    public function onCurrentKernelReceived(
+        CurrentKernelReceived $signal
+    ): KernelBlueprint {
+        $this->verifyExpectedCurrentKernel($signal);
+        $this->ensureNotAlreadyProcessed($signal);
+
+        /*
+         * Ferme le Blueprint courant et autorise le suivant.
+         * La mise à jour quantitative de la Matrix reste à définir
+         * selon l’unité officielle.
+         */
+        $this->rotationState
+            ->closeCurrentBlueprint($signal);
+
+        return $this->createAndFillRotationContext();
+    }
+
+    private function createAndFillRotationContext(): KernelBlueprint
+    {
+        /*
+         * 1. Le Blueprint existe en premier.
+         */
+        $blueprint = $this->blueprintFactory
+            ->createCanonicalEmpty();
+
+        /*
+         * 2. Ensuite seulement, la Matrix exécute sa rotation.
+         */
+        $need = $this->depthNeedMatrix
+            ->executeRotationAndProvideNextNeed();
+
+        /*
+         * 3. Le Planner écrit exclusivement ses deux slots.
+         */
+        $blueprint->assignDepthAndDomain(
+            depth: $need->depth,
+            domain: $need->domain,
+        );
+
+        /*
+         * 4. Persistance du Blueprint actif.
+         */
+        $this->rotationState->registerActiveBlueprint(
+            blueprint: $blueprint,
+            selectedNeed: $need,
+        );
+
+        /*
+         * 5. Fin du module.
+         */
+        return $blueprint;
+    }
+}
+final class DepthNeedMatrix
+{
+    public function executeRotationAndProvideNextNeed(): DepthDomainNeed
+    {
+        /*
+         * Exécute :
+         * - besoins gameplay ;
+         * - rotation des domaines ;
+         * - exclusion des domaines vides ;
+         * - changement de Depth après huit domaines vides.
+         */
+    }
+
+    public function markDomainEmpty(
+        int $depth,
+        string $domain
+    ): void {
+        /*
+         * Information reçue directement de Taxonomy.
+         */
+    }
+}
+Points ouverts corrigés
+
+Il ne reste dans le périmètre immédiat que :
+
+Que se passe-t-il si la Matrix ne fournit aucun besoin après la création du Blueprint ?
+Quelle unité officielle met à jour les besoins gameplay ?
+Comment le Blueprint actif est-il identifié dans CURRENT_KERNEL_RECEIVED ?
+Comment la Matrix sélectionne-t-elle le prochain Depth selon les besoins gameplay ?
+Quelle condition exacte marque la production globale comme terminée ?
+
+Les autres points ouverts ajoutés par Replit concernent des modules futurs ou des détails qu’il a réintroduits inutilement.
