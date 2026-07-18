@@ -1,0 +1,310 @@
+REFUS — incohérences architecturales à corriger.
+
+La correction concernant le Depth 10 est acceptée, mais plusieurs éléments de ta réponse dévient de l’architecture officielle.
+
+## 1. Suppression définitive de BankTarget
+
+Tu as réintroduit BankTarget dans plusieurs formulations :
+
+* « cibles fournies par BankTarget » ;
+* « KernelRotationPlanner reçoit le DepthCycle depuis BankTarget ».
+
+C’est incorrect.
+
+BankTarget n’existe plus.
+
+La frontière correcte est :
+
+DepthNeedMatrix
+→ conserve les besoins de production par Depth
+
+KernelRotationPlanner
+→ suit le DepthCycle officiel et sélectionne le prochain couple Depth + Domaine
+
+Taxonomy
+→ fournit et épuise les réservoirs du couple actif
+
+ReadyBank
+→ confirme la réception du Blueprint canonique courant
+
+Il faut supprimer toute référence à BankTarget.
+
+## 2. DepthCycle corrigé
+
+Le DepthCycle de production devient :
+
+2
+→ 4
+→ 6
+→ 7
+→ 8
+→ 9
+→ 10
+
+Depth 10 est un Depth valide de production.
+
+KernelRotationPlanner ne connaît pas les modes de jeu.
+
+Le fait que le Depth 10 soit consommé uniquement par Solo — Intelligence ultime appartient au mapping Gameplay et ne doit créer aucun champ ou mécanisme particulier dans KernelRotationPlanner ou DepthNeedMatrix.
+
+## 3. Valeurs actuelles de la DepthNeedMatrix
+
+Les valeurs en cours d’étude sont :
+
+Depth 2  → 250 tours
+Depth 4  → 300 tours
+Depth 6  → 350 tours
+Depth 7  → 350 tours
+Depth 8  → 350 tours
+Depth 9  → 250 tours
+Depth 10 → 100 tours
+
+Statut actuel :
+
+DRAFT / UNDER_REVIEW
+
+Elles ne doivent pas encore être déclarées OFFICIAL ou VERROUILLÉES.
+
+## 4. Correction fondamentale de la définition d’un tour
+
+Tu as écrit :
+
+« Un tour est terminé lorsque les 2 000 combinaisons possibles ont toutes été produites. »
+
+Cette règle est fausse.
+
+Le calcul :
+
+8 domaines
+× 50 sujets
+× 5 idées dominantes
+====================
+
+2 000 noyaux
+
+représente uniquement une capacité maximale théorique.
+
+Les 50 sujets ne seront pas toujours remplis.
+
+Les 5 idées dominantes ne seront pas toujours toutes disponibles.
+
+Des candidats seront rejetés par KLD, KEY_STRUCTURE et les validations.
+
+Un tour de Depth est terminé exclusivement lorsque Taxonomy a transmis EMPTY pour les huit réservoirs du tour courant :
+
+Géographie = EMPTY
+Histoire = EMPTY
+Faune = EMPTY
+Art = EMPTY
+Sport = EMPTY
+Cinéma = EMPTY
+Cuisine = EMPTY
+Science = EMPTY
+
+Il n’existe aucun seuil fixe de 2 000 Blueprints pour terminer un tour.
+
+Un tour peut produire 2 000 noyaux, 1 400 noyaux, 700 noyaux ou toute autre quantité valide selon les réservoirs réellement construits.
+
+## 5. Définition correcte d’un tour
+
+Un tour complet d’un Depth signifie :
+
+activation du Depth
+↓
+ouverture d’un réservoir Taxonomy pour chacun des huit domaines
+↓
+rotation du Planner entre les domaines encore disponibles
+↓
+création d’un seul Blueprint canonique à la fois
+↓
+réception du Blueprint courant dans ReadyBank
+↓
+poursuite de la rotation
+↓
+les huit domaines deviennent EMPTY
+↓
+un tour du Depth est comptabilisé
+↓
+passage au prochain Depth requis
+
+Les domaines EMPTY sont ignorés jusqu’à la fin du tour courant.
+
+## 6. Comptabilisation de CURRENT_KERNEL_RECEIVED
+
+CURRENT_KERNEL_RECEIVED confirme exactement :
+
+# 1 Blueprint canonique reçu
+
+1 noyau reçu
+
+Il doit incrémenter de manière idempotente le compteur du couple exact :
+
+Depth + Domaine
+
+Exemple :
+
+Blueprint reçu :
+
+depth = 6
+domain = Histoire
+
+Effet :
+
+kernel_received_total[6][Histoire] += 1
+
+CURRENT_KERNEL_RECEIVED ne doit jamais incrémenter directement le compteur de tours.
+
+## 7. Comptabilisation d’un tour
+
+Le compteur de tours est incrémenté seulement lorsque :
+
+les huit domaines du Depth courant sont EMPTY
++
+aucun Blueprint du tour courant n’est encore en circulation
+
+Alors :
+
+depth_cycle_completed[depth] += 1
+
+Le nombre de tours complétés ne doit jamais être recalculé avec :
+
+kernel_received ÷ 2 000
+
+Cette division serait incorrecte, car un tour ne produit pas obligatoirement 2 000 noyaux.
+
+OUVERT_2 est donc fermé ainsi :
+
+CURRENT_KERNEL_RECEIVED
+→ incrémente le compteur de noyaux du couple Depth + Domaine
+
+8 DOMAINES EMPTY
+→ incrémente le compteur de tours du Depth
+
+## 8. Algorithme de sélection du prochain Depth
+
+OUVERT_4 peut être fermé.
+
+Pour le Depth actif :
+
+* continuer la rotation entre les domaines non EMPTY ;
+* ignorer temporairement les domaines EMPTY ;
+* ne pas changer de Depth tant que les huit domaines ne sont pas EMPTY.
+
+Lorsque les huit domaines sont EMPTY :
+
+* incrémenter cycle_completed du Depth ;
+* passer au prochain Depth du DepthCycle dont cycle_completed est inférieur à cycle_target ;
+* ignorer les Depths ayant déjà atteint leur cible ;
+* recommencer au début du DepthCycle après le Depth 10 lorsqu’il reste des besoins.
+
+Exemple :
+
+2 → 4 → 6 → 7 → 8 → 9 → 10 → 2
+
+Si Depth 2 a atteint 250 tours :
+
+4 → 6 → 7 → 8 → 9 → 10 → 4
+
+## 9. Condition de fin globale
+
+OUVERT_5 peut être fermé.
+
+Le pipeline entre en attente lorsque :
+
+pour chaque Depth :
+cycle_completed >= cycle_target
+
+*
+
+aucun Blueprint canonique n’est encore en circulation
+
+Comme un cycle n’est comptabilisé qu’après les huit signaux EMPTY, il n’est pas nécessaire d’ajouter une seconde condition ambiguë disant que « le dernier Depth actif doit être EMPTY ».
+
+Cette condition est déjà incluse dans la définition de cycle_completed.
+
+Si DepthNeedMatrix augmente ensuite un besoin, KernelRotationPlanner reprend la rotation.
+
+## 10. Suppression du sous-total multijoueur
+
+La ligne :
+
+« Sous-total multijoueur »
+
+doit être retirée de la spécification KernelRotationPlanner et DepthNeedMatrix.
+
+La production ne connaît pas la destination gameplay des noyaux.
+
+La table peut seulement montrer :
+
+Depth
+Tours cibles
+Capacité maximale théorique
+
+Le fait que Depth 10 soit utilisé par Solo — Intelligence ultime appartient au contrat Gameplay.
+
+## 11. Capacité maximale théorique
+
+La table mathématique peut rester uniquement comme estimation de plafond :
+
+Depth 2  : 250 × 2 000 = 500 000 maximum
+Depth 4  : 300 × 2 000 = 600 000 maximum
+Depth 6  : 350 × 2 000 = 700 000 maximum
+Depth 7  : 350 × 2 000 = 700 000 maximum
+Depth 8  : 350 × 2 000 = 700 000 maximum
+Depth 9  : 250 × 2 000 = 500 000 maximum
+Depth 10 : 100 × 2 000 = 200 000 maximum
+
+Total théorique maximal :
+
+3 900 000 noyaux candidats
+
+Mais cette valeur ne doit jamais être appelée :
+
+* cible garantie ;
+* nombre attendu ;
+* condition de fin ;
+* nombre de Blueprints obligatoirement produits.
+
+Elle représente seulement le plafond mathématique si chaque tour remplit les 50 sujets et les 5 idées dans les huit domaines.
+
+## 12. Problème restant à spécifier
+
+Le nombre de tours seul ne garantit pas que la banque contiendra assez de noyaux validés.
+
+Il faut encore décider si DepthNeedMatrix conserve également un minimum de noyaux validés par Depth + Domaine.
+
+Exemple conceptuel :
+
+cycle_target
+cycle_completed
+
+kernel_received_total
+validated_kernel_minimum
+validated_kernel_minimum_reached
+
+Cette seconde cible n’est pas encore verrouillée.
+
+Ne l’implémente pas et ne l’invente pas.
+
+Elle doit rester un point UNDER_REVIEW jusqu’à décision officielle.
+
+## 13. Architecture Register obligatoire
+
+La nouvelle décision sur Depth 10 remplace l’ancienne formulation « Depth 10 interdit ».
+
+L’ancienne décision ne doit pas être supprimée.
+
+Elle doit devenir SUPERSEDED dans l’Architecture Register.
+
+Une nouvelle décision doit enregistrer :
+
+* Depth 10 valide dans le pipeline de production ;
+* Depth 10 présent dans le DepthCycle ;
+* aucune restriction de mode dans KernelRotationPlanner ;
+* restriction de consommation portée exclusivement par le mapping Gameplay.
+
+Ne crée pas arbitrairement le numéro de décision. Utilise le prochain identifiant officiel disponible dans l’Architecture Register.
+
+Corrige maintenant uniquement la spécification.
+
+Aucune implantation n’est autorisée.
