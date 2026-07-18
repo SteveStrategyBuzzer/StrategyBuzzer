@@ -1,0 +1,254 @@
+Correction partielle acceptée, mais trois erreurs restent à corriger.
+
+## 1. Ne recommence jamais immédiatement un nouveau tour du même Depth
+
+Tu as écrit :
+
+8 domaines EMPTY
+→ cycle_completed[depth] += 1
+→ si cycle_completed[depth] < cycle_target[depth]
+→ nouveau tour du même Depth
+
+Cette règle est incorrecte.
+
+Un tour du Depth est comptabilisé précisément au moment où KernelRotationPlanner quitte ce Depth pour passer au suivant.
+
+La règle correcte est :
+
+8 domaines EMPTY du tour courant
++
+aucun Blueprint courant encore en circulation
+↓
+cycle_completed[active_depth] += 1
+↓
+sélection du prochain Depth requis dans le DepthCycle
+
+DepthCycle :
+
+2
+→ 4
+→ 6
+→ 7
+→ 8
+→ 9
+→ 10
+→ retour au premier Depth encore sous sa cible
+
+Exemple :
+
+Depth 2 termine son tour numéro 45 sur une cible de 250.
+
+Alors :
+
+cycle_completed[2] = 45
+
+Mais le Planner ne commence pas immédiatement le tour 46 du Depth 2.
+
+Il passe au Depth 4.
+
+Après avoir parcouru les autres Depths requis, le Planner reviendra plus tard au Depth 2 et commencera alors son tour 46.
+
+La condition :
+
+cycle_completed[depth] < cycle_target[depth]
+
+signifie uniquement :
+
+ce Depth reste admissible lors du prochain passage du DepthCycle.
+
+Elle ne signifie jamais :
+
+recommencer immédiatement le même Depth.
+
+## 2. Rôle exact de CURRENT_KERNEL_RECEIVED
+
+Tu as écrit :
+
+Effet sur la rotation : AUCUN
+Effet sur le changement de Depth : AUCUN
+
+La deuxième phrase est correcte.
+
+La première est trop absolue.
+
+CURRENT_KERNEL_RECEIVED ne décide pas du changement de Depth, mais il est obligatoire pour fermer la production du Blueprint canonique courant.
+
+Règle séquentielle :
+
+création d’un Blueprint canonique
+↓
+écriture de depth + domain
+↓
+exécution complète du pipeline
+↓
+réception dans ReadyBank
+↓
+CURRENT_KERNEL_RECEIVED
+↓
+comptabilisation idempotente du noyau
+↓
+autorisation de sélectionner le prochain domaine et de créer le prochain Blueprint
+
+Donc :
+
+CURRENT_KERNEL_RECEIVED
+→ incrémente kernel_received_total[depth][domain]
+→ confirme la fermeture du Blueprint courant
+→ autorise la prochaine production
+
+Mais :
+
+CURRENT_KERNEL_RECEIVED seul
+→ ne termine pas un tour
+→ ne change pas le Depth
+
+La séparation correcte est :
+
+# CURRENT_KERNEL_RECEIVED
+
+barrière séquentielle entre deux Blueprints
+
+# 8 domaines EMPTY
+
+condition de fermeture du tour du Depth
+
+## 3. Propriété des données
+
+Ne place pas automatiquement toutes les données suivantes dans DepthNeedMatrix :
+
+active_depth
+état des huit domaines
+Blueprint en circulation
+
+La séparation conceptuelle correcte est :
+
+### DepthNeedMatrix
+
+Porte les besoins et les résultats comptabilisés :
+
+cycle_target[depth]
+cycle_completed[depth]
+
+kernel_received_total[depth]
+kernel_received_total[depth][domain]
+
+### KernelRotationPlanner / RotationState
+
+Porte l’état d’exécution de la rotation :
+
+active_depth
+depth_position
+domain_position
+identité du Blueprint courant
+Blueprint en circulation ou non
+
+### Taxonomy
+
+Fournit l’état réel des réservoirs du tour courant :
+
+AVAILABLE
+EMPTY
+
+Le canal technique exact et le lieu de persistance définitif des états de domaines restent à préciser dans la spécification.
+
+Ne transforme pas automatiquement DepthNeedMatrix en propriétaire de tous les états d’exécution.
+
+## 4. Algorithme corrigé de sélection
+
+Après la fermeture du tour courant :
+
+1. incrémenter cycle_completed du Depth actif ;
+2. chercher le prochain Depth après le Depth actif dans l’ordre officiel ;
+3. sélectionner le premier Depth dont :
+
+cycle_completed < cycle_target
+
+4. ignorer les Depths ayant atteint leur cible ;
+5. après Depth 10, reprendre la recherche à Depth 2 ;
+6. si aucun Depth n’a encore de besoin, entrer en PRODUCTION_ON_HOLD.
+
+Exemple :
+
+Cibles atteintes :
+
+Depth 2  = complet
+Depth 4  = incomplet
+Depth 6  = complet
+Depth 7  = incomplet
+Depth 8  = complet
+Depth 9  = incomplet
+Depth 10 = complet
+
+Rotation restante :
+
+4
+→ 7
+→ 9
+→ 4
+→ 7
+→ 9
+
+## 5. Validated kernel minimum
+
+La suppression de :
+
+validated_kernel_minimum
+validated_kernel_minimum_reached
+
+est acceptée.
+
+Le nombre réel de noyaux ne pilote pas la rotation.
+
+Il demeure une mesure persistante de la production réelle.
+
+## 6. État corrigé des points
+
+OUVERT_1
+→ reste OUVERT :
+cycle de vie exact du Blueprint en PRODUCTION_ON_HOLD
+
+OUVERT_2
+→ FERMÉ :
+un CURRENT_KERNEL_RECEIVED valide comptabilise un noyau reçu dans le couple Depth + Domaine
+
+OUVERT_3
+→ reste OUVERT :
+identité technique et idempotence du Blueprint reçu
+
+OUVERT_4
+→ FERMÉ uniquement avec l’algorithme corrigé :
+après chaque tour, passage au prochain Depth requis du DepthCycle
+
+OUVERT_5
+→ FERMÉ conceptuellement :
+tous les cycle_completed ont atteint leur cycle_target
++
+aucun Blueprint canonique en circulation
+→ PRODUCTION_ON_HOLD
+
+## 7. Règle centrale définitive
+
+DepthNeedMatrix
+→ indique combien de tours sont souhaités pour chaque Depth
+→ comptabilise les tours réellement terminés
+→ comptabilise les noyaux réellement reçus
+
+KernelRotationPlanner
+→ parcourt les Depths dans l’ordre officiel
+→ effectue un tour par passage sur un Depth
+→ change de Depth après les huit domaines EMPTY
+→ revient plus tard sur les Depths encore sous leur cible
+
+Taxonomy
+→ détermine combien de noyaux peuvent réellement être produits pendant chaque tour
+
+ReadyBank
+→ confirme la fermeture de chaque Blueprint canonique
+
+Le rendement variable en noyaux est normal.
+
+Il ne modifie jamais la définition d’un tour ni le mécanisme de changement de Depth.
+
+Corrige uniquement la spécification.
+
+Aucune implantation n’est autorisée.
