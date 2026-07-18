@@ -1,0 +1,388 @@
+# Flow officiel du KernelRotationPlanner
+
+## 1. Données réellement nécessaires
+
+KernelRotationPlanner ne doit pas inventer une structure parallèle avec :
+
+* `depth_position` ;
+* `domain_position` ;
+* un booléen séparé `Blueprint en circulation` ;
+* une identité du Blueprint stockée artificiellement dans `RotationState`.
+
+L’ordre officiel du `DepthCycle` est déjà porté par la `DepthNeedMatrix` :
+
+2
+→ 4
+→ 6
+→ 7
+→ 8
+→ 9
+→ 10
+→ retour au prochain Depth encore sous sa cible
+
+À partir de `active_depth`, la Matrix peut retrouver directement le prochain Depth requis.
+
+Le Domaine courant est déjà connu par le Blueprint qui vient d’être reçu et par la demande précédente faite à Taxonomy.
+
+Il n’est donc pas nécessaire de créer un deuxième curseur artificiel pour représenter la même information.
+
+## 2. Flow initial
+
+Lors du premier déclenchement, aucun Blueprint précédent et aucun Domaine précédemment consommé n’existent.
+
+Le flow initial est :
+
+Déclenchement initial externe
+↓
+DepthNeedMatrix indique le premier Depth requis
+↓
+KernelRotationPlanner fixe `active_depth`
+↓
+KernelRotationPlanner sélectionne le premier Domaine du DomainCycle
+↓
+KernelRotationPlanner crée le Blueprint canonique
+↓
+KernelRotationPlanner écrit :
+
+* depth ;
+* domain.
+
+↓
+Taxonomy consulte le réservoir correspondant
+
+### Si Taxonomy fournit un territoire valide
+
+Taxonomy écrit :
+
+* subdomain_active ;
+* subject_active ;
+* dominant_idea_active.
+
+↓
+le même Blueprint canonique poursuit tout le pipeline
+↓
+ReadyBank reçoit le Blueprint
+↓
+CURRENT_KERNEL_RECEIVED
+↓
+le noyau reçu est comptabilisé dans :
+
+kernel_received_total[depth][domain]
+
+↓
+KernelRotationPlanner reprend le flow récurrent
+
+### Si Taxonomy déclare EMPTY
+
+Aucun Blueprint ne poursuit le pipeline pour ce Domaine.
+
+↓
+le Domaine est considéré EMPTY pour le tour courant
+↓
+KernelRotationPlanner sélectionne immédiatement le Domaine suivant du même Depth
+↓
+Taxonomy consulte ce nouveau réservoir
+
+Ce mécanisme continue jusqu’à ce qu’un Domaine fournisse un territoire valide ou que les huit Domaines soient EMPTY.
+
+## 3. Flow récurrent après CURRENT_KERNEL_RECEIVED
+
+Après réception du Blueprint précédent :
+
+CURRENT_KERNEL_RECEIVED
+↓
+la réception du Blueprint précédent est comptabilisée
+↓
+Taxonomy informe KernelRotationPlanner de l’état actualisé du Domaine qui vient d’être consommé
+
+Taxonomy retourne :
+
+AVAILABLE
+
+ou :
+
+EMPTY
+
+## 4. Cas où le Domaine précédent reste AVAILABLE
+
+Taxonomy indique :
+
+Domaine précédent = AVAILABLE
+
+Cela signifie que son réservoir possède encore du contenu.
+
+KernelRotationPlanner conserve le même `active_depth`.
+
+↓
+KernelRotationPlanner avance vers le Domaine suivant dans le DomainCycle
+↓
+les Domaines déjà EMPTY sont ignorés
+↓
+KernelRotationPlanner crée un nouveau Blueprint canonique
+↓
+KernelRotationPlanner écrit le même Depth actif et le nouveau Domaine
+↓
+Taxonomy consulte le réservoir demandé
+
+### Si Taxonomy fournit un territoire valide
+
+Taxonomy écrit :
+
+* subdomain_active ;
+* subject_active ;
+* dominant_idea_active.
+
+↓
+le Blueprint poursuit le pipeline
+↓
+ReadyBank reçoit le Blueprint
+↓
+CURRENT_KERNEL_RECEIVED
+↓
+nouvelle itération récurrente
+
+### Si Taxonomy retourne EMPTY
+
+Aucun Blueprint ne poursuit le pipeline pour ce Domaine.
+
+↓
+ce Domaine est considéré EMPTY pour le tour courant
+↓
+KernelRotationPlanner passe immédiatement au prochain Domaine non EMPTY du même Depth
+↓
+Taxonomy consulte ce réservoir
+
+## 5. Cas où le Domaine précédent devient EMPTY
+
+Taxonomy indique :
+
+Domaine précédent = EMPTY
+
+↓
+ce Domaine est retiré de la rotation du tour courant
+↓
+KernelRotationPlanner conserve le même `active_depth`
+↓
+KernelRotationPlanner sélectionne le prochain Domaine non EMPTY du DomainCycle
+↓
+KernelRotationPlanner crée le prochain Blueprint
+↓
+KernelRotationPlanner écrit :
+
+* le même Depth actif ;
+* le nouveau Domaine.
+
+↓
+Taxonomy consulte le nouveau réservoir demandé
+
+Le flow poursuit ensuite normalement.
+
+## 6. Égrainage officiel des Domaines
+
+Pour chaque tour du Depth actif :
+
+Géographie
+→ Histoire
+→ Faune
+→ Art
+→ Sport
+→ Cinéma
+→ Cuisine
+→ Science
+→ retour à Géographie
+
+Un Domaine `EMPTY` est retiré du tour courant.
+
+Exemple :
+
+Géographie = AVAILABLE
+Histoire = EMPTY
+Faune = AVAILABLE
+Art = EMPTY
+Sport = AVAILABLE
+Cinéma = AVAILABLE
+Cuisine = EMPTY
+Science = AVAILABLE
+
+La rotation restante devient :
+
+Géographie
+→ Faune
+→ Sport
+→ Cinéma
+→ Science
+→ retour à Géographie
+
+Le Depth ne change pas tant qu’au moins un de ces Domaines demeure `AVAILABLE`.
+
+## 7. Fermeture du tour du Depth
+
+Lorsque Taxonomy a confirmé :
+
+Géographie = EMPTY
+Histoire = EMPTY
+Faune = EMPTY
+Art = EMPTY
+Sport = EMPTY
+Cinéma = EMPTY
+Cuisine = EMPTY
+Science = EMPTY
+
+↓
+aucun Domaine ne peut produire un nouveau territoire
+↓
+aucun nouveau Blueprint n’est créé dans ce Depth
+↓
+DepthNeedMatrix comptabilise :
+
+cycle_completed[active_depth] += 1
+
+↓
+DepthNeedMatrix retrouve le prochain Depth dont :
+
+cycle_completed < cycle_target
+
+↓
+KernelRotationPlanner remplace `active_depth`
+↓
+un nouveau tour commence sur ce nouveau Depth
+↓
+les huit Domaines redeviennent les Domaines à consulter pour ce nouveau tour
+
+## 8. Changement de Depth
+
+Le changement de Depth n’arrive jamais après chaque Blueprint.
+
+Il arrive uniquement après :
+
+8 Domaines EMPTY
+↓
+tour du Depth terminé
+↓
+cycle_completed incrémenté
+↓
+prochain Depth requis par la Matrix
+
+Exemple :
+
+Depth 6 actif
+↓
+rotation entre les huit Domaines
+↓
+les huit Domaines deviennent EMPTY
+↓
+cycle_completed[6] += 1
+↓
+DepthNeedMatrix indique Depth 7
+↓
+active_depth = 7
+↓
+début du nouveau tour
+
+## 9. Flow récurrent résumé
+
+CURRENT_KERNEL_RECEIVED du Blueprint précédent
+↓
+Taxonomy communique l’état actualisé du Domaine consommé :
+AVAILABLE ou EMPTY
+↓
+KernelRotationPlanner met à jour la rotation des Domaines du tour courant
+↓
+si au moins un Domaine reste disponible :
+sélection du prochain Domaine du même Depth
+↓
+création du Blueprint canonique
+↓
+écriture de depth + domain
+↓
+Taxonomy remplit les slots Taxonomy
+↓
+le Blueprint poursuit le pipeline
+↓
+ReadyBank reçoit le Blueprint
+↓
+CURRENT_KERNEL_RECEIVED
+↓
+nouvelle itération
+
+Si les huit Domaines sont EMPTY :
+↓
+cycle_completed[active_depth] += 1
+↓
+DepthNeedMatrix indique le prochain Depth requis
+↓
+KernelRotationPlanner remplace `active_depth`
+↓
+début du tour suivant
+
+## 10. Répartition exacte des responsabilités
+
+### DepthNeedMatrix
+
+* porte le `DepthCycle` officiel ;
+* porte `cycle_target[depth]` ;
+* porte `cycle_completed[depth]` ;
+* retrouve le prochain Depth encore requis ;
+* comptabilise les noyaux réellement reçus par `Depth + Domaine`.
+
+### KernelRotationPlanner
+
+* reçoit le Depth requis ;
+* conserve le `active_depth` pendant tout le tour ;
+* sélectionne le prochain Domaine du même Depth ;
+* ignore les Domaines EMPTY ;
+* crée un seul Blueprint canonique ;
+* écrit uniquement `depth` et `domain` ;
+* attend CURRENT_KERNEL_RECEIVED avant de reprendre le flow récurrent.
+
+### Taxonomy
+
+* consulte le réservoir demandé ;
+* écrit `subdomain_active`, `subject_active` et `dominant_idea_active` ;
+* informe ensuite si le Domaine consommé reste AVAILABLE ou devient EMPTY.
+
+### ReadyBank
+
+* reçoit le Blueprint canonique terminé ;
+* transmet CURRENT_KERNEL_RECEIVED ;
+* permet la comptabilisation réelle du noyau reçu.
+
+## 11. Règle centrale
+
+Le Planner ne sélectionne pas continuellement un nouveau `Depth + Domaine`.
+
+Il fonctionne ainsi :
+
+un Depth actif
++
+rotation des Domaines dans ce Depth
++
+retrait progressif des Domaines EMPTY
++
+changement de Depth seulement lorsque les huit Domaines sont EMPTY
+
+Le flow officiel est donc :
+
+Depth actif
+↓
+Domaine suivant
+↓
+Taxonomy
+↓
+Blueprint
+↓
+ReadyBank
+↓
+CURRENT_KERNEL_RECEIVED
+↓
+état actualisé du Domaine consommé
+↓
+Domaine suivant du même Depth
+
+jusqu’à :
+
+8 Domaines EMPTY
+↓
+tour terminé
+↓
+prochain Depth indiqué par DepthNeedMatrix.
