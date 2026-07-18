@@ -1,0 +1,170 @@
+Correction finale nécessaire.
+
+La spécification est presque correcte, mais le rôle de `CURRENT_KERNEL_RECEIVED` demeure trop fort.
+
+## 1. CURRENT_KERNEL_RECEIVED ne suffit pas à autoriser le Blueprint suivant
+
+Tu as écrit :
+
+CURRENT_KERNEL_RECEIVED
+→ fermeture confirmée du Blueprint courant
+→ autorisation de créer le prochain Blueprint
+
+Cette règle est incomplète.
+
+ReadyBank et Taxonomy fournissent deux confirmations indépendantes.
+
+### Confirmation 1 — ReadyBank
+
+CURRENT_KERNEL_RECEIVED confirme :
+
+* que le Blueprint canonique courant a été reçu ;
+* que ce Blueprint n’est plus en circulation ;
+* que son noyau peut être comptabilisé de manière idempotente.
+
+Effets :
+
+kernel_received_total[depth][domain] += 1
+
+Blueprint courant
+→ RECEIVED / CLOSED
+
+### Confirmation 2 — Taxonomy
+
+Taxonomy doit fournir l’état du réservoir concerné après la consommation du noyau courant :
+
+AVAILABLE
+
+ou :
+
+EMPTY
+
+Cette information permet à KernelRotationPlanner de savoir :
+
+* si le même domaine peut encore participer à la rotation ;
+* si ce domaine doit être ignoré pour le reste du tour ;
+* si les huit domaines sont maintenant EMPTY ;
+* si le tour du Depth peut être fermé.
+
+## 2. Barrière complète avant le Blueprint suivant
+
+La création du Blueprint suivant est autorisée seulement lorsque :
+
+CURRENT_KERNEL_RECEIVED reçu
++
+état Taxonomy du réservoir courant reçu
++
+aucun Blueprint encore en circulation
+
+Alors KernelRotationPlanner peut :
+
+* poursuivre vers le prochain domaine AVAILABLE du même Depth ;
+* ou fermer le tour si les huit domaines sont EMPTY ;
+* ou passer au prochain Depth requis après fermeture du tour.
+
+La règle correcte est donc :
+
+READY_BANK_CONFIRMED
++
+TAXONOMY_STATE_READY
+→ décision de rotation suivante autorisée
+
+Jamais :
+
+CURRENT_KERNEL_RECEIVED seul
+→ prochain Blueprint automatiquement autorisé
+
+## 3. Séparation des responsabilités
+
+CURRENT_KERNEL_RECEIVED répond à la question :
+
+« Le Blueprint canonique courant a-t-il été reçu et fermé ? »
+
+Taxonomy répond à la question :
+
+« Le réservoir de ce domaine possède-t-il encore un noyau disponible ? »
+
+KernelRotationPlanner combine ces deux réponses pour décider :
+
+* prochain domaine du même Depth ;
+* fermeture du tour ;
+* changement de Depth ;
+* mise en attente globale.
+
+## 4. Formulation corrigée du rôle de CURRENT_KERNEL_RECEIVED
+
+Remplacer :
+
+CURRENT_KERNEL_RECEIVED
+→ barrière séquentielle entre deux Blueprints
+
+par :
+
+CURRENT_KERNEL_RECEIVED
+→ composante ReadyBank de la barrière séquentielle
+
+Taxonomy state
+→ composante réservoir de la barrière séquentielle
+
+Les deux confirmations réunies
+→ autorisent la prochaine décision du KernelRotationPlanner
+
+## 5. OUVERT_2
+
+OUVERT_2 peut rester FERMÉ pour la comptabilisation :
+
+# un CURRENT_KERNEL_RECEIVED valide
+
+# un noyau reçu
+
+kernel_received_total[depth][domain] += 1
+
+Mais sa définition ne doit pas affirmer que ce signal autorise seul le Blueprint suivant.
+
+## 6. Contrat d’entrée Taxonomy requis dans la spécification KRP
+
+Le canal technique et la persistance pourront être détaillés plus tard, mais la spécification KernelRotationPlanner doit déjà déclarer son entrée sémantique obligatoire :
+
+TAXONOMY_STATE_READY
+avec :
+
+* depth ;
+* domain ;
+* reservoir_state = AVAILABLE ou EMPTY ;
+* référence au Blueprint ou à la consommation concernée.
+
+Il n’est pas nécessaire d’implémenter Taxonomy maintenant.
+
+Il est toutefois nécessaire de réserver ce contrat d’entrée, puisque KernelRotationPlanner ne peut pas prendre sa prochaine décision sans lui.
+
+## 7. Règle centrale complète
+
+Blueprint courant créé
+↓
+pipeline complet
+↓
+ReadyBank reçoit le Blueprint
+↓
+CURRENT_KERNEL_RECEIVED
+↓
+Taxonomy confirme l’état du réservoir consommé
+↓
+READY_BANK_CONFIRMED + TAXONOMY_STATE_READY
+↓
+KernelRotationPlanner décide :
+
+si un domaine reste AVAILABLE
+→ prochain Blueprint dans le même Depth
+
+si les huit domaines sont EMPTY
+→ cycle_completed[active_depth] += 1
+→ prochain Depth requis
+
+si tous les Depths ont atteint cycle_target
+→ PRODUCTION_ON_HOLD
+
+Toutes les autres corrections de ta réponse sont acceptées.
+
+Corrige uniquement la spécification.
+
+Aucune implantation n’est autorisée.
