@@ -1,0 +1,209 @@
+Correction importante sur le rôle de la DepthNeedMatrix.
+
+Il ne faut pas compliquer KernelRotationPlanner avec une seconde condition obligatoire basée sur un minimum de noyaux.
+
+## 1. Variable de pilotage du KernelRotationPlanner
+
+KernelRotationPlanner fonctionne uniquement avec :
+
+* le Depth actif ;
+* le nombre de tours souhaité pour chaque Depth ;
+* l’état EMPTY des huit domaines du tour courant ;
+* le mécanisme de passage au prochain Depth.
+
+Exemple :
+
+Depth 2
+→ cycle_target = 250
+
+KernelRotationPlanner reste sur le Depth 2 jusqu’à ce que les huit domaines du tour courant soient EMPTY.
+
+Alors :
+
+cycle_completed[2] += 1
+
+Puis il passe au prochain Depth requis.
+
+Quand le DepthCycle revient plus tard sur le Depth 2 :
+
+cycle_completed[2] < cycle_target[2]
+→ nouveau tour du Depth 2
+
+Cette mécanique est suffisante pour piloter la production.
+
+## 2. Les noyaux produits restent variables
+
+Un tour ne garantit jamais un nombre fixe de noyaux.
+
+Selon la qualité et la richesse des réservoirs Taxonomy, un tour peut produire par exemple :
+
+* 2 000 noyaux ;
+* 1 450 noyaux ;
+* 830 noyaux ;
+* toute autre quantité réellement disponible.
+
+Ce résultat variable ne doit pas modifier la définition du tour.
+
+Le changement de Depth dépend toujours de :
+
+8 domaines EMPTY
+→ tour terminé
+→ passage au prochain Depth
+
+Il ne dépend jamais de :
+
+nombre précis de noyaux atteint
+→ changement de Depth
+
+## 3. La Matrix continue néanmoins de compter les noyaux réels
+
+Le fait que les noyaux ne pilotent pas la rotation ne signifie pas qu’ils ne sont pas comptabilisés.
+
+La DepthNeedMatrix doit distinguer :
+
+### Données de pilotage
+
+* cycle_target ;
+* cycle_completed ;
+* active_depth ;
+* état des huit domaines du tour courant.
+
+### Données réellement observées
+
+* kernel_received_total par Depth ;
+* kernel_received_total par Depth + Domaine ;
+* nombre réel de noyaux produits pendant chaque tour ;
+* rendement réel moyen des tours ;
+* quantité réelle reçue dans ReadyBank.
+
+Exemple :
+
+Depth 6
+cycle_target = 350
+cycle_completed = 42
+
+Histoire :
+kernel_received_total = 8 317
+
+Science :
+kernel_received_total = 9 104
+
+Art :
+kernel_received_total = 6 982
+
+Ces différences sont normales.
+
+La Matrix ne sert pas seulement à contenir des cibles théoriques. Elle sert surtout à enregistrer ce qui a réellement été produit.
+
+## 4. Distinction officielle
+
+La règle à retenir est :
+
+# cycle_target
+
+commande de production utilisée par KernelRotationPlanner
+
+# kernel_received_total
+
+résultat réel mesuré par la DepthNeedMatrix
+
+Le premier pilote la rotation.
+
+Le second mesure la production réelle.
+
+Ils ne doivent pas être confondus.
+
+## 5. Aucun minimum de noyaux obligatoire pour changer de Depth
+
+À ce stade, ne crée pas de règle comme :
+
+validated_kernel_minimum obligatoire
++
+cycle_target atteint
++
+minimum de noyaux atteint
+→ changement de Depth
+
+Cette règle ajouterait une dépendance inutile au KernelRotationPlanner et pourrait empêcher un Depth de se fermer alors que Taxonomy a réellement épuisé tous ses territoires valides.
+
+Il ne faut jamais obliger Taxonomy à inventer ou forcer des sujets uniquement pour satisfaire un chiffre.
+
+La bonne règle reste :
+
+les huit domaines du tour courant sont EMPTY
+→ tour terminé
+
+cycle_completed atteint cycle_target
+→ besoin de tours du Depth satisfait
+
+## 6. La capacité réelle sera connue par les compteurs
+
+Les valeurs :
+
+Depth 2  → 250 tours
+Depth 4  → 300 tours
+Depth 6  → 350 tours
+Depth 7  → 350 tours
+Depth 8  → 350 tours
+Depth 9  → 250 tours
+Depth 10 → 100 tours
+
+définissent l’effort de production souhaité.
+
+Elles ne garantissent pas 3 900 000 noyaux.
+
+La capacité réelle sera obtenue après exécution avec :
+
+somme de tous les CURRENT_KERNEL_RECEIVED valides
+
+Donc :
+
+capacité théorique maximale
+≠
+capacité réelle
+
+La seule valeur réelle est celle enregistrée par les compteurs de la Matrix.
+
+## 7. Rôle exact de CURRENT_KERNEL_RECEIVED
+
+Chaque réception valide produit :
+
+CURRENT_KERNEL_RECEIVED
+↓
+kernel_received_total[depth][domain] += 1
+
+Ce compteur est :
+
+* réel ;
+* persistant ;
+* idempotent ;
+* informatif pour la capacité finale de la banque.
+
+Mais il ne décide pas du changement de Depth.
+
+## 8. Conclusion architecturale
+
+Aussi longtemps que KernelRotationPlanner respecte :
+
+* les cibles de tours par Depth ;
+* la rotation équitable des huit domaines ;
+* la fermeture d’un tour après huit domaines EMPTY ;
+* le passage correct au prochain Depth ;
+* la reprise du DepthCycle jusqu’à satisfaction de toutes les cibles ;
+
+le mécanisme est correct.
+
+Le nombre de noyaux reste une production variable mesurée à l’intérieur de la Matrix.
+
+La Matrix possède donc deux fonctions distinctes :
+
+1. porter les cibles de tours qui pilotent KernelRotationPlanner ;
+2. comptabiliser les noyaux réellement reçus pendant l’exécution.
+
+Ne transforme pas les noyaux variables en condition supplémentaire de rotation.
+
+Ne crée pas de `validated_kernel_minimum` obligatoire à ce stade.
+
+Corrige uniquement la spécification selon cette séparation.
+
+Aucune implantation n’est autorisée.
