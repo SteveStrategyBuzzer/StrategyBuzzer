@@ -1,0 +1,922 @@
+# CORRECTION OFFICIELLE — MÉCANIQUE DU KERNELROTATIONPLANNER
+
+Statut du document :
+
+UNDER_REVIEW
+
+Cette correction concerne uniquement la spécification `02_KernelRotationPlanner.md`.
+
+Aucune implantation n’est autorisée.
+
+---
+
+# 1. Correction fondamentale : KRP ne crée pas le KernelBlueprint
+
+Le flow commence obligatoirement par la création d’une nouvelle instance canonique vide du `KernelBlueprint`.
+
+```text
+Création du KernelBlueprint
+↓
+KernelRotationPlanner reçoit ce Blueprint
+```
+
+KernelRotationPlanner ne crée pas l’enveloppe.
+
+Il reçoit une enveloppe déjà créée et détermine si elle doit commencer une nouvelle production.
+
+Cette règle permet de garantir que :
+
+* le Blueprint précédent est terminé ;
+* ReadyBank a confirmé sa réception ;
+* une seule enveloppe canonique est ouverte pour la prochaine production ;
+* KernelRotationPlanner peut ne rien démarrer si aucun besoin de production ne reste.
+
+---
+
+# 2. Mécanismes internes entourant KernelRotationPlanner
+
+La structure officielle est :
+
+```text
+Création du KernelBlueprint
+↓
+KernelRotationPlanner
+│
+├── Tour de Depth
+├── DepthNeedMatrix
+└── sélection et inscription de depth + domain
+↓
+Taxonomy
+```
+
+`Tour de Depth` et `DepthNeedMatrix` ne sont pas deux modules placés dans le pipeline.
+
+Ce sont deux mécanismes distincts utilisés par KernelRotationPlanner.
+
+Ils ne doivent pas accomplir le même travail.
+
+---
+
+# 3. Tour de Depth
+
+## 3.1 Mission
+
+Le `Tour de Depth` pilote la participation des huit Domaines pendant l’exécution d’un Depth actif.
+
+Il répond uniquement à cette question :
+
+```text
+Quels Domaines peuvent encore participer
+au Tour de Depth actif ?
+```
+
+## 3.2 Initialisation
+
+Au début de chaque nouveau Tour de Depth, les huit Domaines de création sont positionnés à `ON`.
+
+```text
+Géographie = ON
+Histoire   = ON
+Faune      = ON
+Art        = ON
+Sport      = ON
+Cinéma     = ON
+Cuisine    = ON
+Science    = ON
+```
+
+`Général` ne participe pas à la création et ne fait pas partie de ce mécanisme.
+
+`ON` signifie uniquement :
+
+```text
+ce Domaine peut encore être sélectionné
+pendant le Tour de Depth actif
+```
+
+`ON` ne signifie pas que Taxonomy doit envoyer un signal `AVAILABLE`.
+
+Aucun signal `AVAILABLE` n’existe dans ce contrat.
+
+## 3.3 Réponse normale de Taxonomy
+
+Lorsque Taxonomy fournit :
+
+* `subdomain_active` ;
+* `subject_active` ;
+* `dominant_idea_active` ;
+
+le Domaine reste simplement `ON`.
+
+```text
+Taxonomy fournit le territoire demandé
+↓
+le Domaine reste ON
+↓
+le Blueprint poursuit le pipeline
+```
+
+Aucune modification du Tour de Depth n’est nécessaire.
+
+## 3.4 Signal EMPTY
+
+Le seul signal d’épuisement nécessaire est :
+
+```text
+EMPTY
+```
+
+Lorsque Taxonomy déclare un Domaine `EMPTY` :
+
+```text
+Domaine ON
+↓
+Taxonomy transmet EMPTY
+↓
+Domaine ON → OFF
+```
+
+Le Domaine devient immédiatement exclu du reste du Tour de Depth.
+
+```text
+Domaine OFF
+↓
+ne doit plus être sélectionné
+pendant ce Tour de Depth
+```
+
+KernelRotationPlanner passe immédiatement au prochain Domaine encore `ON`.
+
+## 3.5 Protection contre les doublons
+
+Un Domaine déjà `OFF` ne peut pas être désactivé une seconde fois.
+
+```text
+Domaine ON + EMPTY
+→ passage ON → OFF
+→ progression DepthNeedMatrix +1
+
+Domaine déjà OFF + ancien signal répété
+→ aucune nouvelle transition
+→ aucune nouvelle progression
+```
+
+Le Tour de Depth garantit donc qu’un Domaine produit au maximum une seule progression `EMPTY` pendant le tour courant.
+
+## 3.6 Fin du Tour de Depth
+
+Le Tour de Depth se termine lorsque les huit Domaines sont `OFF`.
+
+```text
+Géographie = OFF
+Histoire   = OFF
+Faune      = OFF
+Art        = OFF
+Sport      = OFF
+Cinéma     = OFF
+Cuisine    = OFF
+Science    = OFF
+```
+
+À ce moment, le Tour de Depth courant est fermé.
+
+Au début du Tour de Depth suivant, les huit Domaines sont réinitialisés à `ON`.
+
+---
+
+# 4. DepthNeedMatrix
+
+## 4.1 Mission
+
+DepthNeedMatrix pilote les besoins et la rotation des Depths.
+
+Elle répond principalement à ces questions :
+
+```text
+Combien de Domaines sur huit
+ont été fermés pendant le Tour de Depth actif ?
+```
+
+et :
+
+```text
+Quel est le prochain Depth
+qui possède encore des tours à effectuer ?
+```
+
+## 4.2 Données portées
+
+DepthNeedMatrix porte :
+
+```text
+DepthCycle
+
+cycle_target[depth]
+cycle_completed[depth]
+
+progression EMPTY du Tour de Depth actif :
+0/8 → 1/8 → ... → 8/8
+
+kernel_received_total[depth][domain]
+```
+
+Le `DepthCycle` officiel est :
+
+```text
+2 → 4 → 6 → 7 → 8 → 9 → 10
+```
+
+Après Depth 10, la recherche reprend au début du cycle et ignore les Depths ayant atteint leur cible.
+
+## 4.3 Ce que DepthNeedMatrix ne conserve pas
+
+DepthNeedMatrix ne conserve pas les états `ON/OFF` de chaque Domaine.
+
+Elle ne doit pas maintenir :
+
+```text
+Géographie = ON/OFF
+Histoire = ON/OFF
+etc.
+```
+
+Cette responsabilité appartient exclusivement au mécanisme `Tour de Depth`.
+
+DepthNeedMatrix conserve uniquement la progression numérique :
+
+```text
+0/8
+1/8
+2/8
+...
+8/8
+```
+
+## 4.4 Réception d’un nouveau OFF
+
+Chaque nouvelle transition validée par le Tour de Depth :
+
+```text
+ON → OFF
+```
+
+produit exactement une progression dans DepthNeedMatrix.
+
+Exemple :
+
+```text
+Histoire ON
+↓
+Taxonomy = EMPTY
+↓
+Histoire OFF
+↓
+progression DepthNeedMatrix :
+2/8 → 3/8
+```
+
+## 4.5 Tant que la progression est inférieure à 8/8
+
+```text
+progression EMPTY < 8/8
+↓
+le Tour de Depth continue
+↓
+active_depth reste inchangé
+↓
+KernelRotationPlanner sélectionne
+le prochain Domaine ON
+```
+
+## 4.6 Entrée du huitième EMPTY
+
+Lorsque la progression atteint :
+
+```text
+8/8
+```
+
+DepthNeedMatrix applique :
+
+```text
+cycle_completed[active_depth] += 1
+```
+
+Puis elle utilise :
+
+```text
+DepthCycle
+cycle_target[depth]
+cycle_completed[depth]
+```
+
+pour identifier le prochain Depth dont :
+
+```text
+cycle_completed[depth] < cycle_target[depth]
+```
+
+KernelRotationPlanner applique ensuite ce résultat comme nouveau `active_depth`.
+
+La progression d’épuisement est remise à :
+
+```text
+0/8
+```
+
+et un nouveau Tour de Depth commence avec les huit Domaines à `ON`.
+
+---
+
+# 5. Rôle de cycle_target et cycle_completed
+
+## cycle_target[depth]
+
+Représente le nombre total de Tours de Depth souhaités pour un Depth précis.
+
+Exemple :
+
+```text
+cycle_target[4] = 300
+```
+
+Cela signifie :
+
+```text
+Depth 4 doit terminer 300 Tours de Depth.
+```
+
+## cycle_completed[depth]
+
+Représente le nombre de Tours de Depth réellement terminés.
+
+Il est incrémenté uniquement lors de l’entrée du huitième `EMPTY`.
+
+```text
+8/8
+↓
+cycle_completed[active_depth] += 1
+```
+
+Il n’est jamais incrémenté :
+
+* à chaque Blueprint ;
+* à chaque noyau produit ;
+* à chaque Domaine sélectionné ;
+* selon une quantité théorique de noyaux.
+
+## Relation entre les deux
+
+```text
+cycle_completed[depth] < cycle_target[depth]
+→ le Depth doit revenir plus tard dans la rotation
+```
+
+```text
+cycle_completed[depth] = cycle_target[depth]
+→ le Depth n’est plus sélectionné
+```
+
+Après la fermeture d’un Tour de Depth, KernelRotationPlanner passe toujours au prochain Depth requis dans le `DepthCycle`.
+
+Il ne redémarre jamais immédiatement un nouveau tour du même Depth.
+
+Exemple :
+
+```text
+Depth 2 termine un tour
+↓
+cycle_completed[2] += 1
+↓
+passage à Depth 4
+```
+
+Depth 2 sera repris seulement lorsque le `DepthCycle` reviendra vers lui, s’il reste sous sa cible.
+
+---
+
+# 6. KernelRotationPlanner
+
+## 6.1 Mission dans ce mécanisme
+
+KernelRotationPlanner :
+
+* reçoit le Blueprint déjà créé ;
+* utilise le Tour de Depth ;
+* utilise DepthNeedMatrix ;
+* conserve le Depth actif tant que la progression est inférieure à `8/8` ;
+* sélectionne le prochain Domaine `ON` ;
+* inscrit uniquement `depth` et `domain` dans le Blueprint ;
+* change de Depth lorsque DepthNeedMatrix atteint `8/8`.
+
+## 6.2 DomainCycle officiel
+
+L’ordre officiel des Domaines est :
+
+```text
+Géographie
+→ Histoire
+→ Faune
+→ Art
+→ Sport
+→ Cinéma
+→ Cuisine
+→ Science
+→ retour à Géographie
+```
+
+KernelRotationPlanner parcourt cet ordre et ignore les Domaines `OFF`.
+
+Exemple :
+
+```text
+Géographie = ON
+Histoire   = OFF
+Faune      = ON
+Art        = OFF
+Sport      = ON
+Cinéma     = ON
+Cuisine    = OFF
+Science    = ON
+```
+
+La rotation réellement utilisée devient :
+
+```text
+Géographie
+→ Faune
+→ Sport
+→ Cinéma
+→ Science
+→ retour à Géographie
+```
+
+## 6.3 Écriture dans le Blueprint
+
+Après la sélection :
+
+```text
+KernelRotationPlanner inscrit :
+
+depth = active_depth
+domain = prochain Domaine ON
+```
+
+KernelRotationPlanner n’écrit aucun autre slot.
+
+---
+
+# 7. Taxonomy
+
+Taxonomy reçoit le Blueprint contenant :
+
+```text
+depth
+domain
+```
+
+Elle consulte le réservoir correspondant.
+
+Deux résultats seulement sont possibles.
+
+## 7.1 Taxonomy fournit un territoire
+
+Taxonomy écrit :
+
+```text
+subdomain_active
+subject_active
+dominant_idea_active
+```
+
+Cela signifie implicitement que le Domaine peut produire.
+
+Aucun signal `AVAILABLE` ne doit être créé.
+
+```text
+territoire fourni
+↓
+Domaine reste ON
+↓
+Blueprint poursuit le pipeline
+```
+
+## 7.2 Taxonomy déclare EMPTY
+
+```text
+Taxonomy = EMPTY
+↓
+Domaine ON → OFF dans le Tour de Depth
+↓
+progression DepthNeedMatrix +1/8
+↓
+le Blueprint ne poursuit pas le pipeline
+↓
+aucun CURRENT_KERNEL_RECEIVED n’est attendu
+↓
+KernelRotationPlanner sélectionne immédiatement
+le prochain Domaine ON
+```
+
+Le même Blueprint disponible reste utilisé tant qu’il n’a pas quitté cette étape vers le pipeline.
+
+KernelRotationPlanner remplace le couple provisoire `depth + domain` par le prochain couple admissible.
+
+Aucun nouveau Blueprint ne doit être créé à chaque réponse `EMPTY`.
+
+---
+
+# 8. Pipeline lorsqu’un territoire est fourni
+
+Lorsque Taxonomy remplit ses trois slots :
+
+```text
+KernelBlueprint
+↓
+KernelRotationPlanner :
+depth + domain
+↓
+Taxonomy :
+subdomain_active
+subject_active
+dominant_idea_active
+↓
+QuestionIntent
+↓
+Phase 1
+↓
+Validation 1
+↓
+Phase 2
+↓
+Validation 2
+↓
+ReadyBank
+```
+
+ReadyBank reçoit le Blueprint canonique terminé.
+
+---
+
+# 9. CURRENT_KERNEL_RECEIVED
+
+ReadyBank transmet :
+
+```text
+CURRENT_KERNEL_RECEIVED
+```
+
+Ce signal confirme que :
+
+* le Blueprint a atteint ReadyBank ;
+* le noyau peut être comptabilisé ;
+* le Blueprint précédent est terminé ;
+* la prochaine instance canonique du KernelBlueprint peut être créée ;
+* une nouvelle itération de KernelRotationPlanner peut commencer.
+
+KernelRotationPlanner comptabilise de manière idempotente :
+
+```text
+kernel_received_total[depth][domain] += 1
+```
+
+Ne pas conserver séparément un second compteur :
+
+```text
+kernel_received_total[depth]
+```
+
+Le total d’un Depth est calculé par la somme des huit Domaines :
+
+```text
+kernel_received_total[depth]
+=
+somme de kernel_received_total[depth][domain]
+```
+
+---
+
+# 10. Flow initial officiel
+
+```text
+Création du premier KernelBlueprint
+↓
+KernelRotationPlanner consulte DepthNeedMatrix
+```
+
+## Aucun Depth ne possède encore de besoin
+
+Aucun Depth ne répond à :
+
+```text
+cycle_completed[depth] < cycle_target[depth]
+```
+
+Alors :
+
+```text
+KernelRotationPlanner ne démarre pas
+↓
+aucun depth ni domain n’est engagé
+↓
+le Blueprint ne poursuit pas le pipeline
+↓
+PRODUCTION_ON_HOLD
+```
+
+## Un Depth possède encore un besoin
+
+```text
+KernelRotationPlanner fixe active_depth
+↓
+début du Tour de Depth
+↓
+8 Domaines initialisés à ON
+↓
+progression DepthNeedMatrix = 0/8
+↓
+KernelRotationPlanner sélectionne
+le premier Domaine ON du DomainCycle
+↓
+KernelRotationPlanner écrit depth + domain
+↓
+Taxonomy
+```
+
+### Territoire fourni
+
+```text
+Taxonomy remplit ses slots
+↓
+Blueprint poursuit le pipeline
+↓
+ReadyBank
+↓
+CURRENT_KERNEL_RECEIVED
+```
+
+### EMPTY
+
+```text
+Domaine ON → OFF
+↓
+progression 0/8 → 1/8
+↓
+Blueprint ne poursuit pas le pipeline
+↓
+Domaine ON suivant immédiatement
+```
+
+---
+
+# 11. Flow récurrent officiel
+
+```text
+ReadyBank reçoit le Blueprint précédent
+↓
+CURRENT_KERNEL_RECEIVED
+↓
+kernel_received_total[depth][domain] += 1
+↓
+création du KernelBlueprint suivant
+↓
+KernelRotationPlanner reprend
+le Tour de Depth actif
+```
+
+## Progression inférieure à 8/8
+
+```text
+active_depth reste inchangé
+↓
+KernelRotationPlanner sélectionne
+le prochain Domaine ON du DomainCycle
+↓
+KernelRotationPlanner écrit depth + domain
+↓
+Taxonomy
+```
+
+### Taxonomy fournit le territoire
+
+```text
+Domaine reste ON
+↓
+Taxonomy écrit ses trois slots
+↓
+Blueprint poursuit le pipeline
+↓
+ReadyBank
+↓
+CURRENT_KERNEL_RECEIVED
+```
+
+### Taxonomy transmet EMPTY
+
+```text
+Domaine ON → OFF
+↓
+DepthNeedMatrix +1/8
+↓
+Blueprint ne poursuit pas le pipeline
+↓
+KernelRotationPlanner sélectionne immédiatement
+le prochain Domaine ON
+```
+
+## Progression atteignant 8/8
+
+```text
+huitième Domaine ON → OFF
+↓
+Tour de Depth terminé
+↓
+DepthNeedMatrix atteint 8/8
+↓
+cycle_completed[active_depth] += 1
+↓
+DepthNeedMatrix identifie
+le prochain Depth encore requis
+```
+
+### Un prochain Depth est requis
+
+```text
+KernelRotationPlanner remplace active_depth
+↓
+nouveau Tour de Depth
+↓
+8 Domaines remis à ON
+↓
+progression remise à 0/8
+↓
+sélection du premier Domaine ON
+↓
+écriture du nouveau depth + domain
+dans le Blueprint disponible
+↓
+Taxonomy
+```
+
+### Aucun prochain Depth n’est requis
+
+```text
+aucun Depth ne possède :
+cycle_completed[depth] < cycle_target[depth]
+↓
+KernelRotationPlanner ne démarre aucune production
+↓
+PRODUCTION_ON_HOLD
+```
+
+---
+
+# 12. Répartition définitive des responsabilités
+
+## Création du KernelBlueprint
+
+* se produit avant KernelRotationPlanner ;
+* fournit une nouvelle enveloppe canonique vide ;
+* ne garantit pas qu’une production sera démarrée.
+
+## Tour de Depth
+
+* initialise les huit Domaines à `ON` ;
+* reçoit chaque signal `EMPTY` ;
+* transforme le Domaine concerné de `ON` vers `OFF` ;
+* exclut les Domaines `OFF` de la rotation ;
+* empêche le double traitement du même Domaine ;
+* se termine lorsque les huit Domaines sont `OFF`.
+
+## DepthNeedMatrix
+
+* porte le `DepthCycle` ;
+* porte `cycle_target[depth]` ;
+* porte `cycle_completed[depth]` ;
+* porte la progression numérique `0/8 → 8/8` ;
+* reçoit une progression pour chaque nouveau passage `ON → OFF` ;
+* incrémente `cycle_completed[active_depth]` à `8/8` ;
+* identifie le prochain Depth encore requis ;
+* porte `kernel_received_total[depth][domain]`.
+
+## KernelRotationPlanner
+
+* reçoit le Blueprint déjà créé ;
+* utilise Tour de Depth et DepthNeedMatrix ;
+* conserve `active_depth` tant que la progression est inférieure à `8/8` ;
+* sélectionne le prochain Domaine `ON` ;
+* écrit uniquement `depth + domain` ;
+* applique le changement de Depth à `8/8`.
+
+## Taxonomy
+
+* consulte le réservoir `Depth + Domaine` ;
+* fournit directement son territoire lorsque possible ;
+* ne transmet aucun signal `AVAILABLE` ;
+* transmet uniquement `EMPTY` lorsque le réservoir est épuisé ;
+* écrit uniquement :
+
+  * `subdomain_active` ;
+  * `subject_active` ;
+  * `dominant_idea_active`.
+
+## ReadyBank
+
+* reçoit le Blueprint terminé ;
+* transmet `CURRENT_KERNEL_RECEIVED` ;
+* déclenche la comptabilisation réelle du noyau ;
+* autorise la création du Blueprint suivant.
+
+---
+
+# 13. Interdictions explicites
+
+Ne pas réintroduire :
+
+* `AVAILABLE` comme signal Taxonomy ;
+* une table `AVAILABLE/EMPTY` dans DepthNeedMatrix ;
+* une seconde liste des Domaines `OFF` dans DepthNeedMatrix ;
+* `depth_position` ;
+* `domain_position` ;
+* un booléen séparé `Blueprint en circulation` ;
+* la création du Blueprint par KernelRotationPlanner ;
+* un nouveau Blueprint pour chaque Domaine retournant `EMPTY` ;
+* `Général` comme Domaine de création ;
+* une rotation immédiate vers un nouveau tour du même Depth après `8/8`.
+
+Ne pas faire exécuter le même travail par Tour de Depth et DepthNeedMatrix.
+
+La séparation obligatoire est :
+
+```text
+Tour de Depth
+=
+quels Domaines sont encore ON ?
+```
+
+```text
+DepthNeedMatrix
+=
+combien de Domaines sont passés OFF sur huit
+et quel Depth doit venir ensuite ?
+```
+
+---
+
+# RÈGLE CENTRALE FINALE
+
+```text
+Création du KernelBlueprint
+↓
+KernelRotationPlanner
+│
+├── Tour de Depth
+│   ├── 8 Domaines ON au début
+│   ├── EMPTY → Domaine OFF
+│   └── Domaine OFF ignoré
+│
+├── DepthNeedMatrix
+│   ├── progression 0/8 → 8/8
+│   ├── cycle_completed +1 à 8/8
+│   └── prochain Depth requis
+│
+└── inscription :
+    depth + prochain Domaine ON
+↓
+Taxonomy
+```
+
+```text
+Taxonomy fournit le territoire
+→ Domaine reste ON
+→ Blueprint poursuit le pipeline
+→ ReadyBank
+→ CURRENT_KERNEL_RECEIVED
+→ Blueprint suivant
+```
+
+```text
+Taxonomy transmet EMPTY
+→ Domaine ON → OFF
+→ DepthNeedMatrix +1/8
+→ Blueprint ne poursuit pas le pipeline
+→ prochain Domaine ON immédiatement
+```
+
+```text
+8/8
+→ Tour de Depth terminé
+→ cycle_completed[active_depth] += 1
+→ prochain Depth requis
+→ nouveau Tour de Depth avec 8 Domaines ON
+```
+
+Corrige uniquement la spécification complète `02_KernelRotationPlanner.md`.
+
+Ne modifie aucune autre spécification.
+
+Ne produis aucun code.
+
+Ne lance aucune implantation.
+
+Ne déclare pas le module VERROUILLÉ tant que toutes les sections obligatoires de la spécification n’ont pas été relues et validées à 100 %.
