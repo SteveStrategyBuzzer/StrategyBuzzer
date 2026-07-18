@@ -1,0 +1,337 @@
+Correction nécessaire de la synthèse.
+
+## 1. DepthNeedMatrix ne décide pas du prochain Depth
+
+Supprimer les formulations suivantes :
+
+* DepthNeedMatrix indique le prochain Depth ;
+* DepthNeedMatrix détermine quand changer de Depth ;
+* DepthNeedMatrix retrouve et transmet le prochain Depth requis.
+
+DepthNeedMatrix est une structure de données.
+
+Elle porte :
+
+* le DepthCycle officiel ;
+* cycle_target[depth] ;
+* cycle_completed[depth] ;
+* kernel_received_total[depth] ;
+* kernel_received_total[depth][domain].
+
+KernelRotationPlanner reste le décideur de la rotation.
+
+Après la fermeture d’un tour, KernelRotationPlanner :
+
+1. lit le DepthCycle dans DepthNeedMatrix ;
+2. lit cycle_target et cycle_completed ;
+3. cherche le prochain Depth encore sous sa cible ;
+4. fixe ce Depth comme active_depth.
+
+La règle correcte est :
+
+DepthNeedMatrix
+→ fournit les données de besoin et de progression
+
+KernelRotationPlanner
+→ calcule et sélectionne le prochain Depth admissible
+
+## 2. Suppression confirmée des états artificiels
+
+Ne pas conserver dans RotationState :
+
+* depth_position ;
+* domain_position ;
+* identité du Blueprint courant ;
+* booléen Blueprint en circulation.
+
+L’ordre fixe du DepthCycle permet à KernelRotationPlanner de retrouver le prochain Depth à partir de active_depth.
+
+L’ordre fixe du DomainCycle et le Domaine de la sélection courante permettent de retrouver le prochain Domaine.
+
+L’identité nécessaire à CURRENT_KERNEL_RECEIVED appartient au contrat de ce signal, encore ouvert dans OUVERT_3. Elle ne doit pas être transformée en état permanent de RotationState.
+
+La règle « un seul Blueprint à la fois » est un contrat d’exécution. Elle ne nécessite pas un booléen supplémentaire dans la spécification.
+
+L’état explicite conservé est :
+
+active_depth
+
+## 3. Correction sur la création du Blueprint
+
+Tu écris :
+
+KRP crée le Blueprint canonique
+↓
+KRP écrit depth + domain
+↓
+Taxonomy consulte le réservoir
+
+Puis, dans le cas EMPTY :
+
+Aucun Blueprint créé pour ce Domaine
+
+Ces deux formulations se contredisent.
+
+La règle correcte est :
+
+KernelRotationPlanner sélectionne Depth + Domaine
+↓
+KernelRotationPlanner crée le Blueprint canonique
+↓
+KernelRotationPlanner écrit depth + domain
+↓
+Taxonomy consulte le réservoir demandé
+
+Si Taxonomy retourne AVAILABLE :
+
+→ Taxonomy écrit :
+
+* subdomain_active ;
+* subject_active ;
+* dominant_idea_active ;
+
+→ le Blueprint poursuit le pipeline.
+
+Si Taxonomy retourne EMPTY :
+
+→ Taxonomy n’écrit aucun territoire dans le Blueprint ;
+→ le Blueprint ne poursuit pas le pipeline ;
+→ aucun CURRENT_KERNEL_RECEIVED n’est attendu ;
+→ le Domaine est retiré du tour courant ;
+→ KernelRotationPlanner sélectionne immédiatement le Domaine suivant du même Depth.
+
+Ne pas écrire :
+
+aucun Blueprint n’est créé
+
+Écrire :
+
+le Blueprint ne poursuit pas le pipeline.
+
+## 4. Origine du Domaine courant
+
+Supprimer cette justification :
+
+Le Domaine courant est connu par le dernier Blueprint créé.
+
+Cette formulation est incomplète.
+
+Lorsqu’un Domaine retourne immédiatement EMPTY, aucun Blueprint n’arrive dans ReadyBank. Le prochain Domaine ne peut donc pas être calculé à partir du dernier Blueprint reçu.
+
+La règle correcte est :
+
+KernelRotationPlanner connaît le Domaine de la sélection qu’il vient lui-même d’effectuer.
+
+Taxonomy retourne son résultat pour ce couple exact :
+
+depth + domain
+
+KernelRotationPlanner retrouve ensuite le Domaine suivant dans le DomainCycle officiel.
+
+La progression repose donc sur :
+
+* la sélection courante effectuée par KRP ;
+* le résultat AVAILABLE ou EMPTY retourné par Taxonomy ;
+* l’ordre officiel du DomainCycle.
+
+Aucun domain_position supplémentaire n’est nécessaire.
+
+## 5. Flow initial officiel
+
+Déclenchement initial externe
+↓
+KernelRotationPlanner lit DepthNeedMatrix
+↓
+KernelRotationPlanner sélectionne le premier Depth requis
+↓
+active_depth est fixé
+↓
+KernelRotationPlanner sélectionne le premier Domaine du DomainCycle
+↓
+KernelRotationPlanner crée le Blueprint canonique
+↓
+KernelRotationPlanner écrit depth + domain
+↓
+Taxonomy consulte le réservoir demandé
+
+### Taxonomy retourne AVAILABLE
+
+Taxonomy écrit :
+
+* subdomain_active ;
+* subject_active ;
+* dominant_idea_active.
+
+↓
+le Blueprint poursuit le pipeline complet
+↓
+ReadyBank reçoit le Blueprint
+↓
+CURRENT_KERNEL_RECEIVED
+↓
+kernel_received_total[depth][domain] += 1
+↓
+début du flow récurrent
+
+### Taxonomy retourne EMPTY
+
+Taxonomy n’écrit aucun territoire
+↓
+le Blueprint ne poursuit pas le pipeline
+↓
+aucun CURRENT_KERNEL_RECEIVED n’est attendu
+↓
+le Domaine est retiré du tour courant
+↓
+KernelRotationPlanner sélectionne immédiatement le Domaine suivant du même active_depth
+
+## 6. Flow récurrent officiel
+
+CURRENT_KERNEL_RECEIVED du Blueprint précédent
+↓
+le noyau est comptabilisé une seule fois
+↓
+Taxonomy informe de l’état post-consommation du Domaine précédemment demandé :
+
+AVAILABLE
+ou
+EMPTY
+
+↓
+KernelRotationPlanner met à jour les Domaines encore actifs du tour courant
+
+### Au moins un Domaine reste disponible
+
+KernelRotationPlanner conserve active_depth
+↓
+KernelRotationPlanner sélectionne le prochain Domaine non EMPTY dans le DomainCycle
+↓
+KernelRotationPlanner crée le nouveau Blueprint canonique
+↓
+KernelRotationPlanner écrit active_depth + Domaine sélectionné
+↓
+Taxonomy consulte le réservoir demandé
+
+Si AVAILABLE :
+
+→ Taxonomy écrit ses trois slots ;
+→ le Blueprint poursuit le pipeline ;
+→ ReadyBank ;
+→ CURRENT_KERNEL_RECEIVED ;
+→ nouvelle itération récurrente.
+
+Si EMPTY :
+
+→ aucun territoire n’est écrit ;
+→ le Blueprint ne poursuit pas le pipeline ;
+→ aucun CURRENT_KERNEL_RECEIVED n’est attendu ;
+→ le Domaine est retiré du tour ;
+→ KernelRotationPlanner sélectionne immédiatement le Domaine suivant du même Depth.
+
+### Les huit Domaines sont EMPTY
+
+Aucun Blueprint ne poursuit le pipeline
+↓
+cycle_completed[active_depth] += 1
+↓
+KernelRotationPlanner consulte DepthNeedMatrix
+↓
+KernelRotationPlanner sélectionne le prochain Depth dont :
+
+cycle_completed[depth] < cycle_target[depth]
+
+↓
+active_depth est remplacé
+↓
+un nouveau tour commence avec les huit Domaines
+
+## 7. DomainCycle officiel
+
+Géographie
+→ Histoire
+→ Faune
+→ Art
+→ Sport
+→ Cinéma
+→ Cuisine
+→ Science
+→ retour à Géographie
+
+Les Domaines EMPTY sont ignorés pour le reste du tour courant.
+
+Le Depth demeure inchangé tant qu’au moins un Domaine du tour reste AVAILABLE.
+
+## 8. Répartition officielle des responsabilités
+
+### DepthNeedMatrix
+
+* porte le DepthCycle ;
+* porte les cibles de tours ;
+* comptabilise les tours terminés ;
+* comptabilise les noyaux réellement reçus.
+
+Elle ne prend aucune décision d’exécution.
+
+### KernelRotationPlanner
+
+* lit DepthNeedMatrix ;
+* sélectionne active_depth ;
+* sélectionne le Domaine suivant ;
+* crée le Blueprint canonique ;
+* écrit uniquement depth et domain ;
+* retire les Domaines EMPTY du tour courant ;
+* change de Depth uniquement après huit Domaines EMPTY.
+
+### Taxonomy
+
+* consulte le réservoir Depth + Domaine demandé ;
+* retourne AVAILABLE avec un territoire ;
+* ou retourne EMPTY ;
+* après consommation, informe si le Domaine demeure AVAILABLE ou devient EMPTY.
+
+### ReadyBank
+
+* reçoit le Blueprint terminé ;
+* transmet CURRENT_KERNEL_RECEIVED ;
+* permet la comptabilisation idempotente du noyau reçu.
+
+## 9. Règle centrale finale
+
+DepthNeedMatrix contient les données.
+
+KernelRotationPlanner décide et exécute la rotation.
+
+Taxonomy fournit le territoire ou déclare EMPTY.
+
+ReadyBank confirme la réception terminale du Blueprint.
+
+Le flow est :
+
+active_depth
+↓
+Domaine sélectionné
+↓
+Blueprint créé avec depth + domain
+↓
+Taxonomy : AVAILABLE ou EMPTY
+
+AVAILABLE
+→ remplissage Taxonomy
+→ pipeline
+→ ReadyBank
+→ CURRENT_KERNEL_RECEIVED
+→ état post-consommation
+→ Domaine suivant
+
+EMPTY
+→ aucun passage dans le pipeline
+→ Domaine suivant immédiatement
+
+Huit Domaines EMPTY
+→ tour terminé
+→ cycle_completed + 1
+→ prochain Depth sélectionné par KernelRotationPlanner à partir de DepthNeedMatrix
+
+Corrige uniquement la spécification.
+
+Aucune implantation n’est autorisée.
