@@ -1,0 +1,331 @@
+Correction importante : la satisfaction des besoins gameplay ne doit pas suspendre immédiatement la production.
+
+Mauvaises règles;
+
+```text
+AUCUN BESOIN ACTUEL
+→ aucune sortie vers Taxonomy
+→ attente de futurs besoins
+```
+
+Cette règle empêcherait Taxonomy de terminer l’exploitation des réservoirs du Depth actif.
+
+Bonnes Règles;
+
+La fermeture d’un cycle nécessite deux confirmations distinctes :
+
+```text
+CONFIRMATION 1
+Les besoins gameplay associés au Depth sont comblés.
+
+CONFIRMATION 2
+Taxonomy a déclaré EMPTY les huit domaines du Depth.
+```
+
+Ces deux confirmations n’ont pas le même rôle.
+
+## 1. Besoins gameplay comblés
+
+Lorsque la `DepthNeedMatrix` constate que les besoins gameplay du Depth actif sont comblés, elle ne doit pas arrêter la rotation.
+
+Elle doit enregistrer conceptuellement :
+
+```text
+besoins gameplay du Depth = comblés
+```
+
+Mais tant qu’au moins un domaine Taxonomy du Depth actif n’est pas `EMPTY`, la Matrix doit continuer à fournir des couples :
+
+```text
+Depth actif
++
+prochain Domaine non EMPTY
+```
+
+Le `KernelRotationPlanner` continue alors à :
+
+```text
+créer un KernelBlueprint canonique
+↓
+recevoir le prochain Depth + Domaine
+↓
+écrire depth et domain
+↓
+produire le Blueprint vers le moteur suivant
+```
+
+Ces productions supplémentaires permettent à Taxonomy de poursuivre l’exploitation de ses réservoirs jusqu’à leur épuisement.
+
+## 2. Transmission des domaines EMPTY par Taxonomy
+
+Ne code pas pour Taxonomie on va le travailler après, prend juste compte des mécanismes pour la mise en attente du BluePrint
+
+Taxonomy informe directement la `DepthNeedMatrix` lorsqu’un domaine est épuisé pour le Depth actif.
+
+Exemple conceptuel :
+
+```text
+Depth 6
+Domaine Histoire
+réservoir = EMPTY
+```
+
+La Matrix enregistre alors :
+
+```text
+Depth 6 + Histoire
+→ ne plus sélectionner
+```
+
+Elle continue la rotation avec les autres domaines non vides.
+
+Le Depth actif n’est finalisé que lorsque Taxonomy a transmis `EMPTY` pour les huit domaines :
+
+```text
+Géographie = EMPTY
+Histoire = EMPTY
+Faune = EMPTY
+Art = EMPTY
+Sport = EMPTY
+Cinéma = EMPTY
+Cuisine = EMPTY
+Science = EMPTY
+```
+
+À ce moment seulement :
+
+```text
+besoins gameplay du Depth comblés
++
+8 domaines Taxonomy EMPTY
+↓
+Depth finalisé
+```
+
+## 3. Les trois résultats possibles de la DepthNeedMatrix
+
+La Matrix ne possède pas seulement deux résultats. Elle doit conceptuellement distinguer trois situations.
+
+### Situation A — besoin gameplay encore ouvert
+
+```text
+besoin gameplay encore ouvert
++
+domaine Taxonomy disponible
+↓
+retourne Depth + Domaine
+```
+
+La production sert directement à combler le besoin gameplay.
+
+### Situation B — besoin gameplay comblé, réservoirs encore disponibles
+
+```text
+besoin gameplay comblé
++
+au moins un domaine Taxonomy non EMPTY
+↓
+retourne encore Depth + Domaine
+```
+
+La production continue afin de terminer l’exploitation Taxonomy du Depth actif.
+
+Cette situation ne doit jamais être interprétée comme une attente.
+
+### Situation C — besoin gameplay comblé et huit domaines EMPTY
+
+```text
+besoin gameplay comblé
++
+8 domaines Taxonomy EMPTY
+↓
+Depth finalisé
+```
+
+La Matrix vérifie ensuite s’il existe un besoin gameplay dans un autre Depth.
+
+Si un autre Depth est nécessaire :
+
+```text
+passage au Depth requis suivant
+↓
+recommencer avec son premier domaine disponible
+```
+
+Si aucun autre Depth n’a de besoin gameplay :
+
+```text
+tous les besoins gameplay actuels sont comblés
++
+le dernier Depth actif est finalisé
+↓
+mise en attente des futurs besoins gameplay
+```
+
+## 4. Moment réel de l’attente
+
+Le système entre en attente uniquement lorsque les deux conditions globales sont vraies :
+
+```text
+aucun besoin gameplay restant dans la DepthNeedMatrix
++
+le dernier Depth actif possède ses 8 domaines EMPTY
+```
+
+Ce n’est donc pas suffisant que la Matrix dise :
+
+```text
+besoins gameplay comblés
+```
+
+Elle doit aussi vérifier :
+
+```text
+réservoirs Taxonomy du Depth actif entièrement épuisés
+```
+
+## 5. Correction du flow
+
+Le flow officiel devient :
+
+```text
+création du KernelBlueprint canonique
+↓
+DepthNeedMatrix exécute la rotation
+↓
+besoin gameplay encore ouvert ?
+│
+├── OUI
+│   ↓
+│   sélectionner Depth + Domaine non EMPTY
+│   ↓
+│   KernelRotationPlanner écrit depth et domain
+│   ↓
+│   Blueprint transmis au moteur suivant
+│
+└── NON
+    ↓
+    les 8 domaines du Depth actif sont-ils EMPTY ?
+    │
+    ├── NON
+    │   ↓
+    │   sélectionner le prochain domaine non EMPTY
+    │   ↓
+    │   KernelRotationPlanner écrit depth et domain
+    │   ↓
+    │   Blueprint transmis au moteur suivant
+    │   ↓
+    │   continuer jusqu’aux 8 EMPTY
+    │
+    └── OUI
+        ↓
+        finaliser le Depth actif
+        ↓
+        vérifier les besoins des autres Depths
+        │
+        ├── un autre besoin existe
+        │   ↓
+        │   sélectionner le prochain Depth requis
+        │
+        └── aucun besoin n’existe
+            ↓
+            attendre de futurs besoins gameplay
+```
+
+## 6. Correction du cas « aucun besoin »
+
+Il faut supprimer la règle suivante :
+
+```text
+aucun besoin gameplay
+→ le Blueprint reste vide
+→ aucune sortie vers Taxonomy
+```
+
+Elle doit être remplacée par :
+
+```text
+aucun besoin gameplay pour le Depth actif
++
+réservoir Taxonomy encore disponible
+↓
+la rotation continue
+↓
+un Depth + Domaine est quand même fourni
+```
+
+Le Blueprint reste vide et en attente uniquement lorsque :
+
+```text
+aucun besoin gameplay global
++
+dernier Depth actif finalisé
++
+8 domaines EMPTY
+```
+
+## 7. Responsabilités
+
+### DepthNeedMatrix
+
+Elle conserve séparément :
+
+```text
+état des besoins gameplay par Depth
+état EMPTY des huit domaines par Depth
+position actuelle du DomainCycle
+Depth actif
+```
+
+Elle décide si la production actuelle sert :
+
+```text
+à combler le besoin gameplay
+OU
+à terminer les réservoirs Taxonomy du Depth actif
+```
+
+### Taxonomy
+
+Elle transmet immédiatement à la Matrix :
+
+```text
+Depth
+Domaine
+EMPTY
+```
+
+Elle ne choisit ni le prochain domaine ni le prochain Depth.
+
+### KernelRotationPlanner
+
+Il ne décide pas pourquoi la production continue.
+
+Il reçoit simplement de la Matrix le prochain couple valide :
+
+```text
+Depth + Domaine
+```
+
+puis l’écrit dans le Blueprint canonique.
+
+## 8. Condition finale correcte
+
+```text
+fin des besoins gameplay actuels
+SEULE
+≠
+mise en attente
+```
+
+La condition correcte est :
+
+```text
+fin de tous les besoins gameplay actuels
++
+finalisation du dernier Depth actif
++
+EMPTY reçu pour ses huit domaines
+↓
+attente de futurs besoins gameplay
+```
