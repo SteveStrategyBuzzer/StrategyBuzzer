@@ -1,0 +1,152 @@
+Ne refais aucun résumé général.
+
+Ferme maintenant uniquement les écarts restants et fournis les preuves d’exécution.
+
+## 1. Vérification du raccordement réel
+
+Montre les appels exacts démontrant que le flow exécuté est maintenant :
+
+KernelBlueprintFactory
+→ KernelPipelineOrchestrator
+→ KernelRotationPlanner V2
+→ TaxonomyProgressManager
+→ pipeline Kernel
+→ ReadyBank
+→ Outbox CURRENT_KERNEL_RECEIVED
+→ ApplyCurrentKernelReceivedToRotation
+→ Blueprint suivant
+
+Pour chaque flèche, donne :
+
+* fichier exact ;
+* classe ;
+* méthode ;
+* numéro de ligne ;
+* extrait de code concerné.
+
+## 2. KRP V2 réellement actif
+
+Vérifie tous les appelants de :
+
+* `KernelRotationPlanner::plan()` ;
+* `KernelRotationPlanner::planV2()` ;
+* `initialize()` ;
+* `initializeV2()` si elle existe.
+
+Le pipeline Kernel doit utiliser exclusivement le contrat V2.
+
+Les méthodes legacy peuvent rester présentes pour retour arrière, mais aucun point d’entrée V2 ne doit encore appeler :
+
+* `current_domain_index` ;
+* `completed_domains` ;
+* `remaining_kernels` ;
+* `rotation_identifier` ;
+* `DomainExhaustionChecker` comme autorité de rotation.
+
+Corrige immédiatement tout appel encore branché sur le legacy.
+
+## 3. ReadyBank
+
+Montre le fichier exact du composant ReadyBank du pipeline KernelBlueprint.
+
+Vérifie et corrige au besoin qu’il :
+
+1. reçoit le Blueprint canonique ;
+2. persiste `READY_BANK_RECEIVED` ;
+3. écrit `CURRENT_KERNEL_RECEIVED` dans l’Outbox dans la même transaction ;
+4. transmet :
+
+   * event_id ;
+   * blueprint_id ;
+   * depth ;
+   * domain ;
+   * occurred_at ;
+5. ne produit aucun événement après `EMPTY`.
+
+## 4. Taxonomy et EMPTY
+
+Montre que :
+
+`TaxonomyProgressManager::peekNext() === null`
+
+est réellement interprété par l’orchestrateur comme :
+
+`EMPTY`
+
+puis appelle :
+
+`applyEmptyTransitionV2()`
+
+sur le même `blueprint_id`.
+
+Ajoute ou corrige le test d’intégration correspondant.
+
+## 5. Commandes Kernel
+
+Audite et corrige les commandes :
+
+`questions:kernel:*`
+
+Elles doivent utiliser :
+
+* KernelBlueprintFactory ;
+* KernelPipelineOrchestrator ;
+* KRP V2.
+
+Elles ne doivent plus lancer directement l’ancien `plan()`.
+
+Ne touche à aucune commande BankWorker.
+
+## 6. Inventaire complet
+
+Le contrat prévoyait dix nouvelles classes.
+
+Fournis la liste exacte de toutes les classes réellement créées avec leur chemin.
+
+Signale clairement toute classe promise mais absente, puis crée-la si elle est nécessaire au flow réel.
+
+## 7. Validation
+
+Exécute :
+
+* tests KRP V2 ;
+* tests Taxonomy ;
+* tests KernelBlueprint ;
+* tests des commandes Kernel ;
+* tests Outbox et ReadyBank ;
+* tests de reprise ;
+* suite globale.
+
+Les deux échecs `BankAIGeneratorRouterTest` doivent être documentés avec :
+
+* commande exacte ;
+* message exact ;
+* preuve par exécution sur le commit de départ ou environnement isolé qu’ils existaient avant les modifications.
+
+Ne les compte pas comme GREEN.
+
+## 8. Audit terminal
+
+Fournis exactement :
+
+* `git status --short` ;
+* `git diff --stat` ;
+* liste complète des fichiers créés ;
+* liste complète des fichiers modifiés ;
+* liste complète des migrations ;
+* `php artisan migrate:status` ;
+* résultats complets des tests ;
+* grep des appelants V2 ;
+* preuve qu’aucun fichier BankWorker n’a changé ;
+* preuve qu’aucune table BankWorker n’a changé.
+
+Ne déclare pas le document `VERROUILLÉ`.
+
+Utilise :
+
+* Spécification écrite : OUI ;
+* Statut : UNDER_REVIEW ;
+* Implantation : à confirmer après raccordement terminal ;
+* Validation : à confirmer après audit.
+
+Travaille directement sur les écarts trouvés et arrête-toi uniquement lorsque les preuves ci-dessus sont fournies.

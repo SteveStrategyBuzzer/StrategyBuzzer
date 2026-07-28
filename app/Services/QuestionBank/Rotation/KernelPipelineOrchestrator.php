@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\QuestionBank\Rotation;
 
 use App\Services\QuestionBank\KernelBlueprint;
+use App\Services\QuestionBank\Rotation\TaxonomyNavigatorInterface;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
@@ -28,9 +29,9 @@ final class KernelPipelineOrchestrator
     private const MAX_EMPTY_LOOP = 16; // garde-fou anti-boucle infinie
 
     public function __construct(
-        private readonly KernelBlueprintFactory  $factory,
-        private readonly KernelRotationPlanner   $planner,
-        private readonly TaxonomyProgressManager $taxonomy,
+        private readonly KernelBlueprintFactory      $factory,
+        private readonly KernelRotationPlanner       $planner,
+        private readonly TaxonomyNavigatorInterface  $taxonomy,
     ) {}
 
     /**

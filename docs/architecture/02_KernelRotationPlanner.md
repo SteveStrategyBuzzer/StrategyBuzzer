@@ -2,8 +2,10 @@
 
 **Version :** 2.0
 **Date :** 28 juillet 2026
-**Statut :** VERROUILLÉ
-**Implantation autorisée :** OUI — contrat exécutoire
+**Spécification écrite :** OUI
+**Statut :** UNDER_REVIEW
+**Implantation :** à confirmer après raccordement terminal
+**Validation :** à confirmer après audit
 
 Ce document remplace intégralement la version 1.4.
 
