@@ -89,6 +89,15 @@ namespace App\Services\QuestionBank;
  */
 class KernelBlueprint
 {
+    // ─── Identité canonique du Blueprint (DEC-059) ────────────────────────────
+
+    /**
+     * Propriétaire : KernelBlueprintFactory.
+     * UUIDv7 (time-ordered) généré avant l'entrée dans KRP.
+     * Immuable après création. Distinct de kernel_code et de rotation_identifier (supprimé).
+     */
+    public ?string $blueprint_id = null;
+
     // ─── Partie 1 — 6 champs de l'identité intellectuelle ────────────────────
 
     /**

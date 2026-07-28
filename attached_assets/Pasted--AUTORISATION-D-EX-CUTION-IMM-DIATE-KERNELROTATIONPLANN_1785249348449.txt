@@ -1,0 +1,668 @@
+# AUTORISATION D’EXÉCUTION IMMÉDIATE — KERNELROTATIONPLANNER V2
+
+Tu as déjà produit les audits, la cartographie et la proposition complète de `02_KernelRotationPlanner.md`.
+
+Ne produis plus une nouvelle proposition, un nouveau résumé ou une nouvelle cartographie.
+
+Cette instruction constitue l’autorisation explicite de :
+
+* modifier les fichiers ;
+* créer les nouvelles classes ;
+* créer les migrations additives ;
+* adapter le pipeline KernelBlueprint ;
+* écrire et exécuter les tests ;
+* corriger les erreurs détectées ;
+* terminer l’implantation complète du KernelRotationPlanner V2.
+
+Exécute maintenant le travail dans le dépôt.
+
+---
+
+# 1. Périmètre autorisé
+
+Le périmètre est limité au pipeline KernelBlueprint et au module KernelRotationPlanner.
+
+Tu peux modifier ou créer uniquement les fichiers nécessaires aux éléments suivants :
+
+* documentation KRP ;
+* Architecture Register ;
+* KernelRotationPlanner V2 ;
+* KernelBlueprintFactory ;
+* KernelPipelineOrchestrator ;
+* DepthNeedMatrix ;
+* DepthTourState ;
+* repositories KRP ;
+* persistance KRP ;
+* événements `CURRENT_KERNEL_RECEIVED` ;
+* Outbox KRP ;
+* listener KRP ;
+* composant ReadyBank du pipeline KernelBlueprint ;
+* commandes Artisan `questions:kernel:*` ;
+* tests KRP ;
+* migrations KRP additives.
+
+---
+
+# 2. Protection absolue du pipeline BankWorker
+
+Il est strictement interdit de modifier :
+
+* BankWorker ;
+* BankNeedsCalculator ;
+* BankAIGenerator ;
+* QualityGuards ;
+* QuestionBankRepository ;
+* BankSelfHealer ;
+* WorkerRateLimiter ;
+* les routes Node utilisées par BankWorker ;
+* `question_groups` ;
+* `question_translations` ;
+* la logique gameplay ;
+* Redis BankWorker ;
+* les commandes BankWorker.
+
+Ne connecte pas BankWorker au pipeline KernelBlueprint.
+
+Ne supprime pas BankWorker.
+
+Ne refactorise pas BankWorker.
+
+Ne modifie pas ses tests.
+
+---
+
+# 3. Première opération : écrire la spécification
+
+Écris maintenant dans :
+
+`docs/architecture/02_KernelRotationPlanner.md`
+
+la version 2.0 complète déjà proposée dans ta dernière réponse.
+
+Ne la résume pas.
+
+Ne produis pas seulement un patch partiel.
+
+Réécris le document complet avec toutes les sections obligatoires :
+
+* Mission ;
+* Responsabilités ;
+* Interdictions ;
+* Entrées ;
+* Sorties ;
+* Slots Blueprint ;
+* Données internes ;
+* Mécanismes ;
+* Communication ;
+* Contrats ;
+* États ;
+* Transitions ;
+* Cas limites ;
+* Persistance ;
+* Atomicité ;
+* Reprise ;
+* Validation ;
+* Tests ;
+* Architecture Register local.
+
+Le document doit intégrer définitivement :
+
+* Blueprint créé avant KRP ;
+* `KernelBlueprintFactory` ;
+* `KernelPipelineOrchestrator` ;
+* `blueprint_id` UUIDv7 ;
+* un seul Blueprint actif ;
+* `PRODUCTION_ON_HOLD` ;
+* Tour de Depth ON/OFF ;
+* DepthNeedMatrix ;
+* Depth 2 et Depth 10 ;
+* progression `0/8 → 8/8` ;
+* `cycle_target` ;
+* `cycle_completed` ;
+* `kernel_received_total[depth][domain]` ;
+* événement transactionnel `CURRENT_KERNEL_RECEIVED` ;
+* idempotence par `blueprint_id` ;
+* Outbox ;
+* migrations additives ;
+* protection du pipeline BankWorker.
+
+---
+
+# 4. Architecture Register
+
+Après l’écriture de la spécification :
+
+1. Lis le registre complet.
+2. Identifie le prochain identifiant DEC réellement disponible.
+3. Ajoute les nouvelles décisions nécessaires.
+4. Ne renumérote aucune décision.
+5. Ne supprime aucune ancienne décision.
+6. Les décisions remplacées deviennent `SUPERSEDED`.
+7. Renseigne leur décision remplaçante.
+8. N’utilise jamais le statut `PARTIALLY_SUPERSEDED`.
+
+Modifie uniquement :
+
+`docs/architecture/00_ArchitectureRegister.md`
+
+pour les décisions réellement concernées par KernelRotationPlanner V2.
+
+---
+
+# 5. Architecture à implanter
+
+Implante le flow suivant :
+
+```text
+KernelPipelineOrchestrator
+↓
+KernelBlueprintFactory crée le Blueprint vide
+↓
+blueprint_id UUIDv7
+↓
+KernelRotationPlanner reçoit le Blueprint
+│
+├── DepthNeedMatrix
+├── Tour de Depth ON/OFF
+└── écrit uniquement depth + domain
+↓
+Taxonomy
+│
+├── territoire fourni
+│   → remplit ses trois slots
+│   → Blueprint engagé dans le pipeline
+│
+└── EMPTY
+    → Domaine ON → OFF
+    → progression +1/8
+    → même Blueprint réutilisé
+    → prochain Domaine ON
+↓
+pipeline intellectuel
+↓
+ReadyBank
+↓
+CURRENT_KERNEL_RECEIVED
+↓
+comptabilisation idempotente
+↓
+Blueprint suivant
+```
+
+---
+
+# 6. Tour de Depth
+
+Implante les huit Domaines de création dans cet ordre :
+
+```text
+Géographie
+→ Histoire
+→ Faune
+→ Art
+→ Sport
+→ Cinéma
+→ Cuisine
+→ Science
+→ retour à Géographie
+```
+
+`Général` est interdit dans la création.
+
+Au début d’un nouveau Tour de Depth :
+
+```text
+8 Domaines = ON
+```
+
+Lorsque Taxonomy fournit un territoire :
+
+```text
+Domaine reste ON
+```
+
+Lorsque Taxonomy retourne `EMPTY` :
+
+```text
+Domaine ON → OFF
+```
+
+Le Domaine devient non sélectionnable jusqu’au Tour de Depth suivant.
+
+Un second `EMPTY` pour un Domaine déjà `OFF` doit être un `NO-OP`.
+
+Aucun signal `AVAILABLE` ne doit exister.
+
+---
+
+# 7. DepthNeedMatrix
+
+Implante :
+
+```text
+DepthCycle = [2, 4, 6, 7, 8, 9, 10]
+```
+
+Cibles :
+
+```text
+2  → 250 Tours
+4  → 300 Tours
+6  → 350 Tours
+7  → 350 Tours
+8  → 350 Tours
+9  → 250 Tours
+10 → 100 Tours
+```
+
+Implante :
+
+```text
+cycle_target[depth]
+cycle_completed[depth]
+empty_progress_current_tour
+kernel_received_total[depth][domain]
+```
+
+Chaque nouvelle transition `ON → OFF` produit exactement :
+
+```text
+empty_progress_current_tour += 1
+```
+
+À `8/8` :
+
+```text
+cycle_completed[active_depth] += 1
+```
+
+Puis sélectionner le prochain Depth du cycle dont :
+
+```text
+cycle_completed[depth] < cycle_target[depth]
+```
+
+Après Depth 10, reprendre la recherche à Depth 2.
+
+Ne recommence jamais immédiatement un nouveau Tour du même Depth.
+
+---
+
+# 8. Ancienne mécanique à remplacer
+
+Le KRP V2 ne doit plus utiliser :
+
+```text
+ALLOWED_DEPTHS = [4,6,7,8,9]
+DEPTH_TARGETS en noyaux
+current_domain_index
+completed_domains
+last_rotation_identifier
+rotation_identifier
+remaining_kernels
+chooseDepth par déficit maximal
+advanceDomainIndex
+depth_position
+domain_position
+AVAILABLE
+ACTIVE
+TARGET_COMPLETE
+RESERVOIR_EMPTY
+WAITING_TAXONOMY_STATE
+reservoir_status_by_depth_and_domain
+domain_state_by_depth_and_domain
+```
+
+Ne supprime pas physiquement les anciennes colonnes dans cette implantation initiale.
+
+Conserve-les temporairement pour le retour arrière, mais le KRP V2 ne doit plus les utiliser.
+
+---
+
+# 9. Création du Blueprint
+
+Crée :
+
+```text
+KernelBlueprintFactory
+```
+
+Elle doit :
+
+* créer le Blueprint avant KRP ;
+* générer `blueprint_id` en UUIDv7 ;
+* créer son enregistrement d’exécution ;
+* vérifier qu’aucun Blueprint actif n’existe déjà ;
+* ne remplir aucun slot métier.
+
+KRP ne doit jamais créer le Blueprint.
+
+KRP ne doit jamais écrire :
+
+* `blueprint_id` ;
+* `kernel_code` ;
+* `subdomain_active` ;
+* `subject_active` ;
+* `dominant_idea_active`.
+
+KRP écrit uniquement :
+
+```text
+depth
+domain
+```
+
+---
+
+# 10. EMPTY et réutilisation du Blueprint
+
+Sur `EMPTY` :
+
+1. conserver le même `blueprint_id` ;
+2. passer le Domaine de `ON` à `OFF` ;
+3. augmenter la progression ;
+4. sélectionner le prochain Domaine `ON` ;
+5. remplacer le couple provisoire `depth + domain` dans le même Blueprint ;
+6. consulter Taxonomy de nouveau.
+
+Ne crée aucun nouveau Blueprint après `EMPTY`.
+
+Aucun `CURRENT_KERNEL_RECEIVED` ne doit être envoyé après `EMPTY`.
+
+---
+
+# 11. PRODUCTION_ON_HOLD
+
+Lorsque tous les Depths ont atteint leur `cycle_target` :
+
+```text
+PRODUCTION_ON_HOLD
+```
+
+Le Blueprint déjà créé passe à :
+
+```text
+NOT_ENGAGED_PRODUCTION_ON_HOLD
+```
+
+Il :
+
+* ne poursuit pas le pipeline ;
+* ne va pas dans ReadyBank ;
+* n’est pas comptabilisé ;
+* reste uniquement comme trace technique ;
+* ne bloque pas une relance future lorsque les besoins changent.
+
+---
+
+# 12. CURRENT_KERNEL_RECEIVED
+
+Implante un événement transactionnel avec Outbox.
+
+Payload obligatoire :
+
+```text
+event_id
+event_type = CURRENT_KERNEL_RECEIVED
+schema_version = 1
+blueprint_id
+depth
+domain
+occurred_at
+```
+
+ReadyBank doit écrire l’événement dans la même transaction que la réception canonique du Blueprint.
+
+Crée un listener :
+
+```text
+ApplyCurrentKernelReceivedToRotation
+```
+
+Le listener doit :
+
+1. vérifier `blueprint_id` ;
+2. créer un reçu idempotent ;
+3. ne rien incrémenter si le reçu existe déjà ;
+4. sinon incrémenter :
+
+```text
+kernel_received_total[depth][domain] += 1
+```
+
+5. autoriser la création du Blueprint suivant ;
+6. marquer l’événement Outbox comme traité.
+
+---
+
+# 13. Persistance et migrations additives
+
+Crée les migrations suivantes :
+
+```text
+M-01 create_kernel_blueprint_runs
+M-02 create_kernel_rotation_state_v2
+M-03 create_kernel_depth_matrix
+M-04 create_kernel_depth_domain_totals
+M-05 create_kernel_current_kernel_receipts
+M-06 create_kernel_pipeline_outbox
+M-07 seed_depth_matrix
+M-08 seed_depth_domain_totals
+```
+
+Crée les structures définies dans la spécification :
+
+```text
+kernel_blueprint_runs
+kernel_rotation_state_v2
+kernel_depth_matrix
+kernel_depth_domain_totals
+kernel_current_kernel_receipts
+kernel_pipeline_outbox
+```
+
+Contraintes obligatoires :
+
+* migrations additives ;
+* aucun `DROP COLUMN` ;
+* aucune modification de `kernel_rotation_state` legacy ;
+* aucune modification de `taxonomy_progress` ;
+* aucune modification des tables BankWorker ;
+* 7 Depths ;
+* 8 Domaines ;
+* 56 lignes initiales dans `kernel_depth_domain_totals`.
+
+---
+
+# 14. Classes à créer
+
+Crée au minimum :
+
+```text
+KernelPipelineOrchestrator
+KernelBlueprintFactory
+DepthNeedMatrix
+DepthTourState
+KernelBlueprintRunRepository
+KernelRotationStateRepository
+DepthNeedMatrixRepository
+CurrentKernelReceived
+ApplyCurrentKernelReceivedToRotation
+KernelPipelineOutboxRepository
+```
+
+Respecte les namespaces et conventions déjà présents dans le projet.
+
+Ne crée pas de duplication si une abstraction équivalente existe déjà.
+
+---
+
+# 15. Classes à modifier
+
+Modifie uniquement ce qui est nécessaire dans :
+
+```text
+KernelRotationPlanner
+KernelBlueprint
+TaxonomyProgressManager
+ReadyBank du pipeline KernelBlueprint
+commandes Artisan questions:kernel:*
+```
+
+`TaxonomyProgressManager::peekNext()` retournant `null` doit être interprété comme `EMPTY` par `KernelPipelineOrchestrator`.
+
+Ne change pas la logique interne de progression Taxonomy sauf nécessité démontrée par les tests.
+
+---
+
+# 16. KernelCodeEngine
+
+Ne crée pas KernelCodeEngine dans cette opération.
+
+KRP ne doit pas remplir `kernel_code`.
+
+Le slot reste vide après KRP.
+
+KernelCodeEngine sera implanté dans son propre module après verrouillage de sa spécification.
+
+---
+
+# 17. Tests obligatoires
+
+Écris les tests unitaires et d’intégration nécessaires pour vérifier au minimum :
+
+## Tour de Depth
+
+* huit Domaines ON au démarrage ;
+* territoire fourni : Domaine reste ON ;
+* EMPTY : Domaine passe OFF ;
+* Domaine OFF ignoré ;
+* double EMPTY sans double incrément ;
+* fermeture à 8/8 ;
+* nouveau tour avec huit Domaines ON.
+
+## DepthNeedMatrix
+
+* présence des Depths 2 et 10 ;
+* ordre exact du DepthCycle ;
+* retour Depth 10 vers Depth 2 ;
+* cibles exactes ;
+* Depth terminé ignoré ;
+* `cycle_completed` incrémenté uniquement à 8/8 ;
+* aucun Depth requis retourne `null`.
+
+## KRP
+
+* KRP reçoit le Blueprint ;
+* KRP ne crée pas le Blueprint ;
+* KRP écrit uniquement `depth + domain` ;
+* absence de curseurs numériques ;
+* absence de `rotation_identifier` ;
+* même Blueprint après EMPTY ;
+* Domaine OFF sauté.
+
+## CURRENT_KERNEL_RECEIVED
+
+* un seul incrément par `blueprint_id` ;
+* doublon sans double comptabilisation ;
+* Outbox rejouable ;
+* listener rejouable ;
+* Blueprint suivant autorisé seulement après réception valide.
+
+## Reprise
+
+* Tour partiellement OFF restauré ;
+* progression restaurée ;
+* événement non traité rejoué ;
+* aucun double Blueprint ;
+* aucun double noyau compté.
+
+## PRODUCTION_ON_HOLD
+
+* aucun pipeline ;
+* aucun ReadyBank ;
+* aucun compteur ;
+* trace technique conservée ;
+* relance future possible.
+
+---
+
+# 18. Exécution obligatoire des tests
+
+Après les modifications :
+
+1. exécute les tests KRP ciblés ;
+2. exécute les tests Taxonomy existants ;
+3. exécute les tests KernelBlueprint existants ;
+4. exécute les tests d’intégration Kernel ;
+5. exécute la suite globale pertinente ;
+6. corrige les échecs liés aux modifications ;
+7. répète jusqu’à obtenir les tests verts.
+
+Ne t’arrête pas après avoir simplement créé les tests.
+
+---
+
+# 19. Audit final obligatoire
+
+À la fin, affiche :
+
+```text
+git status --short
+git diff --stat
+```
+
+Puis fournis :
+
+* liste exacte des fichiers créés ;
+* liste exacte des fichiers modifiés ;
+* liste exacte des migrations ;
+* liste exacte des tests ;
+* résultats complets des tests ;
+* preuve qu’aucun fichier BankWorker n’a été modifié ;
+* preuve qu’aucune table BankWorker n’a été modifiée ;
+* recherche confirmant l’absence de `AVAILABLE` dans KRP V2 ;
+* recherche confirmant l’absence de `rotation_identifier` dans KRP V2 ;
+* recherche confirmant la présence de Depth 2 et Depth 10 ;
+* recherche confirmant l’absence de `current_domain_index` dans KRP V2.
+
+---
+
+# 20. Règle de travail
+
+Ne réponds plus avec :
+
+* une proposition ;
+* un contrat proposé ;
+* une cartographie ;
+* une liste de ce qui pourrait être fait ;
+* une demande d’autorisation supplémentaire.
+
+Commence immédiatement les modifications.
+
+Travaille jusqu’à ce que :
+
+* la documentation soit écrite ;
+* le registre soit mis à jour ;
+* le code soit implanté ;
+* les migrations soient créées ;
+* les tests soient écrits ;
+* les tests soient exécutés ;
+* les erreurs soient corrigées ;
+* l’audit final soit produit.
+
+Tu peux t’arrêter uniquement devant une erreur technique réellement bloquante que tu ne peux pas résoudre avec le dépôt disponible.
+
+Dans ce cas, donne :
+
+* la commande exacte exécutée ;
+* l’erreur exacte ;
+* le fichier concerné ;
+* ce qui a déjà été implanté ;
+* le seul élément réellement bloquant.
+
+Aucun résumé intermédiaire.
+
+Aucune nouvelle proposition.
+
+INTÈGRE MAINTENANT LES MODIFICATIONS.

@@ -109,12 +109,10 @@ Il est interdit de créer une copie distincte pour chaque slot `FAIL` appartenan
 
 **Version :** 1.0
 **Date :** 14 juillet 2026
-**Statut :** UNDER_REVIEW
+**Statut :** SUPERSEDED par DEC-060
 **Module :** `02_KernelRotationPlanner.md`
 
-Le compte de noyaux demandé (`kernel_target`) pour chaque couple `Depth + Domaine` provient exclusivement de la `DepthNeedMatrix`.
-
-La `DepthNeedMatrix` ne contrôle pas l'ordre du `DepthCycle`.
+Ancienne décision — remplacée par DEC-060 (DepthNeedMatrix V2).
 
 ---
 
@@ -133,14 +131,10 @@ Un Blueprint est comptabilisé dès sa réception canonique par ReadyBank, même
 
 **Version :** 1.0
 **Date :** 14 juillet 2026
-**Statut :** OFFICIAL
+**Statut :** SUPERSEDED par DEC-063
 **Module :** `02_KernelRotationPlanner.md`
 
-ReadyBank et Taxonomy transmettent séparément leurs informations au KernelRotationPlanner.
-
-Le calcul de la prochaine position exige les deux signaux :
-- `CURRENT_KERNEL_RECEIVED` (ReadyBank) ;
-- état actuel des réservoirs (Taxonomy).
+Ancienne décision — remplacée par DEC-063 (CURRENT_KERNEL_RECEIVED signal unique).
 
 ---
 
@@ -148,18 +142,10 @@ Le calcul de la prochaine position exige les deux signaux :
 
 **Version :** 1.0
 **Date :** 14 juillet 2026
-**Statut :** UNDER_REVIEW
+**Statut :** SUPERSEDED par DEC-061
 **Module :** `02_KernelRotationPlanner.md`
 
-Le Planner distingue cinq états de domaine :
-
-```
-AVAILABLE
-ACTIVE
-TARGET_COMPLETE
-RESERVOIR_EMPTY
-EMPTY_BEFORE_TARGET
-```
+Ancienne décision — remplacée par DEC-061 (Tour de Depth ON/OFF).
 
 ---
 
@@ -167,12 +153,10 @@ EMPTY_BEFORE_TARGET
 
 **Version :** 1.0
 **Date :** 14 juillet 2026
-**Statut :** UNDER_REVIEW
+**Statut :** SUPERSEDED par DEC-062
 **Module :** `02_KernelRotationPlanner.md`
 
-Le Depth est fermé lorsqu'aucun de ses domaines ne reste sélectionnable.
-
-La raison de fermeture est conservée : `DEPTH_TARGET_COMPLETE` ou `DEPTH_COMPLETE_WITH_SHORTFALL`.
+Ancienne décision — remplacée par DEC-062 (fermeture de Tour et bascule de Depth).
 
 ---
 
@@ -180,10 +164,10 @@ La raison de fermeture est conservée : `DEPTH_TARGET_COMPLETE` ou `DEPTH_COMPLE
 
 **Version :** 1.0
 **Date :** 14 juillet 2026
-**Statut :** UNDER_REVIEW
+**Statut :** SUPERSEDED par DEC-064
 **Module :** `02_KernelRotationPlanner.md`
 
-L'état complet de la rotation (`RotationState`) est persisté afin d'empêcher les doubles comptabilisations, les doubles Blueprints, les sauts de domaine, les pertes de position, et les reprises incohérentes.
+Ancienne décision — remplacée par DEC-064 (kernel_rotation_state_v2).
 
 ---
 
@@ -191,47 +175,131 @@ L'état complet de la rotation (`RotationState`) est persisté afin d'empêcher 
 
 **Version :** 1.0
 **Date :** 14 juillet 2026
+**Statut :** SUPERSEDED par DEC-065
+**Module :** `02_KernelRotationPlanner.md`
+
+Ancienne décision — remplacée par DEC-065 (DepthCycle complet incluant Depth 10).
+
+---
+
+## DEC-058 — Blueprint créé avant KRP
+
+**Version :** 2.0
+**Date :** 28 juillet 2026
 **Statut :** OFFICIAL
 **Module :** `02_KernelRotationPlanner.md`
 
-**Décision :**
+`KernelBlueprintFactory` crée le Blueprint avant l'entrée dans KRP.
+KRP reçoit un Blueprint vide et y inscrit uniquement `depth` et `domain`.
 
-L'ordre officiel du DepthCycle est :
+---
 
-```
-2
-↓
-4
-↓
-6
-↓
-7
-↓
-8
-↓
-9
-```
+## DEC-059 — Identité canonique blueprint_id
 
-Depths autorisés : 2, 4, 6, 7, 8, 9.
+**Version :** 2.0
+**Date :** 28 juillet 2026
+**Statut :** OFFICIAL
+**Module :** `02_KernelRotationPlanner.md`
 
-Depth 1 : refusé (profondeur intellectuelle insuffisante).
+`blueprint_id` est un UUIDv7 (time-ordered, via `Str::orderedUuid()`) généré par `KernelBlueprintFactory`.
+`rotation_identifier` est supprimé.
+`kernel_code` ne sert pas d'identité de Blueprint.
 
-Depth 10 : interdit dans le DepthCycle.
+---
 
-Lors de la première initialisation, KernelRotationPlanner commence par :
+## DEC-060 — DepthNeedMatrix V2
 
-```
-active_depth   = 2
-depth_position = 0
-```
+**Version :** 2.0
+**Date :** 28 juillet 2026
+**Statut :** OFFICIAL
+**Module :** `02_KernelRotationPlanner.md`
 
-Après la fermeture du Depth 9 : `ROTATION_COMPLETE`.
+DepthNeedMatrix porte : DepthCycle `[2,4,6,7,8,9,10]`, `cycle_target[depth]` (constantes), `cycle_completed[depth]`, `kernel_received_total[depth][domain]`. Elle ne porte pas les états ON/OFF des Domaines et ne prend aucune décision.
 
-**Séparation officielle :**
+---
 
-- `DepthCycle` → ordre de progression : 2, 4, 6, 7, 8, 9
-- `DepthNeedMatrix` → `kernel_target` par couple Depth + Domaine (voir DEC-051)
+## DEC-061 — Tour de Depth ON/OFF
 
-**Modules concernés :** KernelRotationPlanner, DepthCycle, DepthNeedMatrix, Taxonomy, Phase 1, Validation Phase 1, ReadyBank.
+**Version :** 2.0
+**Date :** 28 juillet 2026
+**Statut :** OFFICIAL
+**Module :** `02_KernelRotationPlanner.md`
 
-**Décision annulée :** toute formulation indiquant que Depth 2 est refusé ou toute séquence différente de `2→4→6→7→8→9`.
+8 Domaines ON au début de chaque Tour. Sur EMPTY : Domaine ON → OFF (idempotent). Tour terminé à 8 Domaines OFF.
+
+---
+
+## DEC-062 — Fermeture de Tour et bascule de Depth
+
+**Version :** 2.0
+**Date :** 28 juillet 2026
+**Statut :** OFFICIAL
+**Module :** `02_KernelRotationPlanner.md`
+
+Tour fermé à 8/8. `cycle_completed[active_depth] += 1`. Prochain Depth = premier Depth du DepthCycle pour lequel `cycle_completed < cycle_target`. KRP ne recommence jamais immédiatement le même Depth.
+
+---
+
+## DEC-063 — CURRENT_KERNEL_RECEIVED signal unique
+
+**Version :** 2.0
+**Date :** 28 juillet 2026
+**Statut :** OFFICIAL
+**Module :** `02_KernelRotationPlanner.md`
+
+Seul déclencheur de la prochaine rotation. Canal = événement transactionnel avec Outbox. Listener = `ApplyCurrentKernelReceivedToRotation`. Idempotence = `kernel_current_kernel_receipts` (PK blueprint_id).
+
+---
+
+## DEC-064 — Persistance dans kernel_rotation_state_v2
+
+**Version :** 2.0
+**Date :** 28 juillet 2026
+**Statut :** OFFICIAL
+**Module :** `02_KernelRotationPlanner.md`
+
+Nouvelle table `kernel_rotation_state_v2` (coexiste avec la table legacy DEPRECATED). Aucune table existante n'est supprimée.
+
+---
+
+## DEC-065 — DepthCycle complet incluant Depth 2 et Depth 10
+
+**Version :** 2.0
+**Date :** 28 juillet 2026
+**Statut :** OFFICIAL
+**Module :** `02_KernelRotationPlanner.md`
+
+DepthCycle = `2 → 4 → 6 → 7 → 8 → 9 → 10`. Après Depth 10 : reprend à Depth 2. PRODUCTION_ON_HOLD = aucun Depth sous `cycle_target`.
+
+---
+
+## DEC-066 — Conservation du Blueprint sur EMPTY
+
+**Version :** 2.0
+**Date :** 28 juillet 2026
+**Statut :** OFFICIAL
+**Module :** `02_KernelRotationPlanner.md`
+
+Sur EMPTY, le même Blueprint est conservé et réutilisé. Aucun nouveau Blueprint n'est créé après un EMPTY.
+
+---
+
+## DEC-067 — Cycle de vie d'exécution du Blueprint
+
+**Version :** 2.0
+**Date :** 28 juillet 2026
+**Statut :** OFFICIAL
+**Module :** `02_KernelRotationPlanner.md`
+
+Quatre états techniques : `CREATED_UNENGAGED`, `ENGAGED_IN_PIPELINE`, `READY_BANK_RECEIVED`, `NOT_ENGAGED_PRODUCTION_ON_HOLD`. Distincts des slots du Blueprint.
+
+---
+
+## DEC-068 — KernelCodeEngine hors périmètre KRP
+
+**Version :** 2.0
+**Date :** 28 juillet 2026
+**Statut :** OFFICIAL
+**Module :** `02_KernelRotationPlanner.md`
+
+KRP n'écrit jamais `kernel_code`. `kernel_code = null` à la sortie de KRP.

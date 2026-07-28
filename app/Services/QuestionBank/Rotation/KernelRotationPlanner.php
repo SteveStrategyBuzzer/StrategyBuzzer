@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\QuestionBank\Rotation;
 
+use App\Services\QuestionBank\KernelBlueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use RuntimeException;
@@ -13,36 +14,69 @@ use RuntimeException;
  *
  * Machine d'état persistante de la rotation globale.
  *
- * Responsabilités :
- *   - Maintenir l'état global de la rotation (current_depth, current_domain_index, completed_domains)
- *   - Interroger TaxonomyProgressManager (via DomainExhaustionChecker) sur UN seul domaine par rotation
- *   - Incrémenter completed_domains quand ce domaine répond EXHAUSTED
- *   - Déclencher le passage au prochain depth quand completed_domains atteint 8
- *   - Écrire depth · domain_code · rotation_identifier dans le Blueprint
+ * ═══════════════════════════════════════════════════════════════════════
+ * INTERFACE V2 (DEC-058 à DEC-068) — méthodes actives
+ * ═══════════════════════════════════════════════════════════════════════
  *
- * Interdictions absolues :
- *   - Ne scan jamais les 8 domaines en même temps
- *   - Ne crée / ne modifie JAMAIS sous-domaine, sujet, idée, question, cognitif,
- *     traduction, semantic_key, QuestionIntent, READY_BANK, gameplay, kernel_code
+ *   planV2(KernelBlueprint $blueprint, ?string $previousDomain)
+ *     → écrit depth + domain dans le Blueprint reçu
+ *     → retourne ROTATION_ASSIGNED | NOT_ENGAGED_PRODUCTION_ON_HOLD
  *
- * Cycle de vie :
- *   1. initialize(?int $startDepth) — appelé une seule fois au démarrage du worker
- *   2. plan(DomainExhaustionChecker $checker) — appelé à chaque rotation
+ *   applyEmptyTransitionV2(string $emptyDomain)
+ *     → Domaine ON → OFF dans le Tour de Depth
+ *     → si Tour 8/8 : cycle_completed++ et nouveau Depth
+ *
+ *   receiveKernelReceivedV2(string $blueprintId, int $depth, string $domain)
+ *     → comptabilisation idempotente via kernel_current_kernel_receipts
+ *
+ * ═══════════════════════════════════════════════════════════════════════
+ * INTERFACE LEGACY (DEPRECATED — non utilisées par KRP V2)
+ * ═══════════════════════════════════════════════════════════════════════
+ *
+ *   initialize(?int $startDepth)
+ *   plan(DomainExhaustionChecker $checker)
+ *   buildDepthNeedMatrix(array $existingByDepth)
+ *   chooseDepth(array $matrix)
+ *   advanceDomainIndex(?int $currentIndex, array $domains)
+ *   loadDomains()
+ *
+ * Les méthodes legacy restent physiquement présentes pour le retour arrière.
+ * Leur suppression physique est planifiée dans un patch séparé post-validation.
  *
  * Gestion d'erreur : RuntimeException (STOP) — jamais de fallback, jamais de retry.
  */
 final class KernelRotationPlanner
 {
+    // =========================================================================
+    // Tables V2
+    // =========================================================================
+
+    private const STATE_TABLE_V2   = 'kernel_rotation_state_v2';
+    private const RUNS_TABLE       = 'kernel_blueprint_runs';
+    private const RECEIPTS_TABLE   = 'kernel_current_kernel_receipts';
+
+    /** Retour de planV2 : depth + domain écrits dans le Blueprint. */
+    public const RESULT_ROTATION_ASSIGNED  = 'ROTATION_ASSIGNED';
+
+    /** Retour de planV2 : aucun Depth requis actif. */
+    public const RESULT_PRODUCTION_ON_HOLD = 'NOT_ENGAGED_PRODUCTION_ON_HOLD';
+
+    // =========================================================================
+    // Tables legacy (DEPRECATED — conservées pour retour arrière)
+    // =========================================================================
+
+    /** @deprecated LEGACY — non utilisé par KRP V2 */
     private const STATE_TABLE = 'kernel_rotation_state';
 
     /**
-     * Depths autorisés. Tout depth absent de cette liste est refusé.
+     * Depths autorisés (legacy v1).
+     * @deprecated LEGACY — remplacé par DepthNeedMatrix::DEPTH_CYCLE
      */
     private const ALLOWED_DEPTHS = [4, 6, 7, 8, 9];
 
     /**
      * Cibles officielles de noyaux par depth (v1 production).
-     * Total : 12 000 noyaux.
+     * @deprecated LEGACY — remplacé par DepthNeedMatrix::CYCLE_TARGET
      */
     public const DEPTH_TARGETS = [
         4 => 3000,
@@ -53,7 +87,232 @@ final class KernelRotationPlanner
     ];
 
     // =========================================================================
-    // Initialisation — appelée une seule fois par le worker au démarrage
+    // V2 — Interface active (DEC-058 à DEC-068)
+    // =========================================================================
+
+    /**
+     * V2 — Écrit depth + domain dans le Blueprint reçu (DEC-058).
+     *
+     * Sélectionne le Depth actif via DepthNeedMatrix et le prochain Domaine ON
+     * via DepthTourState. Initialise l'état V2 au premier appel.
+     *
+     * @param KernelBlueprint $blueprint      Blueprint vide (CREATED_UNENGAGED).
+     * @param string|null     $previousDomain Domaine précédent pour avancer le DomainCycle.
+     *
+     * @return string ROTATION_ASSIGNED | NOT_ENGAGED_PRODUCTION_ON_HOLD
+     */
+    public function planV2(KernelBlueprint $blueprint, ?string $previousDomain = null): string
+    {
+        $depthMatrix = new DepthNeedMatrix();
+        $state       = DB::table(self::STATE_TABLE_V2)->first();
+
+        // ── Premier appel absolu ──────────────────────────────────────────────
+        if ($state === null) {
+            $firstDepth = $depthMatrix->nextRequiredDepth(null);
+
+            if ($firstDepth === null) {
+                $this->markBlueprintOnHold($blueprint->blueprint_id);
+                return self::RESULT_PRODUCTION_ON_HOLD;
+            }
+
+            $tourState  = DepthTourState::initTour();
+            $nextDomain = $tourState->getNextOnDomain(null);
+
+            DB::table(self::STATE_TABLE_V2)->insert([
+                'active_depth'                    => $firstDepth,
+                'active_tour_id'                  => (string) Str::orderedUuid(),
+                'rotation_status'                 => 'TOUR_IN_PROGRESS',
+                'tour_domain_states'              => json_encode($tourState->toArray()),
+                'active_blueprint_identity'       => $blueprint->blueprint_id,
+                'last_counted_blueprint_identity' => null,
+                'lock_version'                    => 1,
+                'created_at'                      => now(),
+                'updated_at'                      => now(),
+            ]);
+
+            $blueprint->fillRotation($firstDepth, (string) $nextDomain);
+            return self::RESULT_ROTATION_ASSIGNED;
+        }
+
+        // ── État PRODUCTION_ON_HOLD → vérifier si des besoins ont réapparu ──
+        if ($state->rotation_status === 'NOT_ENGAGED_PRODUCTION_ON_HOLD') {
+            $requiredDepth = $depthMatrix->nextRequiredDepth(
+                $state->active_depth !== null ? (int) $state->active_depth : null
+            );
+
+            if ($requiredDepth === null) {
+                $this->markBlueprintOnHold($blueprint->blueprint_id);
+                return self::RESULT_PRODUCTION_ON_HOLD;
+            }
+
+            $tourState  = DepthTourState::initTour();
+            $nextDomain = $tourState->getNextOnDomain(null);
+
+            DB::table(self::STATE_TABLE_V2)->update([
+                'active_depth'              => $requiredDepth,
+                'active_tour_id'            => (string) Str::orderedUuid(),
+                'rotation_status'           => 'TOUR_IN_PROGRESS',
+                'tour_domain_states'        => json_encode($tourState->toArray()),
+                'active_blueprint_identity' => $blueprint->blueprint_id,
+                'lock_version'              => (int) $state->lock_version + 1,
+                'updated_at'                => now(),
+            ]);
+
+            $blueprint->fillRotation($requiredDepth, (string) $nextDomain);
+            return self::RESULT_ROTATION_ASSIGNED;
+        }
+
+        // ── Tour en cours — restaurer DepthTourState ──────────────────────────
+        $tourData    = json_decode((string) $state->tour_domain_states, true);
+        $tourState   = DepthTourState::fromArray($tourData);
+        $activeDepth = (int) $state->active_depth;
+
+        $nextDomain = $tourState->getNextOnDomain($previousDomain);
+
+        if ($nextDomain === null) {
+            // Tour épuisé sans signal EMPTY explicite — on ferme proprement
+            $this->markBlueprintOnHold($blueprint->blueprint_id);
+            return self::RESULT_PRODUCTION_ON_HOLD;
+        }
+
+        DB::table(self::STATE_TABLE_V2)->update([
+            'active_blueprint_identity' => $blueprint->blueprint_id,
+            'lock_version'              => (int) $state->lock_version + 1,
+            'updated_at'                => now(),
+        ]);
+
+        $blueprint->fillRotation($activeDepth, $nextDomain);
+        return self::RESULT_ROTATION_ASSIGNED;
+    }
+
+    /**
+     * V2 — Applique un signal EMPTY sur un Domaine du Tour courant.
+     *
+     * Appelé par KernelPipelineOrchestrator lorsque Taxonomy retourne null.
+     *
+     * Effets dans une transaction atomique :
+     *   - Domaine ON → OFF (idempotent)
+     *   - Si Tour 8/8 : cycle_completed[active_depth]++ → prochain Depth (ou PRODUCTION_ON_HOLD)
+     *
+     * @throws RuntimeException STOP si l'état V2 n'est pas initialisé.
+     */
+    public function applyEmptyTransitionV2(string $emptyDomain): void
+    {
+        DB::transaction(function () use ($emptyDomain) {
+            $state = DB::table(self::STATE_TABLE_V2)->lockForUpdate()->first();
+
+            if ($state === null) {
+                throw new RuntimeException(
+                    '[KernelRotationPlannerV2] STOP — applyEmptyTransitionV2 '
+                    . 'appelé avant initialisation de l\'état V2.'
+                );
+            }
+
+            if ($state->rotation_status === 'NOT_ENGAGED_PRODUCTION_ON_HOLD') {
+                return; // NO-OP
+            }
+
+            $tourData  = json_decode((string) $state->tour_domain_states, true);
+            $tourState = DepthTourState::fromArray($tourData);
+
+            $newTourState = $tourState->applyEmpty($emptyDomain);
+            $activeDepth  = (int) $state->active_depth;
+
+            $depthMatrix = new DepthNeedMatrix();
+
+            if ($newTourState->isTourComplete()) {
+                // Tour 8/8 → fermer le Tour, passer au prochain Depth
+                $depthMatrix->incrementCycleCompleted($activeDepth);
+
+                $nextDepth = $depthMatrix->nextRequiredDepth($activeDepth);
+
+                if ($nextDepth === null) {
+                    DB::table(self::STATE_TABLE_V2)->update([
+                        'rotation_status'    => 'NOT_ENGAGED_PRODUCTION_ON_HOLD',
+                        'tour_domain_states' => json_encode($newTourState->toArray()),
+                        'lock_version'       => (int) $state->lock_version + 1,
+                        'updated_at'         => now(),
+                    ]);
+                } else {
+                    $freshTour = DepthTourState::initTour();
+
+                    DB::table(self::STATE_TABLE_V2)->update([
+                        'active_depth'       => $nextDepth,
+                        'active_tour_id'     => (string) Str::orderedUuid(),
+                        'rotation_status'    => 'TOUR_IN_PROGRESS',
+                        'tour_domain_states' => json_encode($freshTour->toArray()),
+                        'lock_version'       => (int) $state->lock_version + 1,
+                        'updated_at'         => now(),
+                    ]);
+                }
+            } else {
+                // Tour encore en cours
+                DB::table(self::STATE_TABLE_V2)->update([
+                    'tour_domain_states' => json_encode($newTourState->toArray()),
+                    'lock_version'       => (int) $state->lock_version + 1,
+                    'updated_at'         => now(),
+                ]);
+            }
+        });
+    }
+
+    /**
+     * V2 — Comptabilise la réception d'un Blueprint par ReadyBank.
+     *
+     * Idempotent via kernel_current_kernel_receipts (PK blueprint_id — DEC-063).
+     * En production, déléguer au listener ApplyCurrentKernelReceivedToRotation.
+     */
+    public function receiveKernelReceivedV2(string $blueprintId, int $depth, string $domain): void
+    {
+        DB::transaction(function () use ($blueprintId, $depth, $domain) {
+            $alreadyReceived = DB::table(self::RECEIPTS_TABLE)
+                ->where('blueprint_id', $blueprintId)
+                ->exists();
+
+            if ($alreadyReceived) {
+                return;
+            }
+
+            DB::table(self::RECEIPTS_TABLE)->insert([
+                'blueprint_id' => $blueprintId,
+                'event_id'     => (string) Str::orderedUuid(),
+                'depth'        => $depth,
+                'domain_code'  => $domain,
+                'received_at'  => now(),
+            ]);
+
+            (new DepthNeedMatrix())->incrementKernelReceived($depth, $domain);
+
+            DB::table(self::STATE_TABLE_V2)
+                ->whereNotNull('id')
+                ->update([
+                    'last_counted_blueprint_identity' => $blueprintId,
+                    'updated_at'                      => now(),
+                ]);
+        });
+    }
+
+    // =========================================================================
+    // Helpers V2 privés
+    // =========================================================================
+
+    private function markBlueprintOnHold(?string $blueprintId): void
+    {
+        if ($blueprintId === null) {
+            return;
+        }
+
+        DB::table(self::RUNS_TABLE)
+            ->where('blueprint_id', $blueprintId)
+            ->whereIn('execution_state', ['CREATED_UNENGAGED'])
+            ->update([
+                'execution_state' => 'NOT_ENGAGED_PRODUCTION_ON_HOLD',
+                'updated_at'      => now(),
+            ]);
+    }
+
+    // =========================================================================
+    // LEGACY — Initialisation — appelée une seule fois par le worker au démarrage
     // =========================================================================
 
     /**
