@@ -867,7 +867,19 @@ KRP ne recommence jamais immédiatement un Tour du même Depth après fermeture.
 
 ## KRP-R11
 
-`CURRENT_KERNEL_RECEIVED` est le seul signal déclencheur de la prochaine rotation. Taxonomy ne transmet aucun signal vers KRP.
+Après une production engagée ayant atteint ReadyBank,
+`CURRENT_KERNEL_RECEIVED` est le seul déclencheur autorisant
+la création du Blueprint suivant.
+
+Pendant qu'un Blueprint est encore `CREATED_UNENGAGED`,
+`EMPTY` déclenche immédiatement une nouvelle sélection
+Depth + Domaine dans le même Blueprint.
+
+`EMPTY` ne crée jamais un nouveau Blueprint.
+
+Taxonomy ne décide jamais du prochain Depth ou Domaine.
+Taxonomy fournit un territoire ou retourne EMPTY.
+KRP reste seul décideur de la sélection.
 
 ## KRP-R12
 

@@ -1,0 +1,512 @@
+# CORRECTION TERMINALE — INCOMPLETS ET ERREURS DE STRUCTURE KRP V2
+
+Ne refais aucun audit général, résumé, contrat ou nouvelle proposition.
+
+Corrige directement les écarts ci-dessous dans le code existant.
+
+Le périmètre reste limité au pipeline KernelBlueprint.
+
+Le pipeline BankWorker demeure strictement interdit de modification.
+
+---
+
+# 1. Corriger immédiatement `confirmConsumed()`
+
+Le flow actuellement implanté est incorrect s’il exécute :
+
+```text
+Taxonomy fournit un territoire
+↓
+fillTaxonomy()
+↓
+engageBlueprint()
+↓
+confirmConsumed()
+```
+
+`confirmConsumed()` ne doit jamais être appelé immédiatement après `fillTaxonomy()`.
+
+La règle officielle est :
+
+```text
+Taxonomy fournit :
+subdomain_active
+subject_active
+dominant_idea_active
+↓
+KLD vérifie la paire
+↓
+KEY_STRUCTURE vérifie la structure
+↓
+KLD = PASS
++
+KEY_STRUCTURE = PASS
+↓
+confirmConsumed() exactement une fois
+```
+
+En cas de rejet KLD ou KEY_STRUCTURE :
+
+```text
+aucun confirmConsumed()
+```
+
+La paire Taxonomy ne doit pas être avancée ni déclarée consommée.
+
+Actions obligatoires :
+
+1. Retire l’appel actuel à `confirmConsumed()` de `KernelPipelineOrchestrator::run()`.
+2. Localise le véritable point de sortie PASS de KLD et KEY_STRUCTURE.
+3. Place l’appel à `confirmConsumed()` uniquement après les deux validations réussies.
+4. Rends cet appel idempotent.
+5. Ajoute les tests suivants :
+
+   * territoire fourni, KLD PASS, KS PASS → consommation une fois ;
+   * KLD FAIL → aucune consommation ;
+   * KS FAIL → aucune consommation ;
+   * répétition du signal PASS → aucune double consommation.
+
+Ne crée pas une fausse validation PASS pour faire avancer le test.
+
+Si KLD ou KEY_STRUCTURE ne sont pas encore implantés, ne simule pas leur logique métier dans KRP. Crée uniquement un contrat d’intégration explicite et déclare le raccordement terminal BLOQUÉ par leur absence.
+
+---
+
+# 2. Raccorder le vrai pipeline après Taxonomy
+
+Le simple état :
+
+```text
+ENGAGED_IN_PIPELINE
+```
+
+ne constitue pas l’exécution du pipeline.
+
+Audite puis raccorde les composants réellement existants dans cet ordre :
+
+```text
+Taxonomy
+↓
+KLD
+↓
+KEY_STRUCTURE
+↓
+QuestionIntent
+↓
+Phase 1
+↓
+Validation 1
+↓
+Phase 2
+↓
+Validation 2
+↓
+ReadyBank
+```
+
+Pour chaque étape existante :
+
+* utilise le composant réel ;
+* utilise sa méthode publique réelle ;
+* ne crée pas une seconde version parallèle ;
+* ne duplique aucune responsabilité ;
+* ne modifie pas sa logique métier ;
+* conserve le même `blueprint_id`.
+
+Si une étape n’existe pas encore réellement :
+
+* ne l’invente pas dans ce patch KRP ;
+* crée seulement l’interface de sortie ou d’entrée indispensable ;
+* indique précisément que le pipeline complet reste bloqué à cette frontière ;
+* ne prétends pas que le flow complet est implanté.
+
+---
+
+# 3. Raccorder réellement ReadyBank
+
+`KernelBlueprintReadyBankReceiver` existe, mais sa simple présence ne suffit pas.
+
+Localise le composant réel qui termine Validation 2 et transmet le Blueprint à ReadyBank.
+
+Ce composant doit appeler réellement :
+
+```php
+KernelBlueprintReadyBankReceiver::receive($blueprint)
+```
+
+Conditions obligatoires avant cet appel :
+
+* le Blueprint est canonique ;
+* son `blueprint_id` est présent ;
+* `depth` et `domain` sont présents ;
+* l’état individuel des slots est conservé ;
+* le Blueprint a terminé le flow autorisé jusqu’à ReadyBank.
+
+Le récepteur doit, dans une seule transaction :
+
+```text
+persister la réception ReadyBank
++
+passer le Blueprint à READY_BANK_RECEIVED
++
+écrire CURRENT_KERNEL_RECEIVED dans l’Outbox
+```
+
+Ajoute un test d’intégration démontrant l’appel réel depuis la fin du pipeline jusqu’au récepteur ReadyBank.
+
+Ne te contente pas d’appeler le récepteur directement dans un test isolé.
+
+---
+
+# 4. Vérifier la règle Quarantine / ReadyBank
+
+Ne modifie pas cette règle selon une supposition technique.
+
+Lis les contrats officiels existants de :
+
+* KernelBlueprint ;
+* Validation ;
+* Quarantine ;
+* ReadyBank.
+
+Détermine précisément si le Blueprint canonique avec des slots FAIL :
+
+* est réellement reçu par ReadyBank avec ses états individuels ;
+* ou est arrêté avant ReadyBank pendant qu’une copie part en Quarantine.
+
+Applique exclusivement le contrat documentaire officiel existant.
+
+Si les documents se contredisent :
+
+* ne choisis pas une option arbitrairement ;
+* signale l’incohérence documentaire ;
+* laisse la règle UNDER_REVIEW ;
+* ne modifie pas la logique de validation pour faciliter KRP.
+
+---
+
+# 5. Implanter le vrai processeur Outbox
+
+La table Outbox et le listener existent, mais il faut un composant réel qui traite les événements.
+
+Crée un processeur Kernel dédié, sans toucher au BankWorker :
+
+```text
+ProcessKernelPipelineOutbox
+```
+
+Il doit :
+
+1. sélectionner les événements non traités ;
+2. verrouiller un événement pour éviter deux traitements simultanés ;
+3. reconstruire `CurrentKernelReceived` depuis le payload ;
+4. appeler :
+   `ApplyCurrentKernelReceivedToRotation::handle()` ;
+5. marquer l’événement traité seulement après le succès complet ;
+6. conserver l’événement non traité si une exception survient ;
+7. incrémenter `attempt_count` ;
+8. conserver `last_error` ;
+9. permettre le rejeu.
+
+Expose-le par une commande Kernel dédiée :
+
+```text
+questions:kernel:process-outbox
+```
+
+Cette commande ne doit appeler aucun composant BankWorker.
+
+Enregistre la commande selon les conventions Laravel existantes.
+
+Si un Scheduler existe déjà, raccorde uniquement cette commande Kernel au Scheduler avec protection `withoutOverlapping()`.
+
+Ne modifie aucune commande ou boucle BankWorker.
+
+---
+
+# 6. Déclencher réellement le Blueprint suivant
+
+Après un `CURRENT_KERNEL_RECEIVED` traité avec succès :
+
+```text
+comptabilisation idempotente
+↓
+autorisation du Blueprint suivant
+↓
+KernelBlueprintFactory
+↓
+KernelPipelineOrchestrator
+```
+
+Le listener ou le processeur Outbox doit réellement provoquer l’itération suivante.
+
+La logique doit être idempotente :
+
+* si le reçu n’existe pas :
+
+  * créer le reçu ;
+  * incrémenter le compteur une fois ;
+* si le reçu existe déjà :
+
+  * ne pas incrémenter une seconde fois ;
+* si l’événement n’est pas encore marqué traité :
+
+  * vérifier que le Blueprint suivant existe ou le créer ;
+* `KernelBlueprintFactory` doit empêcher deux Blueprints actifs.
+
+L’événement Outbox doit être marqué traité uniquement lorsque :
+
+* la comptabilisation est sûre ;
+* la création ou la récupération idempotente du Blueprint suivant est terminée ;
+* KRP a produit `ROTATION_ASSIGNED` ou `PRODUCTION_ON_HOLD`.
+
+Ajoute les tests :
+
+1. réception normale → compteur +1 → Blueprint suivant créé ;
+2. même événement rejoué → compteur inchangé → aucun deuxième Blueprint ;
+3. échec après comptabilisation mais avant création suivante → rejeu complète la création sans double compteur ;
+4. aucun besoin restant → `PRODUCTION_ON_HOLD` ;
+5. événement déjà traité → `NO-OP`.
+
+---
+
+# 7. Corriger KRP-R11
+
+La formulation actuelle est incomplète si elle dit :
+
+```text
+CURRENT_KERNEL_RECEIVED est le seul déclencheur
+de la prochaine rotation.
+```
+
+Remplace-la par :
+
+```text
+KRP-R11
+
+Après une production engagée ayant atteint ReadyBank,
+CURRENT_KERNEL_RECEIVED est le seul déclencheur autorisant
+la création du Blueprint suivant.
+
+Pendant qu’un Blueprint est encore CREATED_UNENGAGED,
+EMPTY déclenche immédiatement une nouvelle sélection
+Depth + Domaine dans le même Blueprint.
+
+EMPTY ne crée jamais un nouveau Blueprint.
+
+Taxonomy ne décide jamais du prochain Depth ou Domaine.
+Taxonomy fournit un territoire ou retourne EMPTY.
+KRP reste seul décideur de la sélection.
+```
+
+Corrige également tous les diagrammes, tests et commentaires concernés.
+
+---
+
+# 8. Vérifier la séparation des déclencheurs
+
+Le code doit distinguer strictement :
+
+## Après un territoire valide engagé
+
+```text
+Blueprint engagé
+↓
+pipeline complet
+↓
+ReadyBank
+↓
+CURRENT_KERNEL_RECEIVED
+↓
+Blueprint suivant
+```
+
+## Après EMPTY
+
+```text
+même Blueprint non engagé
+↓
+Domaine ON → OFF
+↓
+progression +1/8
+↓
+prochain Domaine ON
+↓
+Taxonomy de nouveau
+```
+
+Il est interdit de :
+
+* créer un Blueprint après EMPTY ;
+* attendre CURRENT_KERNEL_RECEIVED après EMPTY ;
+* appeler ReadyBank après EMPTY ;
+* compter un noyau après EMPTY.
+
+---
+
+# 9. Tests de migrations et retour arrière
+
+N’exécute jamais un rollback destructif sur une base de production.
+
+Dans l’environnement de test isolé :
+
+1. exécute toutes les migrations Kernel ;
+2. vérifie :
+
+   * 7 lignes dans `kernel_depth_matrix` ;
+   * 56 lignes dans `kernel_depth_domain_totals` ;
+   * cibles exactes ;
+   * 8 Domaines exacts ;
+3. exécute le rollback complet des migrations Kernel ;
+4. vérifie la suppression correcte des seules nouvelles tables Kernel ;
+5. vérifie que les tables legacy et BankWorker existent toujours ;
+6. réexécute les migrations ;
+7. vérifie de nouveau les 7 et 56 lignes ;
+8. exécute les tests après la remigration.
+
+Ajoute un test ou script de validation de schéma reproductible.
+
+---
+
+# 10. Validation des tests
+
+Exécute séparément :
+
+```text
+tests KRP V2
+tests KernelPipelineOrchestrator
+tests Taxonomy
+tests KernelBlueprint
+tests ReadyBank Kernel
+tests Outbox Kernel
+tests reprises et idempotence
+tests migrations Kernel
+tests commandes questions:kernel:*
+```
+
+Tous ces tests doivent être GREEN.
+
+Exécute ensuite la suite globale.
+
+Les deux échecs préexistants de `BankAIGeneratorRouterTest` doivent rester documentés séparément.
+
+Ne modifie pas BankWorker pour les faire disparaître.
+
+Le rapport final doit distinguer :
+
+```text
+Tests du périmètre KRP : GREEN ou FAIL
+Suite globale : GREEN ou nombre exact d’échecs préexistants
+Régressions introduites : 0 ou nombre exact
+```
+
+---
+
+# 11. Statut documentaire
+
+Ne déclare pas automatiquement :
+
+```text
+VERROUILLÉ
+```
+
+À la fin des corrections, utilise :
+
+```text
+Architecture : 100 % proposée
+Contrat : 100 % proposé
+Implémentation : résultat réel
+Validation : résultat réel
+Statut documentaire : UNDER_REVIEW
+```
+
+Le statut `VERROUILLÉ` exige une validation humaine explicite.
+
+Ne modifie pas une décision de l’Architecture Register vers `OFFICIAL` ou `SUPERSEDED` sans vérifier qu’elle a reçu cette validation.
+
+---
+
+# 12. Audit final demandé
+
+À la fin, fournis uniquement les preuves suivantes :
+
+## Raccordements
+
+* appel réel KLD ;
+* appel réel KEY_STRUCTURE ;
+* emplacement exact de `confirmConsumed()` ;
+* appel réel ReadyBank Receiver ;
+* appel réel Outbox Processor ;
+* appel réel Listener ;
+* appel réel de création du Blueprint suivant.
+
+Pour chacun :
+
+* fichier ;
+* classe ;
+* méthode ;
+* lignes ;
+* extrait exact.
+
+## Git
+
+```text
+git status --short
+git diff --stat
+```
+
+Puis :
+
+* fichiers créés ;
+* fichiers modifiés ;
+* migrations ;
+* commandes Kernel ;
+* tests ajoutés.
+
+## Tests
+
+* commandes exactes ;
+* résultats exacts ;
+* assertions ;
+* échecs ;
+* preuve des échecs préexistants.
+
+## Protections
+
+Prouve que rien n’a changé dans :
+
+* BankWorker ;
+* BankNeedsCalculator ;
+* BankAIGenerator ;
+* QualityGuards ;
+* QuestionBankRepository ;
+* tables `question_groups` ;
+* tables `question_translations` ;
+* Redis BankWorker.
+
+---
+
+# 13. Interdictions finales
+
+* aucun nouveau résumé théorique ;
+* aucune nouvelle cartographie ;
+* aucune simulation de pipeline ;
+* aucun faux composant seulement utilisé par les tests ;
+* aucune validation KLD ou KS inventée ;
+* aucune modification BankWorker ;
+* aucune suppression legacy ;
+* aucun `DROP COLUMN` ;
+* aucune déclaration `VERROUILLÉ` automatique.
+
+Corrige maintenant les erreurs et raccordements incomplets.
+
+Arrête-toi uniquement devant une dépendance métier réellement absente.
+
+Dans ce cas, indique exactement :
+
+* module absent ;
+* interface attendue ;
+* entrée ;
+* sortie ;
+* point précis où le pipeline est bloqué ;
+* code déjà terminé avant cette frontière.

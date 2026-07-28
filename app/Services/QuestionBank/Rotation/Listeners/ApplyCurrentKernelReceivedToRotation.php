@@ -25,7 +25,17 @@ final class ApplyCurrentKernelReceivedToRotation
     private const OUTBOX_TABLE   = 'kernel_pipeline_outbox';
     private const STATE_V2_TABLE = 'kernel_rotation_state_v2';
 
-    public function handle(CurrentKernelReceived $event): void
+    /**
+     * Comptabilisation idempotente du noyau reçu (sans marquer l'Outbox).
+     *
+     * Peut être appelé seul lorsque le marquage Outbox est géré par l'appelant
+     * (ex : ProcessKernelPipelineOutbox qui marque processed_at APRÈS création
+     * du Blueprint suivant).
+     *
+     * Idempotent : un même blueprint_id ne produit qu'un seul incrément,
+     * quel que soit le nombre d'appels.
+     */
+    public function applyCount(CurrentKernelReceived $event): void
     {
         DB::transaction(function () use ($event) {
 
@@ -58,17 +68,30 @@ final class ApplyCurrentKernelReceivedToRotation
                         'updated_at'                      => now(),
                     ]);
             }
-
-            // ── Marquer l'événement Outbox comme traité ───────────────────────
-            if ($event->eventId !== '') {
-                DB::table(self::OUTBOX_TABLE)
-                    ->where('event_id', $event->eventId)
-                    ->whereNull('processed_at')
-                    ->update([
-                        'processed_at' => now(),
-                        'updated_at'   => now(),
-                    ]);
-            }
         });
+    }
+
+    /**
+     * Comptabilisation + marquage Outbox dans une seule transaction.
+     *
+     * Usage : appel direct (sans ProcessKernelPipelineOutbox).
+     * Pour le flux Outbox avec déclenchement du Blueprint suivant,
+     * utiliser applyCount() + KernelPipelineOrchestrator::run() +
+     * marquage manuel de processed_at via ProcessKernelPipelineOutbox.
+     */
+    public function handle(CurrentKernelReceived $event): void
+    {
+        $this->applyCount($event);
+
+        // ── Marquer l'événement Outbox comme traité ───────────────────────────
+        if ($event->eventId !== '') {
+            DB::table(self::OUTBOX_TABLE)
+                ->where('event_id', $event->eventId)
+                ->whereNull('processed_at')
+                ->update([
+                    'processed_at' => now(),
+                    'updated_at'   => now(),
+                ]);
+        }
     }
 }

@@ -20,6 +20,10 @@ class Kernel extends ConsoleKernel
 
         // Récupération des matchs Duo bloqués en état "playing" depuis +30 min
         $schedule->command('matches:recover')->everyFiveMinutes();
+
+        // Traitement de l'Outbox Kernel (CURRENT_KERNEL_RECEIVED → Blueprint suivant)
+        // withoutOverlapping() : interdit deux exécutions simultanées
+        $schedule->command('questions:kernel:process-outbox')->everyMinute()->withoutOverlapping();
     }
 
     /**
