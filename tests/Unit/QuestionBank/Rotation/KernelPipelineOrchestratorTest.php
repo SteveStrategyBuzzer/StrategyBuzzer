@@ -3,14 +3,10 @@
 namespace Tests\Unit\QuestionBank\Rotation;
 
 use App\Services\QuestionBank\KernelBlueprint;
-use App\Services\QuestionBank\Rotation\Contracts\KernelKldCheckInterface;
-use App\Services\QuestionBank\Rotation\Contracts\KeyStructurePipelineGateInterface;
 use App\Services\QuestionBank\Rotation\DepthNeedMatrix;
-use App\Services\QuestionBank\Rotation\DTO\LearningDirectionResult;
 use App\Services\QuestionBank\Rotation\KernelBlueprintFactory;
 use App\Services\QuestionBank\Rotation\KernelPipelineOrchestrator;
 use App\Services\QuestionBank\Rotation\KernelRotationPlanner;
-use App\Services\QuestionBank\Rotation\LearningDirectionRegistry;
 use App\Services\QuestionBank\Rotation\TaxonomyNavigatorInterface;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
@@ -18,21 +14,22 @@ use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 /**
- * Tests de KernelPipelineOrchestrator.
+ * Tests de KernelPipelineOrchestrator — PÉRIMÈTRE KRP UNIQUEMENT.
  *
- * Couvre :
- *   Section 4 (audit) :
- *     - peekNext() === null → EMPTY → applyEmptyTransitionV2 (vérifié via DB)
- *     - territoire non-null → KLD PASS + KS PASS → ENGAGED
- *     - PRODUCTION_ON_HOLD lorsque tous les Depths ont atteint leur cible
+ * Couvre exclusivement les responsabilités de 02_KernelRotationPlanner :
+ *   - Création du Blueprint (Factory)
+ *   - Sélection Depth + Domaine (KRP planV2)
+ *   - Boucle EMPTY : applyEmptyTransitionV2 + planV2 + Taxonomy
+ *   - TERRITORY_PROVIDED → ROTATION_ASSIGNED
+ *   - PRODUCTION_ON_HOLD
+ *   - Guard : Factory bloque si Blueprint actif existe
  *
- *   Section 1 (placement de confirmConsumed) :
- *     - KLD PASS + KS PASS → confirmConsumed() exactement une fois
- *     - KLD FAIL → aucune consommation
- *     - KS FAIL → aucune consommation
- *     - KS BLOCKED → aucune consommation (PIPELINE_BLOCKED_AWAITING_KEY_STRUCTURE)
- *     - Répétition d'un PASS → aucune double consommation (idempotence)
- *     - dominant_idea absent → PIPELINE_BLOCKED_AWAITING_IDEA_SLOT_LOADER
+ * Hors périmètre (tests futurs séparés) :
+ *   - IdeaSlotLoader (dominant_idea absent)
+ *   - KLD (KeyLearningDirection)
+ *   - KEY_STRUCTURE
+ *   - confirmConsumed()
+ *   - Phases 1 & 2 / Validations
  *
  * DB : SQLite in-memory, tables créées manuellement.
  */
@@ -119,67 +116,13 @@ class KernelPipelineOrchestratorTest extends TestCase
     // Helpers
     // =========================================================================
 
-    /**
-     * Construit l'orchestrateur en injectant des stubs PASS pour KLD et KS
-     * sauf si des mocks spécifiques sont fournis.
-     */
-    private function makeOrchestrator(
-        TaxonomyNavigatorInterface      $taxonomy,
-        ?KernelKldCheckInterface        $kldGate = null,
-        ?KeyStructurePipelineGateInterface $ksGate = null,
-    ): KernelPipelineOrchestrator {
+    private function makeOrchestrator(TaxonomyNavigatorInterface $taxonomy): KernelPipelineOrchestrator
+    {
         return new KernelPipelineOrchestrator(
             new KernelBlueprintFactory(),
             new KernelRotationPlanner(),
             $taxonomy,
-            $kldGate ?? $this->makeKldPass(),
-            $ksGate  ?? $this->makeKsPass(),
         );
-    }
-
-    /** Stub KLD : retourne toujours PASS. */
-    private function makeKldPass(): KernelKldCheckInterface
-    {
-        $stub = $this->createMock(KernelKldCheckInterface::class);
-        $stub->method('check')->willReturn(LearningDirectionResult::pass('subject', 'idea'));
-        return $stub;
-    }
-
-    /** Stub KLD : retourne toujours FAIL. */
-    private function makeKldFail(): KernelKldCheckInterface
-    {
-        $stub = $this->createMock(KernelKldCheckInterface::class);
-        $stub->method('check')->willReturn(
-            LearningDirectionResult::fail(
-                LearningDirectionResult::REASON_DIRECT_PAIR_DUPLICATE,
-                'subject', 'idea'
-            )
-        );
-        return $stub;
-    }
-
-    /** Stub KS : retourne toujours PASS. */
-    private function makeKsPass(): KeyStructurePipelineGateInterface
-    {
-        $stub = $this->createMock(KeyStructurePipelineGateInterface::class);
-        $stub->method('check')->willReturn(KeyStructurePipelineGateInterface::STATUS_PASS);
-        return $stub;
-    }
-
-    /** Stub KS : retourne toujours FAIL. */
-    private function makeKsFail(): KeyStructurePipelineGateInterface
-    {
-        $stub = $this->createMock(KeyStructurePipelineGateInterface::class);
-        $stub->method('check')->willReturn(KeyStructurePipelineGateInterface::STATUS_FAIL);
-        return $stub;
-    }
-
-    /** Stub KS : retourne toujours BLOCKED (implémentation production : BlockedKeyStructureGate). */
-    private function makeKsBlocked(): KeyStructurePipelineGateInterface
-    {
-        $stub = $this->createMock(KeyStructurePipelineGateInterface::class);
-        $stub->method('check')->willReturn(KeyStructurePipelineGateInterface::STATUS_BLOCKED);
-        return $stub;
     }
 
     /** Retourne les états {domain → ON|OFF} depuis kernel_rotation_state_v2. */
@@ -194,32 +137,35 @@ class KernelPipelineOrchestratorTest extends TestCase
     }
 
     // =========================================================================
-    // Tests existants — Section 4 (EMPTY loop, ENGAGED, PRODUCTION_ON_HOLD)
+    // Tests KRP — responsabilités propres
     // =========================================================================
 
     /**
-     * Quand Taxonomy fournit un territoire avec dominant_idea, KLD PASS et KS PASS,
-     * le Blueprint est ENGAGED et confirmConsumed() est appelé exactement une fois.
+     * Quand Taxonomy fournit un territoire, l'orchestrateur retourne ROTATION_ASSIGNED.
+     * Le Blueprint est ENGAGED_IN_PIPELINE en DB avec depth et domain écrits.
+     *
+     * Contrat de sortie KRP :
+     *   status = ROTATION_ASSIGNED
+     *   blueprint.blueprint_id non null
+     *   blueprint.depth non null
+     *   blueprint.domain non null
      */
-    public function test_engaged_when_taxonomy_returns_territory(): void
+    public function test_rotation_assigned_when_taxonomy_returns_territory(): void
     {
         $taxonomy = $this->createMock(TaxonomyNavigatorInterface::class);
         $taxonomy->method('peekNext')->willReturn([
-            'sub_domain'    => 'Moyen Âge',
-            'subject'       => 'La Magna Carta',
-            'dominant_idea' => 'droits',
+            'sub_domain' => 'Moyen Âge',
+            'subject'    => 'La Magna Carta',
         ]);
-        $taxonomy->expects($this->once())->method('confirmConsumed');
 
         $result = $this->makeOrchestrator($taxonomy)->run(null);
 
-        $this->assertSame(KernelPipelineOrchestrator::STATUS_ENGAGED, $result['status']);
+        $this->assertSame(KernelPipelineOrchestrator::STATUS_ROTATION_ASSIGNED, $result['status']);
         $this->assertInstanceOf(KernelBlueprint::class, $result['blueprint']);
         $this->assertNotNull($result['blueprint']->blueprint_id);
         $this->assertNotNull($result['blueprint']->depth);
         $this->assertNotNull($result['blueprint']->domain);
 
-        // Vérifier l'état en DB
         $run = DB::table('kernel_blueprint_runs')
             ->where('blueprint_id', $result['blueprint']->blueprint_id)
             ->first();
@@ -230,18 +176,16 @@ class KernelPipelineOrchestratorTest extends TestCase
     }
 
     /**
-     * SECTION 4 DU CONTRAT D'AUDIT :
+     * Quand TaxonomyProgressManager::peekNext() retourne null (EMPTY),
+     * l'orchestrateur appelle applyEmptyTransitionV2 et relance planV2.
      *
-     * Quand TaxonomyProgressManager::peekNext() retourne null,
-     * l'orchestrateur doit interpréter ce retour comme EMPTY et appeler
-     * applyEmptyTransitionV2($emptyDomain).
-     *
-     * Preuve : tour_domain_states en DB montre un domaine passé de ON → OFF.
-     * RÈGLE KRP-R11 : EMPTY réutilise le même Blueprint — aucun nouveau créé.
+     * Preuves :
+     *   - tour_domain_states en DB montre exactement 1 domaine OFF
+     *   - peekNext appelé exactement 2 fois
+     *   - même Blueprint réutilisé (RÈGLE KRP-R11)
      */
     public function test_empty_taxonomy_triggers_apply_empty_transition_v2(): void
     {
-        // peekNext : null au premier appel (EMPTY), territoire au second
         $callCount = 0;
         $taxonomy  = $this->createMock(TaxonomyNavigatorInterface::class);
         $taxonomy->method('peekNext')
@@ -251,27 +195,44 @@ class KernelPipelineOrchestratorTest extends TestCase
                     return null; // EMPTY
                 }
                 return [
-                    'sub_domain'    => 'Moyen Âge',
-                    'subject'       => 'La Magna Carta',
-                    'dominant_idea' => 'droits',
+                    'sub_domain' => 'Moyen Âge',
+                    'subject'    => 'La Magna Carta',
                 ];
             });
-        $taxonomy->expects($this->once())->method('confirmConsumed');
 
         $result = $this->makeOrchestrator($taxonomy)->run(null);
 
-        // ── Le résultat est ENGAGED ───────────────────────────────────────────
-        $this->assertSame(KernelPipelineOrchestrator::STATUS_ENGAGED, $result['status']);
+        $this->assertSame(KernelPipelineOrchestrator::STATUS_ROTATION_ASSIGNED, $result['status']);
         $this->assertSame(2, $callCount, 'peekNext doit avoir été appelé exactement 2 fois');
 
-        // ── Preuve que applyEmptyTransitionV2 a été déclenché ─────────────────
         $tourStates = $this->getTourStates();
         $this->assertNotEmpty($tourStates, 'tour_domain_states doit être présent en DB');
 
         $offCount = count(array_filter($tourStates, fn($s) => $s === 'OFF'));
-        $this->assertSame(1, $offCount,
-            'Exactement 1 domaine doit être OFF après un signal EMPTY'
-        );
+        $this->assertSame(1, $offCount, 'Exactement 1 domaine doit être OFF après un signal EMPTY');
+    }
+
+    /**
+     * EMPTY réutilise le même Blueprint — aucun nouveau Blueprint créé.
+     * RÈGLE KRP-R11.
+     */
+    public function test_empty_reuses_same_blueprint(): void
+    {
+        $callCount = 0;
+        $taxonomy  = $this->createMock(TaxonomyNavigatorInterface::class);
+        $taxonomy->method('peekNext')
+            ->willReturnCallback(function () use (&$callCount) {
+                $callCount++;
+                return $callCount === 1 ? null : ['sub_domain' => 'X', 'subject' => 'Y'];
+            });
+
+        $result = $this->makeOrchestrator($taxonomy)->run(null);
+
+        $this->assertSame(KernelPipelineOrchestrator::STATUS_ROTATION_ASSIGNED, $result['status']);
+
+        // Un seul Blueprint en DB
+        $count = DB::table('kernel_blueprint_runs')->count();
+        $this->assertSame(1, $count, 'EMPTY ne doit pas créer un nouveau Blueprint');
     }
 
     /**
@@ -286,20 +247,13 @@ class KernelPipelineOrchestratorTest extends TestCase
         }
 
         $taxonomy = $this->createMock(TaxonomyNavigatorInterface::class);
-        $taxonomy->method('peekNext')->willReturn([
-            'sub_domain'    => 'Moyen Âge',
-            'subject'       => 'La Magna Carta',
-            'dominant_idea' => 'droits',
-        ]);
-
-        $result = $this->makeOrchestrator($taxonomy)->run(null);
+        $result   = $this->makeOrchestrator($taxonomy)->run(null);
 
         $this->assertSame(KernelPipelineOrchestrator::STATUS_PRODUCTION_ON_HOLD, $result['status']);
     }
 
     /**
-     * Le Blueprint créé lors de PRODUCTION_ON_HOLD porte l'état
-     * NOT_ENGAGED_PRODUCTION_ON_HOLD en DB.
+     * PRODUCTION_ON_HOLD → Blueprint classé NOT_ENGAGED_PRODUCTION_ON_HOLD en DB.
      */
     public function test_blueprint_state_is_not_engaged_when_on_hold(): void
     {
@@ -342,170 +296,32 @@ class KernelPipelineOrchestratorTest extends TestCase
         $this->makeOrchestrator($taxonomy)->run(null);
     }
 
-    // =========================================================================
-    // Tests Section 1 — Placement de confirmConsumed()
-    // =========================================================================
-
     /**
-     * Territoire + KLD PASS + KS PASS → confirmConsumed() appelé exactement une fois.
-     * (Règle DEC-KLD-01 + DEC-KS-01)
+     * KRP écrit uniquement depth + domain dans le Blueprint.
+     * Les champs Taxonomy (subdomain, subject) sont écrits après TERRITORY_PROVIDED.
+     * Aucun autre champ métier n'est touché par KRP.
      */
-    public function test_confirm_consumed_called_once_on_kld_pass_and_ks_pass(): void
+    public function test_krp_writes_only_depth_and_domain(): void
     {
         $taxonomy = $this->createMock(TaxonomyNavigatorInterface::class);
         $taxonomy->method('peekNext')->willReturn([
-            'sub_domain'    => 'Révolution industrielle',
-            'subject'       => 'Machine à vapeur',
-            'dominant_idea' => 'innovation',
+            'sub_domain' => 'Espace',
+            'subject'    => 'La Lune',
         ]);
 
-        // Exactement une fois
-        $taxonomy->expects($this->once())->method('confirmConsumed');
+        $result    = $this->makeOrchestrator($taxonomy)->run(null);
+        $blueprint = $result['blueprint'];
 
-        $result = $this->makeOrchestrator(
-            $taxonomy,
-            $this->makeKldPass(),
-            $this->makeKsPass(),
-        )->run(null);
+        $this->assertNotNull($blueprint->depth, 'depth doit être écrit par KRP');
+        $this->assertNotNull($blueprint->domain, 'domain doit être écrit par KRP');
 
-        $this->assertSame(KernelPipelineOrchestrator::STATUS_ENGAGED, $result['status']);
-    }
-
-    /**
-     * KLD FAIL → confirmConsumed() jamais appelé.
-     * Le sujet n'est pas avancé.
-     */
-    public function test_confirm_consumed_not_called_on_kld_fail(): void
-    {
-        $taxonomy = $this->createMock(TaxonomyNavigatorInterface::class);
-        $taxonomy->method('peekNext')->willReturn([
-            'sub_domain'    => 'Révolution industrielle',
-            'subject'       => 'Machine à vapeur',
-            'dominant_idea' => 'innovation',
-        ]);
-
-        // Aucun appel à confirmConsumed
-        $taxonomy->expects($this->never())->method('confirmConsumed');
-
-        $result = $this->makeOrchestrator(
-            $taxonomy,
-            $this->makeKldFail(),
-            $this->makeKsPass(),
-        )->run(null);
-
-        $this->assertSame(KernelPipelineOrchestrator::STATUS_KLD_REJECTED, $result['status']);
-    }
-
-    /**
-     * KS FAIL → confirmConsumed() jamais appelé.
-     * KLD a passé mais KEY_STRUCTURE a rejeté.
-     */
-    public function test_confirm_consumed_not_called_on_ks_fail(): void
-    {
-        $taxonomy = $this->createMock(TaxonomyNavigatorInterface::class);
-        $taxonomy->method('peekNext')->willReturn([
-            'sub_domain'    => 'Révolution industrielle',
-            'subject'       => 'Machine à vapeur',
-            'dominant_idea' => 'innovation',
-        ]);
-
-        // Aucun appel à confirmConsumed
-        $taxonomy->expects($this->never())->method('confirmConsumed');
-
-        $result = $this->makeOrchestrator(
-            $taxonomy,
-            $this->makeKldPass(),
-            $this->makeKsFail(),
-        )->run(null);
-
-        $this->assertSame(KernelPipelineOrchestrator::STATUS_KS_REJECTED, $result['status']);
-    }
-
-    /**
-     * KS BLOCKED (implémentation production BlockedKeyStructureGate) →
-     * confirmConsumed() jamais appelé.
-     * Retour : PIPELINE_BLOCKED_AWAITING_KEY_STRUCTURE.
-     */
-    public function test_confirm_consumed_not_called_when_ks_blocked(): void
-    {
-        $taxonomy = $this->createMock(TaxonomyNavigatorInterface::class);
-        $taxonomy->method('peekNext')->willReturn([
-            'sub_domain'    => 'Révolution industrielle',
-            'subject'       => 'Machine à vapeur',
-            'dominant_idea' => 'innovation',
-        ]);
-
-        $taxonomy->expects($this->never())->method('confirmConsumed');
-
-        $result = $this->makeOrchestrator(
-            $taxonomy,
-            $this->makeKldPass(),
-            $this->makeKsBlocked(),
-        )->run(null);
-
-        $this->assertSame(
-            KernelPipelineOrchestrator::STATUS_PIPELINE_BLOCKED_AWAITING_KEY_STRUCTURE,
-            $result['status']
-        );
-    }
-
-    /**
-     * dominant_idea absent du territoire → PIPELINE_BLOCKED_AWAITING_IDEA_SLOT_LOADER.
-     * Frontière : IdeaSlotLoader non implanté.
-     * confirmConsumed() jamais appelé.
-     */
-    public function test_confirm_consumed_not_called_when_dominant_idea_missing(): void
-    {
-        $taxonomy = $this->createMock(TaxonomyNavigatorInterface::class);
-        // TaxonomyProgressManager réel ne retourne pas dominant_idea
-        $taxonomy->method('peekNext')->willReturn([
-            'depth'               => 2,
-            'domain'              => 'histoire',
-            'sub_domain'          => 'Moyen Âge',
-            'subject'             => 'La Magna Carta',
-            'knowledge_frequency' => 5,
-            // dominant_idea ABSENT
-        ]);
-
-        $taxonomy->expects($this->never())->method('confirmConsumed');
-
-        $result = $this->makeOrchestrator($taxonomy)->run(null);
-
-        $this->assertSame(
-            KernelPipelineOrchestrator::STATUS_PIPELINE_BLOCKED_AWAITING_IDEA_SLOT_LOADER,
-            $result['status']
-        );
-    }
-
-    /**
-     * Idempotence : deux appels successifs run() sur le même Blueprint
-     * (simulé via flag interne) → confirmConsumed() appelé au plus une fois.
-     *
-     * Dans la pratique, un Blueprint actif bloque la Factory.
-     * Ce test vérifie le flag interne de l'orchestrateur.
-     */
-    public function test_confirm_consumed_idempotent_within_single_run(): void
-    {
-        // peekNext retourne le même territoire à chaque appel
-        // Mais après ENGAGED, run() retourne immédiatement → une seule consommation
-        $taxonomy = $this->createMock(TaxonomyNavigatorInterface::class);
-        $taxonomy->method('peekNext')->willReturn([
-            'sub_domain'    => 'Moyen Âge',
-            'subject'       => 'La Magna Carta',
-            'dominant_idea' => 'droits',
-        ]);
-
-        // Exactement une fois même si peekNext retourne toujours un territoire
-        $taxonomy->expects($this->once())->method('confirmConsumed');
-
-        $result = $this->makeOrchestrator(
-            $taxonomy,
-            $this->makeKldPass(),
-            $this->makeKsPass(),
-        )->run(null);
-
-        // Première exécution → ENGAGED
-        $this->assertSame(KernelPipelineOrchestrator::STATUS_ENGAGED, $result['status']);
-        // La Factory bloquera un second run() : c'est la garde contre le double Blueprint
+        // Vérifier en DB que depth + domain_code sont présents
+        $row = DB::table('kernel_blueprint_runs')
+            ->where('blueprint_id', $blueprint->blueprint_id)
+            ->first();
+        $this->assertNotNull($row->depth);
+        $this->assertNotNull($row->domain_code);
+        // kernel_code jamais écrit par KRP
+        $this->assertObjectNotHasProperty('kernel_code', $row);
     }
 }

@@ -1,4 +1,11 @@
 <?php
+// =============================================================================
+// HORS PÉRIMÈTRE KRP — PIPELINE INTELLECTUEL (FUTUR)
+// =============================================================================
+// Ce fichier appartient au pipeline intellectuel, pas au KernelRotationPlanner.
+// Il sera activé lors du traitement de la spécification KeyLearningDirection.
+// Ne pas injecter dans KernelPipelineOrchestrator.
+// =============================================================================
 
 declare(strict_types=1);
 

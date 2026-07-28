@@ -4,10 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
-use App\Services\QuestionBank\Rotation\BlockedKeyStructureGate;
 use App\Services\QuestionBank\Rotation\KernelBlueprintFactory;
-use App\Services\QuestionBank\Rotation\KernelKldCheckAdapter;
-use App\Services\QuestionBank\Rotation\KeyLearningDirection;
 use App\Services\QuestionBank\Rotation\KernelPipelineOrchestrator;
 use App\Services\QuestionBank\Rotation\KernelPipelineOutboxRepository;
 use App\Services\QuestionBank\Rotation\KernelRotationPlanner;
@@ -123,15 +120,10 @@ class QuestionsKernelProcessOutboxCommand extends Command
         $outboxRepo  = new KernelPipelineOutboxRepository();
         $listener    = new ApplyCurrentKernelReceivedToRotation();
 
-        $kldAdapter  = new KernelKldCheckAdapter(app(KeyLearningDirection::class));
-        $ksGate      = new BlockedKeyStructureGate();
-
         $orchestrator = new KernelPipelineOrchestrator(
             new KernelBlueprintFactory(),
             new KernelRotationPlanner(),
             new TaxonomyProgressManager(new TaxonomyReader()),
-            $kldAdapter,
-            $ksGate,
         );
 
         return new ProcessKernelPipelineOutbox($listener, $orchestrator, $outboxRepo);

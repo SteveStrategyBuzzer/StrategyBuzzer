@@ -78,7 +78,7 @@ class QuestionsKernelRotateCommand extends Command
         $this->line("  Statut       : <fg=cyan;options=bold>{$status}</>");
         $this->line("  blueprint_id : {$blueprint->blueprint_id}");
 
-        if ($status === 'ENGAGED') {
+        if ($status === KernelPipelineOrchestrator::STATUS_ROTATION_ASSIGNED) {
             $this->line("  depth        : {$blueprint->depth}");
             $this->line("  domain       : {$blueprint->domain}");
             $this->line("  subdomain    : " . ($blueprint->subdomain_active ?? '<fg=yellow>non rempli</>'));

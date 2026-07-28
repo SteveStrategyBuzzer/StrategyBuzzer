@@ -76,15 +76,23 @@ Responsabilités :
 
 ## 2.2 KernelPipelineOrchestrator
 
-Responsabilités :
+Responsabilités (périmètre KRP strictement) :
 
 * demander la création du Blueprint à `KernelBlueprintFactory` ;
-* transmettre le Blueprint à KRP (`planV2`) ;
-* transmettre le résultat KRP à Taxonomy (`TaxonomyProgressManager::peekNext`) ;
-* gérer la boucle immédiate lorsque Taxonomy retourne `null` (signal EMPTY) ;
-* appeler `KRP::applyEmptyTransitionV2` pour chaque EMPTY avant d'appeler `planV2` de nouveau ;
-* engager le Blueprint dans le reste du pipeline lorsque Taxonomy fournit son territoire ;
+* transmettre le Blueprint à KRP (`planV2`) → obtient `depth + domain` ;
+* transmettre `depth + domain` à Taxonomy via `TaxonomyInputPort` (`peekNext`) ;
+* sur EMPTY (`null`) : appeler `applyEmptyTransitionV2` + `planV2` dans le même Blueprint ;
+* sur `TERRITORY_PROVIDED` : écrire les slots Taxonomy + passer `ENGAGED_IN_PIPELINE` ;
+* retourner `ROTATION_ASSIGNED` ou `PRODUCTION_ON_HOLD` ;
 * ne jamais décider lui-même du Depth ou du Domaine.
+
+Interdictions absolues (hors périmètre KRP) :
+
+* ne jamais charger `dominant_idea` (→ IdeaSlotLoader, spec future) ;
+* ne jamais exécuter KLD (→ KeyLearningDirection, spec future) ;
+* ne jamais exécuter KEY_STRUCTURE (→ spec future) ;
+* ne jamais appeler `confirmConsumed()` (→ responsabilité KLD+KEY_STRUCTURE, spec future) ;
+* ne jamais exécuter Phase 1 / Validation 1 / Phase 2 / Validation 2.
 
 ## 2.3 KernelRotationPlanner
 
@@ -190,6 +198,54 @@ Un nouveau Blueprint est autorisé après :
 
 * `CURRENT_KERNEL_RECEIVED` (comptabilisé par le listener) ;
 * ou classement d'un Blueprint précédent en `NOT_ENGAGED_PRODUCTION_ON_HOLD`.
+
+---
+
+# 5b. Contrats d'entrée / sortie de KernelPipelineOrchestrator
+
+## TaxonomyInputPort
+
+```text
+Contrat : TaxonomyNavigatorInterface::peekNext(depth: int, domain: string)
+
+Sortie possible :
+  array{sub_domain, subject, ...}   → TERRITORY_PROVIDED
+  null                              → EMPTY (Domaine × Depth épuisé)
+```
+
+KRP ne sait pas ce que Taxonomy fait en interne.
+KRP ne reçoit pas et n'inspecte pas `dominant_idea_active`.
+Les modules qui traitent `dominant_idea_active` (IdeaSlotLoader, KLD, KEY_STRUCTURE)
+appartiennent au pipeline intellectuel, hors périmètre KRP.
+
+## TaxonomyResult = TERRITORY_PROVIDED | EMPTY
+
+```text
+TERRITORY_PROVIDED
+  → Blueprint.fillTaxonomy(sub_domain, subject, dominant_idea_raw)
+  → ENGAGED_IN_PIPELINE
+  → run() retourne ROTATION_ASSIGNED
+
+EMPTY
+  → applyEmptyTransitionV2(domain)  — Domaine ON → OFF, progression +1/8
+  → planV2($blueprint, $emptyDomain) — prochain Domaine ON (même Blueprint)
+  → peekNext(new depth, new domain)  — boucle
+```
+
+## CurrentKernelReceivedInputPort
+
+```text
+Contrat : CURRENT_KERNEL_RECEIVED (événement Outbox)
+  blueprint_id   : string (UUIDv7)
+  depth          : int
+  domain         : string
+  received_at    : timestamp
+
+Traitement :
+  ApplyCurrentKernelReceivedToRotation::applyCount()
+  → kernel_received_total[depth][domain] += 1  (idempotent par blueprint_id)
+  → autorise la création du Blueprint suivant (KRP-R11)
+```
 
 ---
 
@@ -739,12 +795,12 @@ SELECTING_DOMAIN
 WRITING_DEPTH_DOMAIN
 ↓
 WAITING_TAXONOMY
-├── territoire → BLUEPRINT_ENGAGED
+├── territoire → ROTATION_ASSIGNED   (KRP terminé — pipeline intellectuel commence)
 └── EMPTY      → APPLYING_EMPTY_TRANSITION
                  ↓
                  SELECTING_DOMAIN (même Blueprint)
 ↓
-BLUEPRINT_ENGAGED
+ROTATION_ASSIGNED → ENGAGED_IN_PIPELINE
 ↓
 WAITING_CURRENT_KERNEL_RECEIVED
 ↓

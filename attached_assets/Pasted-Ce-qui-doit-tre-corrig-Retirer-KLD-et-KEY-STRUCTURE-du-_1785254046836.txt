@@ -1,0 +1,330 @@
+Ce qui doit être corrigé
+Retirer KLD et KEY_STRUCTURE du chemin d’exécution KRP.
+Ne pas considérer IdeaSlotLoader ou KEY_STRUCTURE comme des blocages du KRP.
+Sortir confirmConsumed() du périmètre KRP.
+Ne pas déclarer le pipeline intellectuel complet implanté.
+Valider KRP uniquement sur sa mission propre et ses contrats d’entrée/sortie.
+
+Voici l’instruction à transmettre.
+
+CORRECTION DE FRONTIÈRE — FINALISATION DU KERNELROTATIONPLANNER UNIQUEMENT
+
+Le dernier travail a correctement avancé la mécanique KRP V2, mais il a introduit une incohérence de périmètre.
+
+Ne poursuis pas l’implantation d’IdeaSlotLoader, KLD, KEY_STRUCTURE, QuestionIntent ou des Phases dans le cadre de 02_KernelRotationPlanner.
+
+Nous appliquons la règle officielle :
+
+UNE SEULE SPÉCIFICATION À LA FOIS.
+
+Le module actuel est exclusivement :
+
+02_KernelRotationPlanner
+
+1. Frontière officielle du KRP
+
+La responsabilité KRP est strictement :
+
+KernelBlueprint déjà créé
+↓
+lecture de DepthNeedMatrix
+↓
+lecture du Tour de Depth
+↓
+sélection du prochain Depth requis
+↓
+sélection du prochain Domaine ON
+↓
+écriture de depth + domain
+↓
+transmission à Taxonomy
+↓
+FIN KRP
+
+KRP ne doit pas :
+
+charger l’idée dominante ;
+exécuter KLD ;
+exécuter KEY_STRUCTURE ;
+appeler QuestionIntent ;
+exécuter Phase 1 ;
+exécuter Validation 1 ;
+exécuter Phase 2 ;
+exécuter Validation 2 ;
+décider de confirmConsumed() après KLD/KS.
+
+Ces responsabilités appartiennent aux modules suivants de la roadmap.
+
+2. IdeaSlotLoader et KEY_STRUCTURE ne bloquent pas KRP
+
+Ne déclare plus :
+
+Implantation KRP bloquée par IdeaSlotLoader
+Implantation KRP bloquée par KEY_STRUCTURE
+
+La formulation correcte est :
+
+KRP remet le Blueprint contenant depth + domain
+au contrat d’entrée de Taxonomy.
+
+Les modules suivants ne sont pas nécessaires
+pour exécuter 100 % de la responsabilité KRP.
+
+IdeaSlotLoader et KEY_STRUCTURE restent :
+
+HORS PÉRIMÈTRE
+NON IMPLANTÉS DANS LE MODULE KRP
+À TRAITER DANS LEUR SPÉCIFICATION RESPECTIVE
+3. Retirer les gates KLD/KS du chemin KRP actif
+
+Les composants suivants ne doivent pas faire partie du chemin d’exécution KRP :
+
+KernelKldCheckInterface ;
+KernelKldCheckAdapter ;
+KeyStructurePipelineGateInterface ;
+BlockedKeyStructureGate.
+
+Ne les supprime pas aveuglément.
+
+Procède ainsi :
+
+vérifie s’ils sont utilisés ailleurs ;
+s’ils sont uniquement utilisés par le nouveau chemin KRP :
+retire leur appel du chemin KRP actif ;
+marque les fichiers comme expérimentation hors périmètre, ou déplace-les dans une branche documentaire non active ;
+ne les enregistre pas comme dépendances obligatoires du KRP ;
+aucun test KRP ne doit dépendre d’un PASS KLD ou KS.
+
+Le KRP doit pouvoir terminer sa responsabilité même si KLD et KS n’existent pas encore.
+
+4. Corriger KernelPipelineOrchestrator
+
+Dans le périmètre KRP, l’orchestrateur doit seulement effectuer :
+
+KernelBlueprintFactory::create()
+↓
+KernelRotationPlanner::planV2()
+↓
+retour ROTATION_ASSIGNED
+ou
+PRODUCTION_ON_HOLD
+
+La sortie ROTATION_ASSIGNED contient un Blueprint avec :
+
+blueprint_id
+depth
+domain
+
+Il peut ensuite être remis au prochain module.
+
+Ne fais pas exécuter KLD ou KEY_STRUCTURE par cet orchestrateur dans le cadre de la finalisation KRP.
+
+Deux options structurelles acceptables :
+
+Option officielle recommandée
+
+Limiter KernelPipelineOrchestrator à la coordination :
+
+Factory
+→ KRP
+→ remise au port Taxonomy
+
+Le port Taxonomy reçoit le Blueprint, mais son traitement interne n’appartient pas à KRP.
+
+Interdiction
+
+Ne pas créer un faux pipeline complet pour déclarer KRP terminé.
+
+5. Traitement de EMPTY
+
+Le contrat d’interaction avec Taxonomy reste nécessaire.
+
+Taxonomy peut retourner :
+
+TERRITORY_PROVIDED
+
+ou :
+
+EMPTY
+
+Sur EMPTY :
+
+même Blueprint
+↓
+Domaine ON → OFF
+↓
+progression +1/8
+↓
+prochain Domaine ON
+↓
+nouvelle écriture depth + domain
+↓
+nouvelle remise à Taxonomy
+
+Cela appartient au contrat KRP parce que EMPTY influence directement la rotation.
+
+En revanche, lorsque Taxonomy fournit son territoire :
+
+subdomain_active
+subject_active
+dominant_idea_active
+
+KRP ne poursuit aucune validation intellectuelle.
+
+Il considère seulement que le Blueprint a quitté la phase de rotation.
+
+6. confirmConsumed()
+
+confirmConsumed() ne doit pas être appelé par KRP.
+
+Il appartient à la coordination entre :
+
+Taxonomy
+KLD
+KEY_STRUCTURE
+
+Sa règle future reste :
+
+KLD PASS
++
+KEY_STRUCTURE PASS
+↓
+confirmConsumed() exactement une fois
+
+Mais cette règle sera implantée lorsque les spécifications concernées seront traitées.
+
+Pour le module KRP :
+
+retire tout appel à confirmConsumed() ;
+ne crée aucun substitut ;
+ne crée aucun PASS artificiel ;
+ne bloque pas la fin du KRP sur son absence.
+7. CURRENT_KERNEL_RECEIVED reste dans le contrat KRP
+
+Conserve les éléments déjà implantés :
+
+événement CURRENT_KERNEL_RECEIVED ;
+blueprint_id idempotent ;
+Outbox ;
+reçu idempotent ;
+incrément :
+kernel_received_total[depth][domain] += 1 ;
+autorisation du Blueprint suivant ;
+traitement PRODUCTION_ON_HOLD.
+
+ReadyBank est une dépendance externe qui transmet le signal.
+
+KRP ne doit pas implanter Validation 2 pour recevoir ce signal.
+
+Les tests KRP peuvent injecter un événement conforme au contrat ReadyBank.
+
+8. Séparer les tests
+Tests obligatoires du module KRP
+
+Ils doivent vérifier exclusivement :
+
+création préalable du Blueprint ;
+identité blueprint_id ;
+DepthCycle :
+2 → 4 → 6 → 7 → 8 → 9 → 10 ;
+huit Domaines ON ;
+EMPTY : ON → OFF ;
+progression 0/8 → 8/8 ;
+changement de Depth à 8/8 ;
+réutilisation du même Blueprint sur EMPTY ;
+KRP écrit uniquement depth + domain ;
+CURRENT_KERNEL_RECEIVED idempotent ;
+Blueprint suivant ;
+reprise après interruption ;
+PRODUCTION_ON_HOLD ;
+migrations additives ;
+BankWorker intact.
+Tests hors périmètre KRP
+
+Ne compte pas comme tests KRP :
+
+KLD PASS/FAIL ;
+KEY_STRUCTURE PASS/FAIL ;
+IdeaSlotLoader ;
+confirmConsumed() après KLD/KS ;
+Phase 1 ;
+Validation 1 ;
+Phase 2 ;
+Validation 2.
+
+Classe-les comme :
+
+TESTS FUTURS DU PIPELINE INTELLECTUEL
+9. Corriger la spécification
+
+Réécris les passages de 02_KernelRotationPlanner.md qui affirment que KRP orchestre ou attend :
+
+IdeaSlotLoader ;
+KLD ;
+KEY_STRUCTURE ;
+QuestionIntent ;
+les Phases ;
+les Validations.
+
+La spécification doit montrer les dépendances externes uniquement sous forme de contrats :
+
+TaxonomyInputPort
+TaxonomyResult = TERRITORY_PROVIDED | EMPTY
+CurrentKernelReceivedInputPort
+
+Aucune logique métier interne des modules suivants ne doit apparaître dans KRP.
+
+10. Statut attendu après correction
+
+Après retrait des responsabilités étrangères, évalue séparément :
+
+02_KernelRotationPlanner
+
+Architecture :
+100 % ou liste exacte des éléments propres au KRP manquants
+
+Contrat :
+100 % ou liste exacte des éléments propres au KRP manquants
+
+Implémentation :
+100 % ou liste exacte des méthodes KRP manquantes
+
+Validation :
+100 % si tous les tests du périmètre KRP sont GREEN
+
+Les modules futurs absents ne doivent pas diminuer le pourcentage du KRP.
+
+Ne déclare pas encore VERROUILLÉ.
+
+Présente d’abord les preuves finales pour validation humaine.
+
+11. Audit final ciblé
+
+Fournis :
+
+liste des responsabilités KRP implantées ;
+liste des responsabilités étrangères retirées du chemin KRP ;
+appel exact KRP → contrat Taxonomy ;
+traitement exact EMPTY ;
+traitement exact CURRENT_KERNEL_RECEIVED ;
+résultats des tests KRP uniquement ;
+résultats des migrations ;
+preuve BankWorker intact ;
+git status --short ;
+git diff --stat.
+
+Ne modifie aucun module métier suivant.
+
+Ne crée pas IdeaSlotLoader.
+
+Ne crée pas KEY_STRUCTURE.
+
+Ne crée pas KernelCodeEngine.
+
+Ne modifie pas QuestionIntent.
+
+Ne modifie pas Phase 1 ou Phase 2.
+
+Finalise uniquement 02_KernelRotationPlanner.
+
+Après cette correction de frontière, il sera possible d’évaluer si KRP lui-même est à 100 %, sans exiger que tous les modules suivants soient déjà implantés.

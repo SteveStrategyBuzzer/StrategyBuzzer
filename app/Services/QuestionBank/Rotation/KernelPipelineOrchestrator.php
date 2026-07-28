@@ -5,51 +5,51 @@ declare(strict_types=1);
 namespace App\Services\QuestionBank\Rotation;
 
 use App\Services\QuestionBank\KernelBlueprint;
-use App\Services\QuestionBank\Rotation\Contracts\KernelKldCheckInterface;
-use App\Services\QuestionBank\Rotation\Contracts\KeyStructurePipelineGateInterface;
-use App\Services\QuestionBank\Rotation\DTO\LearningDirectionResult;
 use App\Services\QuestionBank\Rotation\TaxonomyNavigatorInterface;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
 /**
- * KernelPipelineOrchestrator — chef d'orchestre du pipeline Kernel.
+ * KernelPipelineOrchestrator — chef d'orchestre du KRP.
  *
- * Responsabilités :
- *   - Demander la création du Blueprint à KernelBlueprintFactory
- *   - Transmettre le Blueprint à KRP (planV2)
- *   - Gérer la boucle EMPTY : applyEmptyTransitionV2 → planV2 → Taxonomy
- *   - Vérifier KLD puis KEY_STRUCTURE après que Taxonomy fournit un territoire
- *   - Appeler confirmConsumed() UNIQUEMENT après KLD PASS + KS PASS (DEC-KLD-01, DEC-KS-01)
- *   - Engager le Blueprint lorsque les deux vérifications passent
+ * ═══════════════════════════════════════════════════════════════════════════
+ * PÉRIMÈTRE STRICTEMENT KRP (02_KernelRotationPlanner)
+ * ═══════════════════════════════════════════════════════════════════════════
  *
- * Interdictions :
- *   - ne décide jamais du Depth ou du Domaine
- *   - ne modifie jamais les slots métier du Blueprint (depth, domain exclus)
- *   - n'accède jamais directement à kernel_rotation_state_v2
- *   - ne simule jamais la logique métier de KLD ou KEY_STRUCTURE
+ * Ce que cet orchestrateur fait :
+ *   1. Demander la création du Blueprint à KernelBlueprintFactory
+ *   2. Transmettre le Blueprint à KRP (planV2) → obtient depth + domain
+ *   3. Transmettre depth + domain à Taxonomy (peekNext)
+ *   4. Sur EMPTY (null) : applyEmptyTransitionV2 → planV2 → peekNext (boucle)
+ *   5. Sur TERRITORY_PROVIDED : fillTaxonomy → engageBlueprint → ROTATION_ASSIGNED
+ *   6. Sur aucun Depth disponible : retourner PRODUCTION_ON_HOLD
  *
- * ═══════════════════════════════════════════════════════════════════════════════
- * FRONTIÈRES DÉCLARÉES (UNDER_REVIEW)
- * ═══════════════════════════════════════════════════════════════════════════════
+ * Ce que cet orchestrateur NE fait PAS (hors périmètre KRP) :
+ *   - Ne charge pas l'idée dominante (→ IdeaSlotLoader, spec future)
+ *   - N'exécute pas KLD (→ KeyLearningDirection, spec future)
+ *   - N'exécute pas KEY_STRUCTURE (→ KeyStructurePipelineGate, spec future)
+ *   - N'appelle pas QuestionIntent (→ spec future)
+ *   - N'appelle pas confirmConsumed() (→ responsabilité KLD+KS, spec future)
+ *   - N'exécute pas Phase 1 / Validation 1 / Phase 2 / Validation 2
  *
- * FRONTIÈRE 1 — IDEA_SLOT_LOADER (BLOQUÉE)
- *   Module absent       : IdeaSlotLoader
- *   Interface attendue  : fournit dominant_idea pour le sujet actif
- *   Point de blocage    : territory['dominant_idea'] absent → retour PIPELINE_BLOCKED_AWAITING_IDEA_SLOT_LOADER
- *   Code terminé avant  : Factory → KRP → Taxonomy (peekNext retourne sub_domain + subject sans dominant_idea)
+ * ═══════════════════════════════════════════════════════════════════════════
+ * CONTRATS D'ENTRÉE / SORTIE
+ * ═══════════════════════════════════════════════════════════════════════════
  *
- * FRONTIÈRE 2 — KEY_STRUCTURE (BLOQUÉE)
- *   Module absent       : KEY_STRUCTURE (implémentation réelle)
- *   Interface attendue  : KeyStructurePipelineGateInterface::check() → PASS | FAIL
- *   Point de blocage    : après KLD PASS, avant confirmConsumed()
- *   Implémentation prod : BlockedKeyStructureGate → retourne BLOCKED systématiquement
- *   Retour orchestrateur: PIPELINE_BLOCKED_AWAITING_KEY_STRUCTURE
- *   Code terminé avant  : Factory → KRP → Taxonomy → KLD PASS
+ * TaxonomyInputPort (peekNext) :
+ *   Entrée  : depth (int), domain (string)
+ *   Sortie  : array{sub_domain, subject, ...} | null
+ *   null    = signal EMPTY — ce Domaine × Depth est épuisé
  *
- * ═══════════════════════════════════════════════════════════════════════════════
+ * Résultats de run() :
+ *   ROTATION_ASSIGNED   — Blueprint avec depth + domain + slots Taxonomy écrits.
+ *                          Prêt à entrer dans le pipeline intellectuel.
+ *   PRODUCTION_ON_HOLD  — DepthNeedMatrix a atteint toutes ses cibles.
+ *                          Aucun Blueprint n'est engagé.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
  * RÈGLE KRP-R11 (DEC-R11)
- * ═══════════════════════════════════════════════════════════════════════════════
+ * ═══════════════════════════════════════════════════════════════════════════
  *
  * Après une production engagée ayant atteint ReadyBank,
  * CURRENT_KERNEL_RECEIVED est le seul déclencheur autorisant
@@ -72,49 +72,26 @@ final class KernelPipelineOrchestrator
     // Statuts de retour de run()
     // =========================================================================
 
-    /** Blueprint engagé — KLD PASS + KS PASS + confirmConsumed() + ENGAGED_IN_PIPELINE. */
-    public const STATUS_ENGAGED = 'ENGAGED';
+    /**
+     * Blueprint engagé — KRP a écrit depth + domain,
+     * Taxonomy a fourni le territoire, Blueprint = ENGAGED_IN_PIPELINE.
+     *
+     * Le pipeline intellectuel (IdeaSlotLoader → KLD → KEY_STRUCTURE → …)
+     * commence après ce retour. Ces modules ne font PAS partie de ce retour.
+     */
+    public const STATUS_ROTATION_ASSIGNED = 'ROTATION_ASSIGNED';
 
     /** Aucun besoin de Depth actif — DepthNeedMatrix a atteint toutes ses cibles. */
     public const STATUS_PRODUCTION_ON_HOLD = 'PRODUCTION_ON_HOLD';
 
-    /**
-     * Pipeline bloqué — dominant_idea absent du territoire Taxonomy.
-     * Frontière : IdeaSlotLoader non encore implanté.
-     * Taxonomy fournit sub_domain + subject. IdeaSlotLoader doit compléter avec dominant_idea.
-     * confirmConsumed() NON appelé.
-     */
-    public const STATUS_PIPELINE_BLOCKED_AWAITING_IDEA_SLOT_LOADER = 'PIPELINE_BLOCKED_AWAITING_IDEA_SLOT_LOADER';
-
-    /**
-     * Pipeline bloqué — KEY_STRUCTURE non encore implanté.
-     * Frontière : KeyStructurePipelineGateInterface produit STATUS_BLOCKED.
-     * KLD a passé. confirmConsumed() NON appelé.
-     */
-    public const STATUS_PIPELINE_BLOCKED_AWAITING_KEY_STRUCTURE = 'PIPELINE_BLOCKED_AWAITING_KEY_STRUCTURE';
-
-    /**
-     * KLD a rejeté la direction pédagogique.
-     * confirmConsumed() NON appelé — le sujet n'est pas avancé.
-     */
-    public const STATUS_KLD_REJECTED = 'KLD_REJECTED';
-
-    /**
-     * KEY_STRUCTURE a rejeté la structure taxonomique.
-     * confirmConsumed() NON appelé.
-     */
-    public const STATUS_KS_REJECTED = 'KS_REJECTED';
-
     public function __construct(
-        private readonly KernelBlueprintFactory           $factory,
-        private readonly KernelRotationPlanner            $planner,
-        private readonly TaxonomyNavigatorInterface       $taxonomy,
-        private readonly KernelKldCheckInterface          $kldGate,
-        private readonly KeyStructurePipelineGateInterface $ksGate,
+        private readonly KernelBlueprintFactory     $factory,
+        private readonly KernelRotationPlanner      $planner,
+        private readonly TaxonomyNavigatorInterface $taxonomy,
     ) {}
 
     /**
-     * Exécute un cycle complet : Factory → KRP → Taxonomy → KLD → KS → ENGAGED.
+     * Exécute un cycle KRP complet : Factory → KRP → Taxonomy → ROTATION_ASSIGNED.
      *
      * @param  string|null  $previousDomain  Domaine du Blueprint précédent.
      *
@@ -134,11 +111,7 @@ final class KernelPipelineOrchestrator
             return ['status' => self::STATUS_PRODUCTION_ON_HOLD, 'blueprint' => $blueprint];
         }
 
-        // Registre KLD partagé pour toute la durée de ce run()
-        // (accumule les directions essayées à travers la boucle EMPTY)
-        $kldRegistry   = new LearningDirectionRegistry();
-        $emptyCount    = 0;
-        $consumed      = false; // idempotence : confirmConsumed() au plus une fois par run()
+        $emptyCount = 0;
 
         while (true) {
             if ($emptyCount >= self::MAX_EMPTY_LOOP) {
@@ -148,6 +121,7 @@ final class KernelPipelineOrchestrator
                 );
             }
 
+            // ── TaxonomyInputPort : peekNext ──────────────────────────────────
             $territory = $this->taxonomy->peekNext(
                 (int) $blueprint->depth,
                 (string) $blueprint->domain
@@ -171,89 +145,19 @@ final class KernelPipelineOrchestrator
                 continue;
             }
 
-            // ── Territoire fourni par Taxonomy ────────────────────────────────
-
-            // ── FRONTIÈRE 1 : dominant_idea requis (IdeaSlotLoader manquant) ──
-            $dominantIdea = $territory['dominant_idea'] ?? $territory['dominant_idea_active'] ?? null;
-
-            if ($dominantIdea === null || $dominantIdea === '') {
-                // Pipeline BLOQUÉ : peekNext() retourne sub_domain + subject
-                // mais IdeaSlotLoader n'existe pas encore pour compléter dominant_idea.
-                // confirmConsumed() NON appelé.
-                return [
-                    'status'    => self::STATUS_PIPELINE_BLOCKED_AWAITING_IDEA_SLOT_LOADER,
-                    'blueprint' => $blueprint,
-                ];
-            }
-
-            // ── KLD ───────────────────────────────────────────────────────────
-            $kldResult = $this->kldGate->check(
-                $territory,
-                (string) $blueprint->domain,
-                (int) $blueprint->depth,
-                $kldRegistry,
-            );
-
-            if ($kldResult->isFail() || $kldResult->isReviewStructure()) {
-                // KLD FAIL ou REVIEW_STRUCTURE → confirmConsumed() NON appelé.
-                // REVIEW_STRUCTURE est traité comme un FAIL provisoire
-                // jusqu'à implantation complète de KEY_STRUCTURE.
-                return [
-                    'status'    => self::STATUS_KLD_REJECTED,
-                    'blueprint' => $blueprint,
-                ];
-            }
-
-            // KLD PASS — enregistrer la direction dans le registre
-            $kldRegistry->add(
-                $kldResult->normalizedSubject . '::' . $kldResult->normalizedDominantIdea,
-                $kldResult->normalizedSubject,
-                $kldResult->normalizedDominantIdea,
-            );
-
-            // ── FRONTIÈRE 2 : KEY_STRUCTURE ───────────────────────────────────
-            $ksStatus = $this->ksGate->check(
-                $territory,
-                (string) $blueprint->domain,
-                (int) $blueprint->depth,
-            );
-
-            if ($ksStatus === KeyStructurePipelineGateInterface::STATUS_BLOCKED) {
-                // Pipeline BLOQUÉ : KEY_STRUCTURE non implanté.
-                // confirmConsumed() NON appelé.
-                return [
-                    'status'    => self::STATUS_PIPELINE_BLOCKED_AWAITING_KEY_STRUCTURE,
-                    'blueprint' => $blueprint,
-                ];
-            }
-
-            if ($ksStatus === KeyStructurePipelineGateInterface::STATUS_FAIL) {
-                // KS FAIL → confirmConsumed() NON appelé.
-                return [
-                    'status'    => self::STATUS_KS_REJECTED,
-                    'blueprint' => $blueprint,
-                ];
-            }
-
-            // ── KLD PASS + KS PASS → confirmer et engager ────────────────────
+            // ── TERRITORY_PROVIDED — KRP a terminé sa responsabilité ──────────
+            // Écrire les slots Taxonomy et engager le Blueprint.
+            // Le pipeline intellectuel (IdeaSlotLoader, KLD, KEY_STRUCTURE…)
+            // commence APRÈS ce retour — hors périmètre KRP.
             $blueprint->fillTaxonomy(
-                $territory['sub_domain']                                    ?? '',
-                $territory['subject']                                       ?? '',
-                $territory['dominant_idea'] ?? $territory['dominant_idea_active'] ?? ''
+                $territory['sub_domain']                                        ?? '',
+                $territory['subject']                                           ?? '',
+                $territory['dominant_idea'] ?? $territory['dominant_idea_active'] ?? '',
             );
 
             $this->engageBlueprint($blueprint);
 
-            // confirmConsumed() : appelé exactement une fois (idempotence par flag)
-            if (! $consumed) {
-                $this->taxonomy->confirmConsumed(
-                    (int) $blueprint->depth,
-                    (string) $blueprint->domain
-                );
-                $consumed = true;
-            }
-
-            return ['status' => self::STATUS_ENGAGED, 'blueprint' => $blueprint];
+            return ['status' => self::STATUS_ROTATION_ASSIGNED, 'blueprint' => $blueprint];
         }
     }
 
