@@ -1,0 +1,347 @@
+Ordre sécurisé à suivre
+Étape 1 — Audit strictement en lecture seule
+
+Cette première demande sert à figer l’état actuel avant toute modification.
+
+Avant toute modification, exécute un audit strictement en lecture seule.
+
+Aucune écriture n’est autorisée.
+
+Aucun fichier ne doit être créé, modifié, déplacé, renommé ou supprimé.
+
+Interdictions absolues :
+
+aucun patch ;
+aucun formatage automatique ;
+aucun remplacement global ;
+aucun rm ;
+aucun git clean ;
+aucun git reset ;
+aucun git checkout -- ;
+aucun changement de branche ;
+aucun commit ;
+aucune modification du code ;
+aucune modification d’une autre spécification.
+
+Travail demandé :
+
+Affiche git status --short.
+Confirme si le dépôt contient déjà des modifications non liées à notre travail.
+Localise exactement :
+docs/architecture/02_KernelRotationPlanner.md ;
+docs/architecture/00_ArchitectureRegister.md ;
+docs/architecture/01_KernelBlueprint.md, sans le modifier.
+Donne pour chacun :
+chemin exact ;
+nombre de lignes ;
+version déclarée ;
+statut déclaré ;
+titres de toutes les sections ;
+hash Git actuel du fichier.
+Pour 02_KernelRotationPlanner.md, dresse la liste exacte des formulations encore incompatibles avec la nouvelle architecture :
+KRP crée le Blueprint ;
+signal AVAILABLE ;
+BankTarget ;
+depth_position ;
+domain_position ;
+Blueprint en circulation comme booléen ;
+liste AVAILABLE/EMPTY dans DepthNeedMatrix ;
+liste des Domaines OFF dans DepthNeedMatrix ;
+nouveau Blueprint après EMPTY ;
+Général comme Domaine de création ;
+redémarrage immédiat du même Depth après 8/8 ;
+Depth 10 interdit ;
+toute autre ancienne formulation contradictoire.
+Ne propose encore aucune correction.
+Termine par :
+fichiers qui devraient éventuellement être modifiés ;
+fichiers qui doivent rester strictement intacts ;
+confirmation explicite : « AUCUNE MODIFICATION EFFECTUÉE ».
+
+Arrête-toi après cet audit.
+
+Étape 2 — Matrice de conservation avant réécriture
+
+Après l’audit, Replit doit démontrer qu’il ne supprimera aucune section non concernée.
+
+À partir de l’audit uniquement, prépare une matrice de réécriture de 02_KernelRotationPlanner.md.
+
+Toujours aucune modification de fichier.
+
+Le document doit être réécrit entièrement conformément à notre méthode, mais aucune information non concernée ne doit disparaître sans justification explicite.
+
+Produis un tableau avec les colonnes suivantes :
+
+section actuelle ;
+contenu actuel résumé ;
+statut :
+CONSERVÉ IDENTIQUE ;
+CONSERVÉ ET REPOSITIONNÉ ;
+RÉÉCRIT ;
+SUPERSEDED DANS LE DOCUMENT ;
+SUPPRIMÉ ;
+nouvelle section de destination ;
+justification précise ;
+décision architecturale qui impose le changement.
+
+Règles obligatoires :
+
+Toute section actuelle doit apparaître dans la matrice.
+Aucune section ne peut disparaître silencieusement.
+Toute suppression doit être citée intégralement ou identifiée précisément.
+Les éléments hors périmètre doivent être conservés.
+Ne transforme pas une absence de décision en nouvelle architecture.
+Les points encore ouverts doivent rester explicitement ouverts :
+OUVERT_1 : cycle de vie du Blueprint créé mais non engagé en PRODUCTION_ON_HOLD ;
+OUVERT_3 : identité canonique et idempotence de CURRENT_KERNEL_RECEIVED.
+Ne déclare aucune décision OFFICIAL.
+Ne modifie pas l’Architecture Register.
+Ne produis aucun code.
+Ne modifie aucun fichier.
+
+La nouvelle mécanique à intégrer est exclusivement :
+
+le KernelBlueprint est créé avant KRP ;
+KRP reçoit ce Blueprint ;
+Tour de Depth initialise les huit Domaines de création à ON ;
+Taxonomy ne transmet aucun AVAILABLE ;
+un territoire fourni laisse le Domaine ON ;
+EMPTY provoque ON → OFF ;
+un Domaine OFF est ignoré pendant le reste du Tour de Depth ;
+DepthNeedMatrix compte uniquement la progression 0/8 → 8/8 ;
+chaque nouveau ON → OFF produit exactement +1/8 ;
+à 8/8, cycle_completed[active_depth] += 1 ;
+le prochain Depth est recherché selon :
+2 → 4 → 6 → 7 → 8 → 9 → 10 ;
+après 8/8, on passe au prochain Depth requis, jamais immédiatement au même Depth ;
+sur EMPTY, le même Blueprint est conservé et reçoit le prochain depth + domain ;
+KRP écrit uniquement depth + domain ;
+CURRENT_KERNEL_RECEIVED comptabilise :
+kernel_received_total[depth][domain] += 1 ;
+le total d’un Depth est calculé par la somme des huit Domaines ;
+Général n’est pas un Domaine de création.
+
+Arrête-toi après la matrice.
+AUCUNE MODIFICATION AUTORISÉE.
+
+Étape 3 — Proposition complète du nouveau document, sans écriture
+
+Replit doit ensuite présenter le fichier complet dans le chat. Cela permet de le relire avant qu’il touche au dépôt.
+
+Produis maintenant la proposition complète de la nouvelle version de :
+
+docs/architecture/02_KernelRotationPlanner.md
+
+Ne modifie toujours aucun fichier.
+
+Exigences :
+
+Réécris la spécification complète, pas seulement les passages corrigés.
+Utilise la matrice de conservation validée.
+Préserve toutes les responsabilités et règles non remplacées.
+N’intègre aucune ancienne formulation incompatible.
+Statut obligatoire :
+Architecture : EN CONCEPTION ;
+Contrat : UNDER_REVIEW ;
+Implémentation : NON AUTORISÉE ;
+Validation : NON COMMENCÉE ;
+module : NON VERROUILLÉ.
+Les sections obligatoires doivent toutes être présentes :
+Mission ;
+Responsabilités ;
+Interdictions ;
+Entrées ;
+Sorties ;
+Slots Blueprint ;
+Données internes ;
+Mécanismes ;
+Communication ;
+Contrats ;
+États ;
+Transitions ;
+Cas limites ;
+Persistance ;
+Validation ;
+Tests ;
+Architecture Register ;
+Points ouverts.
+Distingue strictement :
+Tour de Depth :
+quels Domaines sont ON ou OFF ;
+DepthNeedMatrix :
+progression 0/8 à 8/8, cibles et compteurs de Depth ;
+KernelRotationPlanner :
+applique la sélection et écrit depth + domain.
+Ne crée aucun signal AVAILABLE.
+Ne crée aucun stockage parallèle des Domaines OFF dans DepthNeedMatrix.
+Ne réintroduis aucun :
+BankTarget ;
+depth_position ;
+domain_position ;
+booléen Blueprint en circulation ;
+Général créateur ;
+création du Blueprint par KRP.
+Ne ferme pas OUVERT_1 ni OUVERT_3 en inventant une solution.
+Ne modifie pas l’Architecture Register.
+Ne produis aucun code.
+Termine par une table :
+sections conservées ;
+sections réécrites ;
+éléments supprimés ;
+éléments ajoutés ;
+points encore ouverts.
+
+Présente uniquement la proposition complète et le rapport de couverture.
+
+AUCUNE ÉCRITURE DE FICHIER.
+
+Étape 4 — Autorisation d’écrire un seul fichier
+
+Cette étape doit arriver uniquement après validation complète de la proposition.
+
+La proposition de 02_KernelRotationPlanner.md est approuvée pour écriture.
+
+Autorisation limitée à un seul fichier :
+
+docs/architecture/02_KernelRotationPlanner.md
+
+Aucun autre fichier ne peut être modifié.
+
+Avant d’écrire :
+
+Vérifie de nouveau git status --short.
+Confirme que le hash actuel du fichier correspond au hash observé pendant l’audit.
+Si le fichier a changé depuis l’audit, ARRÊTE immédiatement.
+Crée une copie de sécurité locale du fichier actuel avec un nom explicite hors du chemin documentaire officiel, sans supprimer l’original.
+N’utilise aucun outil de formatage global.
+N’exécute aucun remplacement sur plusieurs fichiers.
+
+Écris exactement la version approuvée.
+
+Après l’écriture :
+
+Affiche git status --short.
+Affiche git diff --stat.
+Affiche git diff -- docs/architecture/02_KernelRotationPlanner.md.
+Confirme que le seul fichier modifié est :
+docs/architecture/02_KernelRotationPlanner.md.
+Donne :
+ancien nombre de lignes ;
+nouveau nombre de lignes ;
+sections conservées ;
+sections réécrites ;
+sections supprimées avec justification ;
+sections ajoutées.
+Vérifie par recherche que les termes interdits ne sont pas réintroduits :
+BankTarget ;
+AVAILABLE comme signal ;
+depth_position ;
+domain_position ;
+KRP crée le Blueprint ;
+Général comme Domaine de création.
+Ne modifie pas l’Architecture Register.
+Ne modifie aucun code.
+Ne crée aucun test.
+Ne lance aucune implantation.
+
+Arrête-toi après le diff.
+Ne crée aucun commit.
+
+Étape 5 — Audit de non-régression documentaire
+
+Après écriture, Replit doit relire le document sans le modifier.
+
+Effectue maintenant un audit de non-régression documentaire en lecture seule.
+
+Aucune nouvelle modification n’est autorisée.
+
+Vérifie 02_KernelRotationPlanner.md contre :
+
+01_KernelBlueprint.md, qui est déjà verrouillé ;
+les décisions OFFICIAL actuelles de 00_ArchitectureRegister.md ;
+la roadmap officielle ;
+la nouvelle mécanique validée.
+
+Contrôles obligatoires :
+
+Le Blueprint est créé avant KRP.
+KRP reçoit le Blueprint et écrit uniquement depth + domain.
+Les huit Domaines de création sont :
+Géographie ;
+Histoire ;
+Faune ;
+Art ;
+Sport ;
+Cinéma ;
+Cuisine ;
+Science.
+Général est exclu de la création.
+Le Tour de Depth gère uniquement ON/OFF.
+Aucun signal AVAILABLE.
+Un territoire fourni laisse le Domaine ON.
+EMPTY provoque une seule transition ON → OFF.
+Un Domaine OFF n’est plus considéré pendant le tour.
+DepthNeedMatrix porte uniquement la progression 0/8 → 8/8, les cibles, les tours terminés et les compteurs de noyaux.
+Aucun état ON/OFF par Domaine dans DepthNeedMatrix.
+À 8/8 :
+cycle_completed[active_depth] += 1.
+DepthCycle :
+2 → 4 → 6 → 7 → 8 → 9 → 10.
+Aucun redémarrage immédiat du même Depth.
+Sur EMPTY, le même Blueprint est utilisé.
+Aucun CURRENT_KERNEL_RECEIVED attendu après EMPTY.
+CURRENT_KERNEL_RECEIVED comptabilise une seule fois :
+kernel_received_total[depth][domain] += 1.
+OUVERT_1 et OUVERT_3 restent ouverts.
+Aucune implantation n’est autorisée.
+Le module n’est pas déclaré VERROUILLÉ.
+
+Pour chaque contrôle, réponds :
+
+CONFORME ;
+NON CONFORME ;
+emplacement exact dans le document.
+
+Affiche ensuite git status --short et confirme qu’aucun fichier supplémentaire n’a été modifié.
+
+Ne corrige rien pendant cet audit.
+
+Étape 6 — Architecture Register seulement après validation
+
+Le registre doit être traité séparément, après validation du document KRP. Cela respecte la règle « une seule spécification à la fois ».
+
+La spécification 02_KernelRotationPlanner.md a été validée documentairement.
+
+Prépare maintenant, sans écrire, la proposition de mise à jour de :
+
+docs/architecture/00_ArchitectureRegister.md
+
+Aucune modification de fichier pour le moment.
+
+Règles :
+
+Lis le registre complet.
+Identifie le prochain identifiant DEC réellement disponible.
+Ne suppose aucun numéro.
+Aucun statut PARTIALLY_SUPERSEDED.
+Une décision existante reste OFFICIAL jusqu’à l’approbation complète de sa décision remplaçante.
+Lors du remplacement :
+ancienne décision : SUPERSEDED ;
+champ décision remplaçante renseigné ;
+nouvelle décision : OFFICIAL seulement après validation explicite.
+Ne supprime aucune ancienne décision.
+Ne renumérote aucune décision.
+Ne modifie aucune décision non concernée.
+Présente :
+les décisions actuelles concernées ;
+leur texte exact ;
+la nouvelle décision proposée ;
+les liens de remplacement ;
+les modules concernés ;
+la justification ;
+le statut proposé.
+Ne modifie pas 02_KernelRotationPlanner.md.
+Ne modifie aucun code.
+Ne crée aucun commit.
+
+Arrête-toi après la proposition.
