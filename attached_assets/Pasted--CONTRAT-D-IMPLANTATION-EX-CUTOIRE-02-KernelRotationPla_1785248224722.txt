@@ -1,0 +1,1194 @@
+# CONTRAT D’IMPLANTATION EXÉCUTOIRE
+
+## `02_KernelRotationPlanner`
+
+**Version du contrat :** 1.0
+**Statut :** UNDER_REVIEW
+**Module concerné :** `02_KernelRotationPlanner`
+**Implantation :** interdite avant la PORTE 3
+**Pipeline BankWorker :** strictement hors périmètre et protégé
+
+---
+
+# 1. Ordre obligatoire
+
+Le travail doit respecter cet ordre sans exception :
+
+```text
+PORTE 1
+Réécriture complète de 02_KernelRotationPlanner.md
+↓
+Validation architecturale à 100 %
+↓
+Statut VERROUILLÉ
+
+PORTE 2
+Mise à jour de 00_ArchitectureRegister.md
+↓
+Décisions OFFICIAL
+↓
+Anciennes décisions SUPERSEDED
+
+PORTE 3
+Audit exact du code
+↓
+Écarts entre contrat verrouillé et implantation actuelle
+
+PORTE 4
+Patchs d’implantation contrôlés
+↓
+Migrations additives
+↓
+Tests
+
+PORTE 5
+Validation terminale
+↓
+Implantation déclarée conforme
+```
+
+Aucune étape ne peut être sautée.
+
+---
+
+# 2. Décisions techniques fermant les bloquants
+
+## 2.1 Créateur technique du KernelBlueprint
+
+Le composant technique responsable du flow est :
+
+```text
+KernelPipelineOrchestrator
+```
+
+Il ne prend aucune décision métier de rotation.
+
+Il orchestre uniquement les appels dans l’ordre officiel.
+
+La création de l’enveloppe appartient à :
+
+```text
+KernelBlueprintFactory
+```
+
+Flow :
+
+```text
+KernelPipelineOrchestrator
+↓
+KernelBlueprintFactory::create()
+↓
+KernelBlueprint vide
+↓
+KernelRotationPlanner
+```
+
+### Responsabilités de KernelBlueprintFactory
+
+* créer une nouvelle instance vide du KernelBlueprint ;
+* attribuer son identité canonique ;
+* créer son enregistrement d’exécution ;
+* ne remplir aucun slot métier ;
+* ne sélectionner aucun Depth ;
+* ne sélectionner aucun Domaine.
+
+### Responsabilités de KernelPipelineOrchestrator
+
+* demander la création du Blueprint ;
+* transmettre le Blueprint à KRP ;
+* transmettre le résultat KRP à Taxonomy ;
+* gérer la boucle immédiate lorsque Taxonomy transmet `EMPTY` ;
+* engager le Blueprint dans le reste du pipeline lorsque Taxonomy fournit son territoire ;
+* ne jamais décider lui-même du Depth ou du Domaine.
+
+---
+
+## 2.2 Identité canonique du Blueprint
+
+L’identité canonique est :
+
+```text
+blueprint_id
+```
+
+Format obligatoire :
+
+```text
+UUIDv7
+```
+
+Règles :
+
+* généré par `KernelBlueprintFactory` ;
+* généré avant l’entrée dans KRP ;
+* immuable pendant tout le pipeline ;
+* distinct de `kernel_code` ;
+* distinct de `rotation_identifier` ;
+* distinct du Depth ;
+* distinct du Domaine ;
+* transmis jusqu’à ReadyBank ;
+* inclus dans `CURRENT_KERNEL_RECEIVED`.
+
+`rotation_identifier` est supprimé du nouveau contrat.
+
+`kernel_code` ne peut pas servir d’identité du Blueprint, puisqu’il est écrit plus tard par son moteur propriétaire.
+
+---
+
+## 2.3 Cycle de vie d’exécution du Blueprint
+
+Les états suivants sont des états techniques d’orchestration.
+
+Ils ne sont pas des slots du KernelBlueprint et ne sont pas des verdicts de validation.
+
+```text
+CREATED_UNENGAGED
+ENGAGED_IN_PIPELINE
+READY_BANK_RECEIVED
+NOT_ENGAGED_PRODUCTION_ON_HOLD
+```
+
+### CREATED_UNENGAGED
+
+Le Blueprint vient d’être créé.
+
+Il peut encore :
+
+* recevoir plusieurs propositions `depth + domain` ;
+* être réutilisé après un ou plusieurs `EMPTY` ;
+* être engagé dans le pipeline ;
+* être arrêté avant engagement si aucun besoin ne reste.
+
+### ENGAGED_IN_PIPELINE
+
+Taxonomy a fourni :
+
+* `subdomain_active` ;
+* `subject_active` ;
+* `dominant_idea_active`.
+
+À partir de ce moment :
+
+* le couple `depth + domain` est définitivement engagé ;
+* il ne peut plus être remplacé ;
+* le Blueprint poursuit le pipeline intellectuel.
+
+### READY_BANK_RECEIVED
+
+ReadyBank a reçu le Blueprint terminé.
+
+Cet état provoque l’émission de :
+
+```text
+CURRENT_KERNEL_RECEIVED
+```
+
+### NOT_ENGAGED_PRODUCTION_ON_HOLD
+
+KRP constate qu’aucun Depth ne possède encore :
+
+```text
+cycle_completed[depth] < cycle_target[depth]
+```
+
+Alors :
+
+* aucun `depth + domain` n’est engagé ;
+* le Blueprint ne poursuit pas le pipeline ;
+* aucun noyau n’est comptabilisé ;
+* aucun signal ReadyBank n’est produit ;
+* l’enveloppe est conservée uniquement comme trace technique non engagée ;
+* elle ne devient jamais un noyau canonique de ReadyBank.
+
+Cette décision ferme `OUVERT_1`.
+
+---
+
+# 3. Un seul Blueprint actif
+
+À tout instant, il ne peut exister qu’un seul Blueprint dans l’un de ces états actifs :
+
+```text
+CREATED_UNENGAGED
+ou
+ENGAGED_IN_PIPELINE
+```
+
+Cette protection appartient au registre technique des exécutions du Blueprint.
+
+Elle ne doit pas être représentée par un booléen dans `RotationState`.
+
+Avant de créer une nouvelle enveloppe, `KernelBlueprintFactory` vérifie qu’aucun Blueprint actif n’existe.
+
+Le nouveau Blueprint est autorisé après :
+
+```text
+CURRENT_KERNEL_RECEIVED
+```
+
+ou lorsqu’un Blueprint précédent a été classé :
+
+```text
+NOT_ENGAGED_PRODUCTION_ON_HOLD
+```
+
+---
+
+# 4. Tour de Depth
+
+## 4.1 Mission
+
+Le mécanisme `Tour de Depth` répond uniquement à la question :
+
+```text
+Quels Domaines participent encore
+au Tour de Depth actif ?
+```
+
+## 4.2 Domaines officiels
+
+```text
+Géographie
+Histoire
+Faune
+Art
+Sport
+Cinéma
+Cuisine
+Science
+```
+
+`Général` est exclu de la création.
+
+## 4.3 Initialisation
+
+Au début de chaque Tour de Depth :
+
+```text
+Géographie = ON
+Histoire   = ON
+Faune      = ON
+Art        = ON
+Sport      = ON
+Cinéma     = ON
+Cuisine    = ON
+Science    = ON
+```
+
+## 4.4 Territoire fourni
+
+Lorsque Taxonomy fournit son territoire :
+
+```text
+subdomain_active
+subject_active
+dominant_idea_active
+```
+
+alors :
+
+```text
+Domaine reste ON
+```
+
+Aucun signal `AVAILABLE` n’existe.
+
+## 4.5 EMPTY
+
+Lorsque Taxonomy transmet :
+
+```text
+EMPTY
+```
+
+alors :
+
+```text
+Domaine ON
+↓
+Domaine OFF
+↓
+Domaine ignoré pendant le reste du Tour de Depth
+```
+
+Un Domaine déjà `OFF` ne peut pas produire une deuxième transition.
+
+La transition doit être idempotente.
+
+## 4.6 Fermeture
+
+```text
+8 Domaines OFF
+↓
+Tour de Depth terminé
+```
+
+---
+
+# 5. DepthNeedMatrix
+
+## 5.1 Mission
+
+DepthNeedMatrix porte :
+
+* les cibles de Tours de Depth ;
+* les Tours réellement complétés ;
+* la progression numérique du tour actif ;
+* les noyaux réellement reçus.
+
+Elle ne porte pas l’identité des Domaines `ON/OFF`.
+
+## 5.2 DepthCycle officiel
+
+```text
+2 → 4 → 6 → 7 → 8 → 9 → 10
+```
+
+Après Depth 10, la recherche reprend à Depth 2.
+
+## 5.3 Cibles officielles
+
+```text
+cycle_target[2]  = 250
+cycle_target[4]  = 300
+cycle_target[6]  = 350
+cycle_target[7]  = 350
+cycle_target[8]  = 350
+cycle_target[9]  = 250
+cycle_target[10] = 100
+```
+
+## 5.4 Progression du Tour de Depth actif
+
+```text
+0/8 → 1/8 → 2/8 → … → 8/8
+```
+
+Chaque nouvelle transition valide :
+
+```text
+ON → OFF
+```
+
+produit exactement :
+
+```text
++1/8
+```
+
+## 5.5 Fermeture d’un tour
+
+À `8/8` :
+
+```text
+cycle_completed[active_depth] += 1
+```
+
+Puis DepthNeedMatrix recherche le prochain Depth suivant dans le cycle dont :
+
+```text
+cycle_completed[depth] < cycle_target[depth]
+```
+
+Le résultat est retourné à KRP.
+
+KRP applique ce résultat comme nouveau `active_depth`.
+
+## 5.6 Noyaux reçus
+
+La source de vérité est :
+
+```text
+kernel_received_total[depth][domain]
+```
+
+À chaque `CURRENT_KERNEL_RECEIVED` valide :
+
+```text
+kernel_received_total[depth][domain] += 1
+```
+
+Le total du Depth est calculé :
+
+```text
+kernel_received_total[depth]
+=
+somme des huit Domaines
+```
+
+Aucun second compteur total ne doit être persisté.
+
+---
+
+# 6. KernelRotationPlanner
+
+## 6.1 Entrée principale
+
+```text
+KernelBlueprint vide
++
+contexte de rotation
+```
+
+Le contexte peut contenir :
+
+```text
+previous_domain
+```
+
+Il provient :
+
+* du Domaine déjà inscrit dans le même Blueprint lors d’un `EMPTY` ;
+* du Domaine porté par `CURRENT_KERNEL_RECEIVED` pour le Blueprint suivant ;
+* de `null` au tout premier lancement d’un Tour de Depth.
+
+Cela évite tout :
+
+```text
+domain_position
+current_domain_index
+```
+
+## 6.2 Sorties possibles
+
+```text
+ROTATION_ASSIGNED
+PRODUCTION_ON_HOLD
+```
+
+### ROTATION_ASSIGNED
+
+KRP a écrit :
+
+```text
+depth
+domain
+```
+
+dans le Blueprint.
+
+### PRODUCTION_ON_HOLD
+
+Aucun Depth ne possède encore de besoin.
+
+Le Blueprint passe à :
+
+```text
+NOT_ENGAGED_PRODUCTION_ON_HOLD
+```
+
+## 6.3 Sélection du Domaine
+
+DomainCycle officiel :
+
+```text
+Géographie
+→ Histoire
+→ Faune
+→ Art
+→ Sport
+→ Cinéma
+→ Cuisine
+→ Science
+→ retour à Géographie
+```
+
+KRP :
+
+1. part du Domaine précédent ;
+2. parcourt l’ordre officiel ;
+3. ignore les Domaines `OFF` ;
+4. sélectionne le prochain Domaine `ON`.
+
+Aucun curseur numérique n’est persisté.
+
+## 6.4 Écriture dans le Blueprint
+
+KRP écrit uniquement :
+
+```text
+depth
+domain
+```
+
+Avant engagement dans le pipeline, ce couple est provisoire.
+
+Sur `EMPTY`, KRP peut remplacer ce couple dans le même Blueprint.
+
+Dès que Taxonomy remplit ses trois slots, le couple devient engagé et immuable.
+
+---
+
+# 7. Flow initial
+
+```text
+KernelPipelineOrchestrator
+↓
+KernelBlueprintFactory crée le Blueprint
+↓
+état CREATED_UNENGAGED
+↓
+KRP consulte DepthNeedMatrix
+```
+
+## Un besoin existe
+
+```text
+KRP sélectionne active_depth
+↓
+Tour de Depth initialisé
+↓
+8 Domaines ON
+↓
+progression 0/8
+↓
+KRP sélectionne le premier Domaine ON
+↓
+KRP écrit depth + domain
+↓
+Taxonomy
+```
+
+### Taxonomy fournit le territoire
+
+```text
+Taxonomy écrit ses trois slots
+↓
+Blueprint = ENGAGED_IN_PIPELINE
+↓
+pipeline intellectuel
+```
+
+### Taxonomy transmet EMPTY
+
+```text
+Domaine ON → OFF
+↓
+DepthNeedMatrix +1/8
+↓
+même Blueprint conservé
+↓
+KRP sélectionne le Domaine ON suivant
+↓
+KRP remplace depth + domain
+↓
+Taxonomy consultée de nouveau
+```
+
+## Aucun besoin
+
+```text
+PRODUCTION_ON_HOLD
+↓
+Blueprint = NOT_ENGAGED_PRODUCTION_ON_HOLD
+↓
+aucun pipeline
+```
+
+---
+
+# 8. Flow récurrent
+
+```text
+ReadyBank reçoit le Blueprint
+↓
+Blueprint = READY_BANK_RECEIVED
+↓
+CURRENT_KERNEL_RECEIVED
+↓
+comptabilisation idempotente
+↓
+KernelPipelineOrchestrator crée le Blueprint suivant
+↓
+KRP reprend le Tour de Depth actif
+```
+
+Tant que la progression est inférieure à `8/8` :
+
+```text
+active_depth reste inchangé
+↓
+prochain Domaine ON
+```
+
+À `8/8` :
+
+```text
+cycle_completed[active_depth] += 1
+↓
+prochain Depth requis
+↓
+nouveau Tour de Depth
+↓
+8 Domaines ON
+↓
+progression 0/8
+```
+
+KRP ne recommence jamais immédiatement un nouveau tour du même Depth.
+
+---
+
+# 9. Canal ReadyBank → KRP
+
+Le canal officiel est un événement transactionnel avec Outbox.
+
+Nom de l’événement :
+
+```text
+CURRENT_KERNEL_RECEIVED
+```
+
+## 9.1 Production de l’événement
+
+Dans la même transaction que la réception ReadyBank :
+
+1. ReadyBank persiste le Blueprint ;
+2. l’exécution du Blueprint passe à `READY_BANK_RECEIVED` ;
+3. ReadyBank écrit un événement dans l’Outbox ;
+4. la transaction est validée.
+
+## 9.2 Payload obligatoire
+
+```text
+event_id
+event_type = CURRENT_KERNEL_RECEIVED
+schema_version = 1
+blueprint_id
+depth
+domain
+occurred_at
+```
+
+`kernel_code` peut être présent pour la traçabilité, mais KRP ne l’utilise pas pour l’idempotence.
+
+## 9.3 Consommation
+
+Un listener dédié consomme l’événement :
+
+```text
+ApplyCurrentKernelReceivedToRotation
+```
+
+Il :
+
+1. vérifie `blueprint_id` ;
+2. tente de créer un reçu idempotent ;
+3. si le reçu existe déjà, n’incrémente rien ;
+4. sinon incrémente :
+   `kernel_received_total[depth][domain] += 1` ;
+5. autorise la création du Blueprint suivant ;
+6. marque l’événement Outbox comme traité.
+
+Cette décision ferme `OUVERT_3`.
+
+---
+
+# 10. Persistance exacte
+
+Les migrations initiales doivent être additives.
+
+Aucune colonne legacy ne doit être supprimée pendant le premier patch.
+
+## 10.1 `kernel_blueprint_runs`
+
+```text
+blueprint_id UUID PRIMARY KEY
+execution_state VARCHAR
+depth SMALLINT NULL
+domain_code VARCHAR NULL
+created_at
+engaged_at NULL
+received_at NULL
+updated_at
+```
+
+États permis :
+
+```text
+CREATED_UNENGAGED
+ENGAGED_IN_PIPELINE
+READY_BANK_RECEIVED
+NOT_ENGAGED_PRODUCTION_ON_HOLD
+```
+
+## 10.2 `kernel_rotation_state_v2`
+
+Une seule ligne active.
+
+```text
+id
+active_depth SMALLINT NULL
+active_tour_id UUID NULL
+rotation_status VARCHAR
+tour_domain_states JSON
+lock_version INTEGER
+created_at
+updated_at
+```
+
+`tour_domain_states` contient uniquement :
+
+```text
+{
+  "geographie": "ON|OFF",
+  "histoire": "ON|OFF",
+  "faune": "ON|OFF",
+  "art": "ON|OFF",
+  "sport": "ON|OFF",
+  "cinema": "ON|OFF",
+  "cuisine": "ON|OFF",
+  "science": "ON|OFF"
+}
+```
+
+Aucun `AVAILABLE`.
+
+## 10.3 `kernel_depth_matrix`
+
+Une ligne par Depth.
+
+```text
+depth SMALLINT PRIMARY KEY
+cycle_target INTEGER
+cycle_completed INTEGER
+empty_progress_current_tour SMALLINT
+current_tour_id UUID NULL
+created_at
+updated_at
+```
+
+Contraintes :
+
+```text
+depth IN (2,4,6,7,8,9,10)
+cycle_target >= 0
+cycle_completed >= 0
+cycle_completed <= cycle_target
+empty_progress_current_tour BETWEEN 0 AND 8
+```
+
+## 10.4 `kernel_depth_domain_totals`
+
+Une ligne par couple Depth + Domaine.
+
+```text
+depth SMALLINT
+domain_code VARCHAR
+kernel_received_total BIGINT
+created_at
+updated_at
+PRIMARY KEY (depth, domain_code)
+```
+
+Initialisation :
+
+```text
+7 Depths × 8 Domaines = 56 lignes
+```
+
+## 10.5 `kernel_current_kernel_receipts`
+
+```text
+blueprint_id UUID PRIMARY KEY
+event_id UUID UNIQUE
+depth SMALLINT
+domain_code VARCHAR
+received_at
+```
+
+Cette table garantit l’idempotence.
+
+## 10.6 `kernel_pipeline_outbox`
+
+```text
+event_id UUID PRIMARY KEY
+event_type VARCHAR
+schema_version INTEGER
+payload JSON
+occurred_at
+processed_at NULL
+attempt_count INTEGER
+last_error TEXT NULL
+created_at
+updated_at
+```
+
+---
+
+# 11. Atomicité obligatoire
+
+## Transition EMPTY
+
+Dans une seule transaction :
+
+1. verrouiller `kernel_rotation_state_v2` ;
+2. vérifier que le Domaine est `ON` ;
+3. le passer à `OFF` ;
+4. incrémenter `empty_progress_current_tour` ;
+5. si progression = 8 :
+
+   * incrémenter `cycle_completed[active_depth]` ;
+   * sélectionner le prochain Depth requis ;
+   * créer le nouveau Tour de Depth ;
+   * remettre les huit Domaines à `ON` ;
+   * remettre la progression à `0/8` ;
+6. persister ;
+7. libérer la transaction.
+
+Un signal `EMPTY` répété pour un Domaine déjà `OFF` est un `NO-OP`.
+
+## CURRENT_KERNEL_RECEIVED
+
+Dans une seule transaction :
+
+1. tenter d’insérer le reçu par `blueprint_id` ;
+2. si le reçu existe déjà :
+
+   * aucun incrément ;
+3. sinon :
+
+   * incrémenter `kernel_received_total[depth][domain]` ;
+4. valider la transaction.
+
+---
+
+# 12. Classes à créer
+
+```text
+KernelPipelineOrchestrator
+KernelBlueprintFactory
+DepthNeedMatrix
+DepthTourState
+KernelBlueprintRunRepository
+KernelRotationStateRepository
+DepthNeedMatrixRepository
+CurrentKernelReceived
+ApplyCurrentKernelReceivedToRotation
+KernelPipelineOutboxRepository
+```
+
+# 13. Classes à modifier
+
+```text
+KernelRotationPlanner
+KernelBlueprint
+TaxonomyProgressManager
+composant ReadyBank du pipeline KernelBlueprint
+commandes Artisan questions:kernel:*
+```
+
+`TaxonomyProgressManager` ne change pas sa logique interne de progression.
+
+Son retour `null` est interprété comme :
+
+```text
+EMPTY
+```
+
+par l’orchestrateur.
+
+---
+
+# 14. KernelCodeEngine
+
+`KernelCodeEngine` n’appartient pas à la responsabilité de KRP.
+
+Dans ce contrat :
+
+* KRP ne l’implante pas ;
+* KRP n’écrit pas `kernel_code` ;
+* le Blueprint quitte KRP avec `kernel_code = null` ;
+* l’intégration future est réservée au module propriétaire de `kernel_code`.
+
+Il est interdit de l’ajouter opportunément au patch KRP.
+
+---
+
+# 15. Remplacement des éléments legacy
+
+Le nouveau code ne doit plus utiliser :
+
+```text
+ALLOWED_DEPTHS = [4,6,7,8,9]
+DEPTH_TARGETS en noyaux
+current_domain_index
+completed_domains
+last_rotation_identifier
+rotation_identifier
+remaining_kernels
+chooseDepth par déficit maximal
+advanceDomainIndex
+WAITING_TAXONOMY_STATE
+AVAILABLE
+TARGET_COMPLETE
+RESERVOIR_EMPTY
+```
+
+Les colonnes et méthodes legacy restent physiquement présentes pendant la première implantation pour permettre le retour arrière.
+
+Elles sont marquées :
+
+```text
+DEPRECATED — NON UTILISÉES PAR KRP V2
+```
+
+Leur suppression physique exige un patch séparé après validation terminale.
+
+---
+
+# 16. Migrations
+
+Ordre obligatoire :
+
+```text
+M-01 create_kernel_blueprint_runs
+M-02 create_kernel_rotation_state_v2
+M-03 create_kernel_depth_matrix
+M-04 create_kernel_depth_domain_totals
+M-05 create_kernel_current_kernel_receipts
+M-06 create_kernel_pipeline_outbox
+M-07 seed_depth_matrix
+M-08 seed_depth_domain_totals
+```
+
+Aucune migration ne doit modifier :
+
+```text
+question_groups
+question_translations
+taxonomy_progress
+tables BankWorker
+Redis BankWorker
+```
+
+Aucun `DROP COLUMN` pendant cette série.
+
+---
+
+# 17. Ordre des patchs
+
+## Patch 0 — Spécification
+
+* réécrire intégralement `02_KernelRotationPlanner.md` ;
+* intégrer toutes les décisions du présent contrat ;
+* relire toutes les sections ;
+* obtenir le statut `VERROUILLÉ`.
+
+Aucun code.
+
+## Patch 1 — Architecture Register
+
+* vérifier le prochain identifiant DEC ;
+* ajouter les nouvelles décisions ;
+* remplacer officiellement les anciennes décisions ;
+* ne supprimer aucune décision.
+
+Aucun code.
+
+## Patch 2 — Persistance additive
+
+* migrations M-01 à M-08 ;
+* repositories ;
+* tests de schéma.
+
+Aucune connexion au pipeline actif.
+
+## Patch 3 — Mécanismes isolés
+
+* `DepthTourState` ;
+* `DepthNeedMatrix` ;
+* tests unitaires complets.
+
+Aucun changement BankWorker.
+
+## Patch 4 — KRP V2
+
+* KRP reçoit le Blueprint ;
+* Depth 2 et 10 ;
+* Tour ON/OFF ;
+* progression 0/8 ;
+* nouveau DepthCycle ;
+* aucun curseur numérique ;
+* aucun `rotation_identifier`.
+
+## Patch 5 — Orchestrateur et Factory
+
+* création préalable du Blueprint ;
+* boucle Taxonomy `EMPTY` ;
+* même Blueprint réutilisé ;
+* engagement après territoire fourni ;
+* gestion `PRODUCTION_ON_HOLD`.
+
+## Patch 6 — ReadyBank et Outbox
+
+* événement transactionnel ;
+* listener idempotent ;
+* comptabilisation ;
+* création suivante autorisée.
+
+## Patch 7 — Commandes Kernel uniquement
+
+* migration des commandes `questions:kernel:*` ;
+* aucun changement dans les commandes BankWorker.
+
+## Patch 8 — Tests d’intégration et reprise
+
+* pipeline complet ;
+* redémarrage ;
+* doublons ;
+* huit `EMPTY` ;
+* Depth 10 vers Depth 2 ;
+* `PRODUCTION_ON_HOLD`.
+
+## Patch 9 — Cutover contrôlé
+
+* activer KRP V2 uniquement pour les commandes Kernel ;
+* conserver KRP legacy disponible pour retour arrière ;
+* aucune connexion automatique à BankWorker.
+
+## Patch 10 — Nettoyage futur
+
+Interdit avant validation terminale.
+
+Il fera l’objet d’une autorisation distincte.
+
+---
+
+# 18. Tests obligatoires
+
+## Tests Tour de Depth
+
+* les huit Domaines commencent à `ON` ;
+* territoire fourni : Domaine reste `ON` ;
+* `EMPTY` : Domaine passe `OFF` ;
+* Domaine `OFF` ignoré ;
+* double `EMPTY` : aucun second incrément ;
+* huitième `EMPTY` : tour fermé ;
+* nouveau tour : huit Domaines remis à `ON`.
+
+## Tests DepthNeedMatrix
+
+* cibles exactes pour les sept Depths ;
+* cycle exact `2→4→6→7→8→9→10` ;
+* retour `10→2` ;
+* Depths terminés ignorés ;
+* `cycle_completed` incrémenté uniquement à `8/8` ;
+* aucun Depth requis : `null` ;
+* totaux par Depth + Domaine.
+
+## Tests KRP
+
+* KRP ne crée pas le Blueprint ;
+* KRP écrit uniquement `depth + domain` ;
+* `domain_position` absent ;
+* `depth_position` absent ;
+* `rotation_identifier` absent ;
+* Domaine `OFF` sauté ;
+* même Blueprint après `EMPTY` ;
+* couple engagé immuable après Taxonomy.
+
+## Tests identité et ReadyBank
+
+* UUIDv7 unique ;
+* doublon `CURRENT_KERNEL_RECEIVED` sans double incrément ;
+* outbox rejouable ;
+* erreur listener rejouable ;
+* réception persistée avant création suivante.
+
+## Tests PRODUCTION_ON_HOLD
+
+* aucun Depth requis ;
+* Blueprint classé non engagé ;
+* aucun pipeline ;
+* aucun compteur ;
+* aucun ReadyBank ;
+* relance externe possible après modification des cibles.
+
+## Tests de reprise
+
+* reprise avec Tour partiellement `OFF` ;
+* reprise avec progression `5/8` ;
+* reprise après événement Outbox non traité ;
+* reprise après reçu déjà comptabilisé ;
+* aucune double production.
+
+---
+
+# 19. Conditions de validation terminale
+
+L’implantation est validée uniquement lorsque :
+
+```text
+tous les tests unitaires = GREEN
+tous les tests d’intégration = GREEN
+migrations = GREEN
+rollback des migrations = GREEN
+aucun fichier BankWorker modifié
+aucune table BankWorker modifiée
+aucun signal AVAILABLE
+aucun rotation_identifier
+Depth 2 présent
+Depth 10 présent
+Tour ON/OFF opérationnel
+progression 0/8 opérationnelle
+CURRENT_KERNEL_RECEIVED idempotent
+PRODUCTION_ON_HOLD opérationnel
+redémarrage sans perte d’état
+```
+
+Audit final obligatoire :
+
+```text
+git status --short
+git diff --stat
+liste exacte des fichiers modifiés
+liste exacte des migrations
+liste exacte des tests
+preuve que BankWorker est intact
+```
+
+---
+
+# 20. Interdictions
+
+* ne pas modifier BankWorker ;
+* ne pas connecter BankWorker au pipeline KernelBlueprint ;
+* ne pas supprimer le pipeline legacy pendant l’implantation ;
+* ne pas supprimer les anciennes colonnes dans les migrations initiales ;
+* ne pas implanter KernelCodeEngine ;
+* ne pas inventer de signal AVAILABLE ;
+* ne pas réintroduire `rotation_identifier` ;
+* ne pas créer un nouveau Blueprint après chaque `EMPTY` ;
+* ne pas stocker `domain_position` ;
+* ne pas stocker `depth_position` ;
+* ne pas déclarer l’implantation terminée sans tests verts ;
+* ne pas modifier plusieurs modules métier simultanément.
+
+---
+
+# DEMANDE IMMÉDIATE À REPLIT
+
+Pour l’instant, exécute uniquement la PORTE 1.
+
+Réécris complètement :
+
+```text
+docs/architecture/02_KernelRotationPlanner.md
+```
+
+en intégrant le présent contrat.
+
+Avant toute écriture :
+
+1. produire le document complet dans le chat ;
+2. produire la matrice de conservation ;
+3. produire la liste des décisions remplacées ;
+4. produire la liste des points désormais fermés ;
+5. confirmer qu’aucun code ne sera modifié.
+
+Ne modifie aucun fichier tant que la nouvelle spécification complète n’a pas été approuvée.
+
+Arrête-toi après la proposition documentaire.
+
+AUCUNE IMPLANTATION AUTORISÉE À CETTE ÉTAPE.
