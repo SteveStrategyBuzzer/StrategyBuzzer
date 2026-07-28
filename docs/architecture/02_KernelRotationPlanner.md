@@ -969,6 +969,57 @@ Sur EMPTY, le même Blueprint est conservé. Aucun nouveau Blueprint n'est cré�
 
 DepthCycle officiel : `2 → 4 → 6 → 7 → 8 → 9 → 10`. Après Depth 10 : reprend à Depth 2.
 
+## KRP-R20 — PRIMAUTÉ DU BLUEPRINT
+
+Toute itération de production commence obligatoirement par la création
+d'un `KernelBlueprint` canonique par `KernelBlueprintFactory`.
+
+`KernelRotationPlanner` reçoit toujours une enveloppe déjà créée.
+Il n'existe aucune situation où `planV2` s'exécute sans avoir reçu
+un `KernelBlueprint` en paramètre.
+
+L'ordre obligatoire est :
+
+```text
+KernelBlueprintFactory::create()
+↓
+Blueprint = CREATED_UNENGAGED
+↓
+KernelRotationPlanner::planV2($blueprint, $previousDomain)
+```
+
+Ces deux opérations ne peuvent pas être inversées.
+
+Après `CURRENT_KERNEL_RECEIVED` :
+
+```text
+CURRENT_KERNEL_RECEIVED
+↓
+comptabilisation idempotente du Blueprint précédent
+↓
+KernelBlueprintFactory::create()   ← obligatoire avant planV2
+↓
+KernelRotationPlanner::planV2($newBlueprint, $previousDomain)
+```
+
+Sur `EMPTY` uniquement :
+
+```text
+Taxonomy retourne null
+↓
+même Blueprint conservé   ← Factory N'EST PAS rappelée
+↓
+KRP remplace depth + domain dans ce même Blueprint
+```
+
+Conséquences :
+
+* `KernelRotationPlanner` ne crée jamais un `KernelBlueprint`.
+* `ProcessKernelPipelineOutbox` ne crée jamais un `KernelBlueprint` directement —
+  il délègue à `KernelPipelineOrchestrator` qui applique l'ordre Factory → planV2.
+* Même sur `PRODUCTION_ON_HOLD`, le Blueprint est créé avant que KRP constate
+  l'absence de besoin.
+
 ---
 
 # 19. Migrations

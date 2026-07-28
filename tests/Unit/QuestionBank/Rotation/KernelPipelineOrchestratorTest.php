@@ -296,6 +296,181 @@ class KernelPipelineOrchestratorTest extends TestCase
         $this->makeOrchestrator($taxonomy)->run(null);
     }
 
+    // =========================================================================
+    // Tests KRP-R20 — Primauté du Blueprint
+    // =========================================================================
+
+    /**
+     * KRP-R20 : Factory appelée exactement une fois, même avec plusieurs EMPTYs.
+     *
+     * Preuve comportementale : exactement 1 ligne dans kernel_blueprint_runs
+     * après run(), quelle que soit la profondeur de la boucle EMPTY.
+     */
+    public function test_factory_called_exactly_once_even_with_multiple_empties(): void
+    {
+        // 3 appels EMPTY consécutifs, puis un territoire
+        $callCount = 0;
+        $taxonomy  = $this->createMock(TaxonomyNavigatorInterface::class);
+        $taxonomy->method('peekNext')
+            ->willReturnCallback(function () use (&$callCount) {
+                $callCount++;
+                if ($callCount <= 3) {
+                    return null; // EMPTY
+                }
+                return ['sub_domain' => 'X', 'subject' => 'Y'];
+            });
+
+        $this->makeOrchestrator($taxonomy)->run(null);
+
+        $count = DB::table('kernel_blueprint_runs')->count();
+        $this->assertSame(1, $count,
+            'Factory doit être appelée exactement une fois — KRP-R20'
+        );
+        $this->assertSame(4, $callCount,
+            'peekNext doit avoir été appelé 4 fois (3 EMPTY + 1 territoire)'
+        );
+    }
+
+    /**
+     * KRP-R20 : blueprint_id identique à travers plusieurs EMPTYs.
+     *
+     * Le même Blueprint (même blueprint_id) est réutilisé lors de chaque
+     * itération EMPTY. Aucun nouveau Blueprint n'est créé entre les EMPTYs.
+     */
+    public function test_same_blueprint_id_preserved_through_multiple_empties(): void
+    {
+        $callCount = 0;
+        $taxonomy  = $this->createMock(TaxonomyNavigatorInterface::class);
+        $taxonomy->method('peekNext')
+            ->willReturnCallback(function () use (&$callCount) {
+                $callCount++;
+                return $callCount <= 3 ? null : ['sub_domain' => 'X', 'subject' => 'Y'];
+            });
+
+        $result = $this->makeOrchestrator($taxonomy)->run(null);
+
+        // Un seul Blueprint en DB
+        $allBlueprints = DB::table('kernel_blueprint_runs')->get();
+        $this->assertCount(1, $allBlueprints,
+            'Après 3 EMPTYs, exactement 1 Blueprint doit exister en DB — KRP-R20'
+        );
+
+        // Son blueprint_id correspond à ce que run() a retourné
+        $this->assertSame(
+            $result['blueprint']->blueprint_id,
+            $allBlueprints->first()->blueprint_id,
+            'Le blueprint_id retourné doit correspondre au Blueprint créé par Factory — KRP-R20'
+        );
+    }
+
+    /**
+     * KRP-R20 : planV2 reçoit le Blueprint créé par Factory.
+     *
+     * Preuve comportementale :
+     *   - le blueprint_id présent en DB avant engagement correspond à celui
+     *     que planV2 aurait dû recevoir (le seul créé par Factory)
+     *   - après run(), ce blueprint_id est dans kernel_blueprint_runs avec
+     *     state ENGAGED_IN_PIPELINE (preuve que planV2 a bien travaillé dessus)
+     */
+    public function test_planv2_receives_the_blueprint_created_by_factory(): void
+    {
+        $taxonomy = $this->createMock(TaxonomyNavigatorInterface::class);
+        $taxonomy->method('peekNext')->willReturn([
+            'sub_domain' => 'Univers',
+            'subject'    => 'Big Bang',
+        ]);
+
+        $result = $this->makeOrchestrator($taxonomy)->run(null);
+
+        // Le Blueprint retourné existe en DB avec l'état final d'engagement
+        $row = DB::table('kernel_blueprint_runs')
+            ->where('blueprint_id', $result['blueprint']->blueprint_id)
+            ->first();
+
+        $this->assertNotNull($row,
+            'Le Blueprint créé par Factory doit exister en DB — KRP-R20'
+        );
+        $this->assertSame('ENGAGED_IN_PIPELINE', $row->execution_state,
+            'planV2 a bien travaillé sur le Blueprint créé par Factory — KRP-R20'
+        );
+        $this->assertNotNull($row->depth,
+            'KRP a écrit depth sur le Blueprint reçu de Factory — KRP-R20'
+        );
+        $this->assertNotNull($row->domain_code,
+            'KRP a écrit domain sur le Blueprint reçu de Factory — KRP-R20'
+        );
+
+        // Aucun autre Blueprint ne doit exister
+        $this->assertSame(1, (int) DB::table('kernel_blueprint_runs')->count(),
+            'Factory est appelée exactement une fois — KRP-R20'
+        );
+    }
+
+    /**
+     * KRP-R20 : le système de types PHP garantit que KRP ne peut pas
+     * s'exécuter sans recevoir une instance de KernelBlueprint.
+     *
+     * Preuve architecturale via ReflectionMethod :
+     *   KernelRotationPlanner::planV2() déclare KernelBlueprint comme
+     *   premier paramètre obligatoire → impossible d'appeler planV2 sans Blueprint.
+     */
+    public function test_krp_type_system_enforces_blueprint_parameter(): void
+    {
+        $ref    = new \ReflectionMethod(KernelRotationPlanner::class, 'planV2');
+        $params = $ref->getParameters();
+
+        $this->assertNotEmpty($params, 'planV2 doit avoir au moins un paramètre');
+
+        $firstParam = $params[0];
+        $this->assertSame('blueprint', $firstParam->getName(),
+            "Le premier paramètre de planV2 doit s'appeler 'blueprint' — KRP-R20"
+        );
+        $this->assertFalse($firstParam->isOptional(),
+            'Le paramètre blueprint doit être obligatoire — KRP-R20'
+        );
+
+        $type = $firstParam->getType();
+        $this->assertNotNull($type, 'Le paramètre blueprint doit être typé — KRP-R20');
+        $this->assertSame(KernelBlueprint::class, (string) $type,
+            'Le type doit être KernelBlueprint — KRP-R20'
+        );
+    }
+
+    /**
+     * KRP-R20 + KRP-R18 : PRODUCTION_ON_HOLD — le Blueprint est créé avant
+     * que KRP constate l'absence de besoin.
+     *
+     * L'ordre imposé est maintenu même lorsqu'aucune production n'est requise :
+     *   Factory → Blueprint CREATED_UNENGAGED → planV2 → PRODUCTION_ON_HOLD
+     */
+    public function test_production_on_hold_blueprint_exists_before_hold_detected(): void
+    {
+        foreach (DepthNeedMatrix::DEPTH_CYCLE as $depth) {
+            DB::table('kernel_depth_matrix')
+                ->where('depth', $depth)
+                ->update(['cycle_completed' => DepthNeedMatrix::CYCLE_TARGET[$depth]]);
+        }
+
+        $taxonomy = $this->createMock(TaxonomyNavigatorInterface::class);
+        // peekNext ne doit jamais être appelé — planV2 retourne PRODUCTION_ON_HOLD
+        $taxonomy->expects($this->never())->method('peekNext');
+
+        $result = $this->makeOrchestrator($taxonomy)->run(null);
+
+        $this->assertSame(KernelPipelineOrchestrator::STATUS_PRODUCTION_ON_HOLD, $result['status']);
+
+        // Le Blueprint doit exister en DB — Factory a bien été appelée avant planV2
+        $row = DB::table('kernel_blueprint_runs')
+            ->where('blueprint_id', $result['blueprint']->blueprint_id)
+            ->first();
+        $this->assertNotNull($row,
+            'Factory doit être appelée avant que KRP détecte PRODUCTION_ON_HOLD — KRP-R20'
+        );
+        $this->assertSame('NOT_ENGAGED_PRODUCTION_ON_HOLD', $row->execution_state,
+            'Blueprint marqué NOT_ENGAGED_PRODUCTION_ON_HOLD après détection par planV2 — KRP-R20'
+        );
+    }
+
     /**
      * KRP écrit uniquement depth + domain dans le Blueprint.
      * Les champs Taxonomy (subdomain, subject) sont écrits après TERRITORY_PROVIDED.

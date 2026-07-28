@@ -1,0 +1,299 @@
+Le KernelBlueprint est toujours le premier objet créé, autant au démarrage initial qu’après le retour de CURRENT_KERNEL_RECEIVED.
+
+L’ordre officiel est donc :
+
+Déclenchement initial
+↓
+Création du KernelBlueprint
+↓
+KRP reçoit le Blueprint
+↓
+KRP écrit depth + domain
+↓
+Taxonomy
+
+Puis, après un noyau terminé :
+
+ReadyBank reçoit le Blueprint précédent
+↓
+CURRENT_KERNEL_RECEIVED
+↓
+comptabilisation du Blueprint précédent
+↓
+création immédiate du KernelBlueprint suivant
+↓
+KRP reçoit ce nouveau Blueprint
+↓
+KRP écrit le prochain depth + domain
+
+La seule exception est EMPTY :
+
+Taxonomy = EMPTY
+↓
+aucun nouveau Blueprint
+↓
+le même Blueprint revient à KRP
+↓
+nouveau depth + domain
+CORRECTION FONDAMENTALE — LE BLUEPRINT EST TOUJOURS PREMIER
+
+Corrige immédiatement tous les flows, diagrammes, commentaires, méthodes et tests qui ne respectent pas cette règle.
+
+Règle absolue
+
+Le KernelBlueprint est toujours créé avant toute intervention de KernelRotationPlanner.
+
+Cette règle s’applique :
+
+au démarrage initial ;
+après chaque retour valide de CURRENT_KERNEL_RECEIVED ;
+avant toute nouvelle sélection Depth + Domaine.
+
+KernelRotationPlanner ne doit jamais démarrer une nouvelle itération sans recevoir une nouvelle enveloppe Blueprint déjà créée.
+
+1. Flow initial officiel
+Déclencheur externe initial
+↓
+KernelBlueprintFactory crée le KernelBlueprint
+↓
+Blueprint = CREATED_UNENGAGED
+↓
+KernelRotationPlanner reçoit ce Blueprint
+↓
+KRP sélectionne le Depth et le Domaine
+↓
+KRP écrit uniquement :
+depth
+domain
+↓
+Taxonomy
+
+KRP ne crée jamais le Blueprint.
+
+KRP ne doit pas sélectionner un Depth ou un Domaine avant l’existence du Blueprint.
+
+2. Flow de retour officiel
+
+Lorsque ReadyBank reçoit le Blueprint précédent :
+
+ReadyBank reçoit le Blueprint canonique précédent
+↓
+CURRENT_KERNEL_RECEIVED
+↓
+comptabilisation idempotente du Blueprint précédent
+↓
+fermeture de son cycle d’exécution
+↓
+KernelBlueprintFactory crée immédiatement
+le KernelBlueprint suivant
+↓
+nouveau Blueprint = CREATED_UNENGAGED
+↓
+KernelRotationPlanner reçoit ce nouveau Blueprint
+↓
+KRP sélectionne le prochain Depth + Domaine
+↓
+KRP écrit depth + domain
+↓
+Taxonomy
+
+L’ordre obligatoire est donc :
+
+CURRENT_KERNEL_RECEIVED
+↓
+création du nouveau Blueprint
+↓
+KRP
+
+Et non :
+
+CURRENT_KERNEL_RECEIVED
+↓
+KRP calcule une position
+↓
+création du Blueprint
+
+Le Blueprint doit exister avant que KRP commence sa responsabilité.
+
+3. Rôle du processeur Outbox
+
+ProcessKernelPipelineOutbox doit respecter cet ordre :
+
+événement CURRENT_KERNEL_RECEIVED reçu
+↓
+vérification de l’idempotence
+↓
+kernel_received_total[depth][domain] += 1
+↓
+fermeture du Blueprint précédent
+↓
+KernelBlueprintFactory::create()
+↓
+KernelRotationPlanner::planV2($newBlueprint, $previousDomain)
+
+Le processeur ne doit pas appeler un mécanisme KRP qui créerait lui-même son Blueprint.
+
+Le Blueprint suivant doit être explicitement créé par KernelBlueprintFactory avant l’appel à KRP.
+
+4. KernelPipelineOrchestrator
+
+L’orchestrateur doit respecter cette séquence :
+
+$blueprint = $this->blueprintFactory->create();
+
+$result = $this->kernelRotationPlanner->planV2(
+    $blueprint,
+    $previousDomain
+);
+
+Il est interdit d’inverser ces deux opérations.
+
+L’orchestrateur :
+
+demande la création du Blueprint ;
+transmet ce Blueprint à KRP ;
+ne crée pas lui-même l’enveloppe ;
+ne sélectionne pas lui-même le Depth ou le Domaine.
+5. Exception EMPTY
+
+EMPTY ne provoque jamais la création d’un nouveau Blueprint.
+
+Flow exact :
+
+Blueprint existant
+↓
+KRP écrit depth + domain
+↓
+Taxonomy retourne EMPTY
+↓
+Domaine ON → OFF
+↓
+progression +1/8
+↓
+le même Blueprint revient à KRP
+↓
+KRP remplace le couple provisoire depth + domain
+↓
+Taxonomy est consultée de nouveau
+
+Donc :
+
+CURRENT_KERNEL_RECEIVED
+→ nouveau Blueprint obligatoire
+
+mais :
+
+EMPTY
+→ même Blueprint obligatoire
+6. PRODUCTION_ON_HOLD
+
+Même lorsqu’aucun besoin de production ne reste, l’ordre demeure :
+
+KernelBlueprintFactory crée le Blueprint
+↓
+KRP reçoit le Blueprint
+↓
+KRP constate qu’aucun Depth n’est requis
+↓
+PRODUCTION_ON_HOLD
+↓
+Blueprint = NOT_ENGAGED_PRODUCTION_ON_HOLD
+
+Il ne faut pas vérifier les besoins avant la création du Blueprint.
+
+Le Blueprint est l’élément premier qui garantit que le cycle précédent est réellement fermé et qu’une nouvelle tentative possède une enveloppe canonique identifiable.
+
+7. Taxonomy
+
+Après KRP :
+
+Blueprint déjà créé
++
+depth
++
+domain
+↓
+Taxonomy
+
+Taxonomy écrit elle-même :
+
+subdomain_active ;
+subject_active ;
+dominant_idea_active.
+
+KRP ne remplit jamais ces slots.
+
+L’orchestrateur ne reconstruit jamais ces valeurs à la place de Taxonomy.
+
+8. Invariant d’architecture
+
+Ajoute cette règle absolue à la spécification :
+
+KRP-RXX — PRIMAUTÉ DU BLUEPRINT
+
+Toute itération de production commence par la création
+d’un KernelBlueprint canonique.
+
+KernelRotationPlanner reçoit toujours une enveloppe
+déjà créée.
+
+Après CURRENT_KERNEL_RECEIVED, la prochaine opération
+de production est la création du Blueprint suivant.
+
+Sur EMPTY uniquement, le même Blueprint non engagé
+est réutilisé.
+9. Tests obligatoires
+
+Ajoute ou corrige les tests suivants :
+
+Démarrage initial
+Factory appelée
+avant
+KernelRotationPlanner::planV2()
+Retour CURRENT_KERNEL_RECEIVED
+comptabilisation précédente
+↓
+Factory crée le nouveau Blueprint
+↓
+planV2 reçoit exactement ce Blueprint
+EMPTY
+Factory appelée une seule fois
+↓
+plusieurs EMPTY possibles
+↓
+même blueprint_id conservé
+PRODUCTION_ON_HOLD
+Blueprint créé
+↓
+KRP reçoit le Blueprint
+↓
+aucun besoin
+↓
+Blueprint marqué NOT_ENGAGED_PRODUCTION_ON_HOLD
+Interdiction
+
+Un test doit échouer si KRP tente de fonctionner sans recevoir une instance de KernelBlueprint.
+
+10. Audit demandé
+
+Fournis ensuite :
+
+l’appel exact KernelBlueprintFactory::create() au démarrage ;
+l’appel exact après CURRENT_KERNEL_RECEIVED ;
+la preuve que Factory est appelée avant planV2() ;
+la preuve que KRP ne crée aucun Blueprint ;
+la preuve que EMPTY conserve le même blueprint_id ;
+la preuve que PRODUCTION_ON_HOLD possède d’abord un Blueprint créé ;
+les tests ciblés et leurs résultats ;
+git status --short ;
+git diff --stat.
+
+Ne modifie pas BankWorker.
+
+Ne crée pas IdeaSlotLoader.
+
+Ne crée pas KEY_STRUCTURE.
+
+Ne modifie pas les modules suivants.
+
+Corrige uniquement cette primauté absolue du KernelBlueprint dans le flow KRP.
