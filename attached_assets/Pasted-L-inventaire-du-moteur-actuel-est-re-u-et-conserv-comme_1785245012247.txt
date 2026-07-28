@@ -1,0 +1,387 @@
+L’inventaire du moteur actuel est reçu et conservé comme :
+
+AUDIT D’IMPLANTATION — PHOTOGRAPHIE AVANT CORRECTION
+
+Il ne constitue pas une autorisation de modifier le code.
+
+Il ne doit pas piloter l’architecture.
+
+L’architecture officielle en cours de spécification reste l’autorité.
+
+# 1. Conclusion officielle de l’audit d’implantation
+
+Le rapport confirme que deux pipelines existent actuellement :
+
+## Pipeline A — BankWorker
+
+Ce pipeline est actuellement actif en production.
+
+Il est hors du périmètre de la spécification actuelle `02_KernelRotationPlanner.md`.
+
+Aucun de ses composants ne doit être supprimé, renommé, déplacé, simplifié ou modifié pendant le travail documentaire actuel :
+
+* BankWorker ;
+* BankNeedsCalculator ;
+* BankAIGenerator ;
+* QualityGuards ;
+* QuestionBankRepository ;
+* BankSelfHealer ;
+* WorkerRateLimiter ;
+* routes Node associées ;
+* tables `question_groups` ;
+* tables `question_translations` ;
+* règles Redis ;
+* sélection gameplay.
+
+Le fait que ce pipeline soit différent de la nouvelle architecture ne constitue pas une autorisation de le retirer.
+
+## Pipeline B — KernelBlueprint
+
+Ce pipeline est partiellement implanté et n’est pas encore connecté au pipeline BankWorker.
+
+Le rapport confirme plusieurs écarts entre le code actuel et la spécification en construction :
+
+* KRP crée encore le Blueprint dans le code actuel ;
+* Depth 2 est absent ;
+* Depth 10 est absent ;
+* les cibles sont encore exprimées en nombre de noyaux ;
+* `current_domain_index` est encore utilisé ;
+* `completed_domains` est encore utilisé ;
+* `last_rotation_identifier` est encore utilisé ;
+* `rotation_identifier` est encore produit ;
+* la sélection du Depth repose sur `remaining_kernels` ;
+* `Tour de Depth` ON/OFF est absent ;
+* `cycle_target[depth]` est absent ;
+* `cycle_completed[depth]` est absent ;
+* la progression `0/8 → 8/8` est absente ;
+* le pipeline KernelBlueprint n’est pas connecté à ReadyBank ;
+* KernelCodeEngine n’est pas implanté.
+
+Ces écarts sont enregistrés uniquement comme écarts futurs d’implantation.
+
+Ils ne doivent pas être corrigés maintenant.
+
+# 2. Gel absolu du code
+
+À partir de maintenant, tous les fichiers de code sont en lecture seule.
+
+Sont notamment protégés :
+
+* KernelRotationPlanner ;
+* KernelBlueprint ;
+* KernelFrameBuilder ;
+* KernelContentBuilder ;
+* TaxonomyProgressManager ;
+* TaxonomyReader ;
+* DomainExhaustionChecker ;
+* commandes Artisan `questions:kernel:*` ;
+* migrations ;
+* modèles ;
+* repositories ;
+* contrôleurs ;
+* services ;
+* routes ;
+* tests ;
+* fichiers JSON de Taxonomy ;
+* pipeline BankWorker complet.
+
+Interdictions :
+
+* aucun patch de code ;
+* aucun refactor ;
+* aucune suppression ;
+* aucun renommage ;
+* aucun déplacement ;
+* aucune migration ;
+* aucun changement de schéma de base de données ;
+* aucun test ajouté ou modifié ;
+* aucune connexion entre BankWorker et KernelBlueprint ;
+* aucune suppression du pipeline legacy ;
+* aucun nettoyage opportuniste.
+
+Si une modification de code semble nécessaire, elle doit seulement être inscrite comme :
+
+ÉCART D’IMPLANTATION FUTUR
+
+Elle ne doit pas être effectuée.
+
+# 3. L’audit du code ne remplace pas l’étape 2
+
+La prochaine opération reste :
+
+MATRICE DE CONSERVATION DE LA SPÉCIFICATION ACTUELLE
+
+Fichier concerné :
+
+`docs/architecture/02_KernelRotationPlanner.md`
+
+Toujours aucune modification de fichier.
+
+Tu dois reprendre les 1 113 lignes actuelles du document et produire une matrice exhaustive.
+
+# 4. Matrice documentaire obligatoire
+
+Pour chaque section, sous-section, règle, état, transition, mécanisme, donnée persistée, cas limite, test et décision locale actuellement présent dans `02_KernelRotationPlanner.md`, indique :
+
+1. emplacement actuel ;
+2. titre actuel ;
+3. contenu résumé fidèlement ;
+4. statut proposé :
+
+   * CONSERVÉ IDENTIQUE ;
+   * CONSERVÉ ET REPOSITIONNÉ ;
+   * RÉÉCRIT ;
+   * SUPERSEDED DANS LA NOUVELLE VERSION ;
+   * SUPPRIMÉ ;
+5. emplacement prévu dans la nouvelle spécification ;
+6. justification précise ;
+7. règle officielle qui remplace l’ancien contenu.
+
+Chaque section existante doit apparaître.
+
+Aucune information ne peut disparaître sans être identifiée.
+
+# 5. Séparation obligatoire entre architecture et code actuel
+
+La matrice doit contenir deux colonnes distinctes :
+
+## Contrat officiel attendu
+
+Ce que la nouvelle spécification exige.
+
+## Implantation actuelle observée
+
+Ce que le code fait présentement.
+
+Ne fusionne jamais ces deux informations.
+
+Exemple :
+
+Contrat officiel attendu :
+
+Le KernelBlueprint est créé avant KRP.
+
+Implantation actuelle observée :
+
+Le code actuel contient encore des commentaires ou mécanismes indiquant que KRP crée le Blueprint.
+
+Conclusion :
+
+ÉCART FUTUR D’IMPLANTATION
+
+et non :
+
+modification immédiate du code.
+
+# 6. Architecture à intégrer dans la nouvelle spécification
+
+## KernelBlueprint
+
+* créé avant KernelRotationPlanner ;
+* reçu par KRP ;
+* KRP ne crée pas l’enveloppe ;
+* KRP écrit seulement :
+
+  * depth ;
+  * domain.
+
+## Tour de Depth
+
+Au début de chaque Tour de Depth :
+
+* Géographie = ON ;
+* Histoire = ON ;
+* Faune = ON ;
+* Art = ON ;
+* Sport = ON ;
+* Cinéma = ON ;
+* Cuisine = ON ;
+* Science = ON.
+
+Général est exclu.
+
+Taxonomy ne transmet pas `AVAILABLE`.
+
+Territoire fourni :
+
+* Domaine reste ON ;
+* Blueprint poursuit le pipeline.
+
+EMPTY :
+
+* Domaine ON → OFF ;
+* Domaine OFF ignoré pour le reste du tour ;
+* une seule transition comptabilisable par Domaine ;
+* même Blueprint conservé ;
+* prochain Domaine ON sélectionné immédiatement.
+
+## DepthNeedMatrix
+
+Elle porte :
+
+* DepthCycle :
+  `2 → 4 → 6 → 7 → 8 → 9 → 10` ;
+* `cycle_target[depth]` ;
+* `cycle_completed[depth]` ;
+* progression :
+  `0/8 → 1/8 → … → 8/8` ;
+* `kernel_received_total[depth][domain]`.
+
+Elle ne porte pas :
+
+* les identités des Domaines ON/OFF ;
+* une table AVAILABLE/EMPTY ;
+* une liste parallèle des Domaines exclus ;
+* `kernel_received_total[depth]` comme compteur stocké séparément.
+
+Chaque nouveau passage ON → OFF :
+
+`progression +1/8`
+
+À 8/8 :
+
+`cycle_completed[active_depth] += 1`
+
+Puis recherche du prochain Depth encore sous sa cible.
+
+Après Depth 10, la recherche reprend à Depth 2.
+
+## KernelRotationPlanner
+
+* utilise Tour de Depth ;
+* utilise DepthNeedMatrix ;
+* conserve le même active_depth tant que moins de huit Domaines sont OFF ;
+* sélectionne le prochain Domaine ON ;
+* inscrit depth + domain ;
+* applique le changement de Depth à 8/8.
+
+## Taxonomy
+
+Taxonomy fournit :
+
+* subdomain_active ;
+* subject_active ;
+* dominant_idea_active ;
+
+ou :
+
+* EMPTY.
+
+Aucun signal AVAILABLE.
+
+## ReadyBank
+
+CURRENT_KERNEL_RECEIVED :
+
+* confirme la réception du Blueprint ;
+* permet la comptabilisation idempotente :
+  `kernel_received_total[depth][domain] += 1` ;
+* autorise la création du Blueprint suivant ;
+* autorise la prochaine itération KRP.
+
+# 7. Éléments du code actuel à ne pas transformer en architecture
+
+Le rapport contient des mécanismes implantés qui ne doivent pas être conservés automatiquement dans la nouvelle spécification :
+
+* `ALLOWED_DEPTHS = [4, 6, 7, 8, 9]` ;
+* `DEPTH_TARGETS` en quantité de noyaux ;
+* `current_domain_index` ;
+* `completed_domains` ;
+* `last_rotation_identifier` ;
+* `rotation_identifier` ;
+* `remaining_kernels` ;
+* choix du Depth par déficit maximal ;
+* `DomainExhaustionChecker` comme autorité du nouveau Tour de Depth ;
+* `kernel_target` ;
+* arrêt automatique après Depth 9 ;
+* création du Blueprint par KRP.
+
+Ces éléments doivent être classés :
+
+SUPERSEDED DANS LA NOUVELLE SPÉCIFICATION
+
+Ils ne doivent pas être supprimés du code maintenant.
+
+# 8. Éléments complètement hors périmètre
+
+Ne tente pas de corriger ou de réconcilier dans cette étape :
+
+* le pipeline BankWorker ;
+* le système de segments ;
+* les poids de Depth BankWorker ;
+* les 19 QualityGuards ;
+* les traductions ;
+* les routes de génération Node ;
+* le concept_id ;
+* le concept_family ;
+* KernelFrameBuilder ;
+* KernelContentBuilder ;
+* les sept variants cognitifs ;
+* les langues ;
+* la persistance question_groups ;
+* QuestionIntent ;
+* KLD ;
+* KEY_STRUCTURE ;
+* Phase 1 ;
+* Phase 2 ;
+* ReadyBank en code.
+
+Ces éléments doivent seulement être indiqués comme :
+
+HORS PÉRIMÈTRE — CONSERVÉS INTACTS
+
+# 9. Architecture Register
+
+Ne modifie pas encore :
+
+`docs/architecture/00_ArchitectureRegister.md`
+
+Ne déclare pas encore :
+
+* DEC-057 SUPERSEDED ;
+* une nouvelle décision OFFICIAL ;
+* un nouvel identifiant DEC définitif.
+
+Le registre sera traité séparément après validation complète de la nouvelle spécification KRP.
+
+# 10. Livrable attendu maintenant
+
+Produis uniquement :
+
+1. la matrice exhaustive de conservation de `02_KernelRotationPlanner.md` ;
+2. une annexe nommée :
+   `Écarts futurs d’implantation` ;
+3. une annexe nommée :
+   `Composants hors périmètre protégés` ;
+4. le total des éléments :
+
+   * conservés ;
+   * repositionnés ;
+   * réécrits ;
+   * remplacés ;
+   * supprimés ;
+5. la liste des points encore ouverts.
+
+Points toujours ouverts :
+
+OUVERT_1 :
+cycle de vie du Blueprint créé mais non engagé en PRODUCTION_ON_HOLD.
+
+OUVERT_3 :
+identité canonique et idempotence de CURRENT_KERNEL_RECEIVED.
+
+Aucune écriture.
+
+Aucun patch.
+
+Aucune modification du code.
+
+Aucune modification de fichier.
+
+Aucun commit.
+
+Termine par :
+
+AUCUNE MODIFICATION EFFECTUÉE.
+
+Arrête-toi après la matrice et ses annexes.
