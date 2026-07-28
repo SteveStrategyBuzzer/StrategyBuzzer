@@ -1,0 +1,486 @@
+Le code actuel confirme que ces mécanismes sont absents ou incompatibles : Depth 2 et 10 absents, rotation fondée sur remaining_kernels, absence du Tour de Depth ON/OFF, absence de cycle_target, cycle_completed, progression 0/8 → 8/8, absence de connexion à ReadyBank et absence de KernelCodeEngine.
+
+Placement architectural cible
+Créateur externe du KernelBlueprint
+↓
+KernelBlueprint vide
+↓
+KernelRotationPlanner
+│
+├── Tour de Depth
+│   ├── active_depth
+│   ├── 8 Domaines ON au début
+│   ├── EMPTY : Domaine ON → OFF
+│   └── sélection limitée aux Domaines ON
+│
+├── DepthNeedMatrix
+│   ├── DepthCycle
+│   ├── cycle_target[depth]
+│   ├── cycle_completed[depth]
+│   ├── progression 0/8 → 8/8
+│   └── kernel_received_total[depth][domain]
+│
+└── écrit uniquement :
+    ├── depth
+    └── domain
+↓
+Taxonomy
+│
+├── fournit le territoire
+│   ├── subdomain_active
+│   ├── subject_active
+│   └── dominant_idea_active
+│
+└── ou transmet EMPTY
+↓
+suite du pipeline intellectuel
+↓
+ReadyBank
+↓
+CURRENT_KERNEL_RECEIVED
+↓
+comptabilisation idempotente
+↓
+création du KernelBlueprint suivant
+Remplacement exact des mécanismes actuels
+Code actuel	Architecture cible
+ALLOWED_DEPTHS = [4,6,7,8,9]	DepthCycle = [2,4,6,7,8,9,10]
+Cibles en nombre de noyaux	Cibles en nombre de Tours de Depth
+current_depth	active_depth
+current_domain_index	supprimé
+completed_domains	remplacé par progression 0/8 → 8/8
+last_rotation_identifier	supprimé
+rotation_identifier	supprimé
+remaining_kernels	supprimé comme pilote de rotation
+Sélection du Depth ayant le plus grand déficit	prochain Depth du cycle encore sous cycle_target
+DomainExhaustionChecker actuel	remplacé par le signal EMPTY transmis par Taxonomy
+KRP crée le Blueprint	Blueprint créé avant KRP
+Nouveau Blueprint après EMPTY	même Blueprint conservé
+Arrêt après Depth 9	retour cyclique après Depth 10
+Absence ReadyBank	CURRENT_KERNEL_RECEIVED connecté au KRP
+Absence de Tour de Depth	mécanisme ON/OFF obligatoire
+Structures qui doivent être spécifiées avant le code
+Tour de Depth
+
+Le Tour de Depth appartient au périmètre interne de KRP.
+
+Il doit posséder une structure persistante permettant de connaître, pour le tour actif :
+
+active_depth
+
+Géographie = ON | OFF
+Histoire   = ON | OFF
+Faune      = ON | OFF
+Art        = ON | OFF
+Sport      = ON | OFF
+Cinéma     = ON | OFF
+Cuisine    = ON | OFF
+Science    = ON | OFF
+
+Règles :
+
+nouveau Tour de Depth
+→ 8 Domaines ON
+
+Taxonomy fournit un territoire
+→ Domaine reste ON
+
+Taxonomy transmet EMPTY
+→ Domaine ON → OFF
+
+Domaine OFF
+→ ignoré jusqu’à la fin du tour
+
+8 Domaines OFF
+→ Tour de Depth terminé
+DepthNeedMatrix
+
+Elle doit porter :
+
+DepthCycle = [2, 4, 6, 7, 8, 9, 10]
+
+cycle_target[2]  = 250
+cycle_target[4]  = 300
+cycle_target[6]  = 350
+cycle_target[7]  = 350
+cycle_target[8]  = 350
+cycle_target[9]  = 250
+cycle_target[10] = 100
+
+cycle_completed[depth]
+
+empty_progress_current_tour :
+0/8 → 1/8 → ... → 8/8
+
+kernel_received_total[depth][domain]
+
+Chaque transition nouvelle et valide :
+
+Domaine ON → OFF
+
+produit :
+
+empty_progress_current_tour += 1/8
+
+À 8/8 :
+
+cycle_completed[active_depth] += 1
+
+Puis DepthNeedMatrix retourne le prochain Depth du cycle pour lequel :
+
+cycle_completed[depth] < cycle_target[depth]
+
+KRP applique ce résultat comme nouveau active_depth.
+
+Sélection du Domaine sans domain_position
+
+KRP ne doit pas stocker de curseur domain_position.
+
+Il utilise :
+
+le DomainCycle officiel ;
+le Domaine inscrit dans le Blueprint courant ou reçu précédemment ;
+les états ON/OFF du Tour de Depth.
+Géographie
+→ Histoire
+→ Faune
+→ Art
+→ Sport
+→ Cinéma
+→ Cuisine
+→ Science
+→ retour à Géographie
+
+KRP cherche le Domaine suivant dans cet ordre et ignore ceux qui sont OFF.
+
+Deux flows exacts
+Flow normal
+KernelBlueprint vide créé
+↓
+KRP sélectionne active_depth + Domaine ON
+↓
+KRP écrit depth + domain
+↓
+Taxonomy fournit son territoire
+↓
+Blueprint poursuit le pipeline
+↓
+ReadyBank
+↓
+CURRENT_KERNEL_RECEIVED
+↓
+kernel_received_total[depth][domain] += 1
+↓
+création du Blueprint suivant
+Flow EMPTY
+KernelBlueprint vide déjà présent
+↓
+KRP écrit depth + domain
+↓
+Taxonomy transmet EMPTY
+↓
+Domaine ON → OFF dans le Tour de Depth
+↓
+DepthNeedMatrix +1/8
+↓
+aucun passage dans le pipeline
+↓
+aucun CURRENT_KERNEL_RECEIVED
+↓
+KRP sélectionne le prochain Domaine ON
+↓
+KRP remplace depth + domain
+dans le même Blueprint
+↓
+Taxonomy est consultée de nouveau
+
+À 8/8 :
+
+cycle_completed[active_depth] += 1
+↓
+DepthNeedMatrix retourne le prochain Depth requis
+↓
+nouveau active_depth
+↓
+8 Domaines remis à ON
+↓
+progression remise à 0/8
+↓
+même Blueprint disponible
+↓
+premier Domaine du nouveau Tour de Depth
+Éléments qui bloquent encore une implantation complète
+
+Replit ne peut pas coder proprement toute cette chaîne tant que ces contrats ne sont pas fermés :
+
+Créateur exact du KernelBlueprint
+Le Blueprint est créé avant KRP, mais le propriétaire technique de cette création n’est pas encore nommé dans la spécification.
+OUVERT_1 — PRODUCTION_ON_HOLD
+Il faut définir le devenir exact du Blueprint déjà créé lorsque plus aucun Depth n’a besoin de production.
+OUVERT_3 — identité du Blueprint
+Il faut définir l’identité canonique utilisée par CURRENT_KERNEL_RECEIVED pour garantir l’idempotence.
+Persistance exacte
+Il faut verrouiller où sont persistés :
+active_depth ;
+les huit états ON/OFF ;
+empty_progress_current_tour ;
+cycle_completed ;
+les compteurs de noyaux.
+Contrat ReadyBank → KRP
+Le canal technique exact de CURRENT_KERNEL_RECEIVED n’est pas encore défini.
+KernelCodeEngine
+Il ne fait pas partie des responsabilités de KRP. Son emplacement exact doit être traité dans sa propre spécification ou dans le module propriétaire de kernel_code.
+Demande à transmettre à Replit
+
+Le rapport d’audit confirme que plusieurs mécanismes de la future architecture ne sont pas implantés.
+
+Ne commence aucun codage.
+
+La prochaine étape est de produire le CONTRAT D’IMPLANTATION complet de KernelRotationPlanner, à partir de la spécification officielle, puis de faire valider ce contrat avant tout patch.
+
+1. Principe obligatoire
+
+Le code existant ne pilote pas l’architecture.
+
+Le travail doit suivre :
+
+spécification verrouillée
+↓
+audit du code
+↓
+écarts
+↓
+contrat d’implantation
+↓
+patch autorisé
+↓
+validation
+
+Le pipeline BankWorker actuel reste strictement intact.
+
+2. Architecture cible à cartographier
+
+Création externe du KernelBlueprint
+↓
+KernelRotationPlanner reçoit le Blueprint
+│
+├── Tour de Depth
+│ ├── 8 Domaines ON au début du tour
+│ ├── EMPTY : Domaine ON → OFF
+│ └── Domaines OFF ignorés
+│
+├── DepthNeedMatrix
+│ ├── DepthCycle
+│ ├── cycle_target
+│ ├── cycle_completed
+│ ├── progression 0/8 → 8/8
+│ └── kernel_received_total[depth][domain]
+│
+└── KRP écrit uniquement :
+depth + domain
+↓
+Taxonomy
+↓
+pipeline intellectuel
+↓
+ReadyBank
+↓
+CURRENT_KERNEL_RECEIVED
+↓
+création du Blueprint suivant
+
+3. Remplacements obligatoires
+
+Cartographie précisément comment remplacer :
+
+ALLOWED_DEPTHS = [4,6,7,8,9]
+par :
+DepthCycle = [2,4,6,7,8,9,10];
+les cibles en noyaux
+par :
+cycle_target[depth] en Tours de Depth;
+current_depth
+par :
+active_depth;
+current_domain_index
+par :
+la recherche du prochain Domaine ON dans le DomainCycle;
+completed_domains
+par :
+la progression 0/8 → 8/8;
+last_rotation_identifier
+et rotation_identifier
+par :
+suppression complète du mécanisme;
+la sélection par remaining_kernels
+par :
+le prochain Depth du DepthCycle dont
+cycle_completed < cycle_target;
+la création du Blueprint par KRP
+par :
+réception d’un Blueprint créé avant KRP;
+la création d’un nouveau Blueprint sur EMPTY
+par :
+conservation et réutilisation du même Blueprint;
+l’arrêt après Depth 9
+par :
+retour cyclique après Depth 10 vers le premier Depth encore requis.
+4. Tour de Depth à implanter
+
+Le contrat logique est :
+
+nouveau Tour de Depth
+→ les 8 Domaines sont ON
+
+Taxonomy fournit un territoire
+→ le Domaine reste ON
+
+Taxonomy transmet EMPTY
+→ le Domaine passe ON → OFF
+→ le Domaine ne peut plus être sélectionné
+→ une seule progression +1/8
+
+8 Domaines OFF
+→ Tour de Depth terminé
+
+Les huit Domaines sont :
+
+Géographie ;
+Histoire ;
+Faune ;
+Art ;
+Sport ;
+Cinéma ;
+Cuisine ;
+Science.
+
+Général est exclu.
+
+Aucun signal AVAILABLE.
+
+5. DepthNeedMatrix à implanter
+
+Elle doit porter :
+
+DepthCycle :
+2 → 4 → 6 → 7 → 8 → 9 → 10
+
+cycle_target :
+
+Depth 2 : 250 ;
+Depth 4 : 300 ;
+Depth 6 : 350 ;
+Depth 7 : 350 ;
+Depth 8 : 350 ;
+Depth 9 : 250 ;
+Depth 10 : 100.
+
+cycle_completed[depth]
+
+empty_progress_current_tour :
+0/8 → 8/8
+
+kernel_received_total[depth][domain]
+
+À chaque nouveau ON → OFF :
+
+empty_progress_current_tour += 1/8
+
+À 8/8 :
+
+cycle_completed[active_depth] += 1
+
+Puis retour du prochain Depth dont :
+
+cycle_completed[depth] < cycle_target[depth]
+
+Après Depth 10, reprendre à Depth 2.
+
+6. CURRENT_KERNEL_RECEIVED
+
+Il doit :
+
+confirmer la réception ReadyBank ;
+compter une seule fois :
+kernel_received_total[depth][domain] += 1;
+autoriser la création du Blueprint suivant ;
+autoriser l’itération KRP suivante.
+
+Le total du Depth est calculé par la somme des huit Domaines.
+
+Ne stocke pas un second compteur total séparé.
+
+7. KernelCodeEngine
+
+Ne l’implante pas dans KRP.
+
+KRP ne doit jamais écrire kernel_code.
+
+Présente-le uniquement comme dépendance future hors périmètre jusqu’à sa propre spécification verrouillée.
+
+8. Livrable demandé
+
+Sans modifier le code, produis une cartographie exacte avec :
+
+fichiers existants à conserver ;
+fichiers existants à réécrire ;
+nouvelles classes nécessaires ;
+nouvelles interfaces nécessaires ;
+méthodes publiques attendues ;
+données d’entrée et de sortie ;
+structures persistantes requises ;
+migrations nécessaires ;
+événements ou appels nécessaires ;
+tests unitaires ;
+tests d’intégration ;
+éléments supprimés du contrat mais conservés temporairement dans le code ;
+ordre exact des patchs futurs ;
+risques de régression ;
+stratégie pour ne pas toucher au pipeline BankWorker.
+
+Pour chaque fichier futur ou modifié, indique :
+
+chemin exact ;
+rôle ;
+contenu à ajouter ;
+contenu à conserver ;
+contenu à retirer ;
+dépendances ;
+tests correspondants.
+9. Points non résolus
+
+Ne code aucune solution pour :
+
+OUVERT_1 :
+cycle de vie du Blueprint créé mais non engagé en PRODUCTION_ON_HOLD.
+
+OUVERT_3 :
+identité canonique et idempotence de CURRENT_KERNEL_RECEIVED.
+
+Ne choisis pas à notre place :
+
+le créateur technique exact du Blueprint ;
+le canal technique ReadyBank → KRP ;
+le stockage définitif des nouveaux états ;
+l’emplacement de KernelCodeEngine.
+
+Présente ces éléments comme BLOQUANTS avant implantation.
+
+10. Interdictions
+aucun code ;
+aucun patch ;
+aucune migration ;
+aucun test créé ;
+aucun fichier modifié ;
+aucun changement dans BankWorker ;
+aucune connexion entre les deux pipelines ;
+aucune suppression de code legacy ;
+aucun commit.
+
+Termine par :
+
+CONTRAT D’IMPLANTATION PROPOSÉ — AUCUNE MODIFICATION EFFECTUÉE.
+
+Arrête-toi après la cartographie.
+
+Cette cartographie permettra ensuite de verrouiller les derniers choix techniques sans laisser Replit inventer l’architecture pendant le codage.
