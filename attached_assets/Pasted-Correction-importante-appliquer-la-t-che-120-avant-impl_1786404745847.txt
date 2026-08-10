@@ -1,0 +1,107 @@
+Correction importante à appliquer à la tâche #120 avant implantation.
+
+RÈGLE ABSOLUE : nous ne conservons PAS une ancienne architecture en parallèle, en attente ou comme fallback temporaire.
+
+Il doit exister UNE SEULE implémentation canonique pour chaque responsabilité métier.
+
+Donc :
+
+1. Si `TaxonomyOrchestrator` remplace réellement `TaxonomyProgressManager`, ne laisse pas deux implémentations métier en parallèle.
+
+Avant remplacement :
+
+* récupère uniquement la logique encore conforme ;
+* transfère-la dans l'architecture canonique ;
+* migre les appels nécessaires ;
+* mets à jour le binding ;
+* exécute les tests ;
+* retire ensuite l'ancienne implémentation si elle n'a plus aucune responsabilité officielle.
+
+Il ne doit pas rester :
+`TaxonomyProgressManager legacy + TaxonomyOrchestrator actif`
+comme deux chemins possibles.
+
+2. Même règle pour les données.
+
+Avant de créer :
+
+* `taxonomy_subdomain_bank`
+* `taxonomy_subject_bank`
+* `taxonomy_dominant_idea_bank`
+* `taxonomy_generation_memory`
+
+vérifie les structures existantes.
+
+Si une ancienne table possède la même responsabilité :
+
+* migrer/réutiliser ce qui doit l'être ;
+* remplacer proprement ;
+* ne pas conserver deux banques parallèles.
+
+UNE responsabilité métier = UNE source de vérité persistante.
+
+3. Même règle pour Gemini.
+
+Il ne doit pas rester :
+ancien chemin Gemini
++
+nouveau `TaxonomyGeminiClient`
+comme deux architectures concurrentes.
+
+Réutilise l'infrastructure de transport Gemini existante si elle est adéquate, mais le contrat intellectuel Taxonomy doit avoir un seul chemin canonique.
+
+4. Même règle pour les Sous-domaines.
+
+Si `taxonomy.json` appartient à l'ancien modèle fixe et entre en conflit avec la création dynamique des Sous-domaines selon :
+DepthContract + Domaine,
+il ne doit pas rester comme autorité parallèle.
+
+Son contenu peut uniquement être migré/récupéré s'il représente encore des données valides selon la nouvelle architecture.
+
+Il ne doit jamais exister :
+Sous-domaines dynamiques Gemini
++
+Sous-domaines fixes taxonomy.json
+comme deux autorités concurrentes.
+
+5. KLD et KEY_STRUCTURE.
+
+Récupère uniquement leurs mécanismes encore conformes à `ValidationDominantIdeas`.
+
+Ensuite l'ancien chemin actif :
+Taxonomy → KLD → KEY_STRUCTURE
+doit disparaître.
+
+Le seul chemin officiel devient :
+Taxonomy ↔ ValidationDominantIdeas.
+
+6. À la fin de #120, je veux un audit explicite :
+
+ANCIENNES STRUCTURES REMPLACÉES
+
+* fichier/table/service
+* responsabilité ancienne
+* logique récupérée
+* remplacement canonique
+* ancien chemin supprimé : OUI/NON
+
+Aucun `NON` n'est accepté sans BLOCKER technique précis.
+
+PRINCIPE FINAL :
+
+# UNE RESPONSABILITÉ
+
+# UN PROPRIÉTAIRE
+
+# UNE IMPLÉMENTATION ACTIVE
+
+UNE SOURCE DE VÉRITÉ
+
+Pas de legacy parallèle.
+Pas de fallback architectural.
+Pas de système temporaire laissé en attente.
+Pas de double banque.
+Pas de double chemin Gemini.
+Pas de double implémentation Taxonomy.
+
+L'historique est conservé dans l'Architecture Register et Git, pas dans le runtime sous forme d'architectures concurrentes.
