@@ -1,0 +1,2237 @@
+# STRATEGYBUZZER — IMPLANTATION IMMÉDIATE TAXONOMY + DEPTHCONTRACT + VALIDATIONDOMINANTIDEAS
+
+## MODE DE TRAVAIL POUR CETTE TÂCHE
+
+Cette tâche est une **IMPLANTATION IMMÉDIATE**.
+
+Ne t’arrête PAS après :
+
+* un audit ;
+* un plan ;
+* une proposition ;
+* une liste d’écarts.
+
+Tu dois dans la même exécution :
+
+AUDITER LE CODE RÉEL
+↓
+IDENTIFIER LES FICHIERS RÉELS
+↓
+IMPLANTER
+↓
+AJOUTER/MODIFIER LES TESTS
+↓
+EXÉCUTER LES TESTS
+↓
+RETOURNER LE RAPPORT FINAL
+
+Les règles ci-dessous constituent la source de vérité de cette implantation.
+
+Si le code ou d’anciennes spécifications les contredisent :
+**le code doit être adapté aux règles ci-dessous.**
+
+Ne réintroduis PAS une architecture historique uniquement parce qu’elle existe encore dans le dépôt.
+
+---
+
+# 0. PÉRIMÈTRE
+
+Phase active :
+
+```text
+TAXONOMY
+```
+
+Taxonomy comprend actuellement dans son fonctionnement :
+
+```text
+BANQUE / RÉSERVOIRS
+↓
+création Sous-domaines
+↓
+création Sujets
+↓
+création Idées Dominantes
+↕
+ValidationDominantIdeas
+↓
+gestion de progression
+↓
+injection des valeurs actives dans KernelBlueprint
+↓
+QuestionIntent
+```
+
+QuestionIntent est le consommateur suivant.
+
+NE PAS implanter ou modifier la logique métier de :
+
+* Phase 1 ;
+* Validation Phase 1 ;
+* Phase 2 Traductions ;
+* Validation Phase 2 ;
+* Quarantine ;
+* ReadyBank ;
+* gameplay.
+
+Ne pas modifier la responsabilité de KernelRotationPlanner.
+
+Ne pas réintroduire comme modules actifs :
+
+```text
+KLD
+KEY_STRUCTURE
+```
+
+L’ancienne séparation KLD + KEY_STRUCTURE est obsolète pour cette architecture.
+
+Les responsabilités pertinentes de validation des idées sont portées par :
+
+```text
+ValidationDominantIdeas
+```
+
+---
+
+# 1. CONTRAT ENTRANT DE TAXONOMY
+
+Taxonomy reçoit un KernelBlueprint déjà engagé dans le pipeline et possédant les informations amont nécessaires :
+
+```text
+depth
+domain / domain_code selon le nom actuellement officiel du Blueprint
+```
+
+NE PAS renommer un slot amont dans cette tâche.
+
+NE PAS modifier son propriétaire.
+
+Taxonomy lit ces valeurs.
+
+Taxonomy ne choisit jamais :
+
+* le Depth ;
+* le Domaine ;
+* le prochain Domaine ;
+* le prochain Depth ;
+* l’ordre de rotation.
+
+---
+
+# 2. PROPRIÉTÉ ABSOLUE DE TAXONOMY
+
+Taxonomy possède hors Blueprint :
+
+```text
+réservoirs
+sous-domaines
+sujets
+idées dominantes
+candidats
+PASS
+FAIL
+historique de génération
+historique d’exclusion
+état de progression
+curseurs
+tentatives Gemini
+état de consommation
+état d’épuisement
+```
+
+Le KernelBlueprint ne doit JAMAIS recevoir :
+
+```text
+50 sujets
+250 idées
+listes de candidats
+historique Gemini
+curseurs Taxonomy
+réservoir complet
+mémoire d’exclusion
+attempt counters
+knowledge_frequency
+```
+
+Taxonomy inscrit seulement l’unité active :
+
+```text
+subdomain_active / sub_domain selon contrat actuel
+subject_active / subject selon contrat actuel
+dominant_idea_active / dominant_idea selon contrat actuel
+```
+
+Respecter les noms officiels actuellement présents dans le Blueprint.
+
+---
+
+# 3. RÈGLE FONDAMENTALE DE DÉGRAINAGE
+
+Toute création Taxonomy doit être un grain inférieur cohérent de son parent direct.
+
+Hiérarchie obligatoire :
+
+```text
+DEPTH
+↓
+DOMAINE
+↓
+SOUS-DOMAINE
+↓
+SUJET
+↓
+IDÉE DOMINANTE
+```
+
+Mais un enfant ne dépend PAS seulement de son parent immédiat.
+
+Il doit respecter toute sa généalogie.
+
+Donc :
+
+```text
+Sujet
+=
+dégrainage du Sous-domaine
++
+angle obligatoire du Domaine
++
+règles qualitatives du Depth
+```
+
+Et :
+
+```text
+Idée Dominante
+=
+dégrainage du Sujet
++
+cohérence Sous-domaine
++
+angle obligatoire du Domaine
++
+règles qualitatives du Depth
+```
+
+Aucun niveau ne peut changer silencieusement d’axe intellectuel.
+
+Exemple interdit :
+
+```text
+Domaine : Histoire
+Sous-domaine : Canada
+Sujet : Géographie
+```
+
+Exemple correct :
+
+```text
+Domaine : Histoire
+Sous-domaine : Canada
+Sujet : Confédération canadienne
+```
+
+Le Domaine reste l’angle intellectuel obligatoire pendant tout le dégrainage.
+
+---
+
+# 4. DEPTH GOUVERNE TOUTES LES CRÉATIONS
+
+Le chiffre `depth` seul est insuffisant.
+
+Gemini et les validateurs doivent recevoir le contrat qualitatif correspondant au Depth.
+
+Le Depth gouverne :
+
+```text
+Sous-domaine
+Sujet
+Idée dominante
+QuestionIntent plus tard
+Phase 1 plus tard
+```
+
+Dans cette implantation, Taxonomy doit appliquer le DepthContract à :
+
+```text
+Sous-domaine
+Sujet
+Idée dominante
+ValidationDominantIdeas
+```
+
+QuestionIntent et Phase 1 ne sont PAS modifiés maintenant.
+
+---
+
+# 5. STRUCTURE DU DEPTHCONTRACT
+
+Le DepthContract possède trois familles métier principales :
+
+```text
+subject_profile
+knowledge_frequency
+forbidden_rules
+```
+
+## subject_profile
+
+Définit :
+
+```text
+niveau de spécialisation du Sujet
+```
+
+## knowledge_frequency
+
+Définit :
+
+```text
+fréquence/notoriété de la connaissance
+portée par l’Idée Dominante
+```
+
+IMPORTANT :
+
+```text
+knowledge_frequency
+NE DOIT PAS devenir un slot du KernelBlueprint.
+```
+
+## forbidden_rules
+
+Protège la structure Taxonomy et son dégrainage.
+
+---
+
+# 6. ÉCHELLE KNOWLEDGE_FREQUENCY
+
+```text
+1 = Très commune
+2 = Commune
+3 = Assez commune
+4 = Modérément connue
+5 = Peu commune
+6 = Rare
+7 = Très rare
+8 = Extrêmement rare
+```
+
+---
+
+# 7. DEPTHCONTRACT COMPLET À IMPLANTER
+
+Les contrats doivent être centralisés dans une structure/config/provider unique, versionnable et testable.
+
+NE PAS disperser ces valeurs dans plusieurs prompts ou classes.
+
+---
+
+## DEPTH 2
+
+```text
+knowledge_frequency:
+  valeur: 1–2
+  label: Très commune
+  description:
+    Territoire immédiatement reconnaissable.
+
+  Sous-domaines:
+    larges et universels
+
+  Sujets:
+    très connus
+
+  Idées Dominantes:
+    immédiatement accessibles
+
+  Trop simple:
+    faits triviaux
+
+  Trop pointu:
+    toute connaissance nécessitant
+    une base dans le domaine
+
+subject_profile:
+  label: Grand public
+
+  description:
+    Territoire accessible sans
+    connaissance préalable.
+
+  Sous-domaines:
+    généraux
+
+  Sujets:
+    enseignés ou connus largement
+
+  Idées:
+    évidentes après identification du Sujet
+
+  Référence:
+    adolescent moyen ayant reçu
+    une éducation générale
+
+Phase1_rules réservées pour futur consommateur:
+  question: courte
+  réponses: très simples
+  raisonnement: quasi nul
+  piège: interdit ou très léger
+  formulation: directe
+  objectif: reconnaissance simple
+  interdit:
+    sujet rare
+    formulation abstraite
+    piège complexe
+```
+
+---
+
+## DEPTH 4
+
+```text
+knowledge_frequency:
+  valeur: 2–3
+  label: Commune
+
+  description:
+    Territoire de culture générale.
+
+  Sous-domaines:
+    toujours larges mais plus ciblés
+
+  Sujets:
+    connus d'une personne cultivée
+
+  Idées:
+    moins immédiates que Depth 2
+
+  Trop simple:
+    notoriété universelle
+
+  Trop pointu:
+    connaissance nécessitant
+    une spécialisation
+
+subject_profile:
+  label: Culture générale
+
+  description:
+    Territoire accessible à une personne
+    curieuse et cultivée.
+
+  Référence:
+    fin d'adolescence,
+    lecteur de vulgarisation
+    ou documentaire
+
+Phase1_rules:
+  question: simple
+  réponses: simples mais distinctes
+  raisonnement: léger
+  piège: léger autorisé
+  formulation: claire
+  objectif:
+    reconnaissance + petit lien logique
+  interdit:
+    sujet pointu
+    raisonnement multi-étapes
+```
+
+---
+
+## DEPTH 6
+
+```text
+knowledge_frequency:
+  valeur: 4
+  label: Modérément connue
+
+  description:
+    Territoire nécessitant déjà
+    un intérêt pour le domaine.
+
+  Sous-domaines:
+    plus spécialisés
+
+  Sujets:
+    pas forcément connus du grand public
+
+  Idées:
+    nécessitent déjà une compréhension
+    du territoire
+
+subject_profile:
+  label: Initié
+
+  description:
+    Territoire connu d'une personne
+    ayant déjà exploré le domaine.
+
+  Référence:
+    amateur régulier du domaine
+
+Phase1_rules:
+  question: moyenne
+  réponses: plus nuancées
+  raisonnement: présent
+  piège: autorisé si reconstructible
+  formulation: précise
+  objectif:
+    comprendre cause, rôle ou contexte
+  interdit:
+    piège gratuit
+    sujet trop spécialisé
+```
+
+---
+
+## DEPTH 7
+
+```text
+knowledge_frequency:
+  valeur: 5
+  label: Peu commune
+
+  description:
+    Territoire ciblé.
+
+  Sous-domaines:
+    spécialisés
+
+  Sujets:
+    connus principalement des initiés
+
+  Idées:
+    plus fines et moins visibles
+
+subject_profile:
+  label: Initié avancé
+
+  description:
+    Territoire connu après exploration
+    active du domaine.
+
+  Référence:
+    personne investissant du temps
+    dans le Domaine
+
+Phase1_rules:
+  question: moyenne à soutenue
+  réponses: proches mais différenciables
+  raisonnement: solide
+  piège: autorisé
+  formulation: précise et moins évidente
+  objectif:
+    distinguer des notions proches
+  interdit:
+    réponse devinable sans lecture complète
+```
+
+---
+
+## DEPTH 8
+
+```text
+knowledge_frequency:
+  valeur: 6
+  label: Rare
+
+  description:
+    Territoire spécialisé.
+
+  Sous-domaines:
+    fortement spécialisés
+
+  Sujets:
+    peu connus hors du domaine
+
+  Idées:
+    nécessitent une compréhension
+    solide du sujet
+
+subject_profile:
+  label: Spécialisé
+
+  description:
+    Territoire normalement reconnu
+    par quelqu'un possédant
+    une expertise réelle dans le domaine.
+
+  Référence:
+    praticien confirmé du Domaine
+
+Phase1_rules:
+  question: soutenue
+  réponses: exigeantes
+  raisonnement: fort
+  piège: autorisé et structurant
+  formulation: technique mais lisible
+  objectif:
+    mobiliser contexte + inférence
+  interdit:
+    pure mémorisation obscure
+```
+
+---
+
+## DEPTH 9
+
+```text
+knowledge_frequency:
+  valeur: 7
+  label: Très rare
+
+  description:
+    Territoire avancé.
+
+  Sous-domaines:
+    de niche
+
+  Sujets:
+    peu rencontrés hors
+    des cercles spécialisés
+
+  Idées:
+    très ciblées mais toujours vérifiables
+
+subject_profile:
+  label: Expert
+
+  description:
+    Territoire connu principalement
+    des experts du domaine.
+
+  Référence:
+    expert reconnu du domaine
+
+Phase1_rules:
+  question: soutenue
+  réponses: très proches
+  raisonnement: avancé
+  piège: fort mais loyal
+  formulation: spécialisée
+  objectif:
+    tester précision conceptuelle
+  interdit:
+    ambiguïté non résoluble
+```
+
+---
+
+## DEPTH 10
+
+```text
+knowledge_frequency:
+  valeur: 8
+  label: Extrêmement rare
+
+  description:
+    Territoire à la frontière supérieure
+    du domaine.
+
+  Sous-domaines:
+    ultra spécialisés
+
+  Sujets:
+    exceptionnellement ciblés
+
+  Idées:
+    toujours vérifiables,
+    exploitables et documentées
+
+  interdictions supplémentaires:
+    aucune anecdote
+    aucune curiosité obscure
+    non exploitable
+
+subject_profile:
+  label: Expert avancé
+
+  description:
+    Territoire réservé aux connaissances
+    les plus avancées du domaine.
+
+  Référence:
+    référence académique
+    ou professionnelle du domaine
+
+Phase1_rules:
+  question: experte mais jouable
+  réponses: très exigeantes
+  raisonnement: expert
+  piège: très structuré
+  formulation: spécialisée contrôlée
+  objectif:
+    expertise + reconstruction
+  interdit:
+    question impossible
+    obscure sans indice interne
+```
+
+IMPORTANT :
+
+DepthContract doit supporter :
+
+```text
+2,4,6,7,8,9,10
+```
+
+Cette tâche ne doit PAS décider si KRP active ou non Depth 10 dans son cycle.
+
+Taxonomy fournit simplement le contrat qualitatif si elle reçoit ce Depth.
+
+NE PAS modifier le DepthCycle KRP ici.
+
+---
+
+# 8. FORMAT_MINIMAL_IRREDUCTIBLE
+
+À appliquer aux trois niveaux créés :
+
+```text
+Sous-domaine
+Sujet
+Idée Dominante
+```
+
+Chaque niveau utilise l’unité de sens minimale permettant de conserver son identité.
+
+Règle :
+
+```text
+1 mot si 1 mot suffit
+mot composé si sa séparation change le sens
+groupe de mots seulement s’il est irréductible
+```
+
+Interdictions :
+
+## Sous-domaine
+
+Ne pas ajouter une précision qui appartient normalement :
+
+* au Sujet ;
+* à l’Idée Dominante.
+
+## Sujet
+
+Ne pas ajouter une précision qui appartient normalement :
+
+* à l’Idée Dominante.
+
+## Idée Dominante
+
+Ne pas écrire une phrase que Phase 1 devrait développer.
+
+Objectifs :
+
+```text
+éviter les doublons déguisés
+préserver la distinction des directions pédagogiques
+garder des niveaux Taxonomy comparables
+protéger ValidationDominantIdeas
+```
+
+Ne pas réintroduire KLD dans cette règle.
+
+---
+
+# 9. CRÉATION DU SOUS-DOMAINE
+
+Le Sous-domaine est une catégorie stable sous le Domaine demandé.
+
+Il doit :
+
+```text
+être un grain inférieur du Domaine
+rester dans l’angle du Domaine
+respecter le Depth
+être minimal et irréductible
+être suffisamment large pour produire des Sujets
+ne pas embarquer les précisions appartenant aux Sujets
+ne pas être un doublon/synonyme d’un Sous-domaine déjà utilisé
+```
+
+Un Sous-domaine n’est pas invalidé uniquement parce que son nom est général.
+
+La vraie question est :
+
+```text
+peut-il produire des Sujets conformes
+au Domaine + DepthContract ?
+```
+
+---
+
+# 10. CRÉATION DES SUJETS
+
+Pour chaque Sous-domaine actif, créer :
+
+```text
+jusqu’à 50 Sujets maximum
+```
+
+Configurer :
+
+```text
+MAX_SUBJECTS_PER_SUBDOMAIN = 50
+```
+
+Ne PAS forcer artificiellement exactement 50.
+
+Un Sujet candidat doit respecter :
+
+1. subdivision directe du Sous-domaine ;
+2. conservation stricte du Domaine ;
+3. conformité `subject_profile` du Depth ;
+4. précision suffisante pour représenter un territoire distinct ;
+5. absence de doublon exact ;
+6. absence de synonyme/reformulation ;
+7. absence d’équivalence conceptuelle ;
+8. non-absorption de plusieurs Sujets voisins ;
+9. ne pas être lui-même absorbé par un Sujet existant ;
+10. capacité à produire plusieurs connaissances dominantes distinctes ;
+11. FORMAT_MINIMAL_IRREDUCTIBLE ;
+12. aucune dérive vers un autre Domaine.
+
+Exemple :
+
+```text
+Depth 6
+Domaine Histoire
+Sous-domaine Canada
+```
+
+correct :
+
+```text
+Confédération canadienne
+Nouvelle-France
+Guerre de 1812
+Rébellions de 1837-1838
+```
+
+incorrect :
+
+```text
+Géographie
+Climat
+Faune canadienne
+Cuisine canadienne
+```
+
+Le fait qu’une notion concerne le Canada ne suffit pas.
+
+Elle doit être un Sujet du :
+
+```text
+Sous-domaine Canada
+DANS LE DOMAINE HISTOIRE
+AU DEPTH DEMANDÉ
+```
+
+---
+
+# 11. MÉMOIRE CUMULATIVE GEMINI — SUJETS
+
+Les appels Gemini sont cumulatifs.
+
+Ils ne doivent jamais être indépendants.
+
+Configurer provisoirement :
+
+```text
+MAX_SUBJECT_GENERATION_ATTEMPTS = 3
+```
+
+Ce paramètre doit être centralisé et facilement modifiable.
+
+## Appel 1
+
+Gemini reçoit :
+
+```text
+Depth
+DepthContract
+Domaine
+Sous-domaine
+Sujets déjà existants dans le réservoir
+Sujets déjà consommés
+historique pertinent
+nombre de places restantes jusqu’à 50
+```
+
+## Appel 2
+
+Doit recevoir :
+
+```text
+TOUT l’appel 1
++
+tous les candidats appel 1
++
+PASS appel 1
++
+FAIL appel 1
++
+raisons des FAIL
++
+doublons détectés
++
+équivalences détectées
++
+territoires déjà couverts
+```
+
+## Appel 3
+
+Doit recevoir :
+
+```text
+mémoire complète appel 1
++
+mémoire complète appel 2
++
+nouveaux résultats cumulés
+```
+
+L’appel 3 ne doit jamais oublier l’appel 1.
+
+---
+
+# 12. ÉPUISEMENT DES SUJETS D’UN SOUS-DOMAINE
+
+Taxonomy ne doit pas conclure immédiatement :
+
+```text
+NO_MORE_SUBJECTS
+```
+
+après une seule tentative.
+
+Il doit rechercher de nouveaux Sujets avec mémoire cumulative.
+
+Règle provisoire d’implantation :
+
+```text
+3 tentatives maximum cumulatives
+```
+
+Si, après la troisième recherche cumulative :
+
+```text
+aucun nouveau Sujet valide
+```
+
+alors :
+
+```text
+generation du Sous-domaine = EXHAUSTED
+```
+
+Cela signifie :
+
+```text
+plus aucun nouveau Sujet valide identifié
+pour ce Sous-domaine au Depth + Domaine courant
+```
+
+Cela ne signifie PAS immédiatement que le Domaine complet est EMPTY.
+
+Taxonomy doit poursuivre sa progression interne selon ses autres Sous-domaines/réservoirs existants.
+
+Le signal KRP `EMPTY` ne doit être produit que selon le contrat global actuel de Taxonomy/KRP quand le territoire du couple demandé est réellement épuisé.
+
+NE PAS modifier le contrat KRP dans ce patch.
+
+---
+
+# 13. DÉFINITION D’UNE IDÉE DOMINANTE
+
+Une Idée Dominante n’est PAS une catégorie générique d’interrogation.
+
+INTERDIT comme Idée Dominante simplement parce que le mot permet de poser une question :
+
+```text
+Date
+Personnages
+Acteurs
+Causes
+Conséquences
+Lieux
+Documents
+Provinces
+```
+
+Ces termes sont des catégories/axes génériques.
+
+Une Idée Dominante doit être :
+
+```text
+une connaissance dominante réelle,
+identifiable,
+importante,
+liée au Sujet,
+au Sous-domaine,
+au Domaine,
+et calibrée par le Depth
+```
+
+Exemple :
+
+```text
+Depth 6
+Domaine : Histoire
+Sous-domaine : Canada
+Sujet : Confédération canadienne
+```
+
+candidats plausibles :
+
+```text
+Acte de l’Amérique du Nord britannique
+John A. Macdonald
+Dominion du Canada
+provinces fondatrices
+union des colonies britanniques
+```
+
+La validation décidera lesquels sont réellement PASS.
+
+---
+
+# 14. GÉNÉALOGIE OBLIGATOIRE DE L’IDÉE
+
+Validation obligatoire :
+
+```text
+DEPTH
++
+DOMAINE
++
+SOUS-DOMAINE
++
+SUJET
++
+IDÉE CANDIDATE
+```
+
+Question conceptuelle à satisfaire :
+
+```text
+Cette Idée est-elle une connaissance dominante
+du Sujet actif,
+dans le Sous-domaine actif,
+vue selon le Domaine actif,
+au niveau de précision demandé par le Depth ?
+```
+
+Si NON :
+
+```text
+FAIL
+```
+
+---
+
+# 15. VALIDATIONDOMINANTIDEAS — RÈGLES INDIVIDUELLES
+
+Chaque candidate doit vérifier :
+
+1. connaissance réelle et non catégorie générique ;
+2. importance/dominance réelle pour le Sujet ;
+3. conformité `knowledge_frequency` du Depth ;
+4. conservation du Domaine ;
+5. cohérence avec le Sous-domaine ;
+6. grain inférieur réel du Sujet ;
+7. ne pas répéter le Sujet ;
+8. FORMAT_MINIMAL_IRREDUCTIBLE ;
+9. pas de doublon direct ;
+10. pas de synonyme ;
+11. pas d’équivalence lexicale ;
+12. pas d’équivalence conceptuelle ;
+13. pas de reformulation d’une idée existante ;
+14. pas de collision pédagogique ;
+15. pas de direction de connaissance déjà couverte ;
+16. pas de collision avec l’historique pertinent des noyaux ;
+17. si idée connexe déjà utilisée avec le même Sujet :
+    vérifier le Sous-domaine et le contexte réel ;
+18. toute différence textuelle sans différence intellectuelle = FAIL.
+
+Exemple :
+
+```text
+Acte de l’Amérique du Nord britannique
+```
+
+puis :
+
+```text
+AANB de 1867
+```
+
+ne constitue PAS une nouvelle Idée Dominante.
+
+Résultat :
+
+```text
+FAIL
+reason = CONCEPTUAL_COLLISION
+conflict_with = Acte de l’Amérique du Nord britannique
+```
+
+---
+
+# 16. VALIDATION COLLECTIVE DES IDÉES
+
+Il ne suffit PAS de valider chaque candidate isolément.
+
+L’ensemble du Sujet doit aussi être analysé.
+
+Objectif :
+
+```text
+jusqu’à 5 connaissances dominantes distinctes
+qui couvrent intelligemment
+les principales directions du Sujet
+au Depth demandé
+```
+
+Une liste de cinq éléments peut être refusée comme ensemble même si chaque terme est individuellement différent.
+
+Exemple :
+
+```text
+John A. Macdonald
+George-Étienne Cartier
+Charles Tupper
+Samuel Leonard Tilley
+George Brown
+```
+
+peut être trop concentrée dans :
+
+```text
+une seule direction = acteurs/personnages
+```
+
+ValidationDominantIdeas doit donc vérifier :
+
+```text
+diversité conceptuelle
+non-redondance pédagogique
+couverture raisonnable du Sujet
+absence de concentration excessive dans un axe unique
+```
+
+Ne pas forcer cinq axes artificiels.
+
+---
+
+# 17. OBJECTIF DES 5 IDÉES DOMINANTES
+
+Configurer :
+
+```text
+MAX_DOMINANT_IDEAS_PER_SUBJECT = 5
+```
+
+`5` est un maximum/objectif.
+
+Ce n’est PAS une obligation de produire artificiellement cinq mauvaises idées.
+
+Un Sujet peut devenir complet avec :
+
+```text
+0
+1
+2
+3
+4
+ou 5
+```
+
+Idées Dominantes validées.
+
+---
+
+# 18. MÉMOIRE CUMULATIVE GEMINI — IDÉES DOMINANTES
+
+Configurer provisoirement :
+
+```text
+MAX_DOMINANT_IDEA_GENERATION_ATTEMPTS = 3
+```
+
+Paramètre centralisé et modifiable.
+
+## Appel 1
+
+Gemini reçoit :
+
+```text
+Depth
+DepthContract complet pertinent
+Domaine
+Sous-domaine
+Sujet
+Idées déjà PASS
+Idées déjà FAIL
+historique de directions
+historique pertinent de noyaux
+nombre de slots restants jusqu’à 5
+```
+
+## Appel 2
+
+Doit recevoir :
+
+```text
+TOUT l’historique appel 1
++
+tous les candidats
++
+tous les PASS
++
+tous les FAIL
++
+raisons des FAIL
++
+équivalences interdites
++
+collisions conceptuelles
++
+directions déjà couvertes
+```
+
+## Appel 3
+
+Doit recevoir :
+
+```text
+mémoire complète appel 1
++
+mémoire complète appel 2
++
+résultats cumulés
+```
+
+INTERDICTION :
+
+```text
+appel 3 reçoit seulement appel 2
+```
+
+Il doit recevoir :
+
+```text
+appel 1 + appel 2
+```
+
+---
+
+# 19. GEMINI NE DOIT PAS RÉPÉTER PAR REFORMULATION
+
+Une nouvelle chaîne textuelle ne constitue pas automatiquement une nouvelle candidate.
+
+Gemini reçoit explicitement les exclusions cumulées.
+
+Il doit rechercher :
+
+```text
+de nouvelles directions de connaissance
+```
+
+et non :
+
+```text
+de nouvelles façons d’écrire
+une direction déjà rejetée
+```
+
+Exemple interdit :
+
+```text
+Appel 1 : Capitale
+Appel 2 : Ville capitale
+Appel 3 : Statut de capitale
+```
+
+si les trois portent la même direction intellectuelle.
+
+---
+
+# 20. SORTIE STRUCTURÉE DE VALIDATIONDOMINANTIDEAS
+
+La sortie métier principale reste :
+
+```text
+PASS
+FAIL
+```
+
+Un FAIL doit également transporter une raison exploitable par la mémoire cumulative.
+
+Prévoir des raisons structurées au minimum pour :
+
+```text
+DUPLICATE
+LEXICAL_EQUIVALENCE
+CONCEPTUAL_COLLISION
+PEDAGOGICAL_COLLISION
+OUTSIDE_DOMAIN
+OUTSIDE_SUBDOMAIN
+OUTSIDE_DEPTH
+NOT_DOMINANT
+GENERIC_CATEGORY
+TOO_BROAD
+TOO_NARROW
+SUBJECT_REPETITION
+SET_DIVERSITY_COLLISION
+ALREADY_COVERED
+```
+
+Réutiliser les codes existants s’ils expriment exactement la même sémantique.
+
+Ne pas dupliquer deux taxonomies de raisons inutilement.
+
+---
+
+# 21. NO_MORE_IDEAS
+
+`NO_MORE_IDEAS` :
+
+```text
+≠ FAIL
+≠ Quarantine
+≠ Sujet invalide
+```
+
+Il appartient au mécanisme Gemini/Taxonomy.
+
+Pour cette implantation, ne pas conclure définitivement `NO_MORE_IDEAS` après une seule génération.
+
+Taxonomy doit utiliser jusqu’au nombre maximum d’essais cumulatifs configuré pour confirmer qu’aucune nouvelle direction valide n’est disponible.
+
+Après exhaustion :
+
+```text
+conserver toutes les Idées PASS
+↓
+arrêter la création pour ce Sujet
+↓
+Sujet = COMPLETE
+↓
+continuer avec le Sujet suivant
+```
+
+Ne jamais détruire les PASS déjà obtenus.
+
+---
+
+# 22. PLUS PETIT RETOUR ARRIÈRE
+
+Une candidate FAIL :
+
+```text
+ne détruit pas le Sujet
+ne détruit pas le Sous-domaine
+ne détruit pas les Idées PASS
+ne recrée pas le réservoir
+```
+
+Elle provoque seulement :
+
+```text
+rejet de cette candidate
++
+mise à jour de la mémoire d’exclusion
++
+nouvelle recherche si nécessaire
+```
+
+---
+
+# 23. BANQUE TAXONOMY
+
+La banque doit représenter conceptuellement :
+
+```text
+depth
++
+domain
+↓
+Sous-domaines
+↓
+Sujets
+↓
+Idées Dominantes validées
+```
+
+Elle garde aussi, hors Blueprint :
+
+```text
+candidats essayés
+FAIL
+raisons
+équivalences
+collisions
+mémoire cumulative
+tentatives utilisées
+progression
+consommation
+```
+
+Un PASS ValidationDominantIdeas est inscrit dans la banque Taxonomy.
+
+Il n’est pas automatiquement injecté dans le Blueprint simplement parce qu’il vient d’être validé.
+
+---
+
+# 24. GESTION DE PROGRESSION
+
+Une fois les banques disponibles, Taxonomy sélectionne l’unité active :
+
+```text
+subdomain_active
+subject_active
+dominant_idea_active
+```
+
+ou les noms exacts correspondants actuellement utilisés par le Blueprint.
+
+Seulement ensuite Taxonomy écrit ces trois valeurs dans le Blueprint.
+
+---
+
+# 25. ORDRE EXACT TAXONOMY
+
+Implanter ce comportement :
+
+```text
+ENTRÉE
+Blueprint avec Depth + Domaine
+↓
+charger DepthContract
+↓
+ouvrir/reprendre réservoir Taxonomy
+(depth + domain)
+↓
+créer/reprendre Sous-domaine
+↓
+créer/reprendre banque de Sujets
+↓
+valider Sujets
+↓
+premier Sujet exploitable
+↓
+générer lot d’Idées Dominantes candidates
+↓
+ValidationDominantIdeas individuelle
+↓
+PASS conservés / FAIL mémorisés
+↓
+Validation de diversité de l’ensemble
+↓
+nouvelle génération cumulative si nécessaire
+↓
+jusqu’à 5 PASS ou exhaustion
+↓
+Sujet COMPLETE
+↓
+gestion de progression
+↓
+sélection :
+Sous-domaine actif
+Sujet actif
+Idée dominante active
+↓
+Taxonomy écrit ses 3 slots dans Blueprint
+↓
+handoff vers QuestionIntent existant
+```
+
+---
+
+# 26. GEMINI = EXÉCUTEUR, PAS AUTORITÉ ARCHITECTURALE
+
+Gemini peut :
+
+```text
+proposer Sous-domaines
+proposer Sujets
+proposer Idées Dominantes
+chercher de nouvelles directions
+analyser du contenu selon les règles fournies
+```
+
+Gemini ne peut jamais :
+
+```text
+choisir le Depth
+choisir le Domaine
+changer le DepthContract
+modifier les limites configurées
+changer le flow
+écrire directement dans le Blueprint
+déclarer un PASS sans passer par la validation
+modifier les règles Taxonomy
+inventer un nouveau module
+modifier KRP
+modifier QuestionIntent
+```
+
+Taxonomy orchestre.
+
+ValidationDominantIdeas décide PASS/FAIL selon son contrat.
+
+Gemini produit des candidats.
+
+---
+
+# 27. PROMPTS GEMINI — OBLIGATIONS
+
+Chaque génération doit contenir explicitement :
+
+```text
+DEPTH
+DEPTHCONTRACT
+DOMAIN
+ANCESTRY COMPLETE
+CURRENT TARGET TYPE
+CUMULATIVE MEMORY
+EXCLUSIONS
+REMAINING CAPACITY
+OUTPUT CONTRACT
+```
+
+Pour un Sujet :
+
+```text
+Depth
+Domaine
+Sous-domaine
+```
+
+Pour une Idée :
+
+```text
+Depth
+Domaine
+Sous-domaine
+Sujet
+```
+
+Gemini doit être informé explicitement :
+
+```text
+Toute création doit rester
+dans l’angle du Domaine
+et respecter la granularité du Depth.
+```
+
+---
+
+# 28. FORMAT STRUCTURÉ DES RÉPONSES GEMINI
+
+Utiliser le mécanisme structuré déjà présent s’il existe.
+
+Sinon créer un contrat strict.
+
+Pour les Sujets, sémantiquement :
+
+```json
+{
+  "status": "CANDIDATES|NO_MORE_SUBJECTS",
+  "candidates": [
+    {
+      "value": "..."
+    }
+  ]
+}
+```
+
+Pour les Idées :
+
+```json
+{
+  "status": "CANDIDATES|NO_MORE_IDEAS",
+  "candidates": [
+    {
+      "value": "..."
+    }
+  ]
+}
+```
+
+Ne pas accepter du texte libre comme donnée de banque sans parsing/validation.
+
+---
+
+# 29. PERSISTANCE OBLIGATOIRE
+
+La mémoire cumulative doit survivre :
+
+```text
+retry
+restart worker
+nouvelle exécution du pipeline
+```
+
+Elle ne doit pas exister uniquement en RAM si le pipeline actuel est persistant.
+
+Persister ou rattacher au mécanisme existant :
+
+```text
+attempt_number
+candidates_generated
+PASS
+FAIL
+FAIL reasons
+conceptual exclusions
+covered directions
+generation_exhausted
+Subject status
+Subdomain status
+consumption state
+```
+
+Réutiliser les repositories/tables existants si leur sémantique correspond.
+
+Ne pas créer une seconde base parallèle inutilement.
+
+---
+
+# 30. IDEMPOTENCE
+
+Un retry du même travail ne doit pas :
+
+```text
+ajouter deux fois le même Sujet
+ajouter deux fois la même Idée
+consommer deux fois une Idée
+incrémenter artificiellement les tentatives
+réécrire les slots Blueprint plusieurs fois
+```
+
+Les opérations doivent être idempotentes par l’identité métier disponible dans le pipeline.
+
+Ne pas inventer une nouvelle identité métier si le Blueprint possède déjà celle nécessaire.
+
+---
+
+# 31. CONSOMMATION ≠ CRÉATION
+
+Ne jamais confondre :
+
+```text
+GENERATED
+VALIDATED
+ACTIVE
+CONSUMED
+```
+
+Une Idée PASS n’est pas consommée parce qu’elle est générée.
+
+Un Sujet est consommé lorsque toutes ses Idées Dominantes validées disponibles ont été consommées par le pipeline selon le mécanisme existant.
+
+Un Sujet peut avoir moins de cinq Idées.
+
+Quand toutes sont consommées :
+
+```text
+Sujet = CONSUMED
+```
+
+Quand tous les Sujets réellement disponibles du réservoir sont consommés ET que la génération du territoire est épuisée selon son contrat :
+
+```text
+réservoir = EXHAUSTED
+```
+
+Préserver le contrat existant avec KRP.
+
+---
+
+# 32. NE PAS MODIFIER LE BLUEPRINT POUR STOCKER LE DEPTHCONTRACT
+
+Le Blueprint transporte le Depth.
+
+Le moteur peut résoudre :
+
+```text
+Depth → DepthContract
+```
+
+à partir d’une référence/config/provider externe.
+
+Ne pas recopier :
+
+```text
+subject_profile
+knowledge_frequency
+forbidden_rules
+```
+
+dans des réservoirs Blueprint supplémentaires sans nécessité déjà officielle.
+
+`knowledge_frequency` ne devient PAS un slot Blueprint.
+
+---
+
+# 33. COMPATIBILITÉ AVEC LE CODE EXISTANT
+
+Commence par localiser les classes/fichiers réels correspondant notamment à :
+
+```text
+TaxonomyProgressManager
+TaxonomyReader
+Taxonomy Navigator / repository
+KernelPipelineOrchestrator
+Gemini/AI generation service utilisé par Taxonomy
+ancienne KLD
+ancienne KEY_STRUCTURE si encore présente
+ValidationDominantIdeas si déjà créée
+KernelBlueprint
+DepthNeedMatrix / Depth contract actuel
+tests Taxonomy
+tests KRP/Orchestrator
+```
+
+Les chemins cités dans d’anciens rapports peuvent être périmés.
+
+Utilise les chemins réels du workspace Replit actuel.
+
+---
+
+# 34. ANCIENNES STRUCTURES
+
+Si tu trouves KLD ou KEY_STRUCTURE :
+
+```text
+ne les réactive pas dans le flow
+```
+
+Si du code utile doit être récupéré :
+
+```text
+réutiliser/refactorer la logique utile
+dans ValidationDominantIdeas
+```
+
+mais ne reconstruis pas :
+
+```text
+Taxonomy
+↓
+KLD
+↓
+KEY_STRUCTURE
+```
+
+Le flow actuel est :
+
+```text
+Taxonomy
+↕
+ValidationDominantIdeas
+↓
+QuestionIntent
+```
+
+---
+
+# 35. NE PAS LAISSER L’ORCHESTRATEUR VOLER LES SLOTS TAXONOMY
+
+L’orchestrateur ne doit pas devenir propriétaire de :
+
+```text
+subdomain
+subject
+dominant_idea
+```
+
+Taxonomy produit et écrit ses propres valeurs.
+
+Le pipeline/orchestrateur peut appeler Taxonomy.
+
+Il ne doit pas fabriquer ou remplir ces valeurs à sa place.
+
+---
+
+# 36. TESTS OBLIGATOIRES — DEPTHCONTRACT
+
+Ajouter des tests pour :
+
+1. Depth 2 ;
+2. Depth 4 ;
+3. Depth 6 ;
+4. Depth 7 ;
+5. Depth 8 ;
+6. Depth 9 ;
+7. Depth 10 ;
+8. `subject_profile` correct ;
+9. `knowledge_frequency` correct ;
+10. `forbidden_rules` disponibles ;
+11. aucun `knowledge_frequency` ajouté comme slot Blueprint ;
+12. Depth inconnu = erreur explicite/fail closed.
+
+---
+
+# 37. TESTS OBLIGATOIRES — DÉGRAINAGE SUJET
+
+Tester au minimum :
+
+```text
+Depth 6
+Domaine Histoire
+Sous-domaine Canada
+```
+
+Accepter des Sujets historiques conformes.
+
+Refuser :
+
+```text
+Géographie
+Climat canadien
+Faune canadienne
+Cuisine canadienne
+```
+
+Tester :
+
+```text
+doublon
+synonyme
+reformulation
+Sujet trop large
+Sujet trop étroit pour Depth
+Sujet absorbant
+FORMAT_MINIMAL_IRREDUCTIBLE
+```
+
+---
+
+# 38. TESTS OBLIGATOIRES — IDÉES DOMINANTES
+
+Pour :
+
+```text
+Histoire
+Canada
+Confédération canadienne
+Depth 6
+```
+
+Refuser comme simples catégories :
+
+```text
+Date
+Personnages
+Causes
+Conséquences
+Lieux
+Documents
+```
+
+Tester des connaissances réelles.
+
+Tester notamment :
+
+```text
+Acte de l’Amérique du Nord britannique
+```
+
+puis candidate :
+
+```text
+AANB de 1867
+```
+
+Résultat attendu :
+
+```text
+FAIL conceptual collision
+```
+
+---
+
+# 39. TEST DIVERSITÉ COLLECTIVE
+
+Tester une liste constituée uniquement de personnages.
+
+Elle ne doit pas automatiquement être considérée comme une couverture optimale du Sujet simplement parce que cinq noms sont différents.
+
+Le mécanisme doit détecter la concentration conceptuelle.
+
+---
+
+# 40. TEST MÉMOIRE CUMULATIVE
+
+Obligatoire.
+
+Mock Gemini.
+
+Appel 1 retourne A/B/C.
+
+Appel 2 doit recevoir :
+
+```text
+A/B/C + verdicts + raisons
+```
+
+Appel 2 retourne D/E.
+
+Appel 3 doit recevoir :
+
+```text
+A/B/C
++
+D/E
++
+tous les verdicts
++
+toutes les exclusions
+```
+
+Le test doit échouer si l’appel 3 ne contient que la mémoire de l’appel 2.
+
+---
+
+# 41. TEST LIMITE DES APPELS
+
+Avec :
+
+```text
+MAX_*_ATTEMPTS = 3
+```
+
+vérifier :
+
+```text
+appel 1
+appel 2
+appel 3
+```
+
+et :
+
+```text
+AUCUN appel 4
+```
+
+pour :
+
+* recherche des Sujets ;
+* recherche des Idées Dominantes.
+
+---
+
+# 42. TEST NO_MORE_IDEAS
+
+Exemple :
+
+```text
+2 Idées PASS
+plus aucune candidate valide après exhaustion
+```
+
+Résultat :
+
+```text
+conserver les 2 PASS
+Sujet COMPLETE
+aucune suppression
+pas de Quarantine
+pas de FAIL global
+```
+
+Tester aussi :
+
+```text
+0 PASS
+NO_MORE_IDEAS confirmé
+→ Sujet COMPLETE avec 0 idée
+```
+
+selon le contrat existant.
+
+---
+
+# 43. TEST MAXIMUM 50 SUJETS
+
+Vérifier :
+
+```text
+maximum 50
+```
+
+mais ne jamais forcer la création de faux Sujets pour atteindre 50.
+
+---
+
+# 44. TEST BLUEPRINT
+
+Vérifier qu’après sélection Taxonomy :
+
+seulement les valeurs actives correspondantes sont inscrites :
+
+```text
+subdomain
+subject
+dominant_idea
+```
+
+Pas :
+
+```text
+liste 50 sujets
+liste idées
+historique
+attempts
+knowledge_frequency
+```
+
+---
+
+# 45. TEST REPRISE/PERSISTANCE
+
+Simuler :
+
+```text
+appel Gemini 1
+persist
+restart/retry
+appel Gemini 2
+```
+
+L’appel 2 doit avoir la mémoire de l’appel 1.
+
+Aucune répétition autorisée due au restart.
+
+---
+
+# 46. TEST IDEMPOTENCE
+
+Même Blueprint / même opération rejouée :
+
+```text
+aucun doublon
+aucun double PASS
+aucun double consume
+aucun faux attempt supplémentaire
+```
+
+---
+
+# 47. TEST DE NON-RÉGRESSION ARCHITECTURALE
+
+Confirmer que cette implantation ne :
+
+```text
+change pas le Depth choisi par KRP
+change pas le Domaine choisi par KRP
+réintroduit pas KLD comme phase
+réintroduit pas KEY_STRUCTURE comme phase
+implante pas Phase 1
+implante pas QuestionIntent métier
+met pas les réservoirs dans Blueprint
+fait pas écrire les slots Taxonomy par l’orchestrateur
+```
+
+---
+
+# 48. PARAMÈTRES PROVISOIRES À ISOLER
+
+Nous acceptons de pouvoir ajuster ensuite certaines valeurs.
+
+Elles doivent donc être centralisées, pas codées en dur partout :
+
+```text
+MAX_SUBJECTS_PER_SUBDOMAIN = 50
+MAX_DOMINANT_IDEAS_PER_SUBJECT = 5
+MAX_SUBJECT_GENERATION_ATTEMPTS = 3
+MAX_DOMINANT_IDEA_GENERATION_ATTEMPTS = 3
+```
+
+Si un équivalent existe déjà, réutilise-le.
+
+Ne crée pas deux sources de vérité.
+
+---
+
+# 49. CE QUI DOIT ÊTRE IMPLANTÉ MAINTENANT
+
+À la fin de cette tâche, le code doit réellement posséder :
+
+```text
+DepthContract centralisé
+↓
+résolution Depth → règles qualitatives
+↓
+création Taxonomy consciente du Depth
+↓
+dégrainage Domain → Subdomain → Subject → DominantIdea
+↓
+validation des Sujets
+↓
+génération Gemini structurée
+↓
+mémoire cumulative persistante
+↓
+ValidationDominantIdeas
+↓
+validation individuelle
+↓
+validation collective/diversité
+↓
+gestion PASS/FAIL
+↓
+gestion NO_MORE_IDEAS
+↓
+limite d’essais
+↓
+progression
+↓
+injection des trois valeurs actives dans Blueprint
+```
+
+---
+
+# 50. RAPPORT FINAL OBLIGATOIRE
+
+Après implantation, retourne exactement :
+
+## A. FICHIERS AUDITÉS
+
+Liste.
+
+## B. FICHIERS MODIFIÉS
+
+Pour chacun :
+
+```text
+path
+responsabilité
+modification
+```
+
+## C. FICHIERS CRÉÉS
+
+Même format.
+
+## D. MIGRATIONS
+
+Indiquer :
+
+* créées ou non ;
+* pourquoi.
+
+## E. DEPTHCONTRACT
+
+Confirmer où se trouve la source de vérité.
+
+## F. GEMINI
+
+Indiquer :
+
+* classe/service utilisé ;
+* structure du prompt ;
+* structure output ;
+* mémoire cumulative ;
+* persistance ;
+* nombre maximum d’appels.
+
+## G. VALIDATIONDOMINANTIDEAS
+
+Indiquer précisément :
+
+* règles réellement implantées ;
+* validation individuelle ;
+* validation collective ;
+* raisons FAIL.
+
+## H. TAXONOMY
+
+Confirmer :
+
+* qui crée les Sous-domaines ;
+* qui crée les Sujets ;
+* qui crée les Idées ;
+* qui écrit les trois slots Blueprint ;
+* où restent les réservoirs.
+
+## I. TESTS CIBLÉS
+
+Commande + résultat.
+
+## J. TESTS GLOBAUX
+
+Commande + résultat.
+
+Séparer :
+
+```text
+nouvelle régression
+```
+
+de :
+
+```text
+échec préexistant
+```
+
+## K. ÉCARTS RESTANTS
+
+Uniquement ce qui n’a réellement pas pu être implanté.
+
+Ne transforme pas un point hors périmètre en modification automatique.
+
+## L. VERDICT
+
+```text
+IMPLANTATION TAXONOMY :
+CONFORME
+```
+
+ou :
+
+```text
+IMPLANTATION TAXONOMY :
+NON CONFORME
+
+Il manque :
+...
+```
+
+---
+
+# DIRECTIVE FINALE
+
+Ne retourne pas un nouveau plan avant de coder.
+
+Lis le code réel puis implante immédiatement.
+
+Quand une ancienne implémentation entre en conflit avec ce contrat :
+
+```text
+le contrat ci-dessus gagne
+```
+
+sauf pour un élément explicitement hors périmètre de Taxonomy.
+
+Dans ce cas :
+
+```text
+HORS_PÉRIMÈTRE
++
+fichier
++
+problème
++
+impact
+```
+
+et ne modifie pas le module extérieur.
