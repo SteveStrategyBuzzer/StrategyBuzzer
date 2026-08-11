@@ -416,6 +416,49 @@ final class TaxonomyBankRepository
             ->count();
     }
 
+    /**
+     * Compte le nombre de sujets ayant au moins une idée PASS+AVAILABLE pour (depth, domain).
+     *
+     * Utilisé par warmUpCell() pour savoir combien de sujets sont déjà initialisés.
+     */
+    public function countSubjectsWithAvailableIdeas(int $depth, string $domainCode): int
+    {
+        return (int) DB::table(self::TABLE_SUBJECTS . ' as s')
+            ->join(self::TABLE_SUBDOMAINS . ' as sd', 'sd.id', '=', 's.subdomain_id')
+            ->where('sd.depth', $depth)
+            ->where('sd.domain_code', $domainCode)
+            ->whereExists(function ($q) {
+                $q->select(DB::raw(1))
+                  ->from(self::TABLE_IDEAS . ' as di')
+                  ->whereColumn('di.subject_id', 's.id')
+                  ->where('di.validation_status', 'PASS')
+                  ->where('di.status', 'AVAILABLE');
+            })
+            ->count();
+    }
+
+    /**
+     * Retourne le premier sujet d'un sous-domaine qui n'a encore AUCUNE idée PASS+AVAILABLE.
+     *
+     * Utilisé par warmUpCell() pour cibler uniquement les sujets non encore initialisés,
+     * sans jamais toucher aux idées déjà disponibles pour le gameplay.
+     */
+    public function findSubjectWithNoAvailableIdeas(int $subdomainId): ?object
+    {
+        return DB::table(self::TABLE_SUBJECTS . ' as s')
+            ->where('s.subdomain_id', $subdomainId)
+            ->where('s.idea_generation_exhausted', false)
+            ->whereNotExists(function ($q) {
+                $q->select(DB::raw(1))
+                  ->from(self::TABLE_IDEAS . ' as di')
+                  ->whereColumn('di.subject_id', 's.id')
+                  ->where('di.validation_status', 'PASS')
+                  ->where('di.status', 'AVAILABLE');
+            })
+            ->orderBy('s.id')
+            ->first(['s.*']);
+    }
+
     // =========================================================================
     // Mémoire cumulative
     // =========================================================================

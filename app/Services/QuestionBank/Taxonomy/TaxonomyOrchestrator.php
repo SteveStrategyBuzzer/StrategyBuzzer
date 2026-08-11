@@ -160,6 +160,97 @@ final class TaxonomyOrchestrator implements DomainExhaustionChecker, TaxonomyNav
     }
 
     // =========================================================================
+    // Warm-up public — pré-remplissage sans consommation
+    // =========================================================================
+
+    /**
+     * Pré-remplit la banque pour une cellule (Depth × Domaine) sans jamais consommer
+     * d'idées déjà disponibles pour le gameplay.
+     *
+     * Contrairement à peekNext() + confirmConsumed() :
+     *   - Ne marque aucune idée CONSUMED.
+     *   - Cible uniquement les sujets qui n'ont ENCORE AUCUNE idée PASS+AVAILABLE.
+     *   - Idempotent : si $targetSubjectsWithIdeas sujets sont déjà initialisés, retourne
+     *     immédiatement sans appel Gemini.
+     *
+     * @param  int    $targetSubjectsWithIdeas  Nombre minimum de sujets à avoir avec au
+     *                                          moins 1 idée PASS+AVAILABLE (défaut 1).
+     * @return int    Nombre de sujets ayant au moins 1 idée PASS+AVAILABLE après l'appel.
+     */
+    public function warmUpCell(int $depth, string $domainCode, int $targetSubjectsWithIdeas = 1): int
+    {
+        $contract    = DepthContractRegistry::get($depth);
+        $domainLabel = self::DOMAIN_LABELS[$domainCode] ?? ucfirst($domainCode);
+        // Guard: consecutive iterations without progress (no new AVAILABLE idea seeded).
+        // Resets to 0 whenever a subject gains ≥ 1 new AVAILABLE idea.
+        // Using a no-progress streak instead of a total-iteration cap allows
+        // targets well above MAX_FILL_ITERATIONS to be reached as long as
+        // Gemini keeps producing valid ideas.
+        $noProgressStreak = 0;
+
+        while ($noProgressStreak < self::MAX_FILL_ITERATIONS) {
+            // Re-read from DB — the only correct source of truth.
+            // generateIdeasForSubject() can return true for subjects whose PASS
+            // ideas are all CONSUMED; those must NOT be counted as seeded.
+            $seededCount = $this->repo->countSubjectsWithAvailableIdeas($depth, $domainCode);
+
+            if ($seededCount >= $targetSubjectsWithIdeas) {
+                break;
+            }
+
+            $seededBefore = $seededCount;
+
+            // 1. Trouver ou générer un sous-domaine actif
+            $subdomain = $this->repo->findActiveSubdomain($depth, $domainCode);
+
+            if ($subdomain === null) {
+                $subdomain = $this->generateNewSubdomain($depth, $domainCode, $domainLabel, $contract);
+                if ($subdomain === null) {
+                    break; // domaine vraiment épuisé
+                }
+            }
+
+            // 2. Cibler un sujet qui n'a ENCORE AUCUNE idée PASS+AVAILABLE.
+            //    Un sujet dont toutes les idées PASS sont CONSUMED sera marqué
+            //    idea_generation_exhausted=true par generateIdeasForSubject() ci-dessous,
+            //    puis exclu des appels suivants par findSubjectWithNoAvailableIdeas().
+            $subject = $this->repo->findSubjectWithNoAvailableIdeas($subdomain->id);
+
+            if ($subject === null) {
+                // Ce sous-domaine a déjà tous ses sujets initialisés → générer un nouveau sujet
+                $newSubject = $this->generateNewSubject($subdomain, $depth, $domainCode, $domainLabel, $contract);
+                if ($newSubject !== null) {
+                    $subject = $newSubject;
+                } else {
+                    // Ce sous-domaine ne peut plus produire de sujets
+                    $this->repo->markSubdomainGenerationExhausted($subdomain->id);
+                    $noProgressStreak++;
+                    continue; // essayer le sous-domaine suivant
+                }
+            }
+
+            // 3. Générer des idées pour ce sujet — sans toucher aux idées déjà AVAILABLE.
+            //    Ne pas utiliser la valeur de retour bool pour incrémenter le compteur :
+            //    elle peut être true même si aucune idée AVAILABLE n'a été créée.
+            //    La progression est mesurée en comparant les comptes DB avant/après.
+            $this->generateIdeasForSubject(
+                $subject, $subdomain, $depth, $domainCode, $domainLabel, $contract
+            );
+
+            // Progress check: did this iteration add at least one new seeded subject?
+            $seededAfter = $this->repo->countSubjectsWithAvailableIdeas($depth, $domainCode);
+            if ($seededAfter > $seededBefore) {
+                $noProgressStreak = 0; // real progress — reset the guard
+            } else {
+                $noProgressStreak++; // no new AVAILABLE idea — advance toward the guard limit
+            }
+        }
+
+        // Always return the authoritative DB count, never a local variable.
+        return $this->repo->countSubjectsWithAvailableIdeas($depth, $domainCode);
+    }
+
+    // =========================================================================
     // Pipeline interne — remplissage de la banque
     // =========================================================================
 
