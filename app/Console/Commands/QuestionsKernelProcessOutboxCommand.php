@@ -10,8 +10,10 @@ use App\Services\QuestionBank\Rotation\KernelPipelineOutboxRepository;
 use App\Services\QuestionBank\Rotation\KernelRotationPlanner;
 use App\Services\QuestionBank\Rotation\Listeners\ApplyCurrentKernelReceivedToRotation;
 use App\Services\QuestionBank\Rotation\ProcessKernelPipelineOutbox;
-use App\Services\QuestionBank\Rotation\TaxonomyProgressManager;
-use App\Services\QuestionBank\Rotation\TaxonomyReader;
+use App\Services\QuestionBank\Taxonomy\TaxonomyBankRepository;
+use App\Services\QuestionBank\Taxonomy\TaxonomyGeminiClient;
+use App\Services\QuestionBank\Taxonomy\TaxonomyOrchestrator;
+use App\Services\QuestionBank\Taxonomy\ValidationDominantIdeas;
 use Illuminate\Console\Command;
 
 /**
@@ -123,7 +125,11 @@ class QuestionsKernelProcessOutboxCommand extends Command
         $orchestrator = new KernelPipelineOrchestrator(
             new KernelBlueprintFactory(),
             new KernelRotationPlanner(),
-            new TaxonomyProgressManager(new TaxonomyReader()),
+            new TaxonomyOrchestrator(
+                new TaxonomyBankRepository(),
+                new TaxonomyGeminiClient(),
+                new ValidationDominantIdeas(),
+            ),
         );
 
         return new ProcessKernelPipelineOutbox($listener, $orchestrator, $outboxRepo);

@@ -7,8 +7,10 @@ namespace App\Console\Commands;
 use App\Services\QuestionBank\Rotation\KernelBlueprintFactory;
 use App\Services\QuestionBank\Rotation\KernelPipelineOrchestrator;
 use App\Services\QuestionBank\Rotation\KernelRotationPlanner;
-use App\Services\QuestionBank\Rotation\TaxonomyNavigatorInterface;
-use App\Services\QuestionBank\Rotation\TaxonomyProgressManager;
+use App\Services\QuestionBank\Taxonomy\TaxonomyBankRepository;
+use App\Services\QuestionBank\Taxonomy\TaxonomyGeminiClient;
+use App\Services\QuestionBank\Taxonomy\TaxonomyOrchestrator;
+use App\Services\QuestionBank\Taxonomy\ValidationDominantIdeas;
 use Illuminate\Console\Command;
 use RuntimeException;
 
@@ -18,7 +20,7 @@ use RuntimeException;
  * Point d'entrée V2 pour déclencher une rotation Kernel.
  *
  * Ce que cette commande fait :
- *   1. Instancie KernelBlueprintFactory + KernelRotationPlanner V2 + TaxonomyProgressManager
+ *   1. Instancie KernelBlueprintFactory + KernelRotationPlanner V2 + TaxonomyOrchestrator
  *   2. Appelle KernelPipelineOrchestrator::run()
  *   3. Affiche le statut résultant (ENGAGED | PRODUCTION_ON_HOLD)
  *
@@ -37,10 +39,14 @@ class QuestionsKernelRotateCommand extends Command
     protected $description = 'V2 — Déclenche une rotation Kernel via KernelPipelineOrchestrator (KernelBlueprintFactory + KRP V2 + Taxonomy).';
 
     public function handle(
-        KernelBlueprintFactory  $factory,
-        KernelRotationPlanner   $planner,
-        TaxonomyProgressManager $taxonomy,
+        KernelBlueprintFactory $factory,
+        KernelRotationPlanner  $planner,
     ): int {
+        $taxonomy = new TaxonomyOrchestrator(
+            new TaxonomyBankRepository(),
+            new TaxonomyGeminiClient(),
+            new ValidationDominantIdeas(),
+        );
         $previousDomain = $this->option('previous-domain') ?: null;
         $dryRun         = (bool) $this->option('dry-run');
 
