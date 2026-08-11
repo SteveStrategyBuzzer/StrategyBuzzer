@@ -17,6 +17,19 @@ Preferred communication style: Simple, everyday language.
 - ALL new text MUST be translated in all 10 language files: `resources/lang/{ar,de,el,en,es,fr,it,pt,ru,zh}.json`
 - Never add French-only text - always add translations for all languages
 
+**RÈGLE DU VIDE (ABSOLUE — gouvernance d'implantation, 2026-08-11):**
+Quand une information nécessaire à l'implantation est absente, ambiguë, contradictoire, ou seulement déductible du code legacy, l'agent doit :
+1. Arrêter toute implantation qui dépend de cette information.
+2. Ne produire aucune hypothèse métier.
+3. Ne créer aucun fallback.
+4. Ne choisir aucune valeur « raisonnable ».
+5. Informer le user AVANT de coder au-delà de cette frontière, au format obligatoire :
+
+   `BLOCKER ARCHITECTURAL` —
+   Module actif : … / Frontière exacte : … / Information manquante ou ambiguë : … / Pourquoi cette information est nécessaire : … / Code legacy éventuellement trouvé : … / Pourquoi ce code ne peut pas servir de décision métier : … / Options techniques possibles : … [facultatif, sans en choisir une] / « Aucun code dépendant de cette décision n'a été implanté. »
+
+Seules les parties indépendantes de ce vide peuvent se poursuivre.
+
 ### System Architecture
 
 #### UI/UX Decisions
