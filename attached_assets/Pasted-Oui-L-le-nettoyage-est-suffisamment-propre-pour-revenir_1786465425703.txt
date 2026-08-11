@@ -1,0 +1,99 @@
+Oui. Là, le nettoyage est suffisamment propre pour revenir à notre méthode officielle.
+
+Le rapport respecte enfin ce qu’on voulait :
+
+KLD / KEY_STRUCTURE : aucun code runtime restant ;
+QuestionIntentEncoder et KernelPipelineAdvancer : supprimés ;
+migration QuestionIntent inventée : retirée de Neon et du dépôt ;
+aucune donnée métier perdue ;
+aucune architecture parallèle ;
+aucune nouvelle décision métier inventée ;
+le pipeline s’arrête proprement à la frontière QuestionIntent.
+
+Les deux blockers restants sont aussi correctement classés.
+
+Ce qu’on fait des 2 blockers
+Blocker 1 — clés KLD/KS null dans frame_en
+
+On n’y touche pas maintenant.
+
+KernelFrameBuilder
+→ ticket frame legacy
+→ kld_result / ks_result / ks_hash / key_structure / kld = null
+
+Ces champs appartiennent à la future réflexion sur les Phases / format frame. Les retirer maintenant nous ferait travailler deux modules à la fois.
+
+Donc :
+
+BLOCKER DOCUMENTÉ
+→ GELÉ
+→ FUTURE PHASE
+Blocker 2 — kernel_code / ks_hash / kld_hash
+
+Celui-ci est différent.
+
+kernel_code
+ks_hash
+kld_hash
+
+sont directement susceptibles de concerner QuestionIntent / identité du noyau.
+
+Donc nous ne les supprimons pas maintenant, mais ils feront partie de l’audit de 05_QuestionIntent.
+
+Important :
+
+leur existence en DB
+≠
+leur maintien dans l'architecture
+
+Pendant la spécification QuestionIntent, nous déciderons chacun séparément :
+
+CONSERVER
+REMPLACER
+RENOMMER
+SUPPRIMER
+SUPERSEDED
+
+à partir de l’architecture, jamais parce que les colonnes existent.
+
+Prochaine action officielle
+
+Replit STOP maintenant.
+
+Nous reprenons ici :
+
+Constitution Cognitive
+↓
+Architecture Register
+↓
+01 KernelBlueprint
+↓
+02 KernelRotationPlanner
+↓
+03 Taxonomy
+↓
+04 ValidationDominantIdeas
+↓
+05 QUESTIONINTENT
+
+Et avant d’écrire la première ligne de 05_QuestionIntent, je dois reconstruire l’intégralité de ce chemin pour déterminer exactement ce que QuestionIntent reçoit, ce qu’il transforme, ce qu’il n’a pas le droit de décider et ce qu’il remet à Phase 1.
+
+Une précision importante
+
+Replit indique avoir « corrigé 05_QuestionIntent.md §6 ».
+
+Cela ne doit pas être considéré comme une spécification officielle de QuestionIntent. Au mieux, c’est une mise à jour documentaire indiquant l’état actuel et les blockers.
+
+La conception métier de 05_QuestionIntent commence ici, puis seulement :
+
+spécification complète
+↓
+Architecture Register
+↓
+VERROUILLAGE
+↓
+audit du code QuestionIntent
+↓
+implantation Replit
+
+Nous sommes donc exactement au bon point pour commencer 05_QuestionIntent, exclusivement.
