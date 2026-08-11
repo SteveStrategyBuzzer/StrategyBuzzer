@@ -39,6 +39,10 @@ args = "Redis Server"
 task = "workflow.run"
 args = "Bank Worker"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Kernel Pipeline"
+
 [[workflows.workflow]]
 name = "Backend"
 author = "agent"
@@ -104,6 +108,17 @@ author = "agent"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "php artisan questions:worker"
+
+[workflows.workflow.metadata]
+outputType = "console"
+
+[[workflows.workflow]]
+name = "Kernel Pipeline"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "php artisan questions:kernel:advance --loop --sleep=60"
 
 [workflows.workflow.metadata]
 outputType = "console"

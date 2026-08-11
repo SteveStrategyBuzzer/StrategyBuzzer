@@ -10,6 +10,7 @@ use App\Services\QuestionBank\Rotation\KernelPipelineOutboxRepository;
 use App\Services\QuestionBank\Rotation\KernelRotationPlanner;
 use App\Services\QuestionBank\Rotation\Listeners\ApplyCurrentKernelReceivedToRotation;
 use App\Services\QuestionBank\Rotation\ProcessKernelPipelineOutbox;
+use App\Services\QuestionBank\Rotation\QuestionIntentEncoder;
 use App\Services\QuestionBank\Taxonomy\TaxonomyBankRepository;
 use App\Services\QuestionBank\Taxonomy\TaxonomyGeminiClient;
 use App\Services\QuestionBank\Taxonomy\TaxonomyOrchestrator;
@@ -119,17 +120,23 @@ class QuestionsKernelProcessOutboxCommand extends Command
 
     private function buildProcessor(): ProcessKernelPipelineOutbox
     {
-        $outboxRepo  = new KernelPipelineOutboxRepository();
-        $listener    = new ApplyCurrentKernelReceivedToRotation();
+        $outboxRepo = new KernelPipelineOutboxRepository();
+
+        $taxonomy = new TaxonomyOrchestrator(
+            new TaxonomyBankRepository(),
+            new TaxonomyGeminiClient(),
+            new ValidationDominantIdeas(),
+        );
+
+        // RACCORDEMENT B : le listener confirme la consommation Taxonomy
+        // (idempotence par reçu) avant comptabilisation.
+        $listener = new ApplyCurrentKernelReceivedToRotation($taxonomy);
 
         $orchestrator = new KernelPipelineOrchestrator(
             new KernelBlueprintFactory(),
             new KernelRotationPlanner(),
-            new TaxonomyOrchestrator(
-                new TaxonomyBankRepository(),
-                new TaxonomyGeminiClient(),
-                new ValidationDominantIdeas(),
-            ),
+            $taxonomy,
+            new QuestionIntentEncoder(),
         );
 
         return new ProcessKernelPipelineOutbox($listener, $orchestrator, $outboxRepo);

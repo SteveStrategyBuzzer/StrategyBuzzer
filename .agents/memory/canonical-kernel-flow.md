@@ -6,7 +6,7 @@ description: Source de vérité du flow kernel — KLD & KEY_STRUCTURE SUPERSEDE
 # Flow canonique du pipeline noyau — VERROUILLÉ par l'utilisateur le 2026-08-11
 
 ```
-KernelBlueprint
+CRÉATION DU KERNELBLUEPRINT   ← le Blueprint EXISTE avant KRP
 → KernelRotationPlanner (KRP)
 → Taxonomy ↕ ValidationDominantIdeas
 → QuestionIntent
@@ -17,8 +17,13 @@ KernelBlueprint
 → ReadyBank (accepte le noyau canonique)
 → Taxonomy.confirmConsumed(...) idempotent
 → CURRENT_KERNEL_RECEIVED
-→ KRP / Blueprint suivant
+→ CRÉATION DU BLUEPRINT SUIVANT
+→ KernelRotationPlanner
 ```
+
+## Amorce : le Blueprint existe AVANT KRP (précision utilisateur 2026-08-11)
+
+**Règle :** KernelRotationPlanner ne crée JAMAIS le KernelBlueprint — il le reçoit déjà créé (KernelBlueprintFactory précède KRP). Après CURRENT_KERNEL_RECEIVED, c'est la CRÉATION DU BLUEPRINT SUIVANT qui relance le cycle, puis KRP. Ne jamais réinterpréter l'abréviation « Blueprint → KRP » comme « KRP crée le Blueprint ».
 
 ## ⛔ KLD et KEY_STRUCTURE : SUPERSEDED
 
@@ -40,3 +45,12 @@ KernelBlueprint
 La consommation Taxonomy = l'utilisation RÉUSSIE de l'unité pour produire un noyau **ACCEPTÉ par ReadyBank** — pas son simple passage dans QuestionIntent. Appel idempotent, uniquement dans le cycle terminal (B).
 
 **How to apply :** toute tâche/PR touchant le pipeline noyau doit se conformer à ce flow ; vérifier les composants réels existants (l'event CURRENT_KERNEL_RECEIVED, le receiver ReadyBank et l'outbox existent déjà côté KRP V2) et réutiliser le chemin canonique au lieu d'en créer un parallèle.
+
+## État : IMPLÉMENTÉ (2026-08-11) — invariants à ne pas casser
+
+- **A implanté ATOMIQUE** : engagement du Blueprint + encodage QuestionIntent dans UNE transaction (orchestrateur). Invariant : jamais de run ENGAGED sans intent — toute modification doit préserver cette atomicité.
+- **B implanté GATED** : confirmConsumed() vit dans le listener CURRENT_KERNEL_RECEIVED, DANS la branche `!alreadyReceived`, avant l'insertion du reçu. Le reçu est LA gate d'idempotence (double event = un seul avancement de curseur).
+- **Invariant de récupération** : un run ENGAGED sans intent se répare par re-lecture `peekNext` — sûr UNIQUEMENT parce que le curseur Taxonomy n'avance qu'à confirmConsumed (fin de cycle B). Quiconque déplace la consommation plus tôt casse cette récupération.
+- **Tapis roulant** : `questions:kernel:advance --loop` (workflow « Kernel Pipeline ») dispatche par frame_status et délègue aux commandes de stage existantes. DEC-052 : quarantine/human_review/rejected/partial_review sont quand même REÇUS — la rotation ne bloque jamais. Garde-fou : 5 échecs de stage consécutifs → quarantine explicite (loggée) → reçu au tick suivant.
+- **Amorçage MANUEL par conception** (KRP-R11) : la boucle ne démarre rien d'elle-même ; `questions:kernel:rotate` lance le premier Blueprint, ensuite le cycle s'auto-entretient via CKR. DB vide → ticks no-op gratuits (zéro Gemini).
+- Mapping d'encodage legacy : voir questionintent-contract.md (section « Encodage réel »).

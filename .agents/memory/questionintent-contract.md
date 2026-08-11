@@ -5,6 +5,18 @@ description: Contrat verrouillé de QUESTIONINTENT — PUR ENCODEUR (zéro contr
 
 > ⚠️ **Partiellement SUPERSEDED 2026-08-11** — toute mention de KLD/KEY_STRUCTURE dans ce fichier est obsolète (absorbés par ValidationDominantIdeas). Voir [canonical-kernel-flow.md](canonical-kernel-flow.md).
 
+## Encodage réel — mapping legacy VERROUILLÉ (implémenté 2026-08-11)
+
+L'encodeur écrit UNE ligne `question_intents` par Blueprint (idempotence par UNIQUE(blueprint_id)). La table garde ses colonnes legacy NOT NULL exigées par le validateur de frame ; le mapping est du PUR VOCABULAIRE, aucune valeur fabriquée :
+
+- `dominant_idea` = `angle_large` = `micro_angle` = `answer_target` = l'idée dominante active fournie par Taxonomy (une seule vérité, répétée là où le legacy l'exige).
+- `concept_family` = sous-domaine actif ; `subject` = sujet actif ; `domain`/`difficulty_depth` = rotation.
+- `intent_key` = `semantic_key` = `'BP:' + blueprint_id` (identité = le Blueprint, rien d'autre).
+- `source` = `'kernel_rotation'` ; `language_source` = `'en'` ; `frame_status` = NULL au départ (le tapis roulant le fait progresser).
+- ⛔ `kernel_code`, `ks_hash`, `kld_hash` restent NULL — JAMAIS fabriqués (KLD/KS superseded ; les sections ks_hash/kernel_print plus bas datent de l'ère KLD/KS).
+
+**Why :** le validateur de frame exige ces champs non-null ; plutôt que d'inventer des hashs (ré-ouvrir KLD/KS par la fenêtre), on répète l'idée dominante validée. **How to apply :** tout code lisant angle_large/micro_angle/answer_target sur un intent issu de la rotation lit EN FAIT l'idée dominante ; ne jamais les diverger.
+
 
 # QUESTIONINTENT — contrat officiel (VERROUILLÉ)
 

@@ -42,6 +42,7 @@ final class KernelPipelineOutboxRepository
             'event_id'      => $event->eventId,
             'event_type'    => $event->eventType,
             'payload'       => json_encode($event->toPayload(), JSON_UNESCAPED_UNICODE),
+            'occurred_at'   => $event->occurredAt, // colonne NOT NULL — doit refléter le payload
             'processed_at'  => null,
             'created_at'    => now(),
             'updated_at'    => now(),

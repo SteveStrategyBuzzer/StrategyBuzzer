@@ -7,6 +7,7 @@ use App\Services\QuestionBank\Rotation\DepthNeedMatrix;
 use App\Services\QuestionBank\Rotation\KernelBlueprintFactory;
 use App\Services\QuestionBank\Rotation\KernelPipelineOrchestrator;
 use App\Services\QuestionBank\Rotation\KernelRotationPlanner;
+use App\Services\QuestionBank\Rotation\QuestionIntentEncoder;
 use App\Services\QuestionBank\Rotation\TaxonomyNavigatorInterface;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
@@ -20,16 +21,15 @@ use Tests\TestCase;
  *   - Création du Blueprint (Factory)
  *   - Sélection Depth + Domaine (KRP planV2)
  *   - Boucle EMPTY : applyEmptyTransitionV2 + planV2 + Taxonomy
- *   - TERRITORY_PROVIDED → ROTATION_ASSIGNED
+ *   - TERRITORY_PROVIDED → ROTATION_ASSIGNED + encodage QuestionIntent
+ *     (RACCORDEMENT A — flow canonique 2026-08-11)
  *   - PRODUCTION_ON_HOLD
  *   - Guard : Factory bloque si Blueprint actif existe
  *
- * Hors périmètre (tests futurs séparés) :
- *   - IdeaSlotLoader (dominant_idea absent)
- *   - KLD (KeyLearningDirection)
- *   - KEY_STRUCTURE
- *   - confirmConsumed()
- *   - Phases 1 & 2 / Validations
+ * Hors périmètre (tests séparés) :
+ *   - confirmConsumed() (RACCORDEMENT B → ApplyCurrentKernelReceivedToRotationTest)
+ *   - Phases 1 & 2 / Validations (→ KernelPipelineAdvancerTest)
+ *   - ⛔ KLD / KEY_STRUCTURE / IdeaSlotLoader : SUPERSEDED — retirés du flow
  *
  * DB : SQLite in-memory, tables créées manuellement.
  */
@@ -81,6 +81,27 @@ class KernelPipelineOrchestratorTest extends TestCase
             $table->primary(['depth', 'domain_code']);
         });
 
+        Schema::create('question_intents', function (Blueprint $table) {
+            $table->id();
+            $table->string('intent_key')->unique();
+            $table->string('semantic_key', 255)->nullable();
+            $table->string('language_source', 8)->default('en');
+            $table->string('domain', 64);
+            $table->string('sub_domain', 256);
+            $table->unsignedTinyInteger('difficulty_depth');
+            $table->string('subject', 256)->nullable();
+            $table->string('dominant_idea', 512)->nullable();
+            $table->string('angle_large', 512)->nullable();
+            $table->string('micro_angle', 512)->nullable();
+            $table->text('answer_target')->nullable();
+            $table->string('concept_family', 256)->nullable();
+            $table->string('source', 32)->default('ai_pipeline');
+            $table->string('frame_status', 32)->nullable();
+            $table->char('blueprint_id', 36)->nullable()->unique();
+            $table->unsignedTinyInteger('advance_attempts')->default(0);
+            $table->timestamps();
+        });
+
         // Seed tous les Depths du cycle avec cycle_target > 0
         foreach (DepthNeedMatrix::DEPTH_CYCLE as $depth) {
             DB::table('kernel_depth_matrix')->insert([
@@ -105,6 +126,7 @@ class KernelPipelineOrchestratorTest extends TestCase
 
     protected function tearDown(): void
     {
+        Schema::dropIfExists('question_intents');
         Schema::dropIfExists('kernel_depth_domain_totals');
         Schema::dropIfExists('kernel_depth_matrix');
         Schema::dropIfExists('kernel_rotation_state_v2');
@@ -122,6 +144,7 @@ class KernelPipelineOrchestratorTest extends TestCase
             new KernelBlueprintFactory(),
             new KernelRotationPlanner(),
             $taxonomy,
+            new QuestionIntentEncoder(),
         );
     }
 
@@ -154,8 +177,9 @@ class KernelPipelineOrchestratorTest extends TestCase
     {
         $taxonomy = $this->createMock(TaxonomyNavigatorInterface::class);
         $taxonomy->method('peekNext')->willReturn([
-            'sub_domain' => 'Moyen Âge',
-            'subject'    => 'La Magna Carta',
+            'sub_domain'    => 'Moyen Âge',
+            'subject'       => 'La Magna Carta',
+            'dominant_idea' => 'La Magna Carta limite le pouvoir royal',
         ]);
 
         $result = $this->makeOrchestrator($taxonomy)->run(null);
@@ -173,6 +197,37 @@ class KernelPipelineOrchestratorTest extends TestCase
         $this->assertSame('ENGAGED_IN_PIPELINE', $run->execution_state);
         $this->assertNotNull($run->depth);
         $this->assertNotNull($run->domain_code);
+    }
+
+    /**
+     * RACCORDEMENT A : ROTATION_ASSIGNED ⇒ QuestionIntent encodé dans la MÊME
+     * transaction que l'engagement — jamais de Blueprint engagé sans intent.
+     */
+    public function test_rotation_assigned_encodes_question_intent(): void
+    {
+        $taxonomy = $this->createMock(TaxonomyNavigatorInterface::class);
+        $taxonomy->method('peekNext')->willReturn([
+            'sub_domain'    => 'Moyen Âge',
+            'subject'       => 'La Magna Carta',
+            'dominant_idea' => 'La Magna Carta limite le pouvoir royal',
+        ]);
+
+        $result = $this->makeOrchestrator($taxonomy)->run(null);
+
+        $this->assertSame(KernelPipelineOrchestrator::STATUS_ROTATION_ASSIGNED, $result['status']);
+        $this->assertArrayHasKey('intent_id', $result, 'run() doit retourner intent_id sur ROTATION_ASSIGNED');
+
+        $intent = DB::table('question_intents')
+            ->where('blueprint_id', $result['blueprint']->blueprint_id)
+            ->first();
+
+        $this->assertNotNull($intent, 'Un QuestionIntent doit exister pour le Blueprint engagé — RACCORDEMENT A');
+        $this->assertSame((int) $result['intent_id'], (int) $intent->id);
+        $this->assertSame('Moyen Âge', $intent->sub_domain);
+        $this->assertSame('La Magna Carta', $intent->subject);
+        $this->assertSame('La Magna Carta limite le pouvoir royal', $intent->dominant_idea);
+        $this->assertSame('kernel_rotation', $intent->source);
+        $this->assertNull($intent->frame_status, 'frame_status démarre NULL — Phase 1 pas encore lancée');
     }
 
     /**
@@ -195,8 +250,9 @@ class KernelPipelineOrchestratorTest extends TestCase
                     return null; // EMPTY
                 }
                 return [
-                    'sub_domain' => 'Moyen Âge',
-                    'subject'    => 'La Magna Carta',
+                    'sub_domain'    => 'Moyen Âge',
+                    'subject'       => 'La Magna Carta',
+                    'dominant_idea' => 'La Magna Carta limite le pouvoir royal',
                 ];
             });
 
@@ -223,7 +279,7 @@ class KernelPipelineOrchestratorTest extends TestCase
         $taxonomy->method('peekNext')
             ->willReturnCallback(function () use (&$callCount) {
                 $callCount++;
-                return $callCount === 1 ? null : ['sub_domain' => 'X', 'subject' => 'Y'];
+                return $callCount === 1 ? null : ['sub_domain' => 'X', 'subject' => 'Y', 'dominant_idea' => 'Z'];
             });
 
         $result = $this->makeOrchestrator($taxonomy)->run(null);
@@ -317,7 +373,7 @@ class KernelPipelineOrchestratorTest extends TestCase
                 if ($callCount <= 3) {
                     return null; // EMPTY
                 }
-                return ['sub_domain' => 'X', 'subject' => 'Y'];
+                return ['sub_domain' => 'X', 'subject' => 'Y', 'dominant_idea' => 'Z'];
             });
 
         $this->makeOrchestrator($taxonomy)->run(null);
@@ -344,7 +400,7 @@ class KernelPipelineOrchestratorTest extends TestCase
         $taxonomy->method('peekNext')
             ->willReturnCallback(function () use (&$callCount) {
                 $callCount++;
-                return $callCount <= 3 ? null : ['sub_domain' => 'X', 'subject' => 'Y'];
+                return $callCount <= 3 ? null : ['sub_domain' => 'X', 'subject' => 'Y', 'dominant_idea' => 'Z'];
             });
 
         $result = $this->makeOrchestrator($taxonomy)->run(null);
@@ -376,8 +432,9 @@ class KernelPipelineOrchestratorTest extends TestCase
     {
         $taxonomy = $this->createMock(TaxonomyNavigatorInterface::class);
         $taxonomy->method('peekNext')->willReturn([
-            'sub_domain' => 'Univers',
-            'subject'    => 'Big Bang',
+            'sub_domain'    => 'Univers',
+            'subject'       => 'Big Bang',
+            'dominant_idea' => 'Le Big Bang marque l\'origine de l\'expansion de l\'Univers',
         ]);
 
         $result = $this->makeOrchestrator($taxonomy)->run(null);
@@ -480,8 +537,9 @@ class KernelPipelineOrchestratorTest extends TestCase
     {
         $taxonomy = $this->createMock(TaxonomyNavigatorInterface::class);
         $taxonomy->method('peekNext')->willReturn([
-            'sub_domain' => 'Espace',
-            'subject'    => 'La Lune',
+            'sub_domain'    => 'Espace',
+            'subject'       => 'La Lune',
+            'dominant_idea' => 'La Lune provoque les marées terrestres',
         ]);
 
         $result    = $this->makeOrchestrator($taxonomy)->run(null);

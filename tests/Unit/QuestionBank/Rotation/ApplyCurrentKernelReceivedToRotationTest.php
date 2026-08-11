@@ -6,6 +6,7 @@ use App\Services\QuestionBank\Rotation\DepthNeedMatrix;
 use App\Services\QuestionBank\Rotation\DepthTourState;
 use App\Services\QuestionBank\Rotation\Events\CurrentKernelReceived;
 use App\Services\QuestionBank\Rotation\Listeners\ApplyCurrentKernelReceivedToRotation;
+use App\Services\QuestionBank\Rotation\TaxonomyNavigatorInterface;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -22,6 +23,9 @@ use Tests\TestCase;
 class ApplyCurrentKernelReceivedToRotationTest extends TestCase
 {
     private ApplyCurrentKernelReceivedToRotation $listener;
+
+    /** Spy Taxonomy — enregistre les appels confirmConsumed (RACCORDEMENT B). */
+    private object $taxonomySpy;
 
     protected function setUp(): void
     {
@@ -78,7 +82,22 @@ class ApplyCurrentKernelReceivedToRotationTest extends TestCase
         $this->seedDepthMatrix();
         $this->seedStateV2();
 
-        $this->listener = new ApplyCurrentKernelReceivedToRotation();
+        $this->taxonomySpy = new class implements TaxonomyNavigatorInterface {
+            /** @var array<int, array{depth: int, domain: string}> */
+            public array $confirmed = [];
+
+            public function peekNext(int $depth, string $domainCode): ?array
+            {
+                return null;
+            }
+
+            public function confirmConsumed(int $depth, string $domainCode): void
+            {
+                $this->confirmed[] = ['depth' => $depth, 'domain' => $domainCode];
+            }
+        };
+
+        $this->listener = new ApplyCurrentKernelReceivedToRotation($this->taxonomySpy);
     }
 
     protected function tearDown(): void
@@ -203,6 +222,37 @@ class ApplyCurrentKernelReceivedToRotationTest extends TestCase
 
         $state = DB::table('kernel_rotation_state_v2')->first();
         $this->assertSame('bp-004', $state->last_counted_blueprint_identity);
+    }
+
+    // =========================================================================
+    // RACCORDEMENT B — confirmConsumed gated par le reçu
+    // =========================================================================
+
+    public function test_handle_confirms_taxonomy_consumption_once(): void
+    {
+        $event = $this->makeEvent('bp-005', 2, 'geographie');
+
+        $this->listener->handle($event);
+
+        $this->assertSame(
+            [['depth' => 2, 'domain' => 'geographie']],
+            $this->taxonomySpy->confirmed,
+            'confirmConsumed doit être appelé exactement une fois, avec depth + domain de l\'événement'
+        );
+    }
+
+    public function test_duplicate_handle_confirms_consumption_only_once(): void
+    {
+        $event = $this->makeEvent('bp-006', 4, 'histoire');
+
+        $this->listener->handle($event);
+        $this->listener->handle($event); // doublon — le reçu existe déjà
+
+        $this->assertCount(
+            1,
+            $this->taxonomySpy->confirmed,
+            'Le reçu gate confirmConsumed : double réception = UN SEUL avancement du curseur Taxonomy'
+        );
     }
 
     // =========================================================================

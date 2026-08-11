@@ -7,6 +7,7 @@ namespace App\Console\Commands;
 use App\Services\QuestionBank\Rotation\KernelBlueprintFactory;
 use App\Services\QuestionBank\Rotation\KernelPipelineOrchestrator;
 use App\Services\QuestionBank\Rotation\KernelRotationPlanner;
+use App\Services\QuestionBank\Rotation\QuestionIntentEncoder;
 use App\Services\QuestionBank\Taxonomy\TaxonomyBankRepository;
 use App\Services\QuestionBank\Taxonomy\TaxonomyGeminiClient;
 use App\Services\QuestionBank\Taxonomy\TaxonomyOrchestrator;
@@ -69,7 +70,7 @@ class QuestionsKernelRotateCommand extends Command
             return self::SUCCESS;
         }
 
-        $orchestrator = new KernelPipelineOrchestrator($factory, $planner, $taxonomy);
+        $orchestrator = new KernelPipelineOrchestrator($factory, $planner, $taxonomy, new QuestionIntentEncoder());
 
         try {
             $result = $orchestrator->run($previousDomain);
@@ -89,6 +90,11 @@ class QuestionsKernelRotateCommand extends Command
             $this->line("  domain       : {$blueprint->domain}");
             $this->line("  subdomain    : " . ($blueprint->subdomain_active ?? '<fg=yellow>non rempli</>'));
             $this->line("  subject      : " . ($blueprint->subject_active ?? '<fg=yellow>non rempli</>'));
+            $this->line("  idée dom.    : " . ($blueprint->dominant_idea_active ?? '<fg=yellow>non rempli</>'));
+
+            if (isset($result['intent_id'])) {
+                $this->line("  intent       : #{$result['intent_id']} (RACCORDEMENT A — QuestionIntent encodé)");
+            }
             $this->line('');
             $this->info('✅  Blueprint ENGAGED_IN_PIPELINE — pipeline Kernel peut continuer.');
         } elseif ($status === 'PRODUCTION_ON_HOLD') {

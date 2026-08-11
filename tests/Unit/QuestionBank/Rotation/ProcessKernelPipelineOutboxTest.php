@@ -2,11 +2,8 @@
 
 namespace Tests\Unit\QuestionBank\Rotation;
 
-use App\Services\QuestionBank\Rotation\Contracts\KernelKldCheckInterface;
-use App\Services\QuestionBank\Rotation\Contracts\KeyStructurePipelineGateInterface;
 use App\Services\QuestionBank\Rotation\DepthNeedMatrix;
 use App\Services\QuestionBank\Rotation\DepthTourState;
-use App\Services\QuestionBank\Rotation\DTO\LearningDirectionResult;
 use App\Services\QuestionBank\Rotation\Events\CurrentKernelReceived;
 use App\Services\QuestionBank\Rotation\KernelBlueprintFactory;
 use App\Services\QuestionBank\Rotation\KernelPipelineOrchestrator;
@@ -14,6 +11,7 @@ use App\Services\QuestionBank\Rotation\KernelPipelineOutboxRepository;
 use App\Services\QuestionBank\Rotation\KernelRotationPlanner;
 use App\Services\QuestionBank\Rotation\Listeners\ApplyCurrentKernelReceivedToRotation;
 use App\Services\QuestionBank\Rotation\ProcessKernelPipelineOutbox;
+use App\Services\QuestionBank\Rotation\QuestionIntentEncoder;
 use App\Services\QuestionBank\Rotation\TaxonomyNavigatorInterface;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
@@ -47,6 +45,7 @@ class ProcessKernelPipelineOutboxTest extends TestCase
 
     protected function tearDown(): void
     {
+        Schema::dropIfExists('question_intents');
         Schema::dropIfExists('kernel_pipeline_outbox');
         Schema::dropIfExists('kernel_current_kernel_receipts');
         Schema::dropIfExists('kernel_rotation_state_v2');
@@ -224,15 +223,8 @@ class ProcessKernelPipelineOutboxTest extends TestCase
 
     private function makeProcessor(): ProcessKernelPipelineOutbox
     {
-        // Stub KLD : toujours PASS
-        $kldGate = $this->createMock(KernelKldCheckInterface::class);
-        $kldGate->method('check')->willReturn(LearningDirectionResult::pass('s', 'i'));
-
-        // Stub KS : toujours PASS (pour tester le pipeline complet)
-        $ksGate = $this->createMock(KeyStructurePipelineGateInterface::class);
-        $ksGate->method('check')->willReturn(KeyStructurePipelineGateInterface::STATUS_PASS);
-
-        // Stub Taxonomy : fournit un territoire avec dominant_idea
+        // Stub Taxonomy : fournit un territoire avec dominant_idea.
+        // ⛔ KLD / KEY_STRUCTURE : SUPERSEDED — plus aucun gate dans le flow.
         $taxonomy = $this->createMock(TaxonomyNavigatorInterface::class);
         $taxonomy->method('peekNext')->willReturn([
             'sub_domain'    => 'Époque contemporaine',
@@ -245,12 +237,11 @@ class ProcessKernelPipelineOutboxTest extends TestCase
             new KernelBlueprintFactory(),
             new KernelRotationPlanner(),
             $taxonomy,
-            $kldGate,
-            $ksGate,
+            new QuestionIntentEncoder(),
         );
 
         return new ProcessKernelPipelineOutbox(
-            new ApplyCurrentKernelReceivedToRotation(),
+            new ApplyCurrentKernelReceivedToRotation($taxonomy),
             $orchestrator,
             new KernelPipelineOutboxRepository(),
         );
@@ -318,6 +309,27 @@ class ProcessKernelPipelineOutboxTest extends TestCase
             $table->string('active_blueprint_identity', 36)->nullable();
             $table->string('last_counted_blueprint_identity', 36)->nullable();
             $table->unsignedBigInteger('lock_version')->default(1);
+            $table->timestamps();
+        });
+
+        Schema::create('question_intents', function (Blueprint $table) {
+            $table->id();
+            $table->string('intent_key')->unique();
+            $table->string('semantic_key', 255)->nullable();
+            $table->string('language_source', 8)->default('en');
+            $table->string('domain', 64);
+            $table->string('sub_domain', 256);
+            $table->unsignedTinyInteger('difficulty_depth');
+            $table->string('subject', 256)->nullable();
+            $table->string('dominant_idea', 512)->nullable();
+            $table->string('angle_large', 512)->nullable();
+            $table->string('micro_angle', 512)->nullable();
+            $table->text('answer_target')->nullable();
+            $table->string('concept_family', 256)->nullable();
+            $table->string('source', 32)->default('ai_pipeline');
+            $table->string('frame_status', 32)->nullable();
+            $table->char('blueprint_id', 36)->nullable()->unique();
+            $table->unsignedTinyInteger('advance_attempts')->default(0);
             $table->timestamps();
         });
     }
