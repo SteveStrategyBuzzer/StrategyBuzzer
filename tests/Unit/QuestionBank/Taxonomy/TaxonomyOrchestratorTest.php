@@ -713,6 +713,198 @@ class TaxonomyOrchestratorTest extends TestCase
     }
 
     // =========================================================================
+    // §53 — Deux consommateurs concurrents sur le même (depth, domain)
+    //
+    // Simule Duo/Ligue : deux processus appellent peekNext() AVANT que l'un
+    // d'eux appelle confirmConsumed(). Le test est séquentiel (SQLite ne
+    // supporte pas les verrous ligne), mais il modélise fidèlement le
+    // comportement sous PostgreSQL grâce au SELECT … FOR UPDATE dans
+    // claimFirstAvailableIdea() : la seconde transaction attend le COMMIT de
+    // la première, puis re-lit et tombe sur l'idée suivante.
+    //
+    // Vérifie que :
+    //   a) Les deux peeks voient le même triplet (idempotence de l'ordre stable)
+    //   b) Le premier confirmConsumed() marque l'idée A comme CONSUMED
+    //   c) Le second confirmConsumed() ré-évalue claimFirstAvailableIdea()
+    //      DANS sa transaction et tombe sur l'idée B (pas sur A déjà CONSUMED)
+    //   d) Au final : 0 idée AVAILABLE, 2 idées CONSUMED, aucun doublon
+    // =========================================================================
+
+    public function test_concurrent_consumers_each_consume_distinct_idea(): void
+    {
+        // Pré-peupler DEUX idées dans le même bucket (depth=2, domain=histoire)
+        $sd = $this->repo->findOrCreateSubdomain(2, 'histoire', 'Moyen Âge');
+        $s  = $this->repo->findOrCreateSubject($sd->id, 'Chevaliers');
+        $ideaRowA = $this->repo->persistPassIdea($s->id, 'Lancelot du Lac');
+        $ideaRowB = $this->repo->persistPassIdea($s->id, 'Godefroy de Bouillon');
+
+        // ── Consommateur A : peekNext() ──────────────────────────────────────
+        $geminiA = $this->createMock(TaxonomyGeminiClient::class);
+        $geminiA->expects($this->never())->method('generateSubdomains');
+        $geminiA->expects($this->never())->method('generateIdeas');
+
+        $orchestratorA = new TaxonomyOrchestrator(
+            new TaxonomyBankRepository(),
+            $geminiA,
+            new ValidationDominantIdeas(),
+        );
+
+        $peekA = $orchestratorA->peekNext(2, 'histoire');
+        $this->assertNotNull($peekA, 'Consumer A doit trouver une idée disponible.');
+
+        // ── Consommateur B : peekNext() AVANT que A consomme ─────────────────
+        $geminiB = $this->createMock(TaxonomyGeminiClient::class);
+        $geminiB->expects($this->never())->method('generateSubdomains');
+        $geminiB->expects($this->never())->method('generateIdeas');
+
+        $orchestratorB = new TaxonomyOrchestrator(
+            new TaxonomyBankRepository(),
+            $geminiB,
+            new ValidationDominantIdeas(),
+        );
+
+        $peekB = $orchestratorB->peekNext(2, 'histoire');
+        $this->assertNotNull($peekB, 'Consumer B doit aussi trouver une idée disponible.');
+
+        // Les deux peeks doivent retourner le MÊME triplet (ordre stable, idempotent)
+        $this->assertSame(
+            $peekA['dominant_idea_active'],
+            $peekB['dominant_idea_active'],
+            'Les deux peeks avant consommation doivent retourner la même idée '
+            . '(garantie d\'idempotence sur l\'ordre stable).'
+        );
+        $this->assertSame('Lancelot du Lac', $peekA['dominant_idea_active'],
+            'La première idée (ID le plus bas) doit être retournée en premier.'
+        );
+
+        // ── Consumer A consomme en premier ───────────────────────────────────
+        $orchestratorA->confirmConsumed(2, 'histoire');
+
+        // L'idée A doit maintenant être CONSUMED en DB
+        $ideaAStatus = DB::table('taxonomy_dominant_idea_bank')
+            ->where('id', $ideaRowA->id)
+            ->value('status');
+        $this->assertSame('CONSUMED', $ideaAStatus,
+            'Après confirmConsumed() par A, l\'idée A doit être CONSUMED.'
+        );
+
+        // ── Consumer B consomme à son tour ───────────────────────────────────
+        // La transaction ré-évalue findFirstAvailableIdea → tombe sur l'idée B
+        $orchestratorB->confirmConsumed(2, 'histoire');
+
+        // ── Assertions finales ───────────────────────────────────────────────
+
+        // Plus aucune idée AVAILABLE
+        $availableCount = DB::table('taxonomy_dominant_idea_bank')
+            ->join('taxonomy_subject_bank as s', 's.id', '=', 'taxonomy_dominant_idea_bank.subject_id')
+            ->join('taxonomy_subdomain_bank as sd', 'sd.id', '=', 's.subdomain_id')
+            ->where('sd.depth', 2)
+            ->where('sd.domain_code', 'histoire')
+            ->where('taxonomy_dominant_idea_bank.validation_status', 'PASS')
+            ->where('taxonomy_dominant_idea_bank.status', 'AVAILABLE')
+            ->count();
+
+        $this->assertSame(0, $availableCount,
+            'Aucune idée ne doit rester AVAILABLE après que les deux consommateurs ont confirmé.'
+        );
+
+        // Exactement 2 idées CONSUMED
+        $consumedCount = DB::table('taxonomy_dominant_idea_bank')
+            ->join('taxonomy_subject_bank as s', 's.id', '=', 'taxonomy_dominant_idea_bank.subject_id')
+            ->join('taxonomy_subdomain_bank as sd', 'sd.id', '=', 's.subdomain_id')
+            ->where('sd.depth', 2)
+            ->where('sd.domain_code', 'histoire')
+            ->where('taxonomy_dominant_idea_bank.validation_status', 'PASS')
+            ->where('taxonomy_dominant_idea_bank.status', 'CONSUMED')
+            ->count();
+
+        $this->assertSame(2, $consumedCount,
+            'Les deux idées distinctes doivent être CONSUMED : chaque confirmConsumed() '
+            . 'doit avoir touché une idée différente.'
+        );
+
+        // Idée B (Godefroy) est aussi CONSUMED (consommée par B)
+        $ideaBStatus = DB::table('taxonomy_dominant_idea_bank')
+            ->where('id', $ideaRowB->id)
+            ->value('status');
+        $this->assertSame('CONSUMED', $ideaBStatus,
+            'L\'idée B doit être CONSUMED : le second confirmConsumed() doit avoir '
+            . 'ré-évalué findFirstAvailableIdea et touché l\'idée suivante.'
+        );
+    }
+
+    // =========================================================================
+    // §51 — Deux consommateurs, une seule idée disponible
+    //
+    // Cas extrême : une seule idée dans la banque. Les deux peeks retournent
+    // la même idée. Le premier confirmConsumed() la marque CONSUMED. Le second
+    // confirmConsumed() est un no-op (findFirstAvailableIdea retourne null
+    // dans la transaction car l'idée est déjà CONSUMED).
+    // Garantit : exactement 1 idée CONSUMED, pas de doublon.
+    // =========================================================================
+
+    public function test_concurrent_consumers_single_idea_second_confirm_is_noop(): void
+    {
+        // Pré-peupler UNE SEULE idée
+        $sd = $this->repo->findOrCreateSubdomain(2, 'science', 'Physique');
+        $s  = $this->repo->findOrCreateSubject($sd->id, 'Lois fondamentales');
+        $ideaRow = $this->repo->persistPassIdea($s->id, 'Loi de la gravitation universelle');
+
+        // Consumer A peeks
+        $orchestratorA = new TaxonomyOrchestrator(
+            new TaxonomyBankRepository(),
+            $this->createMock(TaxonomyGeminiClient::class),
+            new ValidationDominantIdeas(),
+        );
+        $peekA = $orchestratorA->peekNext(2, 'science');
+        $this->assertNotNull($peekA);
+        $this->assertSame('Loi de la gravitation universelle', $peekA['dominant_idea_active']);
+
+        // Consumer B peeks (même idée, idempotent)
+        $orchestratorB = new TaxonomyOrchestrator(
+            new TaxonomyBankRepository(),
+            $this->createMock(TaxonomyGeminiClient::class),
+            new ValidationDominantIdeas(),
+        );
+        $peekB = $orchestratorB->peekNext(2, 'science');
+        $this->assertNotNull($peekB);
+        $this->assertSame($peekA['dominant_idea_active'], $peekB['dominant_idea_active'],
+            'Avec une seule idée, les deux peeks doivent retourner la même valeur.'
+        );
+
+        // Consumer A consomme
+        $orchestratorA->confirmConsumed(2, 'science');
+
+        $this->assertSame('CONSUMED',
+            DB::table('taxonomy_dominant_idea_bank')->where('id', $ideaRow->id)->value('status'),
+            'Après confirmConsumed() par A, l\'idée unique doit être CONSUMED.'
+        );
+
+        // Consumer B tente de consommer → no-op (plus rien d'AVAILABLE)
+        $orchestratorB->confirmConsumed(2, 'science'); // ne doit pas lancer d'exception
+
+        // Vérification : toujours 1 seul CONSUMED, pas de doublon
+        $consumedCount = DB::table('taxonomy_dominant_idea_bank')
+            ->where('subject_id', $s->id)
+            ->where('status', 'CONSUMED')
+            ->count();
+
+        $this->assertSame(1, $consumedCount,
+            'Avec une seule idée, le second confirmConsumed() doit être un no-op : '
+            . 'exactement 1 idée CONSUMED, pas 2.'
+        );
+
+        // markIdeaConsumed est idempotent grâce à ->where(status, AVAILABLE)
+        // L'idée ne doit pas avoir été dupliquée ou corrompue
+        $totalRows = DB::table('taxonomy_dominant_idea_bank')
+            ->where('subject_id', $s->id)
+            ->count();
+        $this->assertSame(1, $totalRows,
+            'Aucune ligne supplémentaire ne doit avoir été créée par le second confirmConsumed().'
+        );
+    }
+
+    // =========================================================================
     // Helpers
     // =========================================================================
 

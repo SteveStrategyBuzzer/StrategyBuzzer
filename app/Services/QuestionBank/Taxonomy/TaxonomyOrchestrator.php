@@ -105,7 +105,11 @@ final class TaxonomyOrchestrator implements DomainExhaustionChecker, TaxonomyNav
     public function confirmConsumed(int $depth, string $domainCode): void
     {
         DB::transaction(function () use ($depth, $domainCode) {
-            $idea = $this->repo->findFirstAvailableIdea($depth, $domainCode);
+            // claimFirstAvailableIdea() pose un SELECT … FOR UPDATE sur la ligne
+            // choisie. Deux transactions concurrentes ne peuvent pas sélectionner
+            // la même idée : la seconde attend le COMMIT de la première, puis
+            // re-lit et tombe sur l'idée suivante (ou null si épuisé).
+            $idea = $this->repo->claimFirstAvailableIdea($depth, $domainCode);
 
             if ($idea === null) {
                 return; // No-op : bassin épuisé ou non initialisé

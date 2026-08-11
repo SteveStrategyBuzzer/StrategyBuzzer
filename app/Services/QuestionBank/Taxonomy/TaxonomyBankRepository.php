@@ -356,6 +356,42 @@ final class TaxonomyBankRepository
     }
 
     /**
+     * Trouve la première idée PASS + AVAILABLE pour (depth, domain) en posant
+     * un verrou pessimiste (SELECT … FOR UPDATE) sur la ligne sélectionnée.
+     *
+     * À appeler UNIQUEMENT à l'intérieur d'une DB::transaction() — le verrou
+     * est libéré au COMMIT / ROLLBACK. Garantit que deux transactions
+     * concurrentes ne sélectionnent pas la même idée : la seconde attend que
+     * la première commite, puis re-lit et tombe sur l'idée suivante.
+     *
+     * Sur SQLite (tests) lockForUpdate() est un no-op (pas de verrous ligne) ;
+     * la sérialisation s'effectue via le verrou de base de données SQLite.
+     */
+    public function claimFirstAvailableIdea(int $depth, string $domainCode): ?object
+    {
+        return DB::table(self::TABLE_IDEAS . ' as di')
+            ->join(self::TABLE_SUBJECTS . ' as s', 's.id', '=', 'di.subject_id')
+            ->join(self::TABLE_SUBDOMAINS . ' as sd', 'sd.id', '=', 's.subdomain_id')
+            ->where('sd.depth', $depth)
+            ->where('sd.domain_code', $domainCode)
+            ->where('di.validation_status', 'PASS')
+            ->where('di.status', 'AVAILABLE')
+            ->orderBy('sd.id')
+            ->orderBy('s.id')
+            ->orderBy('di.id')
+            ->select([
+                'di.id as idea_id',
+                'di.idea_value',
+                'di.subject_id',
+                's.subject_name',
+                's.subdomain_id',
+                'sd.subdomain_name',
+            ])
+            ->lockForUpdate()
+            ->first();
+    }
+
+    /**
      * Marque la première idée AVAILABLE comme CONSUMED (idempotent).
      */
     public function markIdeaConsumed(int $ideaId): void
