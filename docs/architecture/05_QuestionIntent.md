@@ -1,8 +1,8 @@
 # STRATEGYBUZZER — 05_QUESTIONINTENT (CONTRAT EN CONSTRUCTION)
 
-**Version :** 0.2 — SOCLE RECONSTRUIT (reconstruction officielle intégrée)
+**Version :** 0.3 — MISSION VERROUILLÉE
 **Date :** 11 août 2026
-**Spécification écrite :** NON — ce document fixe le socle hérité, les frontières et les interdictions ; aucune décision métier nouvelle n'est prise ici
+**Spécification écrite :** EN COURS — Mission verrouillée ; identité du noyau en cours de définition
 **Statut :** UNSPECIFIED / UNDER_CONSTRUCTION
 **Implantation :** INTERDITE tant que ce contrat n'est pas verrouillé (RÈGLE DU VIDE)
 **Gel :** `BLOCKED_AT_QUESTION_INTENT_CONTRACT` — aucun rotate réel, aucun encodage, aucune création Gemini à cette frontière
@@ -57,22 +57,30 @@ dans l'ancien code ne lui confère AUCUNE autorité métier.
 ```text
 CRÉATION DU KERNELBLUEPRINT (avant KRP — CORRECTION SUPERSEDED actuelle)
 ↓
-KernelRotationPlanner (depth + domain)
+KernelRotationPlanner
+  → CHOISIT Depth + Domaine
 ↓
 Taxonomy ↕ ValidationDominantIdeas
-  (subdomain_active + subject_active + dominant_idea_active)
+  → DÉTERMINE le territoire précis : Sous-domaine + Sujet + Idée Dominante
+  → VALIDE l'Idée Dominante
 ↓
-════════════════════════════════════════════
+════════════════════════════════════════════════════
 FRONTIÈRE ENTRANTE QUESTIONINTENT — CONNUE
-════════════════════════════════════════════
+════════════════════════════════════════════════════
 ↓
-[ 05_QUESTIONINTENT — MISSION ET CONTRAT À CONSTRUIRE ]
+QUESTIONINTENT
+  → CODE / VERROUILLE l'identité unique et persistante du noyau complet
+  → ne modifie aucune composante intellectuelle
+  → ne détermine aucun traitement cognitif de Phase 1
 ↓
-════════════════════════════════════════════
-FRONTIÈRE SORTANTE VERS PHASE 1 — À DÉFINIR
-════════════════════════════════════════════
+════════════════════════════════════════════════════
+FRONTIÈRE SORTANTE VERS PHASE 1 — IDENTITÉ À DÉFINIR
+════════════════════════════════════════════════════
 ↓
-Phase 1 — NON TRAITÉE MAINTENANT
+Phase 1
+  → EXPLOITE ce noyau à travers les 7 cognitifs
+    (recognition / reasoning / trap / true / false…)
+  — NON TRAITÉE MAINTENANT
 ```
 
 **Correction documentaire obligatoire :** des documents antérieurs indiquent
@@ -401,20 +409,62 @@ Chaque rubrique reste **OPEN** tant qu'elle n'est pas verrouillée par
 l'utilisateur. Les 14 points de décision A-N (reconstruction officielle)
 sont alignés sur les rubriques correspondantes.
 
-## 9.1 Mission — OPEN [→ Point A]
-**Point A :** Que signifie exactement QuestionIntent dans StrategyBuzzer ?
-Pas techniquement — métier. (Débloque 9.3, 9.4, 9.6 — question directrice §0)
+## 9.1 Mission — VERROUILLÉE (utilisateur — 11 août 2026)
+
+QuestionIntent reçoit le KernelBlueprint dont le territoire intellectuel a été
+entièrement déterminé et validé par les moteurs précédents, puis construit et
+verrouille l'identité unique et persistante du noyau courant afin de permettre
+son identification et sa traçabilité pendant tout son cycle de production, de
+correction et de stockage, ainsi que son identification efficace lors de sa
+consommation ultérieure par le gameplay. QuestionIntent ne modifie aucune
+composante intellectuelle du noyau et ne détermine aucun traitement cognitif
+de Phase 1.
 
 ## 9.2 Position — VERROUILLÉE
 Voir §1. Entre Taxonomy↕ValidationDominantIdeas et Phase 1.
 
-## 9.3 Responsabilités — OPEN [→ Point A/C]
-Le périmètre « pur encodeur » historique est-il reconduit tel quel ?
-Liste exhaustive des verbes autorisés ?
+## 9.3 Responsabilités — PARTIELLEMENT VERROUILLÉE [→ Point A/C]
 
-## 9.4 Interdictions — PARTIELLEMENT CONNUES [→ §2.2]
-Les interdictions héritées des modules amont sont documentées au §2.2.
-Les interdictions propres à QuestionIntent lui-même : OPEN.
+Acquis de la Mission (§9.1) :
+
+```text
+✓ construit l'identité unique et persistante du noyau
+✓ verrouille cette identité (immuable après création — conditions à définir)
+✓ permet l'identification du noyau pendant tout son cycle
+✓ permet la traçabilité (production, correction, stockage)
+✓ permet l'identification en gameplay (consommation)
+✗ ne modifie aucune composante intellectuelle du noyau
+✗ ne détermine aucun traitement cognitif de Phase 1
+```
+
+Le périmètre « pur encodeur / facilitateur passif » historique est compatible
+avec cette Mission — à re-ratifier formellement (§8).
+
+Restant OPEN : liste exhaustive des verbes autorisés au-delà de
+« construire » et « verrouiller ».
+
+## 9.4 Interdictions — PARTIELLEMENT VERROUILLÉE [→ §2.2]
+
+Héritées des modules amont (§2.2) + acquis de la Mission (§9.1) :
+
+```text
+✗ ne choisit pas le traitement cognitif de Phase 1 :
+    ni recognition
+    ni reasoning
+    ni trap
+    ni true / false
+    → c'est exclusivement Phase 1 qui exploite les 7 cognitifs
+
+✗ ne modifie pas depth, domain, subdomain_active, subject_active,
+    dominant_idea_active  (hérité §2.2 — KRP + Taxonomy)
+
+✗ ne refait pas la validation de l'Idée Dominante
+    (doublon / synonyme / collision)  (hérité §2.2 — VDI)
+```
+
+Restant OPEN : interdictions supplémentaires propres au mécanisme
+d'identité (qui peut modifier/invalider un code une fois verrouillé ?
+conditions d'erreur acceptées, rejet, etc.).
 
 ## 9.5 Entrées — PARTIELLEMENT CERTAINES [→ Point C]
 Les 5 données du §2.1 sont acquises. QuestionIntent reçoit-il autre chose
@@ -541,7 +591,52 @@ J (collision/unicité), K (états), L (erreur), M (frontière Phase 1).
 
 ---
 
-# 11. Relevé FACTUEL de `question_intents` (Neon, 11 août 2026)
+# 11. Agenda de la spécification — questions de travail issues de la Mission
+
+La Mission étant verrouillée (§9.1), le vrai travail de spécification est :
+
+```text
+1. Quelle information compose cette identité ?
+   → Qu'est-ce qu'un noyau, exprimé comme identité ? Quels éléments le
+     distinguent irréductiblement d'un autre noyau ?
+
+2. Comment kernel_code la représente-t-il ?
+   → kernel_code est-il l'identité elle-même ou son encodage ? Format ?
+     Construction ? Stabilité dans le temps ?
+
+3. Qu'est-ce qui rend deux noyaux différents ?
+   → Grain de l'unicité : Depth seul ? Depth+Domaine+Sous-domaine+Sujet ?
+     +Idée Dominante ? Jusqu'où ?
+
+4. Quand le code devient-il immuable ?
+   → Dès sa construction par QuestionIntent ? Après une validation aval ?
+     Quelles conditions peuvent l'invalider (si elles existent) ?
+
+5. Qui peut le lire ?
+   → Orchestrateur, Phase 1, Quarantine, ReadyBank, gameplay, analytique ?
+     Qui peut l'utiliser et pour quel usage précis ?
+
+6. Quarantine l'utilise comment ?
+   → Le print de travail conserve quelle référence à l'identité canonique ?
+     Sous quelle forme ? Comment la réintégration retrouve le bon noyau ?
+
+7. ReadyBank l'utilise comment ?
+   → Pour référencer ? Pour retrouver ? Pour éviter les doublons de stockage ?
+     Pour la mise à jour d'un noyau existant sans le recréer ?
+
+8. Gameplay peut rechercher quoi grâce à lui ?
+   → Anti-répétition par (joueur × noyau) ? Par (joueur × noyau × cognitif) ?
+     Quelle granularité d'identification est nécessaire et suffisante ?
+```
+
+Ces questions suivent l'ordre logique : 1→2→3 définissent l'identité
+(débloquent 9.19) ; 4 définit l'immuabilité (débloque 9.10) ; 5 définit les
+consommateurs (débloque 9.11, 9.12) ; 6-7-8 définissent les usages aval
+(débloquent 9.20 et partiellement 9.21).
+
+---
+
+# 12. Relevé FACTUEL de `question_intents` (Neon, 11 août 2026)
 
 ⚠️ Ce relevé est de l'INFORMATION D'INVENTAIRE pour la rubrique 9.21.
 Il ne porte AUCUNE autorité métier (§0, §5). Table VIDE : 0 ligne.

@@ -5,6 +5,28 @@ description: Contrat verrouillé de QUESTIONINTENT — PUR ENCODEUR (zéro contr
 
 > ⚠️ **Partiellement SUPERSEDED 2026-08-11** — toute mention de KLD/KEY_STRUCTURE dans ce fichier est obsolète (absorbés par ValidationDominantIdeas). Voir [canonical-kernel-flow.md](canonical-kernel-flow.md).
 
+## MISSION — VERROUILLÉE (utilisateur, 11 août 2026)
+
+QuestionIntent reçoit le KernelBlueprint dont le territoire intellectuel a été entièrement déterminé et validé par les moteurs précédents, puis construit et verrouille l'identité unique et persistante du noyau courant afin de permettre son identification et sa traçabilité pendant tout son cycle de production, de correction et de stockage, ainsi que son identification efficace lors de sa consommation ultérieure par le gameplay. QuestionIntent ne modifie aucune composante intellectuelle du noyau et ne détermine aucun traitement cognitif de Phase 1.
+
+**Séparation des rôles verrouillée :**
+- KRP → CHOISIT Depth + Domaine
+- Taxonomy ↕ VDI → DÉTERMINE + VALIDE Sous-domaine / Sujet / Idée Dominante
+- QuestionIntent → CODE / VERROUILLE l'identité unique et persistante du noyau
+- Phase 1 → EXPLOITE le noyau à travers les 7 cognitifs (recognition/reasoning/trap/true/false)
+
+**QuestionIntent ne choisit donc PAS :** recognition, reasoning, trap, true, false — c'est exclusivement Phase 1.
+
+**8 questions de travail issues de la Mission (agenda) :**
+1. Quelle information compose cette identité ?
+2. Comment kernel_code la représente-t-il ?
+3. Qu'est-ce qui rend deux noyaux différents ?
+4. Quand le code devient-il immuable ?
+5. Qui peut le lire ?
+6. Quarantine l'utilise comment ?
+7. ReadyBank l'utilise comment ?
+8. Gameplay peut rechercher quoi grâce à lui ?
+
 ## Encodage réel — mapping legacy RETIRÉ puis verrouillé UNSPECIFIED (2026-08-11)
 
 Un mapping d'encodage avait été implémenté par déduction du legacy (idée dominante répétée dans angle_large/micro_angle/answer_target, concept_family=sous-domaine, intent_key/semantic_key='BP:'+blueprint_id, language_source='en'). L'audit RÈGLE DU VIDE l'a fait **RETIRER intégralement** — encodeur supprimé, zéro ligne jamais écrite. Le user a ensuite verrouillé PAR ÉCRIT : ces 7 mappings sont **UNSPECIFIED et NON AUTORISÉS** ; NOT NULL/validator/ancien code = zéro autorité métier ; interdit de chercher d'autres valeurs, de modifier QuestionIntent pour rendre le pipeline exécutable, de lancer le premier noyau réel, tout contournement, toute équivalence métier déduite du schéma DB. Gel : `BLOCKED_AT_QUESTION_INTENT_CONTRACT`.
