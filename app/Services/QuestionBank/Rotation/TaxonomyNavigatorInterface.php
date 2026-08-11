@@ -11,7 +11,7 @@ namespace App\Services\QuestionBank\Rotation;
  *   - peekNext()       : observe le prochain sujet sans avancer le curseur.
  *   - confirmConsumed(): avance le curseur d'un sujet.
  *
- * TaxonomyProgressManager (final) l'implémente en production.
+ * TaxonomyOrchestrator l'implémente en production (TaxonomyProgressManager supprimé).
  * Des stubs peuvent l'implémenter librement en test.
  */
 interface TaxonomyNavigatorInterface
