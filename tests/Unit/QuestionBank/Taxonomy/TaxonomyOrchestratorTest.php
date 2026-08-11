@@ -905,6 +905,105 @@ class TaxonomyOrchestratorTest extends TestCase
     }
 
     // =========================================================================
+    // §54 — Idempotence inter-tentatives : Gemini renvoie la même idée sur deux
+    //        appels generateIdeas consécutifs → exactement UNE ligne PASS en DB,
+    //        et peekNext() ne sert l'idée qu'une seule fois.
+    //
+    // Scénario :
+    //   Tentative 1 (premier peekNext) : Gemini → "Paris" → PASS+AVAILABLE stockée.
+    //   confirmConsumed()              : "Paris" → CONSUMED.
+    //   Tentative 2 (second peekNext)  : Gemini → "Paris" à nouveau.
+    //     → le validateur détecte DUPLICATE (R06) OU le garde persistPassIdea
+    //       intercepte avant insertion → aucune seconde ligne PASS en DB.
+    //   Résultat attendu : exactement 1 ligne PASS pour "Paris", peekNext() = null.
+    // =========================================================================
+
+    public function test_duplicate_idea_from_gemini_across_two_attempts_yields_single_pass_row(): void
+    {
+        // ── Pré-peupler sous-domaine + sujet pour éviter les appels generateSubdomains/generateSubjects ──
+        $sd = $this->repo->findOrCreateSubdomain(2, 'histoire', 'Europe médiévale');
+        $s  = $this->repo->findOrCreateSubject($sd->id, 'Capitales');
+
+        // Une fois le sujet épuisé, l'orchestrateur tente de générer de nouveaux sujets,
+        // puis de nouveaux sous-domaines. On bloque les deux pour forcer l'épuisement complet.
+        $this->gemini->method('generateSubjects')->willReturn([
+            'status'     => 'NO_MORE_SUBJECTS',
+            'candidates' => [],
+        ]);
+        $this->gemini->method('generateSubdomains')->willReturn([
+            'status'     => 'NO_MORE_SUBDOMAINS',
+            'candidates' => [],
+        ]);
+
+        // generateIdeas : les deux premières tentatives retournent "Paris"
+        // La troisième (et dernière) tentative signale NO_MORE_IDEAS → épuisement
+        $this->gemini->expects($this->exactly(3))
+            ->method('generateIdeas')
+            ->willReturnOnConsecutiveCalls(
+                // Tentative 1 : "Paris" → sera stockée PASS+AVAILABLE
+                [
+                    'status'     => 'CANDIDATES',
+                    'candidates' => [['value' => 'Paris']],
+                ],
+                // Tentative 2 : même valeur → doublon détecté, aucune nouvelle ligne PASS
+                [
+                    'status'     => 'CANDIDATES',
+                    'candidates' => [['value' => 'Paris']],
+                ],
+                // Tentative 3 : rien de nouveau → sujet marqué idea_generation_exhausted
+                [
+                    'status'     => 'NO_MORE_IDEAS',
+                    'candidates' => [],
+                ],
+            );
+
+        // ── Tentative 1 : premier peekNext ──────────────────────────────────
+        $result1 = $this->orchestrator->peekNext(2, 'histoire');
+
+        $this->assertNotNull($result1, 'Tentative 1 : une idée doit être disponible.');
+        $this->assertSame('Paris', $result1['dominant_idea_active']);
+
+        // ── Consommation ────────────────────────────────────────────────────
+        $this->orchestrator->confirmConsumed(2, 'histoire');
+
+        // ── Tentative 2 : second peekNext → Gemini retourne encore "Paris" ──
+        $result2 = $this->orchestrator->peekNext(2, 'histoire');
+
+        // ── Assertions sur la DB ────────────────────────────────────────────
+
+        // 1. Exactement UNE ligne PASS pour "Paris" (peu importe AVAILABLE/CONSUMED)
+        //    → la garde idempotente empêche toute seconde ligne PASS
+        $passCount = DB::table('taxonomy_dominant_idea_bank')
+            ->where('subject_id', $s->id)
+            ->where('idea_value', 'Paris')
+            ->where('validation_status', 'PASS')
+            ->count();
+
+        $this->assertSame(1, $passCount,
+            'Deux appels generateIdeas renvoyant "Paris" ne doivent produire qu\'une seule ligne '
+            . 'PASS dans taxonomy_dominant_idea_bank — pas deux.'
+        );
+
+        // 2. Aucune ligne PASS+AVAILABLE résiduelle : "Paris" a été consommée
+        $availableCount = DB::table('taxonomy_dominant_idea_bank')
+            ->where('subject_id', $s->id)
+            ->where('idea_value', 'Paris')
+            ->where('validation_status', 'PASS')
+            ->where('status', 'AVAILABLE')
+            ->count();
+
+        $this->assertSame(0, $availableCount,
+            '"Paris" a été consommée et ne doit plus apparaître comme PASS+AVAILABLE.'
+        );
+
+        // 3. peekNext() ne doit pas re-servir "Paris" après consommation
+        $this->assertNull($result2,
+            'peekNext() ne doit pas retourner "Paris" une seconde fois après qu\'elle a été consommée. '
+            . 'Le doublon Gemini ne doit pas créer une nouvelle idée disponible.'
+        );
+    }
+
+    // =========================================================================
     // Helpers
     // =========================================================================
 
