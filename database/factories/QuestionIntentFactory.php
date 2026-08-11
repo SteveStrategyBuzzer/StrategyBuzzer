@@ -33,8 +33,6 @@ class QuestionIntentFactory extends Factory
             'source'           => 'kernel',
             'dialysis_status'  => 'pending',
             'kernel_code'      => null,
-            'ks_hash'          => null,
-            'kld_hash'         => null,
         ];
     }
 }

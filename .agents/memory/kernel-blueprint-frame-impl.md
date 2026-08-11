@@ -6,10 +6,10 @@ description: État réel après implantation 2026-07-03 — ce qui existe, ce qu
 ## Ce qui a été implanté (2026-07-03)
 
 **Migration additive** `2026_07_03_100000_add_kernel_code_and_hashes_to_question_intents` :
-- `kernel_code` VARCHAR(32) nullable + UNIQUE INDEX partiel
-- `ks_hash` VARCHAR(64) nullable
-- `kld_hash` VARCHAR(64) nullable
-- Ajoutés au `$fillable` + `$casts` de `QuestionIntent`
+- `kernel_code` VARCHAR(32) nullable + UNIQUE INDEX partiel (toujours présent)
+- `ks_hash` VARCHAR(64) nullable → **DROPPÉ par #142** (migration 2026_08_11_300000)
+- `kld_hash` VARCHAR(64) nullable → **DROPPÉ par #142** (migration 2026_08_11_300000)
+- `ks_hash`/`kld_hash` retirés du `$fillable` et de la factory ; `kernel_code` conservé
 - `HasFactory` trait ajouté à `QuestionIntent`
 - `QuestionIntentFactory` créée
 

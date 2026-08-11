@@ -27,10 +27,9 @@ class QuestionIntent extends Model
         'concept_family',
         'source',
 
-        // Kernel Blueprint Frame — code structurel + hashes
+        // Kernel Blueprint Frame — code structurel (kernel_code uniquement ; ks_hash et kld_hash
+        // retirés — KLD/KEY_STRUCTURE SUPERSEDED, aucun writer officiel, aucune donnée)
         'kernel_code',
-        'ks_hash',
-        'kld_hash',
 
         // Tracking dialyse
         'dialysis_status',

@@ -1,0 +1,176 @@
+STOP sur Git/GitHub.
+
+La synchronisation GitHub n'est PAS requise maintenant.
+
+Le décalage entre Replit et GitHub est volontaire : Replit reste l'environnement de conception, implantation et validation. GitHub / terminal extérieur ne seront synchronisés qu'une fois les briques réellement finalisées.
+
+Donc :
+
+* aucun push GitHub ;
+* aucun travail supplémentaire sur `.github/workflows/concurrent-test.yml` ;
+* aucune modification du terminal extérieur ;
+* aucun besoin de fermer #141 par GitHub Actions.
+
+#141 est considéré VALIDÉ sur la base du test PostgreSQL réel déjà exécuté :
+
+* 20 processus concurrents ;
+* même bassin Depth + Domaine ;
+* 20 `kernel_code` uniques ;
+* séquence 0000 → 000J sans trou ;
+* `next_value = 20` ;
+* aucune collision ;
+* idempotence PASS ;
+* persistance/reconnexion PASS ;
+* isolation par schéma PostgreSQL temporaire PASS ;
+* nettoyage PASS ;
+* régression = 0.
+
+VERDICT #141 : PASS FINAL.
+
+Tu peux maintenant passer UNIQUEMENT à #142.
+
+#142 — AUDIT / NETTOYAGE `ks_hash` ET `kld_hash`
+
+Objectif :
+fermer les deux vestiges legacy directement liés à l'ancienne architecture KLD / KEY_STRUCTURE avant de déclarer 05_QuestionIntent terminé.
+
+Procédure obligatoire :
+
+1. Auditer toutes les occurrences runtime de :
+
+   * `ks_hash`
+   * `kld_hash`
+
+2. Pour chacune, identifier :
+
+   * fichier ;
+   * table/colonne éventuelle ;
+   * model/fillable/factory ;
+   * writer réel ;
+   * reader réel ;
+   * test ;
+   * donnée présente en DB ;
+   * décision OFFICIAL actuelle qui justifie son existence.
+
+3. Ne considère PAS leur simple présence historique comme une justification.
+
+KLD et KEY_STRUCTURE sont SUPERSEDED.
+
+4. Si un champ :
+
+   * n'a aucun writer OFFICIAL ;
+   * n'a aucun reader OFFICIAL ;
+   * contient zéro donnée métier ;
+   * n'a plus aucune responsabilité architecturale ;
+
+alors il doit être supprimé proprement :
+
+* schéma ;
+* Model `$fillable` ;
+* factory ;
+* tests exclusivement associés ;
+* imports/références mortes.
+
+5. Si une donnée réelle existe :
+   STOP avant suppression et retourne BLOCKER ARCHITECTURAL.
+
+6. Si un consommateur runtime réel existe :
+   STOP avant suppression et retourne :
+
+LEGACY_CONFLICT
+
+champ :
+...
+writer :
+...
+reader :
+...
+donnée présente :
+...
+responsabilité actuelle supposée :
+...
+décision OFFICIAL trouvée :
+...
+raison empêchant la suppression :
+...
+
+Ne lui invente aucune nouvelle responsabilité.
+
+7. Ne touche PAS aux clés `frame_en` gelées pour la future spécification Phases :
+
+   * `kld_result`
+   * `ks_result`
+   * `ks_hash`
+   * `key_structure`
+   * `kld`
+
+si elles appartiennent au FORMAT du ticket frame legacy déjà classé BLOCKER PHASES.
+
+Important :
+il faut distinguer la colonne/structure QuestionIntent legacy à nettoyer des champs du ticket frame explicitement GELÉS pour Phase.
+
+8. Ne touche à aucun autre module :
+
+   * Phase 1 ;
+   * Quarantine ;
+   * ReadyBank ;
+   * Taxonomy ;
+   * KRP ;
+   * gameplay.
+
+9. Après #142, exécute :
+
+   * tests QuestionIntent ;
+   * tests KernelCodeEngine ;
+   * tests Orchestrator pertinents ;
+   * grep `ks_hash`;
+   * grep `kld_hash`;
+   * audit DB final ;
+   * zéro architecture parallèle.
+
+Retour attendu :
+
+#142 FINAL AUDIT
+
+ks_hash runtime QuestionIntent :
+SUPPRIMÉ / BLOCKER
+
+kld_hash runtime QuestionIntent :
+SUPPRIMÉ / BLOCKER
+
+Données métier supprimées :
+0 / ...
+
+Writers legacy restants :
+...
+
+Readers legacy restants :
+...
+
+Vestiges gelés Phase conservés :
+...
+
+KLD actif :
+NON
+
+KEY_STRUCTURE actif :
+NON
+
+QuestionIntent utilise ks_hash :
+NON
+
+QuestionIntent utilise kld_hash :
+NON
+
+Régressions :
+...
+
+BLOCKERS :
+...
+
+VERDICT #142 :
+PASS / FAIL
+
+Puis STOP.
+
+Ne commence PAS Phase 1 automatiquement.

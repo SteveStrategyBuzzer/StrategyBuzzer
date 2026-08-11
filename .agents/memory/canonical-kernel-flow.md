@@ -31,7 +31,7 @@ CRÉATION DU KERNELBLUEPRINT   ← le Blueprint EXISTE avant KRP
 
 **Why :** J'ai proposé (et l'utilisateur a REFUSÉ le 2026-08-11) une tâche qui rebranchait Taxonomy→KLD→KEY_STRUCTURE→QuestionIntent — cela réintroduisait l'architecture que la refonte venait de supprimer. Principe projet : UNE RESPONSABILITÉ = UN PROPRIÉTAIRE = UNE IMPLÉMENTATION ACTIVE.
 
-**Vestiges KLD-KS : SUPPRIMÉS (2026-08-11, ordre user)** — 10 classes (moteur, adapter, gate, 2 interfaces, registry, lexicon, family index, 2 DTOs) + 2 tests exclusifs retirés ; dossiers Rotation/Contracts, Rotation/DTO, Knowledge/ supprimés. Résidus assumés : notes de garde docblock « ⛔ SUPERSEDED » ; clés NULL du ticket frame_en (kld_result/ks_result/ks_hash/key_structure/kld — format frame, sort à régler avec la spec Phases) ; colonnes DB préexistantes kernel_code/ks_hash/kld_hash (2026_07_03, vides — sort en rubrique 5.21 du contrat QuestionIntent).
+**Vestiges KLD-KS : SUPPRIMÉS (2026-08-11, ordre user)** — 10 classes (moteur, adapter, gate, 2 interfaces, registry, lexicon, family index, 2 DTOs) + 2 tests exclusifs retirés ; dossiers Rotation/Contracts, Rotation/DTO, Knowledge/ supprimés. Résidus assumés : notes de garde docblock « ⛔ SUPERSEDED » ; clés NULL du ticket frame_en (kld_result/ks_result/ks_hash/key_structure/kld — format frame GELÉ, sort avec spec Phases). **Colonnes DB ks_hash/kld_hash DROPPÉES (#142, 2026-08-11)** — migration 2026_08_11_300000, 0 donnée, retirées de $fillable et factory. Reste : question_intents.kernel_code (nullable, no official writer — sort Phase 1).
 
 **Conséquence :** KernelIdentifierManager (future autorité kld_hash/ks_hash) est ABANDONNÉ avec eux — ne plus le proposer.
 
