@@ -1,0 +1,1351 @@
+Le point central est désormais :
+
+QuestionIntent
+≠ intention cognitive
+≠ création de questions
+
+QuestionIntent
+= construction + attribution + verrouillage
+  du kernel_code canonique du noyau
+
+Envoie-lui ceci :
+
+STRATEGYBUZZER — 05_QuestionIntent
+CONTRAT D’IMPLANTATION OFFICIEL
+0 — AUTORISATION
+
+Tu peux maintenant travailler sur 05_QuestionIntent.
+
+Cette tâche concerne EXCLUSIVEMENT QuestionIntent.
+
+Ne touche pas à :
+
+Phase 1 ;
+Validation Phase 1 ;
+Phase 2 ;
+Validation Phase 2 ;
+Quarantine ;
+ReadyBank ;
+confirmConsumed() ;
+CURRENT_KERNEL_RECEIVED ;
+KRP ;
+Taxonomy ;
+ValidationDominantIdeas.
+
+La RÈGLE DU VIDE reste obligatoire.
+
+Si une information nécessaire n’est pas définie dans ce contrat :
+
+STOP avant de coder ce qui en dépend.
+
+1 — RECONSTRUCTION ARCHITECTURALE OBLIGATOIRE
+
+Le flow entrant officiel est :
+
+CRÉATION DU KERNELBLUEPRINT
+        ↓
+KERNELROTATIONPLANNER
+        ↓
+depth + domain
+        ↓
+TAXONOMY
+        ↕
+VALIDATIONDOMINANTIDEAS
+        ↓
+subdomain_active
+subject_active
+dominant_idea_active
+        ↓
+QUESTIONINTENT
+
+Au moment où QuestionIntent intervient, le noyau intellectuel est DÉJÀ complètement défini.
+
+Le KernelBlueprint contient donc au minimum :
+
+depth
+domain
+subdomain_active
+subject_active
+dominant_idea_active
+kernel_code = NULL
+
+QuestionIntent ne crée, ne choisit et ne modifie AUCUNE des cinq premières valeurs.
+
+2 — MISSION OFFICIELLE
+
+La mission de 05_QuestionIntent est :
+
+Recevoir le KernelBlueprint canonique dont le territoire intellectuel a déjà été entièrement déterminé et validé, construire son kernel_code canonique selon la structure officielle StrategyBuzzer, attribuer un suffixe séquentiel unique dans le bassin correspondant au couple Depth + Domaine, écrire ce kernel_code dans le KernelBlueprint et rendre cette identité immuable pour toute la durée de vie du noyau canonique.
+
+QuestionIntent est donc le propriétaire exclusif de l’ÉCRITURE de :
+
+kernel_code
+
+QuestionIntent n’est PAS un moteur cognitif.
+
+Il ne décide pas :
+
+Recognition
+Reasoning
+Deceptive Trap
+True / False
+réponses
+formulations
+difficulté cognitive
+
+Ces responsabilités appartiennent à Phase 1.
+
+3 — RESPONSABILITÉS
+
+QuestionIntent doit exclusivement :
+
+recevoir le KernelBlueprint déjà rempli par KRP + Taxonomy ;
+vérifier que les cinq composantes nécessaires sont présentes ;
+convertir ces composantes en segments d’identité normalisés ;
+déterminer le bassin de séquence correspondant à :
+Depth + Domaine
+obtenir atomiquement le prochain suffixe disponible de ce bassin ;
+construire le kernel_code complet ;
+garantir son unicité ;
+écrire kernel_code dans le KernelBlueprint ;
+rendre cette valeur immuable ;
+retourner le même kernel_code en cas de réexécution du même Blueprint.
+4 — INTERDICTIONS ABSOLUES
+
+QuestionIntent ne doit jamais :
+
+choisir un Depth ;
+modifier le Depth ;
+choisir un Domaine ;
+modifier le Domaine ;
+créer un Sous-domaine ;
+modifier subdomain_active ;
+créer un Sujet ;
+modifier subject_active ;
+créer une Idée Dominante ;
+modifier dominant_idea_active ;
+revalider ValidationDominantIdeas ;
+produire un cognitif ;
+appeler Gemini ;
+appeler OpenAI ;
+produire une question ;
+produire une réponse ;
+appeler Phase 1 ;
+appeler Quarantine ;
+appeler ReadyBank ;
+appeler confirmConsumed() ;
+créer CURRENT_KERNEL_RECEIVED ;
+réactiver KLD ;
+réactiver KEY_STRUCTURE ;
+réactiver KernelIdentifierManager legacy ;
+écrire ks_hash ;
+écrire kld_hash ;
+remplir intent_key ;
+remplir semantic_key ;
+remplir angle_large ;
+remplir micro_angle ;
+remplir answer_target ;
+remplir concept_family ;
+utiliser question_intents comme contrat de QuestionIntent.
+5 — UNITÉ TRAITÉE
+
+QuestionIntent traite :
+
+1 KernelBlueprint canonique
+=
+1 noyau canonique
+=
+1 kernel_code
+
+Cardinalité obligatoire :
+
+1 Blueprint
+→ exactement 0 ou 1 kernel_code
+
+avant QuestionIntent :
+0
+
+après succès QuestionIntent :
+1
+
+Jamais :
+
+1 Blueprint
+→ plusieurs kernel_code
+6 — ENTRÉES OFFICIELLES
+
+QuestionIntent lit exclusivement les informations nécessaires à l’identité :
+
+depth
+domain
+subdomain_active
+subject_active
+dominant_idea_active
+kernel_code
+
+kernel_code est lu uniquement pour l’idempotence.
+
+Les cinq composantes intellectuelles sont déjà autoritatives.
+
+QuestionIntent ne consulte PAS les réservoirs Taxonomy.
+
+7 — SORTIE OFFICIELLE
+
+Sortie principale :
+
+kernel_code
+
+QuestionIntent écrit exclusivement ce slot métier dans le KernelBlueprint.
+
+Aucune autre nouvelle donnée métier ne doit être ajoutée au Blueprint dans cette tâche.
+
+8 — STRUCTURE OFFICIELLE DU KERNEL_CODE
+
+Format :
+
+DD-DO-SUB-SUJ-IDE-VVVV
+
+où :
+
+DD
+= Depth sur exactement 2 caractères
+
+DO
+= code Domaine sur exactement 2 caractères
+
+SUB
+= 3 caractères issus du Sous-domaine
+
+SUJ
+= 3 caractères issus du Sujet
+
+IDE
+= 3 caractères issus de l’Idée Dominante
+
+VVVV
+= suffixe séquentiel base36 sur exactement 4 caractères
+
+Exemple :
+
+04-GE-CAN-CON-ACT-0000
+
+Longueur totale :
+
+2 + 1
++ 2 + 1
++ 3 + 1
++ 3 + 1
++ 3 + 1
++ 4
+= 22 caractères
+
+Regex structurelle :
+
+^[0-9]{2}-[A-Z]{2}-[A-Z0-9]{3}-[A-Z0-9]{3}-[A-Z0-9]{3}-[0-9A-Z]{4}$
+
+Le kernel_code est toujours :
+
+UPPERCASE
+ASCII
+sans espace
+sans accent
+sans caractère libre
+9 — SEGMENT DEPTH
+
+Le Depth ne doit PAS être choisi par QuestionIntent.
+
+Il provient du Blueprint.
+
+Conversion :
+
+2  → 02
+4  → 04
+6  → 06
+7  → 07
+8  → 08
+9  → 09
+10 → 10
+
+Ne crée pas une nouvelle liste concurrente des Depths autorisés.
+
+Utilise l’autorité actuelle du DepthContractRegistry / contrat Depth canonique.
+
+Si le Depth reçu n’est pas reconnu par l’autorité officielle :
+
+QUESTION_INTENT_INVALID_DEPTH
+
+FAIL CLOSED.
+
+Aucun kernel_code n’est créé.
+
+10 — SEGMENT DOMAINE
+
+Les 8 Domaines de création ont un code stable sur 2 caractères :
+
+Géographie → GE
+Histoire   → HI
+Faune      → FA
+Art        → AR
+Sport      → SP
+Cinéma     → CI
+Cuisine    → CU
+Science    → SC
+
+Général n’est pas un Domaine de création.
+
+QuestionIntent doit donc refuser un Blueprint de création contenant :
+
+domain = Général
+
+Ne déduis pas le code Domaine à partir de la langue UI.
+
+Les codes ci-dessus sont des codes canoniques internes.
+
+11 — NORMALISATION SUB / SUJ / IDE
+
+Pour :
+
+subdomain_active
+subject_active
+dominant_idea_active
+
+produire un segment de 3 caractères.
+
+Mécanisme technique déterministe :
+
+valeur canonique
+↓
+Unicode normalisé
+↓
+retrait des accents
+↓
+UPPERCASE
+↓
+suppression espaces / tirets / ponctuation / caractères spéciaux
+↓
+conserver A-Z et 0-9
+↓
+prendre les 3 premiers caractères
+
+Exemples :
+
+Canada
+→ CAN
+
+Confédération canadienne
+→ CONFEDERATIONCANADIENNE
+→ CON
+
+Acte de l’Amérique du Nord britannique
+→ ACTEDELAMERIQUEDUNORDBRITANNIQUE
+→ ACT
+
+États-Unis
+→ ETATSUNIS
+→ ETA
+
+Cette réduction ne modifie JAMAIS les valeurs originales du Blueprint.
+
+Elle sert uniquement à construire kernel_code.
+
+Si la normalisation produit moins de 3 caractères :
+
+right-pad avec X
+
+Exemple :
+
+Pi
+→ PI
+→ PIX
+
+Si aucun caractère exploitable n’existe :
+
+QUESTION_INTENT_INVALID_SEGMENT
+
+FAIL CLOSED.
+
+12 — SUFFIXE VVVV
+
+Le suffixe est désormais officiellement :
+
+4 caractères base36
+
+Alphabet exact et ordre exact :
+
+0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ
+
+Capacité :
+
+36^4
+= 1 679 616 valeurs
+
+par bassin Depth + Domaine.
+
+Première valeur :
+
+0000
+
+Dernière valeur :
+
+ZZZZ
+13 — ORDRE D’ÉVOLUTION DU SUFFIXE
+
+Ordre strict :
+
+0000
+0001
+0002
+...
+0009
+000A
+000B
+...
+000Z
+0010
+0011
+...
+009Z
+00A0
+...
+00ZZ
+0100
+...
+ZZZZ
+
+Il s’agit d’un entier base36 affiché sur 4 positions.
+
+Ne crée aucun algorithme aléatoire.
+
+Ne crée aucun hash.
+
+Ne crée aucun UUID pour remplacer ce suffixe.
+
+14 — UN COMPTEUR INDÉPENDANT PAR DEPTH + DOMAINE
+
+C’est une règle fondamentale.
+
+Chaque couple possède sa propre séquence.
+
+Exemples :
+
+Depth 02 + GE
+0000
+0001
+0002
+...
+
+Depth 02 + HI
+0000
+0001
+0002
+...
+
+Depth 04 + GE
+0000
+0001
+0002
+...
+
+Donc :
+
+02-GE
+
+et :
+
+04-GE
+
+ne partagent PAS leur compteur.
+
+De même :
+
+04-GE
+
+et :
+
+04-HI
+
+ne partagent PAS leur compteur.
+
+Clé du bassin :
+
+(depth, domain_code)
+15 — CAPACITÉ ARCHITECTURALE
+
+Pour un couple :
+
+Depth + Domaine
+
+capacité :
+
+1 679 616 kernel_code
+
+Avec :
+
+7 Depths
+×
+8 Domaines
+=
+56 bassins
+
+capacité théorique globale :
+
+1 679 616 × 56
+= 94 058 496 identités
+
+Notre projection élevée actuelle :
+
+250 tours
+×
+40 sujets moyens
+×
+5 idées dominantes
+=
+50 000 noyaux
+
+par bassin dans le scénario étudié.
+
+Marge :
+
+1 679 616 / 50 000
+≈ 33,59
+
+Le format laisse donc environ 33,6 fois cette projection.
+
+16 — LE SUFFIXE N’EST PAS UNE VARIANTE COGNITIVE
+
+Ne jamais confondre :
+
+VVVV
+
+avec :
+
+Original + 4 variantes
+
+de Phase 1.
+
+VVVV est uniquement :
+
+sequence_suffix
+
+ou :
+
+kernel_identity_suffix
+
+Il appartient à l’identité du noyau.
+
+Il n’a aucune signification cognitive.
+
+17 — PERSISTANCE DU COMPTEUR
+
+Le compteur doit survivre :
+
+aux requêtes ;
+aux workers ;
+aux redémarrages PHP ;
+aux redémarrages serveur ;
+aux déploiements ;
+aux retries techniques.
+
+Il ne peut donc PAS être stocké uniquement en mémoire.
+
+Créer/réutiliser UNE source de vérité persistante dédiée aux séquences QuestionIntent.
+
+Avant de créer une table :
+
+auditer le schéma réel ;
+vérifier qu’aucune table canonique n’assume déjà exactement cette responsabilité ;
+si elle existe :
+→ la réutiliser ;
+sinon :
+→ créer une table dédiée.
+
+Structure métier minimale attendue :
+
+kernel_code_sequences
+
+depth
+domain_code
+next_value
+timestamps techniques si nécessaires
+
+Contrainte :
+
+UNIQUE(depth, domain_code)
+
+ou clé primaire composite équivalente.
+
+next_value représente la prochaine valeur entière base10 à convertir en base36.
+
+Plage :
+
+0
+→
+1 679 615
+
+Ne persiste pas le suffixe sous plusieurs représentations concurrentes sans nécessité.
+
+18 — SOURCE DE VÉRITÉ
+
+Pour l’identité finale du noyau :
+
+KernelBlueprint.kernel_code
+
+est la source canonique.
+
+La table de séquence ne contient PAS l’identité métier du noyau.
+
+Elle contient uniquement l’état interne nécessaire pour allouer le prochain suffixe.
+
+Donc :
+
+kernel_code_sequences
+≠ banque de noyaux
+≠ QuestionIntent history
+≠ ReadyBank
+19 — ALLOCATION ATOMIQUE
+
+L’allocation doit être transactionnelle.
+
+Pseudo-flow obligatoire :
+
+BEGIN TRANSACTION
+
+1. verrouiller le Blueprint canonique concerné
+
+2. relire kernel_code
+
+3. si kernel_code existe déjà :
+      valider qu’il respecte le format
+      retourner exactement cette valeur
+      NE PAS avancer le compteur
+
+4. valider :
+      depth
+      domain
+      subdomain_active
+      subject_active
+      dominant_idea_active
+
+5. résoudre domain_code
+
+6. créer si nécessaire la ligne de séquence
+   pour (depth, domain_code)
+
+7. LOCK FOR UPDATE
+   sur cette ligne de séquence
+
+8. lire next_value
+
+9. vérifier :
+      next_value <= 1 679 615
+
+10. convertir next_value en base36
+    et left-pad à 4 caractères
+
+11. construire :
+      DD-DO-SUB-SUJ-IDE-VVVV
+
+12. vérifier unicité globale kernel_code
+
+13. écrire kernel_code
+    dans le Blueprint canonique
+
+14. next_value = next_value + 1
+
+15. COMMIT
+
+Blueprint + compteur doivent être validés dans la même frontière transactionnelle lorsque le stockage actuel le permet.
+
+Si ce n’est techniquement pas possible avec l’architecture réelle :
+
+BLOCKER ARCHITECTURAL
+
+avant d’inventer un autre mécanisme métier.
+
+20 — CONCURRENCE
+
+Deux Blueprints du même bassin peuvent être traités presque simultanément.
+
+Il est interdit qu’ils obtiennent le même suffixe.
+
+Exemple :
+
+Blueprint A
+04-GE
+        \
+         → compteur = 000A
+        /
+Blueprint B
+04-GE
+
+Résultat obligatoire :
+
+A → 000A
+B → 000B
+
+jamais :
+
+A → 000A
+B → 000A
+
+Utiliser les mécanismes DB appropriés :
+
+transaction
+row lock
+unique constraint
+
+Pas de compteur PHP en mémoire.
+
+21 — UNICITÉ GLOBALE
+
+Le kernel_code final doit être UNIQUE.
+
+Si le stockage canonique du Blueprint permet un index UNIQUE sur kernel_code, l’ajouter/réutiliser.
+
+Avant migration :
+
+audit du schéma réel.
+
+Ne crée pas une deuxième table uniquement pour garantir cette unicité.
+
+Le préfixe peut naturellement entrer en collision :
+
+04-GE-CAN-CON-ACT
+
+pour plusieurs valeurs longues ayant les mêmes premiers caractères.
+
+Ce n’est PAS un problème.
+
+Le suffixe VVVV rend les kernel_code distincts.
+
+22 — IDEMPOTENCE
+
+Même Blueprint présenté deux fois :
+
+appel 1
+→ 04-GE-CAN-CON-ACT-000A
+
+appel 2
+→ 04-GE-CAN-CON-ACT-000A
+
+Le deuxième appel ne doit jamais produire :
+
+000B
+
+Il ne doit jamais consommer un nouveau suffixe.
+
+La règle est :
+
+kernel_code != NULL
+→ retourner l'identité existante
+→ aucune mutation
+23 — IMMUTABILITÉ
+
+Transition autorisée :
+
+kernel_code = NULL
+↓
+kernel_code = valeur canonique
+
+Après attribution :
+
+kernel_code
+= IMMUTABLE
+
+Transition interdite :
+
+04-GE-CAN-CON-ACT-000A
+↓
+04-GE-CAN-CON-ACT-000B
+
+QuestionIntent lui-même ne doit jamais régénérer l’identité d’un noyau déjà identifié.
+
+24 — AUCUN RECYCLAGE
+
+Une fois attribué :
+
+VVVV
+
+n’est jamais remis dans le bassin.
+
+Même si, plus tard :
+
+une validation échoue ;
+un print est créé pour Quarantine ;
+le noyau nécessite une correction ;
+une étape downstream rencontre un problème.
+
+Le noyau canonique principal reste dans le flow.
+
+Son kernel_code ne change jamais.
+
+Le suffixe reste consommé.
+
+25 — QUARANTINE
+
+QuestionIntent ne gère PAS Quarantine.
+
+Mais son identité doit permettre à une future copie de travail de référencer le noyau canonique.
+
+Règle conceptuelle seulement :
+
+NOYAU CANONIQUE
+kernel_code = X
+
+        └────→ PRINT / COPIE DE TRAVAIL
+               référence kernel_code = X
+
+Le noyau canonique principal ne quitte JAMAIS le flow.
+
+Ne code aucun mécanisme Quarantine dans cette tâche.
+
+26 — READYBANK
+
+QuestionIntent ne gère PAS ReadyBank.
+
+ReadyBank sera ultérieurement autorisé à lire l’identité canonique.
+
+Il ne pourra pas la réécrire.
+
+Ne code aucune logique ReadyBank maintenant.
+
+27 — GAMEPLAY
+
+QuestionIntent ne code PAS le gameplay.
+
+Mais le format doit rester exploitable comme identité structurée.
+
+Le gameplay pourra ultérieurement reconnaître rapidement notamment :
+
+DD
+→ Depth
+
+DO
+→ Domaine
+
+et disposer d’une référence stable vers le noyau exact.
+
+Ne développe aucune requête gameplay maintenant.
+
+Ne construis aucun index gameplay maintenant sans contrat gameplay.
+
+28 — ÉTATS QUESTIONINTENT
+
+Ne crée aucune nouvelle colonne d’état.
+
+L’état est dérivé exclusivement de :
+
+kernel_code IS NULL
+
+ou :
+
+kernel_code IS NOT NULL
+
+États conceptuels :
+
+UNASSIGNED
+kernel_code = NULL
+
+ASSIGNED
+kernel_code != NULL
+
+Transition autorisée :
+
+UNASSIGNED
+↓
+ASSIGNED
+
+Aucune transition inverse.
+
+29 — ERREURS OFFICIELLES DU MODULE
+
+Le mécanisme doit pouvoir distinguer au minimum :
+
+QUESTION_INTENT_MISSING_INPUT
+QUESTION_INTENT_INVALID_DEPTH
+QUESTION_INTENT_INVALID_DOMAIN
+QUESTION_INTENT_INVALID_SEGMENT
+QUESTION_INTENT_SUFFIX_EXHAUSTED
+QUESTION_INTENT_EXISTING_CODE_INVALID
+QUESTION_INTENT_IDENTITY_CONFLICT
+
+Ces erreurs restent dans QuestionIntent.
+
+Elles ne signifient PAS automatiquement :
+
+Quarantine
+Rejected
+Retry 5 fois
+Human review
+
+QuestionIntent ne décide pas de ces transitions downstream.
+
+30 — EXHAUSTION DU SUFFIXE
+
+Après :
+
+ZZZZ
+
+le bassin est épuisé.
+
+Comportement :
+
+QUESTION_INTENT_SUFFIX_EXHAUSTED
+
+FAIL CLOSED.
+
+Interdit :
+
+retour à 0000 ;
+réutilisation d’un ancien code ;
+passage silencieux à 5 caractères ;
+ajout d’un caractère improvisé ;
+hash de secours ;
+UUID de secours.
+
+Une évolution :
+
+4 → 5 caractères
+
+nécessiterait une nouvelle version de spécification et une décision Architecture Register.
+
+31 — LEGACY : KERNEL_CODE / KS_HASH / KLD_HASH
+
+Audit obligatoire avant modification.
+
+kernel_code
+
+Statut attendu :
+
+ACTIF
+CANONIQUE
+PROPRIÉTÉ D'ÉCRITURE QUESTIONINTENT
+
+Réutiliser le slot/stockage canonique existant s’il correspond au contrat.
+
+Ne créer aucun deuxième kernel_code.
+
+ks_hash
+
+QuestionIntent :
+
+NE L'ÉCRIT PAS
+NE L'UTILISE PAS
+kld_hash
+
+QuestionIntent :
+
+NE L'ÉCRIT PAS
+NE L'UTILISE PAS
+
+Puis auditer leurs consommateurs runtime.
+
+Si ks_hash ou kld_hash n’ont plus aucun consommateur OFFICIAL :
+
+documenter le résultat ;
+les marquer comme vestiges SUPERSEDED dans l’Architecture Register ;
+supprimer proprement leur présence runtime/schema uniquement si l’audit confirme qu’aucune donnée métier ni aucun consommateur réel ne dépend d’eux.
+
+Si un consommateur réel existe :
+
+BLOCKER ARCHITECTURAL
+
+avant toute suppression.
+
+Ne leur invente PAS une nouvelle mission.
+
+32 — INTERDICTION QUESTION_INTENTS LEGACY
+
+Ne recrée PAS :
+
+QuestionIntentEncoder
+
+Ne réutilise PAS automatiquement la table :
+
+question_intents
+
+Ne remappe PAS :
+
+dominant_idea
+→ angle_large
+
+dominant_idea
+→ micro_angle
+
+dominant_idea
+→ answer_target
+
+subdomain
+→ concept_family
+
+blueprint_id
+→ intent_key
+
+blueprint_id
+→ semantic_key
+
+Ces mappings ont été explicitement retirés.
+
+05_QuestionIntent travaille sur :
+
+KernelBlueprint.kernel_code
+
+pas sur une reconstruction du contrat BankWorker.
+
+33 — COMMUNICATION
+
+Entrée :
+
+KernelBlueprint canonique
+déjà rempli jusqu'à dominant_idea_active
+
+Sortie :
+
+même KernelBlueprint canonique
++
+kernel_code
+
+QuestionIntent ne crée pas un deuxième Blueprint.
+
+QuestionIntent ne clone pas le Blueprint.
+
+QuestionIntent ne transmet pas lui-même à Phase 1.
+
+Sa frontière de sortie est :
+
+KERNELBLUEPRINT
+kernel_code ASSIGNED
+↓
+STOP QUESTIONINTENT
+
+Le raccordement Phase 1 sera fait avec sa propre spécification.
+
+34 — TESTS OBLIGATOIRES
+Format
+
+Tester :
+
+Depth 4
+Géographie
+Canada
+Confédération canadienne
+Acte de l’Amérique du Nord britannique
+
+structure attendue :
+
+04-GE-CAN-CON-ACT-....
+Domaines
+
+Tester les 8 mappings :
+
+GE
+HI
+FA
+AR
+SP
+CI
+CU
+SC
+
+Tester que Général est refusé comme domaine de création.
+
+Normalisation
+
+Tester :
+
+É
+ç
+à
+apostrophe
+tiret
+espaces
+nombres
+chaînes < 3 caractères
+Base36
+
+Tester obligatoirement :
+
+0000
+0001
+
+0009
+→ 000A
+
+000Z
+→ 0010
+
+00ZZ
+→ 0100
+
+ZZZY
+→ ZZZZ
+
+Puis :
+
+ZZZZ
+→ prochain appel
+→ QUESTION_INTENT_SUFFIX_EXHAUSTED
+Bassins indépendants
+
+Tester :
+
+02-GE → 0000
+02-GE → 0001
+
+02-HI → 0000
+
+04-GE → 0000
+Idempotence
+
+Même Blueprint deux fois :
+
+même kernel_code
+compteur avancé une seule fois
+Restart
+
+Créer plusieurs codes.
+
+Détruire/recréer services/app context.
+
+Continuer.
+
+Le compteur doit reprendre exactement à la prochaine valeur.
+
+Concurrence
+
+Deux allocations simultanées même Depth + Domaine.
+
+Résultat :
+
+2 kernel_code différents
+2 suffixes différents
+aucune duplication
+Immutabilité
+
+Tenter une seconde attribution sur un Blueprint déjà identifié.
+
+Le code reste identique.
+
+Invalid inputs
+
+Tester chaque slot manquant.
+
+Aucun suffixe ne doit être consommé sur FAIL avant allocation.
+
+Legacy guard
+
+Tests/grep obligatoires :
+
+aucun QuestionIntentEncoder
+aucun KLD actif
+aucun KEY_STRUCTURE actif
+aucun mapping angle_large
+aucun mapping micro_angle
+aucun mapping answer_target
+aucune écriture ks_hash
+aucune écriture kld_hash
+aucune utilisation cognitive
+35 — TEST DE CAPACITÉ
+
+Tester mathématiquement/configuration :
+
+36^4 = 1 679 616
+
+Le dernier entier valide :
+
+1 679 615
+→ ZZZZ
+
+L’entier suivant :
+
+1 679 616
+→ EXHAUSTED
+
+Aucun overflow silencieux.
+
+36 — TEST DE NON-RÉGRESSION
+
+QuestionIntent ne doit modifier aucun des slots :
+
+depth
+domain
+subdomain_active
+subject_active
+dominant_idea_active
+
+Snapshot avant/après :
+
+5 valeurs identiques
+
+Seule différence métier :
+
+kernel_code :
+NULL
+→ valeur canonique
+37 — ARCHITECTURE REGISTER
+
+Avant de considérer l’implantation fermée :
+
+ajouter les décisions correspondantes dans Architecture Register avec les prochains identifiants disponibles.
+
+Ne devine pas les numéros DEC.
+
+Audite d’abord le dernier identifiant existant.
+
+Décisions à consigner séparément au minimum :
+
+Mission officielle de QuestionIntent.
+QuestionIntent = propriétaire exclusif d’écriture de kernel_code.
+Format :
+DD-DO-SUB-SUJ-IDE-VVVV
+Suffixe base36 4 caractères.
+Compteur indépendant par Depth + Domaine.
+Immutabilité du kernel_code.
+Non-recyclage des suffixes.
+QuestionIntent ne possède aucune responsabilité cognitive.
+KLD/KEY_STRUCTURE/ks_hash/kld_hash ne participent pas à la création du kernel_code.
+RÈGLE DU VIDE appliquée aux éventuels conflits legacy découverts.
+38 — ORDRE D’EXÉCUTION REPLIT
+
+Exécute exactement :
+
+1. synchroniser 05_QuestionIntent.md
+   avec CE contrat
+↓
+2. Architecture Register
+↓
+3. audit du code existant
+↓
+4. identifier le slot kernel_code canonique existant
+↓
+5. identifier les vestiges kernel_code / ks_hash / kld_hash
+↓
+6. audit du stockage des séquences existant
+↓
+7. implantation QuestionIntent
+↓
+8. implantation persistance compteur
+↓
+9. contraintes DB / concurrence / unicité
+↓
+10. tests ciblés
+↓
+11. tests de concurrence/restart
+↓
+12. tests de non-régression
+↓
+13. audit legacy final
+↓
+14. rapport de clôture
+
+Ne saute PAS directement à l’étape code.
+
+39 — RAPPORT DE CLÔTURE OBLIGATOIRE
+
+Retour attendu :
+
+05_QUESTIONINTENT — RAPPORT FINAL
+
+ARCHITECTURE :
+...
+
+CONTRAT :
+...
+
+IMPLÉMENTATION :
+...
+
+VALIDATION :
+...
+
+KERNEL_CODE FORMAT :
+DD-DO-SUB-SUJ-IDE-VVVV
+
+SUFFIX CAPACITY :
+1 679 616 / Depth+Domaine
+
+SEQUENCE PERSISTENCE :
+...
+
+CONCURRENCY :
+...
+
+IDEMPOTENCE :
+...
+
+IMMUTABILITY :
+...
+
+LEGACY kernel_code :
+...
+
+LEGACY ks_hash :
+...
+
+LEGACY kld_hash :
+...
+
+question_intents legacy utilisé :
+NON
+
+KLD actif :
+NON
+
+KEY_STRUCTURE actif :
+NON
+
+RESPONSABILITÉ COGNITIVE AJOUTÉE :
+AUCUNE
+
+NOUVELLE DÉCISION MÉTIER INVENTÉE :
+AUCUNE
+
+ARCHITECTURE PARALLÈLE :
+AUCUNE
+
+TESTS :
+...
+
+BLOCKERS :
+...
+40 — CRITÈRE DE FIN
+
+05_QuestionIntent ne peut être déclaré terminé que lorsque :
+
+Architecture      100 %
+Contrat           100 %
+Implémentation    100 %
+Validation        100 %
+
+et lorsque le module peut recevoir un KernelBlueprint valide et produire de manière :
+
+déterministe
+unique
+persistante
+concurrent-safe
+idempotente
+immuable
+
+son kernel_code, sans dépendre de KLD, KEY_STRUCTURE, Phase 1 ou du schéma legacy question_intents.
+
+À ce moment seulement :
+
+05_QuestionIntent
+= VERROUILLÉ
+
+et nous pourrons ensuite passer à :
+
+06_Phase1
+
+mais PAS avant.
+
+Le point le plus important que ce contrat fixe est que le suffixe VVVV devient un compteur d’identité persistant par bassin Depth + Domaine, et non plus l’ancien mécanisme ambigu de collision KLD/KS.
+
+Donc, pour un bassin comme 04-GE :
+
+04-GE-...-0000
+04-GE-...-0001
+...
+04-GE-...-ZZZZ
+
+et 04-HI, 06-GE, etc. possèdent chacun leur propre espace indépendant de 1 679 616 identités.

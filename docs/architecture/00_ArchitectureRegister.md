@@ -303,3 +303,104 @@ Quatre états techniques : `CREATED_UNENGAGED`, `ENGAGED_IN_PIPELINE`, `READY_BA
 **Module :** `02_KernelRotationPlanner.md`
 
 KRP n'écrit jamais `kernel_code`. `kernel_code = null` à la sortie de KRP.
+
+---
+
+## DEC-069 — Mission officielle de QuestionIntent / KernelCodeEngine
+
+**Version :** 1.0
+**Date :** 11 août 2026
+**Statut :** OFFICIAL
+**Module :** `05_QuestionIntent.md`
+
+KernelCodeEngine reçoit le KernelBlueprint dont le territoire intellectuel a été entièrement déterminé et validé, construit son kernel_code canonique selon la structure officielle StrategyBuzzer, attribue un suffixe séquentiel unique dans le bassin (Depth + Domaine), écrit ce kernel_code dans le KernelBlueprint et rend cette identité immuable. KernelCodeEngine ne modifie aucune composante intellectuelle du noyau et ne détermine aucun traitement cognitif de Phase 1.
+
+---
+
+## DEC-070 — kernel_code : propriétaire exclusif = KernelCodeEngine
+
+**Version :** 1.0
+**Date :** 11 août 2026
+**Statut :** OFFICIAL
+**Module :** `05_QuestionIntent.md`
+
+KernelCodeEngine est le seul moteur autorisé à écrire `kernel_code` dans le KernelBlueprint et dans `kernel_blueprint_runs`. Aucun autre moteur ne peut créer, modifier ou invalider un kernel_code existant. KRP ne l'écrit jamais (DEC-068). Taxonomy, VDI, Phase 1 ne l'écrivent jamais.
+
+---
+
+## DEC-071 — Format officiel du kernel_code
+
+**Version :** 1.0
+**Date :** 11 août 2026
+**Statut :** OFFICIAL
+**Module :** `05_QuestionIntent.md`
+
+Format : `DD-DO-SUB-SUJ-IDE-VVVV` — 22 caractères, UPPERCASE ASCII sans espace.
+`DD` = Depth 2 chiffres ; `DO` = code Domaine 2 lettres ; `SUB/SUJ/IDE` = 3 chars normalisés (NFD+strip+A-Z0-9, pad X) ; `VVVV` = suffixe base36 4 chars.
+Regex : `^[0-9]{2}-[A-Z]{2}-[A-Z0-9]{3}-[A-Z0-9]{3}-[A-Z0-9]{3}-[0-9A-Z]{4}$`
+
+---
+
+## DEC-072 — Suffixe VVVV : base36 4 chars, capacité 1 679 616 par bassin
+
+**Version :** 1.0
+**Date :** 11 août 2026
+**Statut :** OFFICIAL
+**Module :** `05_QuestionIntent.md`
+
+Alphabet base36 : `0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ`. Capacité : 36^4 = 1 679 616 par bassin Depth × Domaine. Première valeur : `0000`. Dernière valeur : `ZZZZ` (entier 1 679 615). Ordre strict : entier base10 → base36. Aucun algorithme aléatoire, aucun UUID, aucun hash.
+
+---
+
+## DEC-073 — Compteur indépendant par (Depth, domain_code)
+
+**Version :** 1.0
+**Date :** 11 août 2026
+**Statut :** OFFICIAL
+**Module :** `05_QuestionIntent.md`
+
+Table `kernel_code_sequences` — clé primaire composite `(depth, domain_code)`. `next_value` = prochain entier base10 à convertir. Chaque bassin `(02, GE)`, `(02, HI)`, `(04, GE)` etc. possède sa propre séquence indépendante. Allocation atomique par transaction avec `LOCK FOR UPDATE` sur la ligne de séquence. Source de vérité de l'identité : `kernel_blueprint_runs.kernel_code`, jamais `kernel_code_sequences`.
+
+---
+
+## DEC-074 — Immutabilité du kernel_code
+
+**Version :** 1.0
+**Date :** 11 août 2026
+**Statut :** OFFICIAL
+**Module :** `05_QuestionIntent.md`
+
+Transition autorisée : `NULL → valeur canonique`. Transition interdite : `valeur → autre valeur`. KernelCodeEngine lui-même ne régénère jamais l'identité d'un noyau déjà identifié. Idempotence : même Blueprint présenté deux fois → même kernel_code retourné, compteur avancé une seule fois.
+
+---
+
+## DEC-075 — Non-recyclage des suffixes consommés
+
+**Version :** 1.0
+**Date :** 11 août 2026
+**Statut :** OFFICIAL
+**Module :** `05_QuestionIntent.md`
+
+Un suffixe VVVV consommé n'est jamais remis dans le bassin, même si la validation aval échoue, si un print Quarantine est créé, ou si le noyau est corrigé. Le noyau canonique principal reste dans le flow. Son kernel_code ne change jamais. Après `ZZZZ` : `QUESTION_INTENT_SUFFIX_EXHAUSTED`, FAIL CLOSED — aucun overflow silencieux.
+
+---
+
+## DEC-076 — KernelCodeEngine : zéro responsabilité cognitive
+
+**Version :** 1.0
+**Date :** 11 août 2026
+**Statut :** OFFICIAL
+**Module :** `05_QuestionIntent.md`
+
+KernelCodeEngine ne produit aucun contenu cognitif. Il ne choisit pas recognition, reasoning, deceptive_trap, true/false, réponses, formulations, difficulté cognitive. Il n'appelle pas Gemini, OpenAI, Phase 1, Quarantine, ReadyBank, confirmConsumed(). Ces responsabilités appartiennent exclusivement à Phase 1 et aux modules aval.
+
+---
+
+## DEC-077 — KLD / KEY_STRUCTURE / ks_hash / kld_hash exclus du kernel_code
+
+**Version :** 1.0
+**Date :** 11 août 2026
+**Statut :** OFFICIAL
+**Module :** `05_QuestionIntent.md`
+
+KLD et KEY_STRUCTURE sont SUPERSEDED (absorbés par ValidationDominantIdeas). `ks_hash` et `kld_hash` n'ont aucun consommateur officiel dans le runtime actuel (audit 2026-08-11 : présents uniquement dans `$fillable` et comme slots null dans KernelFrameBuilder). KernelCodeEngine ne les écrit pas et ne les lit pas. Leur suppression physique sera décidée séparément après audit de consommateurs réels.

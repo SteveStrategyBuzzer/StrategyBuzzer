@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\QuestionBank\Rotation;
 
 use App\Services\QuestionBank\KernelBlueprint;
+use App\Services\QuestionBank\KernelCodeEngine;
 use App\Services\QuestionBank\Rotation\TaxonomyNavigatorInterface;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
@@ -22,10 +23,10 @@ use RuntimeException;
  *   CRÉATION DU KERNELBLUEPRINT (Factory — AVANT KRP, jamais PAR KRP)
  *     → KernelRotationPlanner (depth + domain)
  *     → Taxonomy ↕ ValidationDominantIdeas (sous-domaine, sujet, idée dominante VALIDÉE)
- *     → QuestionIntent
- *         ⏸ BLOCKER ARCHITECTURAL (audit 2026-08-11) — le contrat d'encodage
- *           officiel du NOYAU MÈRE n'est pas défini. AUCUN encodage n'est
- *           exécuté ici. Interdit de déduire un mapping des colonnes legacy.
+ *     → QuestionIntent / KernelCodeEngine (05_QuestionIntent — VERROUILLÉ)
+ *         ✓ construit et verrouille kernel_code DD-DO-SUB-SUJ-IDE-VVVV
+ *         ✓ écrit dans kernel_blueprint_runs.kernel_code (atomique)
+ *         ✓ idempotent, immuable, concurrent-safe
  *     → Phase 1 → Validation Phase 1 → Phase 2 → Validation Phase 2
  *         ⏸ BLOCKER ARCHITECTURAL — la définition officielle des Phases et leur
  *           correspondance (ou non) avec les commandes existantes n'est pas établie.
@@ -45,8 +46,7 @@ use RuntimeException;
  *   6. Sur aucun Depth disponible : retourner PRODUCTION_ON_HOLD
  *
  * Ce que cet orchestrateur NE fait PAS :
- *   - N'encode AUCUN QuestionIntent (RÈGLE DU VIDE — contrat manquant, voir BLOCKERS)
- *   - N'exécute pas les Phases (aucune correspondance officielle établie)
+ *   - N'exécute pas les Phases (aucune correspondance officielle établie — BLOCKER 2)
  *   - N'appelle pas confirmConsumed()
  *   - ⛔ N'invoque JAMAIS KLD / KEY_STRUCTURE / IdeaSlotLoader (SUPERSEDED)
  *
@@ -60,7 +60,8 @@ use RuntimeException;
  *   null    = signal EMPTY — ce Domaine × Depth est épuisé
  *
  * Résultats de run() :
- *   ROTATION_ASSIGNED   — Blueprint avec depth + domain + slots Taxonomy écrits.
+ *   ROTATION_ASSIGNED   — Blueprint avec depth + domain + slots Taxonomy écrits
+ *                          ET kernel_code attribué par KernelCodeEngine.
  *   PRODUCTION_ON_HOLD  — DepthNeedMatrix a atteint toutes ses cibles.
  *                          Aucun Blueprint n'est engagé.
  *
@@ -93,8 +94,8 @@ final class KernelPipelineOrchestrator
      * Blueprint engagé — KRP a écrit depth + domain,
      * Taxonomy a fourni le territoire, Blueprint = ENGAGED_IN_PIPELINE.
      *
-     * ⏸ La suite du pipeline (QuestionIntent, Phases, ReadyBank) est en attente
-     * des décisions métier officielles (BLOCKERS ARCHITECTURAUX, audit 2026-08-11).
+     * ⏸ La suite du pipeline (Phases, ReadyBank) est en attente
+     * des décisions métier officielles (BLOCKERS ARCHITECTURAUX).
      */
     public const STATUS_ROTATION_ASSIGNED = 'ROTATION_ASSIGNED';
 
@@ -105,6 +106,7 @@ final class KernelPipelineOrchestrator
         private readonly KernelBlueprintFactory     $factory,
         private readonly KernelRotationPlanner      $planner,
         private readonly TaxonomyNavigatorInterface $taxonomy,
+        private readonly KernelCodeEngine           $kernelCodeEngine,
     ) {}
 
     /**
@@ -163,16 +165,19 @@ final class KernelPipelineOrchestrator
             }
 
             // ── TERRITORY_PROVIDED — KRP a terminé sa responsabilité ──────────
-            // Écrire les slots Taxonomy sur le DTO, puis engager le Blueprint.
-            // ⏸ AUCUN encodage QuestionIntent ici : le contrat d'encodage du
-            // NOYAU MÈRE est un BLOCKER ARCHITECTURAL ouvert (audit 2026-08-11).
+            // 1. Écrire les slots Taxonomy sur le DTO.
             $blueprint->fillTaxonomy(
                 $territory['sub_domain']                                        ?? '',
                 $territory['subject']                                           ?? '',
                 $territory['dominant_idea'] ?? $territory['dominant_idea_active'] ?? '',
             );
 
+            // 2. Engager le Blueprint en DB (état ENGAGED_IN_PIPELINE).
             $this->engageBlueprint($blueprint);
+
+            // 3. QuestionIntent / KernelCodeEngine — attribution du kernel_code.
+            //    Atomique, idempotent, immuable (05_QuestionIntent — DEC-069..077).
+            $this->kernelCodeEngine->assignKernelCode($blueprint);
 
             return [
                 'status'    => self::STATUS_ROTATION_ASSIGNED,

@@ -3,6 +3,7 @@
 namespace Tests\Unit\QuestionBank\Rotation;
 
 use App\Services\QuestionBank\KernelBlueprint;
+use App\Services\QuestionBank\KernelCodeEngine;
 use App\Services\QuestionBank\Rotation\DepthNeedMatrix;
 use App\Services\QuestionBank\Rotation\KernelBlueprintFactory;
 use App\Services\QuestionBank\Rotation\KernelPipelineOrchestrator;
@@ -25,9 +26,9 @@ use Tests\TestCase;
  *   - Guard : Factory bloque si Blueprint actif existe
  *
  * Hors périmètre :
- *   - QuestionIntent / Phases / ReadyBank / confirmConsumed :
- *     ⏸ BLOCKERS ARCHITECTURAUX (audit 2026-08-11) — contrats officiels manquants,
- *     aucun code n'existe pour ces frontières (RÈGLE DU VIDE)
+ *   - KernelCodeEngine assignKernelCode : testé indépendamment dans KernelCodeEngineTest.
+ *     Dans ce test, KernelCodeEngine est réel (besoin de la table kernel_code_sequences).
+ *   - Phases / ReadyBank / confirmConsumed : ⏸ BLOCKERS ARCHITECTURAUX (contrats manquants)
  *   - ⛔ KLD / KEY_STRUCTURE / IdeaSlotLoader : SUPERSEDED — retirés du flow
  *
  * DB : SQLite in-memory, tables créées manuellement.
@@ -46,9 +47,18 @@ class KernelPipelineOrchestratorTest extends TestCase
             $table->string('execution_state', 64)->default('CREATED_UNENGAGED');
             $table->smallInteger('depth')->nullable();
             $table->string('domain_code', 64)->nullable();
+            $table->string('kernel_code', 22)->nullable()->unique();
             $table->timestamp('engaged_at')->nullable();
             $table->timestamp('received_at')->nullable();
             $table->timestamps();
+        });
+
+        Schema::create('kernel_code_sequences', function (Blueprint $table) {
+            $table->unsignedSmallInteger('depth');
+            $table->char('domain_code', 2);
+            $table->unsignedInteger('next_value')->default(0);
+            $table->timestamps();
+            $table->primary(['depth', 'domain_code']);
         });
 
         Schema::create('kernel_rotation_state_v2', function (Blueprint $table) {
@@ -104,6 +114,7 @@ class KernelPipelineOrchestratorTest extends TestCase
 
     protected function tearDown(): void
     {
+        Schema::dropIfExists('kernel_code_sequences');
         Schema::dropIfExists('kernel_depth_domain_totals');
         Schema::dropIfExists('kernel_depth_matrix');
         Schema::dropIfExists('kernel_rotation_state_v2');
@@ -121,6 +132,7 @@ class KernelPipelineOrchestratorTest extends TestCase
             new KernelBlueprintFactory(),
             new KernelRotationPlanner(),
             $taxonomy,
+            new KernelCodeEngine(),
         );
     }
 
@@ -476,7 +488,9 @@ class KernelPipelineOrchestratorTest extends TestCase
     /**
      * KRP écrit uniquement depth + domain dans le Blueprint.
      * Les champs Taxonomy (subdomain, subject) sont écrits après TERRITORY_PROVIDED.
-     * Aucun autre champ métier n'est touché par KRP.
+     * kernel_code est écrit par KernelCodeEngine (05_QuestionIntent), PAS par KRP.
+     * L'orchestrateur appelle KernelCodeEngine après fillTaxonomy — le code final doit donc
+     * être présent et conforme au format DD-DO-SUB-SUJ-IDE-VVVV.
      */
     public function test_krp_writes_only_depth_and_domain(): void
     {
@@ -493,13 +507,25 @@ class KernelPipelineOrchestratorTest extends TestCase
         $this->assertNotNull($blueprint->depth, 'depth doit être écrit par KRP');
         $this->assertNotNull($blueprint->domain, 'domain doit être écrit par KRP');
 
-        // Vérifier en DB que depth + domain_code sont présents
+        // Vérifier en DB que depth + domain_code sont présents (écrits par KRP)
         $row = DB::table('kernel_blueprint_runs')
             ->where('blueprint_id', $blueprint->blueprint_id)
             ->first();
-        $this->assertNotNull($row->depth);
-        $this->assertNotNull($row->domain_code);
-        // kernel_code jamais écrit par KRP
-        $this->assertObjectNotHasProperty('kernel_code', $row);
+        $this->assertNotNull($row->depth,       'KRP écrit depth en DB');
+        $this->assertNotNull($row->domain_code, 'KRP écrit domain_code en DB');
+
+        // kernel_code écrit par KernelCodeEngine (PAS par KRP) — doit être présent et conforme
+        $this->assertNotNull($row->kernel_code,
+            'KernelCodeEngine (05_QuestionIntent) doit avoir écrit kernel_code après KRP'
+        );
+        $this->assertMatchesRegularExpression(
+            \App\Services\QuestionBank\KernelCodeEngine::FORMAT_REGEX,
+            (string) $row->kernel_code,
+            'kernel_code doit respecter le format DD-DO-SUB-SUJ-IDE-VVVV'
+        );
+        // Confirmer que kernel_code correspond au Blueprint en mémoire
+        $this->assertSame($blueprint->kernel_code, $row->kernel_code,
+            'kernel_code en DB et en mémoire doivent être identiques'
+        );
     }
 }

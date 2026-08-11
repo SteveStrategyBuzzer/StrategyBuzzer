@@ -1,4 +1,5 @@
-- [Flow canonique pipeline noyau 2026-08-11](canonical-kernel-flow.md) — VERROUILLÉ : Blueprint AVANT KRP→Taxonomy↕VDI→…→CKR. Audit RÈGLE DU VIDE : inventions RETIRÉES, 3 BLOCKERS ouverts (QuestionIntent/Phases/ReadyBank). ⛔ KLD/KS.
+- [Flow canonique pipeline noyau 2026-08-11](canonical-kernel-flow.md) — VERROUILLÉ : Blueprint AVANT KRP→Taxonomy↕VDI→QuestionIntent→…→CKR. BLOCKER QuestionIntent LEVÉ. Phases/ReadyBank encore ouverts.
+- [KernelCodeEngine implementation](kernel-code-engine-impl.md) — slug KRP vs canonical + index UNIQUE PARTIEL pgsql + tout test orchestrateur réel besoin de kernel_code_sequences en setUp.
 - [TaxonomyOrchestrator architecture](taxonomy-orchestrator-architecture.md) — TaxonomyProgressManager+Reader+taxonomy.json SUPPRIMÉS ; 4 nouvelles tables ; TaxonomyGeminiClient non-final ; DB::table()->firstOrFail() inexistant ; Schema:: facade pour tests SQLite.
 - [Test DB isolation & $_SERVER precedence](test-db-isolation-server-precedence.md) — phpunit `<env force>` n'écrase pas $_SERVER ; Laravel env() lit $_SERVER d'abord ; forcer AUSSI `<server>` sinon les tests touchent Neon. Runtime = DB_CONNECTION=pgsql.
 - [Trap prompt fix](trap-prompt-fix.md) — 5 nouveaux champs trap étaient dans PHP mais absents du prompt Node ; fix appliqué dans question-api.js.

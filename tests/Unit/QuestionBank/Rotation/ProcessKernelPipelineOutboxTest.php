@@ -2,6 +2,7 @@
 
 namespace Tests\Unit\QuestionBank\Rotation;
 
+use App\Services\QuestionBank\KernelCodeEngine;
 use App\Services\QuestionBank\Rotation\DepthNeedMatrix;
 use App\Services\QuestionBank\Rotation\DepthTourState;
 use App\Services\QuestionBank\Rotation\Events\CurrentKernelReceived;
@@ -49,6 +50,7 @@ class ProcessKernelPipelineOutboxTest extends TestCase
         Schema::dropIfExists('kernel_rotation_state_v2');
         Schema::dropIfExists('kernel_depth_domain_totals');
         Schema::dropIfExists('kernel_depth_matrix');
+        Schema::dropIfExists('kernel_code_sequences');
         Schema::dropIfExists('kernel_blueprint_runs');
         parent::tearDown();
     }
@@ -234,6 +236,7 @@ class ProcessKernelPipelineOutboxTest extends TestCase
             new KernelBlueprintFactory(),
             new KernelRotationPlanner(),
             $taxonomy,
+            new KernelCodeEngine(),
         );
 
         return new ProcessKernelPipelineOutbox(
@@ -254,9 +257,18 @@ class ProcessKernelPipelineOutboxTest extends TestCase
             $table->string('execution_state', 64)->default('CREATED_UNENGAGED');
             $table->smallInteger('depth')->nullable();
             $table->string('domain_code', 64)->nullable();
+            $table->string('kernel_code', 22)->nullable()->unique();
             $table->timestamp('engaged_at')->nullable();
             $table->timestamp('received_at')->nullable();
             $table->timestamps();
+        });
+
+        Schema::create('kernel_code_sequences', function (Blueprint $table) {
+            $table->unsignedSmallInteger('depth');
+            $table->char('domain_code', 2);
+            $table->unsignedInteger('next_value')->default(0);
+            $table->timestamps();
+            $table->primary(['depth', 'domain_code']);
         });
 
         Schema::create('kernel_depth_matrix', function (Blueprint $table) {

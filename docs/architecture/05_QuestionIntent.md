@@ -1,11 +1,10 @@
-# STRATEGYBUZZER — 05_QUESTIONINTENT (CONTRAT EN CONSTRUCTION)
+# STRATEGYBUZZER — 05_QUESTIONINTENT / KERNELCODEENGINE
 
-**Version :** 0.3 — MISSION VERROUILLÉE
+**Version :** 1.0 — VERROUILLÉ
 **Date :** 11 août 2026
-**Spécification écrite :** EN COURS — Mission verrouillée ; identité du noyau en cours de définition
-**Statut :** UNSPECIFIED / UNDER_CONSTRUCTION
-**Implantation :** INTERDITE tant que ce contrat n'est pas verrouillé (RÈGLE DU VIDE)
-**Gel :** `BLOCKED_AT_QUESTION_INTENT_CONTRACT` — aucun rotate réel, aucun encodage, aucune création Gemini à cette frontière
+**Spécification écrite :** COMPLÈTE — Mission, format, invariants, persistance, concurrence, tests validés
+**Statut :** OFFICIAL — IMPLANTATION LIVRÉE ET TESTÉE
+**Gel :** ~~`BLOCKED_AT_QUESTION_INTENT_CONTRACT`~~ — LEVÉ le 11 août 2026
 
 ---
 

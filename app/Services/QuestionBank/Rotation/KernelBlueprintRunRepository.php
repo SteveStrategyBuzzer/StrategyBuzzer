@@ -118,6 +118,33 @@ final class KernelBlueprintRunRepository
     }
 
     /**
+     * Persiste le kernel_code attribué par KernelCodeEngine.
+     *
+     * NOTE : KernelCodeEngine écrit kernel_code dans sa propre transaction
+     * (avec row-lock sur la séquence). Cette méthode est fournie pour les
+     * orchestrateurs qui souhaitent persister le code en dehors d'une
+     * transaction KernelCodeEngine — usage secondaire, pas le chemin principal.
+     */
+    public function markKernelCodeAssigned(string $blueprintId, string $kernelCode): void
+    {
+        DB::table(self::TABLE)
+            ->where('blueprint_id', $blueprintId)
+            ->update(['kernel_code' => $kernelCode, 'updated_at' => now()]);
+    }
+
+    /**
+     * Retourne le kernel_code persisté pour un Blueprint, ou null.
+     */
+    public function findKernelCode(string $blueprintId): ?string
+    {
+        $value = DB::table(self::TABLE)
+            ->where('blueprint_id', $blueprintId)
+            ->value('kernel_code');
+
+        return $value !== null ? (string) $value : null;
+    }
+
+    /**
      * Passe un Blueprint de CREATED_UNENGAGED → NOT_ENGAGED_PRODUCTION_ON_HOLD.
      * Appelé lorsque aucun Depth ne requiert de production.
      */
