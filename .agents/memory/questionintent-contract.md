@@ -92,20 +92,28 @@ Après l'encodage, ce ne sont plus des décisions sur le noyau mais des PHASES d
 - Sortie finale conforme → stockage dans READY_BANK.
 Boucle de correction (aligne Phase 6 Quarantaine + Phase 7 Correction du flow officiel) : WARNING/non-conforme → Quarantaine → humain → correction → re-vérification. Le partiel reste accepté (D5) ; un WARNING ne bloque pas les slots VALIDATED_OK.
 
-## QUARANTAINE — règle officielle (copie du NOYAU MÈRE, pas du slot)
-CORRECTION CLÉ : la quarantaine ne reçoit JAMAIS une copie isolée d'un slot. Elle reçoit une COPIE COMPLÈTE du noyau mère, avec indication explicite des slots WARNING à corriger.
-POURQUOI : un slot WARNING dépend du contexte complet du noyau (identité structurelle, sujet, idée dominante, autres cognitifs, réponses, Saviez-vous, traductions, trace des validations). La correction doit donc se faire dans un clone complet, jamais dans un slot isolé.
+## QUARANTAINE — règle officielle (print / copie de travail, JAMAIS le noyau canonique)
+
+⚠️ **MAJ 2026-08-11 (verrouillé user)** : la terminologie « copie complète du NOYAU_MERE » est remplacée par « print / copie de travail ». Le noyau canonique principal NE QUITTE JAMAIS le flow.
+
+Règle canonique :
+- Le noyau canonique principal reste TOUJOURS dans le flow principal.
+- Quarantine ne reçoit JAMAIS le noyau canonique lui-même.
+- Quarantine travaille sur un PRINT / une COPIE DE TRAVAIL qui conserve la référence à l'identité du noyau canonique.
+- ⛔ Ne plus parler de « sortie temporaire du flow ».
+
+Formulation officielle inscrite dans 05_QuestionIntent : « L'identité produite par QuestionIntent identifie le noyau canonique principal pendant tout son parcours dans le flow. Les copies de travail éventuellement envoyées vers Quarantine conservent une référence à cette identité, mais le noyau canonique principal ne quitte jamais le flow. »
 
 Deux entités officielles :
-- NOYAU_MERE : référence officielle. Contient les slots VALIDATED_OK ET WARNING. SEULS les slots VALIDATED_OK sont utilisables en gameplay.
-- QUARANTAINE_KERNEL_COPY : copie complète du NOYAU_MERE. Contient `warning_slots[]`. Sert à corriger les slots ouverts. Conserve la traçabilité.
+- NOYAU_CANONIQUE_PRINCIPAL : reste dans le flow. Contient les slots VALIDATED_OK ET WARNING. SEULS les slots VALIDATED_OK sont utilisables en gameplay.
+- QUARANTAINE_KERNEL_COPY (print / copie de travail) : émet un print du contexte complet du noyau (jamais le noyau lui-même). Contient `warning_slots[]` + référence à l'identité canonique. Sert à corriger les slots ouverts. Conserve la traçabilité.
 
 Cycle par slot :
 - Slot OK → VALIDATED_OK → slot fermé → READY_BANK → gameplay utilisable.
-- Slot WARNING → slot ouvert → NON utilisable gameplay → copie complète vers QUARANTAINE_KERNEL_COPY (+ liste warning_slots) → correction dans le clone → revalidation :
-  - si VALIDATED_OK : les slots corrigés REMPLACENT les slots WARNING correspondants DANS le NOYAU_MERE → slots fermés → READY_BANK mis à jour → gameplay autorisé.
-  - si encore WARNING : NOYAU_MERE inchangé → slots restent ouverts → gameplay ne les utilise pas.
-Règle : la quarantaine travaille sur un clone complet, mais ne remplace dans le noyau mère QUE les slots corrigés ET revalidés.
+- Slot WARNING → slot ouvert → NON utilisable gameplay → PRINT vers QUARANTAINE_KERNEL_COPY (+ liste warning_slots + référence identité canonique) → correction dans le print → revalidation :
+  - si VALIDATED_OK : les slots corrigés RÉINTÉGRÉS dans le NOYAU_CANONIQUE_PRINCIPAL → slots fermés → READY_BANK mis à jour → gameplay autorisé.
+  - si encore WARNING : noyau canonique inchangé → slots restent ouverts → gameplay ne les utilise pas.
+Règle : la quarantaine travaille sur un print/copie, mais ne réintègre dans le noyau canonique QUE les slots corrigés ET revalidés.
 
 ## STATUTS DE SLOT — vivent DANS le noyau, pas dans READY_BANK
 Distinction officielle : le NOYAU porte les STATUTS ; READY_BANK porte les NOYAUX. Un statut (EMPTY / VALIDATED_OK / WARNING) est un ATTRIBUT d'un slot du noyau, jamais un élément de READY_BANK.
@@ -134,7 +142,7 @@ Phase 1 ne modifie JAMAIS la structure (subjects/idées/cognitifs). ⚠️ L'uni
 **Why:** QUESTIONINTENT est strictement un encodeur : séparation des responsabilités stricte (toute la logique de validation est en amont — KLD + chaîne KEY_STRUCTURE). CORRECTION 2026-06-16 : le NOYAU MÈRE est UNE entité complète indivisible (pas de fan-out, pas de puces, pas de découpage sujet/idée) ; l'ancien « Option A fan-out » est ABANDONNÉ.
 
 ## NOYAU MÈRE = entité complète (correctif 2026-06-16, voir noyau-mere-structure.md)
-Le NOYAU MÈRE est UNE entité complète indivisible. Il n'existe PAS de « puce », PAS de noyau dérivé, PAS de découpage sujet/idée. Les subjects[1..50] × dominant_ideas[1..5] (+ 7 cognitifs × 4 slots, rules/mechanisms/constraints, statuts, traces) sont la STRUCTURE INTERNE d'un SEUL noyau. QUESTIONINTENT l'encode comme un seul objet. La « copie complète du NOYAU_MERE » en Quarantaine = clone de ce noyau complet.
+Le NOYAU MÈRE est UNE entité complète indivisible. Il n'existe PAS de « puce », PAS de noyau dérivé, PAS de découpage sujet/idée. Les subjects[1..50] × dominant_ideas[1..5] (+ 7 cognitifs × 4 slots, rules/mechanisms/constraints, statuts, traces) sont la STRUCTURE INTERNE d'un SEUL noyau. QUESTIONINTENT l'encode comme un seul objet. ⚠️ MAJ 2026-08-11 : la Quarantaine reçoit un PRINT / une COPIE DE TRAVAIL (jamais le noyau canonique lui-même) qui conserve la référence à l'identité canonique. Le noyau canonique principal ne quitte jamais le flow.
 
 CONSÉQUENCES :
 1. ✅ **RÉSOLU (2026-06-16)** — Identité/dedup gameplay : l'unité CONSOMMÉE par le gameplay est le **COGNITIF** (le noyau reste l'unité centrale). Le suivi anti-répétition se fait par **(joueur × noyau × cognitif/famille)**. Détail complet : gameplay-consumption-model.md.

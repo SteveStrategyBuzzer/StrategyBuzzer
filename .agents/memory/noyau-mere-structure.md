@@ -69,7 +69,7 @@ Chaque slot possède SES propres traces :
 - **PHASE 2** (vérif P1) : `VALIDATED_OK` ou `WARNING` → écrit `trace_validation`.
 - **PHASE 3** (travail) : remplit Traductions, **uniquement** pour les slots création `VALIDATED_OK` → écrit `trace_translation`.
 - **PHASE 4** (vérif P3) : `VALIDATED_OK` ou `WARNING` → écrit `trace_translation_validation`.
-- **QUARANTAINE** (environnement transversal) : clone le noyau mère complet, identifie les slots WARNING, corrige, garde les traces, renvoie les slots corrigés → écrit `trace_correction` + `trace_replacement`.
+- **QUARANTAINE** (environnement transversal) : reçoit un PRINT / une COPIE DE TRAVAIL du noyau (⚠️ MAJ 2026-08-11 — jamais le noyau canonique lui-même, qui reste dans le flow principal), identifie les slots WARNING, corrige dans le print, garde les traces, réintègre les slots corrigés dans le noyau canonique → écrit `trace_correction` + `trace_replacement`.
 
 ## Définition officielle verrouillée (texte de référence)
 « Le NOYAU MÈRE est un conteneur intelligent préstructuré qui porte son identité, son contexte

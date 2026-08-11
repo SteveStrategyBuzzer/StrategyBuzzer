@@ -214,6 +214,53 @@ du §0, jamais déduite du legacy.
 
 ---
 
+# 4.1 Règle canonique — le noyau principal ne quitte jamais le flow (verrouillé)
+
+```text
+NOYAU CANONIQUE PRINCIPAL
+↓
+reste TOUJOURS dans le flow principal
+↓
+Phase 1 → Validation Phase 1 → Phase 2 → Validation Phase 2 → ReadyBank
+
+En cas de problème :
+
+NOYAU CANONIQUE PRINCIPAL            ← reste dans le flow
+↓
+         └────→  PRINT / COPIE DE TRAVAIL
+                 ↓
+              Quarantine
+                 ↓
+              correction
+                 ↓
+              retour d'information
+                 ↓
+              réintégration dans le noyau canonique
+```
+
+**Règle précise (verrouillée — source : utilisateur, 11 août 2026) :**
+
+- Le noyau principal ne quitte jamais le flow.
+- Quarantine ne reçoit jamais le noyau canonique lui-même.
+- Quarantine travaille sur un print / une copie de travail.
+- L'identité du noyau canonique reste attachée au noyau principal.
+- Les prints de Quarantine doivent conserver la référence permettant de revenir
+  au bon noyau canonique.
+- ⛔ Il ne faut plus parler de « sortie temporaire du flow ».
+
+**Formulation officielle pour QuestionIntent :**
+
+> L'identité produite par QuestionIntent identifie le noyau canonique principal
+> pendant tout son parcours dans le flow. Les copies de travail éventuellement
+> envoyées vers Quarantine conservent une référence à cette identité, mais le
+> noyau canonique principal ne quitte jamais le flow.
+
+Cette règle est un impératif de conception pour §9.19 (Identité du noyau) et
+§9.20 (Relation avec Phase 1) : l'identité produite ici doit être stable,
+référençable et ne jamais être confondue avec un print de travail.
+
+---
+
 # 5. Verrous négatifs des mappings (utilisateur — 11 août 2026)
 
 Les mappings suivants sont **UNSPECIFIED et NON AUTORISÉS** :
