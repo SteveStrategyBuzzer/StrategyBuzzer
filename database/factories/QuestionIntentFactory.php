@@ -32,7 +32,6 @@ class QuestionIntentFactory extends Factory
             'concept_family'   => $this->faker->word(),
             'source'           => 'kernel',
             'dialysis_status'  => 'pending',
-            'kernel_code'      => null,
         ];
     }
 }
