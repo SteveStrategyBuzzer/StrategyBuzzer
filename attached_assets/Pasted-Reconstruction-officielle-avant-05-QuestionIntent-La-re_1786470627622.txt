@@ -1,0 +1,568 @@
+Reconstruction officielle avant 05_QuestionIntent
+
+La reconstruction est faite. Je ne commence pas encore la spécification QuestionIntent dans cette réponse : je fixe d’abord le socle hérité, les frontières et les contradictions historiques qui ne doivent surtout pas contaminer sa conception.
+
+1. Constitution Cognitive — règles qui gouvernent QuestionIntent
+
+QuestionIntent doit être conçu comme un module moteur isolé par responsabilité, mais jamais en silo. Pour chaque décision, nous devons pouvoir répondre à : qui le nourrit, ce qu’il lit, ce qu’il produit, qui consomme son résultat, ce qui reste interne, ce qui traverse le Blueprint et quelles responsabilités appartiennent déjà aux autres modules. Le code existant n’est jamais une autorité métier, et tout terme technique comme hash, UUID, table, index ou token doit d’abord avoir une signification métier explicite.
+
+Donc, pour QuestionIntent :
+
+architecture
+↓
+contrat métier
+↓
+mécanismes
+↓
+spécification
+↓
+Architecture Register
+↓
+audit du code
+
+et jamais :
+
+question_intents
++ colonnes legacy
++ validators existants
+↓
+déduction de QuestionIntent
+2. Correction supérieure déjà acquise : création du Blueprint
+
+Il existe une contradiction documentaire historique importante.
+
+D’anciens documents disent encore :
+
+KernelRotationPlanner
+↓
+crée KernelBlueprint
+
+Le document Constitution/État actuel contient effectivement encore cette ancienne formulation.
+
+Mais cette formulation est SUPERSEDED par notre architecture active actuelle :
+
+CRÉATION DU KERNELBLUEPRINT
+↓
+KernelRotationPlanner
+
+Le Blueprint est donc déjà créé lorsque KRP le reçoit. KRP ne doit jamais redevenir son créateur. C’est cette correction que Replit avait explicitement reçue lors du dernier raccordement.
+
+Cette divergence documentaire est donc :
+
+PAS un point ouvert pour QuestionIntent
+PAS une décision à reprendre
+= ancien texte à ne pas réintroduire
+3. Pipeline reconstruit jusqu’à QuestionIntent
+
+Le chemin actif à utiliser est exclusivement :
+
+CRÉATION DU KERNELBLUEPRINT
+↓
+KernelRotationPlanner
+↓
+Taxonomy
+↕
+ValidationDominantIdeas
+↓
+QUESTIONINTENT
+↓
+Phase 1
+
+Pour la conception actuelle, on s’arrête exactement ici :
+
+Taxonomy
+↕
+ValidationDominantIdeas
+↓
+[ QUESTIONINTENT ]
+↓
+frontière Phase 1
+
+Nous ne concevons pas maintenant :
+
+Phase 1
+Validation Phase 1
+Phase 2
+Validation Phase 2
+Quarantine
+ReadyBank
+confirmConsumed
+
+Le dernier audit confirme d’ailleurs que la frontière actuellement bloquée est précisément Taxonomy↕ValidationDominantIdeas → QuestionIntent, et que le contrat physique d’encodage n’est pas défini.
+
+4. Ce que KernelBlueprint impose déjà à QuestionIntent
+
+Le Blueprint reste le contrat vivant du noyau courant, pas un réservoir.
+
+Au moment où QuestionIntent le reçoit, l’amont a déjà produit :
+
+depth
+domain
+subdomain_active
+subject_active
+dominant_idea_active
+
+Autrement dit :
+
+Depth
+↓
+Domaine
+↓
+Sous-domaine actif
+↓
+Sujet actif
+↓
+Idée Dominante active
+
+Cette hiérarchie est déjà décidée avant QuestionIntent.
+
+QuestionIntent n’a donc aucun droit de :
+
+changer depth
+changer domain
+changer subdomain_active
+changer subject_active
+changer dominant_idea_active
+
+Il n’a pas davantage le droit de récupérer dans le Blueprint :
+
+50 sujets
+5 idées candidates
+historique complet Taxonomy
+curseurs
+mémoire Gemini
+FAIL candidates
+réservoirs
+
+Tout cela reste chez Taxonomy.
+
+5. Ce que KernelRotationPlanner impose
+
+KRP a déjà terminé sa responsabilité avant QuestionIntent.
+
+Son apport au noyau est :
+
+depth
+domain
+
+QuestionIntent ne décide donc jamais :
+
+du Depth ;
+du Domaine ;
+du prochain Domaine ;
+de la rotation ;
+du DepthCycle ;
+des besoins quantitatifs ;
+de la disponibilité des réservoirs.
+
+QuestionIntent consomme la position intellectuelle déjà choisie. Il n’en choisit aucune partie.
+
+6. Ce que Taxonomy impose
+
+Taxonomy est l’autorité de création et de progression de :
+
+Sous-domaines
+↓
+Sujets
+↓
+Idées Dominantes
+
+Ses réservoirs sont externes au Blueprint.
+
+À la sortie de Taxonomy, QuestionIntent reçoit une seule unité active, et non l’inventaire :
+
+subdomain_active
+subject_active
+dominant_idea_active
+
+Donc QuestionIntent :
+
+ne crée pas de Sous-domaine
+ne crée pas de Sujet
+ne crée pas d'Idée Dominante
+ne choisit pas une autre Idée
+ne fait pas progresser le curseur Taxonomy
+ne fait pas confirmConsumed()
+7. Ce que ValidationDominantIdeas garantit avant QuestionIntent
+
+L’ancienne architecture :
+
+KLD
+↓
+KEY_STRUCTURE
+
+est supprimée.
+
+Elle ne doit apparaître nulle part dans la conception active de QuestionIntent. La Constitution documente déjà le remplacement de cette séparation par ValidationDominantIdeas.
+
+ValidationDominantIdeas intervient pendant Taxonomy, avant que l’Idée Dominante soit considérée utilisable.
+
+Donc, lorsque QuestionIntent reçoit :
+
+dominant_idea_active
+
+il doit la considérer comme l’Idée Dominante déjà retenue par l’amont.
+
+QuestionIntent ne doit pas refaire :
+
+doublon
+synonyme
+collision conceptuelle
+diversité du set
+cohérence Domaine/Sous-domaine/Sujet
+dominance
+Depth conformity
+
+Sinon nous reconstruirions une deuxième validation concurrente.
+
+8. État intellectuel exact à l’entrée de QuestionIntent
+
+C’est le point central.
+
+QuestionIntent reçoit conceptuellement :
+
+KERNELBLUEPRINT CANONIQUE
+│
+├── depth
+├── domain
+├── subdomain_active
+├── subject_active
+├── dominant_idea_active
+│
+└── identité/intention QuestionIntent :
+    encore à déterminer
+
+Le noyau possède donc déjà son territoire intellectuel.
+
+Mais il ne possède pas encore nécessairement sa directive de création pour Phase 1.
+
+C’est précisément là que QuestionIntent existe.
+
+9. Mission minimale déjà héritée de QuestionIntent
+
+Sans encore écrire sa Mission officielle, nous savons déjà qu’il est situé entre :
+
+TERRITOIRE INTELLECTUEL VALIDÉ
+↓
+QuestionIntent
+↓
+CRÉATION COGNITIVE Phase 1
+
+Donc son problème métier est nécessairement lié à la transformation :
+
+« de quoi parle exactement ce noyau ? »
+
+vers quelque chose permettant à Phase 1 de savoir :
+
+« qu'est-ce que je dois créer à partir de ce noyau précis ? »
+
+C’est cohérent avec la description historique de QuestionIntent comme module qui prépare l’identité et l’intention utilisées par Phase 1, sans recréer ni revalider Taxonomy. Cette description existe déjà dans les documents de travail antérieurs.
+
+Mais attention :
+
+nous n’avons pas encore défini la forme de cette intention.
+
+10. kernel_code — cas particulier à traiter très précisément
+
+Il faut distinguer deux choses.
+
+A. Le concept kernel_code
+
+Dans les spécifications amont historiques, kernel_code existe comme identité du noyau et arrive vide à QuestionIntent. Plusieurs versions attribuaient son écriture à QuestionIntent.
+
+B. Son contrat exact
+
+Il n’est pas encore permis d’en déduire :
+
+son format
+ses composants
+sa longueur
+son algorithme
+sa persistance
+son rôle d'unicité
+sa relation avec blueprint_reference
+sa relation avec semantic_key
+sa relation avec intent
+
+Donc pendant 05_QuestionIntent, nous devons auditer kernel_code.
+
+Si nous concluons :
+
+kernel_code reste un slot officiel
+
+alors nous définirons exactement :
+
+sa signification métier
+son propriétaire
+sa construction
+son consommateur
+
+Si nous concluons qu’il doit changer structurellement, cela ne pourra pas être une petite décision locale de QuestionIntent : il faudra alors versionner aussi le contrat KernelBlueprint concerné et inscrire la décision au Register.
+
+11. ks_hash et kld_hash
+
+Traitement différent.
+
+Ces champs proviennent directement de l’époque :
+
+KLD
++
+KEY_STRUCTURE
+
+et ces modules sont maintenant SUPERSEDED.
+
+Donc leur existence physique ne leur donne aucune légitimité.
+
+Pour 05_QuestionIntent, ils entrent avec ce statut :
+
+ks_hash
+→ LEGACY À JUSTIFIER
+
+kld_hash
+→ LEGACY À JUSTIFIER
+
+Pas :
+
+« il faut définir comment QuestionIntent les remplit »
+
+La question correcte sera :
+
+Existe-t-il encore aujourd’hui une information métier distincte que ks_hash ou kld_hash représente ?
+
+Si la réponse est non :
+
+suppression
+
+Si la réponse est oui :
+
+nouvelle justification métier explicite
+
+mais jamais « conservation parce que la colonne existe ».
+
+12. Ce que QuestionIntent ne peut surtout pas hériter du legacy
+
+Le dernier audit a déjà identifié et retiré ces mappings inventés :
+
+dominant_idea → angle_large
+dominant_idea → micro_angle
+dominant_idea → answer_target
+
+subdomain → concept_family
+
+blueprint_id → intent_key
+blueprint_id → semantic_key
+
+language_source = en
+
+Ces associations repartent à zéro autorité.
+
+Même chose pour :
+
+question_intents
+KernelFrameValidator
+frame_status
+KernelFrameBuilder legacy
+
+Ils seront audités après le contrat QuestionIntent, jamais utilisés pour le produire.
+
+13. Questions que 05_QuestionIntent doit obligatoirement résoudre
+
+Voici maintenant les vraies décisions du module.
+
+A — Mission
+
+Que signifie exactement Question Intent dans StrategyBuzzer ?
+
+Pas techniquement. Métier.
+
+B — Unité traitée
+
+Travaille-t-il sur :
+
+1 Blueprint ?
+1 paire Sujet + Idée ?
+1 direction de création ?
+autre ?
+
+À déterminer officiellement.
+
+C — Entrées
+
+Parmi :
+
+depth
+domain
+subdomain_active
+subject_active
+dominant_idea_active
+
+lesquelles lit-il réellement et pourquoi ?
+
+D — Sortie métier
+
+Que produit-il réellement pour Phase 1 ?
+
+C’est probablement la décision la plus importante du document.
+
+E — Identité
+
+QuestionIntent :
+
+crée-t-il l’identité ?
+verrouille-t-il une identité déjà commencée ?
+produit-il kernel_code ?
+quelle différence entre identité et intention ?
+F — Cardinalité
+
+Produit-il :
+
+1 intent par noyau
+
+ou une structure composée ?
+
+Aucune déduction à partir de la table question_intents.
+
+G — Blueprint
+
+Quels slots lit-il ?
+
+Quels slots écrit-il ?
+
+Quels éléments restent internes ?
+
+H — Persistance
+
+QuestionIntent a-t-il besoin d’une mémoire propre ?
+
+Si oui, pourquoi ?
+
+I — Idempotence
+
+Si le même Blueprint lui est présenté deux fois :
+
+même résultat ?
+nouvelle génération ?
+refus ?
+
+À définir.
+
+J — Collision / unicité
+
+Qu’est-ce qu’un « même intent » ?
+
+Quel niveau de collision doit être interdit ?
+
+Et surtout : est-ce réellement une responsabilité de QuestionIntent ?
+
+K — États et transitions
+
+QuestionIntent a-t-il des états internes ?
+
+Ne pas inventer READY, FAILED, ENCODED, etc.
+
+L — Erreur
+
+Si l’entrée est invalide ou incomplète :
+
+que fait QuestionIntent ?
+
+Pas de retry arbitraire.
+
+Pas de Quarantine automatique.
+
+M — Relation Phase 1
+
+Que garantit exactement QuestionIntent lorsque Phase 1 reçoit le noyau ?
+
+Cette frontière doit être suffisamment précise pour que Phase 1 puisse ensuite être spécifiée sans modifier QuestionIntent.
+
+N — Legacy
+
+Décision explicite, élément par élément :
+
+kernel_code
+ks_hash
+kld_hash
+intent_key
+semantic_key
+angle_large
+micro_angle
+answer_target
+concept_family
+language_source
+question_intents
+14. Ce qui reste hors périmètre pendant 05_QuestionIntent
+
+Même si nous découvrons ces problèmes, nous ne les réglerons pas dans cette spécification :
+
+frame_en :
+kld_result
+ks_result
+ks_hash
+key_structure
+kld
+
+→ GELÉ jusqu’aux Phases.
+
+Également hors périmètre :
+
+retry Phase 1
+retry Phase 2
+Quarantine
+ReadyBank acceptance
+confirmConsumed
+CURRENT_KERNEL_RECEIVED semantics
+
+Les blockers concernant Phases et ReadyBank restent documentés, mais ne seront pas absorbés par QuestionIntent. Le dernier audit avait correctement séparé ces frontières.
+
+15. État de reconstruction
+
+Nous arrivons donc à ceci :
+
+CONSTITUTION COGNITIVE
+        ↓
+ARCHITECTURE REGISTER
+        ↓
+KERNELBLUEPRINT
+Contrat vivant du noyau
+        ↓
+KERNELROTATIONPLANNER
+depth + domain
+        ↓
+TAXONOMY
+subdomain_active
+subject_active
+dominant_idea_active
+        ↕
+VALIDATIONDOMINANTIDEAS
+validation avant acceptation de l'idée
+        ↓
+========================================
+FRONTIÈRE ENTRANTE QUESTIONINTENT CONNUE
+========================================
+        ↓
+05_QUESTIONINTENT
+MISSION ET CONTRAT À CONSTRUIRE
+        ↓
+========================================
+FRONTIÈRE SORTANTE VERS PHASE 1 À DÉFINIR
+========================================
+        ↓
+PHASE 1 — NON TRAITÉE MAINTENANT
+Conclusion de la reconstruction
+
+Nous avons suffisamment reconstruit l’amont pour commencer 05_QuestionIntent sans dépendre du code legacy.
+
+Le premier travail ne doit donc pas être :
+
+« Que fait QuestionIntentEncoder.php ? »
+
+ni :
+
+« Que contient question_intents ? »
+
+mais :
+
+Quelle transformation métier indispensable doit se produire entre un territoire Taxonomy validé et la création des 7 cognitifs de Phase 1 ?
+
+C’est à partir de cette question que doit commencer la Mission de 05_QuestionIntent.

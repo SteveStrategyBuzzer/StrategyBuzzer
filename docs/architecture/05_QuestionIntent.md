@@ -1,8 +1,8 @@
 # STRATEGYBUZZER — 05_QUESTIONINTENT (CONTRAT EN CONSTRUCTION)
 
-**Version :** 0.1 — CADRE DE TRAVAIL
+**Version :** 0.2 — SOCLE RECONSTRUIT (reconstruction officielle intégrée)
 **Date :** 11 août 2026
-**Spécification écrite :** NON — ce document est le CADRE de la spécification à produire, il ne contient AUCUNE décision métier nouvelle
+**Spécification écrite :** NON — ce document fixe le socle hérité, les frontières et les interdictions ; aucune décision métier nouvelle n'est prise ici
 **Statut :** UNSPECIFIED / UNDER_CONSTRUCTION
 **Implantation :** INTERDITE tant que ce contrat n'est pas verrouillé (RÈGLE DU VIDE)
 **Gel :** `BLOCKED_AT_QUESTION_INTENT_CONTRACT` — aucun rotate réel, aucun encodage, aucune création Gemini à cette frontière
@@ -13,11 +13,11 @@
 
 Le contrat métier se définit D'ABORD ; les colonnes ne viennent QU'ENSUITE.
 
-Question directrice unique :
+Question directrice unique (point de départ officiel de la Mission) :
 
 ```text
-Que doit exactement faire QUESTIONINTENT avec ce noyau Taxonomy validé
-pour préparer Phase 1 ?
+Quelle transformation métier indispensable doit se produire entre
+un territoire Taxonomy validé et la création des 7 cognitifs de Phase 1 ?
 ```
 
 et JAMAIS :
@@ -29,12 +29,12 @@ Que devons-nous mettre dans les colonnes existantes ?
 Séquence obligatoire avant tout code :
 
 ```text
-reconstruction du contrat complet
-→ définition officielle des entrées
-→ définition officielle des sorties
-→ définition de l'identité du noyau
-→ détermination de ce qui devient legacy
-→ inscription à l'Architecture Register
+architecture
+→ contrat métier
+→ mécanismes
+→ spécification
+→ Architecture Register
+→ audit du code existant
 → implantation QuestionIntent
 → ensuite seulement premier rotate réel
 ```
@@ -55,42 +55,166 @@ dans l'ancien code ne lui confère AUCUNE autorité métier.
 # 1. Position dans le flow — VERROUILLÉE (fait certain)
 
 ```text
-KernelBlueprint (créé AVANT KRP)
+CRÉATION DU KERNELBLUEPRINT (avant KRP — CORRECTION SUPERSEDED actuelle)
 ↓
 KernelRotationPlanner (depth + domain)
 ↓
 Taxonomy ↕ ValidationDominantIdeas
+  (subdomain_active + subject_active + dominant_idea_active)
 ↓
-[ QUESTIONINTENT — À DÉFINIR ]   ← FRONTIÈRE — STOP
+════════════════════════════════════════════
+FRONTIÈRE ENTRANTE QUESTIONINTENT — CONNUE
+════════════════════════════════════════════
 ↓
-Phase 1
+[ 05_QUESTIONINTENT — MISSION ET CONTRAT À CONSTRUIRE ]
+↓
+════════════════════════════════════════════
+FRONTIÈRE SORTANTE VERS PHASE 1 — À DÉFINIR
+════════════════════════════════════════════
+↓
+Phase 1 — NON TRAITÉE MAINTENANT
 ```
+
+**Correction documentaire obligatoire :** des documents antérieurs indiquent
+encore « KernelRotationPlanner crée KernelBlueprint ». Cette formulation est
+SUPERSEDED. Le Blueprint est créé AVANT KRP. KRP ne doit jamais redevenir
+son créateur. Ce n'est PAS un point ouvert pour la conception de QuestionIntent.
 
 Le pipeline reste bloqué à cette frontière jusqu'au verrouillage du présent
 contrat. Le schedule `questions:kernel:process-outbox` (préexistant) peut
-rester actif : il est no-op tant qu'aucun noyau réel n'est engagé et
-n'effectue aucune création Gemini.
+rester actif : il est no-op tant qu'aucun noyau réel n'est engagé.
 
 ---
 
-# 2. Entrées CERTAINES déjà acquises (fait certain — 11 août 2026)
+# 2. Entrées certaines à l'entrée de QuestionIntent
 
-Données validées que Taxonomy fournit, portées par le KernelBlueprint :
+## 2.1 Ce que l'amont a produit (fait certain)
+
+Au moment où QuestionIntent est appelé, le pipeline a déjà déterminé :
 
 ```text
-depth
-domain
-subdomain_active
-subject_active
-dominant_idea_active
+depth               ← KRP a inscrit (via KernelRotationPlanner)
+domain              ← KRP a inscrit
+subdomain_active    ← Taxonomy a sélectionné
+subject_active      ← Taxonomy a sélectionné
+dominant_idea_active ← Taxonomy a sélectionné, ValidationDominantIdeas a validé
 ```
 
-Toute entrée supplémentaire éventuelle relève de la rubrique « Entrées »
-(§5.5) et doit être décidée explicitement — jamais supposée.
+Cette hiérarchie est complète et définitive avant que QuestionIntent intervienne.
+
+## 2.2 Ce que QuestionIntent n'a PAS le droit de faire sur ces entrées
+
+**Hérité de KernelRotationPlanner — interdictions absolues :**
+
+```text
+✗ changer depth
+✗ changer domain
+✗ décider du prochain domaine
+✗ décider de la rotation
+✗ décider du DepthCycle
+✗ connaître les besoins quantitatifs
+✗ connaître la disponibilité des réservoirs
+```
+
+QuestionIntent consomme la position intellectuelle déjà choisie.
+Il n'en choisit aucune partie.
+
+**Hérité de Taxonomy — interdictions absolues :**
+
+```text
+✗ créer un sous-domaine
+✗ créer un sujet
+✗ créer une idée dominante
+✗ choisir une autre idée que dominant_idea_active
+✗ faire progresser le curseur Taxonomy
+✗ appeler confirmConsumed()
+✗ connaître les 50 sujets, les 5 idées candidates
+✗ connaître l'historique complet Taxonomy
+✗ connaître les curseurs, la mémoire Gemini, les FAIL candidates, les réservoirs
+```
+
+Tout cela reste chez Taxonomy.
+
+**Hérité de ValidationDominantIdeas — interdictions absolues :**
+
+```text
+✗ re-valider le doublon
+✗ re-valider la synonymie
+✗ re-valider la collision conceptuelle
+✗ re-valider la diversité du set
+✗ re-valider la cohérence Domaine/Sous-domaine/Sujet
+✗ re-valider la dominance
+✗ re-valider la Depth conformity
+```
+
+Lorsque QuestionIntent reçoit `dominant_idea_active`, il la considère comme
+l'Idée Dominante déjà retenue et validée par l'amont. Refaire ces contrôles
+constituerait une deuxième validation concurrente — interdit.
+
+## 2.3 Entrées supplémentaires éventuelles — OPEN
+
+Toute entrée au-delà des 5 données du §2.1 relève de la rubrique §8.5
+et doit être décidée explicitement — jamais supposée.
 
 ---
 
-# 3. Verrous négatifs (utilisateur — 11 août 2026)
+# 3. État intellectuel exact à l'entrée de QuestionIntent
+
+C'est le point central de la conception.
+
+```text
+KERNELBLUEPRINT CANONIQUE
+│
+├── depth
+├── domain
+├── subdomain_active
+├── subject_active
+├── dominant_idea_active
+│
+└── identité / intention QuestionIntent :
+    → ENCORE À DÉTERMINER
+```
+
+Le noyau possède déjà son **territoire intellectuel complet**.
+
+Il ne possède pas encore nécessairement sa **directive de création pour Phase 1**.
+
+C'est précisément là que QuestionIntent existe : entre le territoire validé
+et la création des 7 cognitifs.
+
+Son problème métier est nécessairement lié à la transformation :
+
+```text
+« de quoi parle exactement ce noyau ? »
+         ↓
+quelque chose permettant à Phase 1 de savoir :
+« qu'est-ce que je dois créer à partir de ce noyau précis ? »
+```
+
+---
+
+# 4. Mission minimale héritée (sans la définir encore)
+
+QuestionIntent est situé entre :
+
+```text
+TERRITOIRE INTELLECTUEL VALIDÉ
+         ↓
+    QuestionIntent
+         ↓
+CRÉATION COGNITIVE Phase 1
+```
+
+L'historique le décrit comme un module qui prépare l'identité et l'intention
+utilisées par Phase 1, sans recréer ni revalider Taxonomy.
+
+**Attention :** la forme de cette intention n'est pas encore définie.
+La Mission officielle doit être construite à partir de la question directrice
+du §0, jamais déduite du legacy.
+
+---
+
+# 5. Verrous négatifs des mappings (utilisateur — 11 août 2026)
 
 Les mappings suivants sont **UNSPECIFIED et NON AUTORISÉS** :
 
@@ -107,19 +231,108 @@ language_source = en                 ← NON AUTORISÉ
 L'encodeur qui les implémentait a été RETIRÉ (audit RÈGLE DU VIDE,
 11 août 2026). Zéro ligne n'a jamais été écrite avec ces mappings.
 
-Rappels d'architecture en vigueur :
-- ⛔ KLD / KEY_STRUCTURE : SUPERSEDED (absorbés par ValidationDominantIdeas) ;
-- ⛔ KernelIdentifierManager : ABANDONNÉ ;
-- DEC-052 concerne la COMPTABILISATION rotation — « reçu » et « accepté »
-  ne doivent pas être fusionnés sans contrat officiel. Cette clarification
-  est une spécification SÉPARÉE, à traiter APRÈS le présent contrat
-  (une seule spécification à la fois).
+Également sans autorité :
+
+```text
+question_intents (table)    ← relevé factuel §11, jamais source de contrat
+KernelFrameValidator        ← audité APRÈS le contrat, jamais utilisé pour le produire
+frame_status                ← idem
+KernelFrameBuilder legacy   ← idem
+```
 
 ---
 
-# 4. Acquis antérieurs à RE-RATIFIER (héritage — aucune reconduction d'office)
+# 6. Traitement explicite des champs d'identité legacy
 
-Contrat historique de QUESTIONINTENT (verrouillé 2026-06-16/19, ère KLD/KS) :
+## 6.1 kernel_code — cas particulier à auditer précisément
+
+**Concept :** dans les spécifications amont historiques, `kernel_code` existe
+comme identité du noyau et arrive vide à QuestionIntent. Plusieurs versions
+attribuaient son écriture à QuestionIntent.
+
+**Ce qui n'est PAS encore permis de déduire :**
+
+```text
+son format
+ses composants
+sa longueur
+son algorithme
+sa persistance
+son rôle d'unicité
+sa relation avec blueprint_reference
+sa relation avec semantic_key
+sa relation avec intent
+```
+
+**Procédure d'audit pendant 05_QuestionIntent :**
+
+Si la conclusion est `kernel_code reste un slot officiel` :
+→ définir sa signification métier / son propriétaire / sa construction / son consommateur
+
+Si la conclusion est qu'il doit changer structurellement :
+→ versionner aussi le contrat KernelBlueprint concerné
+→ inscrire la décision à l'Architecture Register
+
+## 6.2 ks_hash et kld_hash — legacy à justifier
+
+Ces champs proviennent de l'ère KLD / KEY_STRUCTURE, modules maintenant
+SUPERSEDED. Leur existence physique ne leur donne aucune légitimité.
+
+Ils entrent dans 05_QuestionIntent avec le statut :
+
+```text
+ks_hash  → LEGACY À JUSTIFIER
+kld_hash → LEGACY À JUSTIFIER
+```
+
+La question correcte est :
+
+```text
+Existe-t-il encore aujourd'hui une information métier distincte
+que ks_hash ou kld_hash représente ?
+
+  Réponse non → suppression (migration destructive sur ordre explicite)
+  Réponse oui → nouvelle justification métier explicite
+               (jamais « conservation parce que la colonne existe »)
+```
+
+---
+
+# 7. Hors périmètre de 05_QuestionIntent
+
+Même si ces problèmes sont découverts pendant la spécification, ils ne seront
+PAS résolus dans ce document :
+
+**GELÉ jusqu'aux Phases :**
+```text
+frame_en :
+  kld_result
+  ks_result
+  ks_hash
+  key_structure
+  kld
+→ GELÉ / FUTURE PHASE
+```
+
+**Hors périmètre — sera spécifié après 05_QuestionIntent :**
+```text
+retry Phase 1
+retry Phase 2
+Quarantine
+ReadyBank acceptance
+confirmConsumed
+CURRENT_KERNEL_RECEIVED semantics
+re-rotation après échec aval
+```
+
+Les BLOCKERs concernant Phases et ReadyBank restent documentés mais ne seront
+pas absorbés par QuestionIntent. Une seule spécification à la fois.
+
+---
+
+# 8. Acquis antérieurs à re-ratifier (héritage — aucune reconduction d'office)
+
+Contrat historique de QuestionIntent (verrouillé 2026-06-16/19, ère KLD/KS) :
 
 | Acquis historique | Statut dans ce contrat |
 |---|---|
@@ -135,98 +348,156 @@ confirmée, amendée ou abandonnée dans la spécification finale.
 
 ---
 
-# 5. Les 21 rubriques du contrat — statut et questions à trancher
+# 9. Les 21 rubriques du contrat — statut et questions à trancher
 
 Chaque rubrique reste **OPEN** tant qu'elle n'est pas verrouillée par
-l'utilisateur. Les questions sont posées SANS proposition de réponse.
+l'utilisateur. Les 14 points de décision A-N (reconstruction officielle)
+sont alignés sur les rubriques correspondantes.
 
-## 5.1 Mission — OPEN
-La question directrice du §0.
+## 9.1 Mission — OPEN [→ Point A]
+**Point A :** Que signifie exactement QuestionIntent dans StrategyBuzzer ?
+Pas techniquement — métier. (Débloque 9.3, 9.4, 9.6 — question directrice §0)
 
-## 5.2 Position — VERROUILLÉE
+## 9.2 Position — VERROUILLÉE
 Voir §1. Entre Taxonomy↕ValidationDominantIdeas et Phase 1.
 
-## 5.3 Responsabilités — OPEN
+## 9.3 Responsabilités — OPEN [→ Point A/C]
 Le périmètre « pur encodeur » historique est-il reconduit tel quel ?
-Liste exhaustive des verbes autorisés (encoder, identifier, tracer…) ?
+Liste exhaustive des verbes autorisés ?
 
-## 5.4 Interdictions — OPEN
-Les interdictions historiques (§4) sont-elles reconduites ? Nouvelles
-interdictions propres au flow 2026-08-11 ?
+## 9.4 Interdictions — PARTIELLEMENT CONNUES [→ §2.2]
+Les interdictions héritées des modules amont sont documentées au §2.2.
+Les interdictions propres à QuestionIntent lui-même : OPEN.
 
-## 5.5 Entrées — PARTIELLEMENT CERTAINES
-Les 5 données du §2 sont acquises. QuestionIntent reçoit-il autre chose
+## 9.5 Entrées — PARTIELLEMENT CERTAINES [→ Point C]
+Les 5 données du §2.1 sont acquises. QuestionIntent reçoit-il autre chose
 (règles, mécanismes, contraintes, métadonnées de rotation) ?
 
-## 5.6 Sorties — OPEN
-Que produit exactement QuestionIntent ? Quelle est la forme du « noyau
-encodé » remis à Phase 1 ? Les sorties historiques (§4) sont à re-statuer.
+**Point C :** Parmi depth / domain / subdomain_active / subject_active /
+dominant_idea_active — lesquelles lit-il réellement et pourquoi ?
 
-## 5.7 Slots Blueprint lus — OPEN
-Lesquels exactement (les 6 champs Part1 ? moins ? plus) ?
+## 9.6 Sorties — OPEN [→ Point D]
+**Point D (décision la plus importante) :** Que produit-il réellement pour
+Phase 1 ? Quelle est la forme du « noyau encodé » remis à Phase 1 ?
+Les sorties historiques (§8) sont à re-statuer.
 
-## 5.8 Slots Blueprint écrits — OPEN
-QuestionIntent écrit-il dans le Blueprint ? Fait factuel : le DTO
-KernelBlueprint possède un slot `kernel_code` et une méthode
-`fillKernelCode()` jamais appelée — capacité existante, usage NON décidé.
+## 9.7 Slots Blueprint lus — OPEN [→ Point G]
+**Point G (partie 1) :** Lesquels exactement (les 6 champs Part1 ? moins ? plus) ?
 
-## 5.9 Données internes — OPEN
-QuestionIntent possède-t-il un état interne propre, ou est-il sans état ?
+## 9.8 Slots Blueprint écrits — OPEN [→ Point G/E]
+**Point G (partie 2) :** QuestionIntent écrit-il dans le Blueprint ?
+Fait factuel : le DTO KernelBlueprint possède un slot `kernel_code` et une
+méthode `fillKernelCode()` jamais appelée — capacité existante, usage NON décidé.
 
-## 5.10 Mécanismes — OPEN
+**Point E :** QuestionIntent crée-t-il l'identité ? Verrouille-t-il une identité
+déjà commencée ? Produit-il kernel_code ? Quelle différence entre identité et intention ?
+
+## 9.9 Données internes — OPEN [→ Point H/I]
+**Point H :** QuestionIntent a-t-il besoin d'une mémoire propre ? Si oui, pourquoi ?
+**Point I :** Si le même Blueprint lui est présenté deux fois : même résultat ?
+nouvelle génération ? refus ? À définir.
+
+## 9.10 Mécanismes — OPEN [→ Point I]
 Encodage déterministe ? Idempotence (rejouer l'encodage du même Blueprint) ?
 Atomicité avec l'engagement du Blueprint ?
 
-## 5.11 Communication — OPEN
+## 9.11 Communication — OPEN
 Qui appelle QuestionIntent (orchestrateur ? événement ?) ? Synchrone ou
 asynchrone ? Signale-t-il quelque chose en aval ?
 
-## 5.12 Contrats — OPEN
+## 9.12 Contrats — OPEN [→ Point M]
+**Point M :** Que garantit exactement QuestionIntent lorsque Phase 1 reçoit le
+noyau ? La frontière doit être suffisamment précise pour que Phase 1 puisse
+ensuite être spécifiée sans modifier QuestionIntent.
 Interfaces exactes amont (Blueprint/Taxonomy) et aval (Phase 1).
 
-## 5.13 États — OPEN
-Le noyau encodé a-t-il des états propres à QuestionIntent ? Lesquels ?
+## 9.13 États — OPEN [→ Point K]
+**Point K :** QuestionIntent a-t-il des états internes ?
+⛔ Ne pas inventer READY, FAILED, ENCODED, etc. avant la Mission.
 
-## 5.14 Transitions — OPEN
+## 9.14 Transitions — OPEN
 Quelles transitions, déclenchées par qui, avec quelles gardes ?
 
-## 5.15 Cas limites — OPEN
+## 9.15 Cas limites — OPEN [→ Point L]
+**Point L :** Si l'entrée est invalide ou incomplète : que fait QuestionIntent ?
+Pas de retry arbitraire. Pas de Quarantine automatique.
 À lister puis trancher : double encodage du même Blueprint ; crash entre
 engagement et encodage ; Blueprint engagé sans territoire complet ;
-re-rotation après échec aval ; etc.
+re-rotation après échec aval (hors périmètre §7).
 
-## 5.16 Persistance — OPEN
+## 9.16 Persistance — OPEN [→ Point H]
 Où vit l'encodage (table `question_intents` ratifiée ? table dédiée au
 noyau ? autre support) ? Décision AVAL de la mission — jamais amont.
 
-## 5.17 Validation — OPEN
+## 9.17 Validation — OPEN
 Qu'est-ce qui atteste qu'un encodage est conforme (validation de FORME,
 sans contrôle métier) ? Qui la porte ?
 
-## 5.18 Tests — OPEN
+## 9.18 Tests — OPEN
 Critères d'acceptation de l'implantation.
 
-## 5.19 Identité du noyau — OPEN (question centrale)
-`kld_hash`/`ks_hash` sont abandonnés avec KLD/KS. Qu'est-ce qui identifie
-un noyau désormais : forme, grain, unicité, générateur, stabilité dans le
-temps (Quarantaine, ReadyBank, gameplay, anti-répétition) ?
+## 9.19 Identité du noyau — OPEN [→ Point E/J + §6]
+**Point J :** Qu'est-ce qu'un « même intent » ? Quel niveau de collision doit
+être interdit ? Est-ce réellement une responsabilité de QuestionIntent ?
+`kld_hash`/`ks_hash` sont abandonnés avec KLD/KS (§6.2). Qu'est-ce qui
+identifie un noyau désormais : forme, grain, unicité, générateur, stabilité
+dans le temps (Quarantaine, ReadyBank, gameplay, anti-répétition) ?
 
-## 5.20 Relation exacte avec Phase 1 — OPEN
-Que consomme Phase 1 exactement ? Sous quelle forme le noyau encodé lui
-est-il présenté ? Qu'est-ce que Phase 1 n'a PAS le droit de faire dessus ?
+## 9.20 Relation exacte avec Phase 1 — OPEN [→ Point M]
+**Point M (suite) :** Que consomme Phase 1 exactement ? Sous quelle forme le
+noyau encodé lui est-il présenté ? Qu'est-ce que Phase 1 n'a PAS le droit de
+faire dessus ?
 
-## 5.21 Statut de chacun des champs legacy actuels — OPEN
-À statuer champ par champ UNE FOIS la mission définie (§6 fournit le
-relevé factuel). Issues possibles par champ : ratifié dans le contrat /
-légué au legacy BankWorker / inerte / destiné à suppression (migration
-destructive sur ordre explicite uniquement).
+## 9.21 Statut de chacun des champs legacy actuels — OPEN [→ Point N + §6]
+**Point N — décision explicite, élément par élément :**
+
+```text
+kernel_code     → §6.1 (CAS PARTICULIER — audit requis)
+ks_hash         → §6.2 (LEGACY À JUSTIFIER)
+kld_hash        → §6.2 (LEGACY À JUSTIFIER)
+intent_key      → OPEN
+semantic_key    → OPEN
+angle_large     → UNSPECIFIED (§5)
+micro_angle     → UNSPECIFIED (§5)
+answer_target   → UNSPECIFIED (§5)
+concept_family  → UNSPECIFIED (§5)
+language_source → UNSPECIFIED (§5)
+question_intents → table à ratifier ou remplacer (§11 = relevé factuel uniquement)
+```
+
+Issues possibles par champ une fois la Mission définie : ratifié dans le
+contrat / légué au legacy BankWorker / inerte / destiné à suppression
+(migration destructive sur ordre explicite uniquement).
+
+## 9.22 Cardinalité — OPEN [→ Point F]
+**Point F :** QuestionIntent produit-il 1 intent par noyau, ou une structure
+composée ? Aucune déduction à partir de la table question_intents.
 
 ---
 
-# 6. Relevé FACTUEL de `question_intents` (Neon, 11 août 2026)
+# 10. Questions structurantes — ordre de déblocage
 
-⚠️ Ce relevé est de l'INFORMATION D'INVENTAIRE pour la rubrique 5.21.
-Il ne porte AUCUNE autorité métier (§0, §3). Table VIDE : 0 ligne.
+Les questions A-N du §9 se débloquent dans cet ordre logique :
+
+```text
+Q1 / Point A — Mission         (débloque tout le reste)
+Q2 / Point B — Unité traitée  (1 Blueprint ? 1 paire Sujet+Idée ? autre ?)
+Q3 / Point E — Identité        (forme, grain, unicité, générateur)
+Q4 / Point D — Sorties minimales (de quoi Phase 1 a-t-elle besoin, sous quelle forme ?)
+Q5 / Point H — Persistance     (APRÈS Q1/Q2 — où vit le noyau encodé ?)
+Q6 / Point N — Sort des champs legacy (APRÈS Q1-Q5 — champ par champ)
+```
+
+Questions complémentaires à trancher dans leur rubrique :
+C (entrées réelles), F (cardinalité), G (Blueprint slots), I (idempotence),
+J (collision/unicité), K (états), L (erreur), M (frontière Phase 1).
+
+---
+
+# 11. Relevé FACTUEL de `question_intents` (Neon, 11 août 2026)
+
+⚠️ Ce relevé est de l'INFORMATION D'INVENTAIRE pour la rubrique 9.21.
+Il ne porte AUCUNE autorité métier (§0, §5). Table VIDE : 0 ligne.
 
 Nettoyage du 11 août 2026 : la migration anticipée `2026_08_11_120000`
 (blueprint_id UNIQUE, dominant_idea, advance_attempts, élargissements) a été
@@ -234,7 +505,7 @@ RETIRÉE intégralement — down équivalent appliqué sur Neon, tailles histori
 restaurées, registre migrations purgé. Le schéma ci-dessous est l'état
 PRÉ-TÂCHE restauré. Les colonnes de l'ère KLD/KS (`kernel_code`, `ks_hash`,
 `kld_hash` — migration préexistante 2026_07_03, toutes vides) demeurent :
-leur sort relève de la rubrique 5.21.
+leur sort relève de la rubrique 9.21 et du §6.
 
 Constat factuel notable : parmi les 7 champs verrouillés UNSPECIFIED,
 seuls `intent_key`, `language_source`, `domain` (et `difficulty_depth`)
@@ -276,24 +547,6 @@ Index/unicités : `intent_key` UNIQUE ; `semantic_key` UNIQUE partiel (non
 null) ; `kernel_code` UNIQUE partiel (non null) ;
 index (domain, sub_domain, difficulty_depth), concept_family,
 dialysis_status, frame_status partiel.
-
----
-
-# 7. Questions structurantes ouvertes (déblocage des rubriques)
-
-- **Q1 — Mission** : que doit exactement faire QuestionIntent avec le noyau
-  Taxonomy validé pour préparer Phase 1 ? (§5.1 — débloque 5.3, 5.4, 5.6)
-- **Q2 — Unité encodée** : le contrat historique définit le NOYAU MÈRE comme
-  entité complète (1 sous-domaine, structure interne sujets × idées) ; le
-  flux actuel fournit UN territoire actif par Blueprint (1 sous-domaine +
-  1 sujet + 1 idée dominante). Qu'encode QuestionIntent exactement ?
-  (débloque 5.6, 5.19, la lecture de « entité complète » du §4)
-- **Q3 — Identité du noyau** : forme, grain, unicité, générateur. (§5.19)
-- **Q4 — Sorties minimales** : de quoi Phase 1 a-t-elle besoin pour démarrer,
-  sous quelle forme ? (§5.6, §5.20)
-- **Q5 — Persistance** : où vit le noyau encodé ? (§5.16 — APRÈS Q1/Q2)
-- **Q6 — Sort des champs legacy** : issue par champ, une fois Q1–Q5
-  tranchées. (§5.21)
 
 ---
 
