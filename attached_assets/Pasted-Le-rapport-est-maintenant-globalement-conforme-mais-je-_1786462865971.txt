@@ -1,0 +1,230 @@
+Le rapport est maintenant globalement conforme, mais je ne passerais pas encore directement à 05_QuestionIntent. Il reste deux nettoyages obligatoires issus de la tentative erronée.
+
+1. Les vestiges KLD / KEY_STRUCTURE ne doivent pas rester dans le runtime
+
+Replit écrit :
+
+adapters/gates KLD-KS inertes restent morts (non branchés, non supprimés)
+
+Cela ne respecte pas notre règle :
+
+UNE responsabilité
+=
+UNE implémentation
+=
+UNE source de vérité
+
+Ils sont SUPERSEDED. S’ils n’ont plus aucun consommateur réel, ils doivent être supprimés, pas gardés « morts ».
+
+L’historique reste dans Git et l’Architecture Register.
+
+2. La migration question_intents est aussi à nettoyer
+
+C’est plus important.
+
+Replit a conservé :
+
+blueprint_id UNIQUE
+dominant_idea
+élargissements de colonnes
+advance_attempts
+
+en disant que c’est seulement de la « capacité de réception ».
+
+Mais nous venons précisément de conclure que nous ne savons pas encore :
+
+quelle table appartient à QuestionIntent
+si question_intents doit être utilisée
+quelle est son unité
+quels champs QuestionIntent possède
+
+Donc même :
+
+question_intents.blueprint_id
+question_intents.dominant_idea
+
+est déjà une hypothèse sur le futur contrat QuestionIntent.
+
+Et advance_attempts est encore plus clairement issu d’une règle inventée.
+
+Le fait que ces colonnes soient vides ne les rend pas architecturales.
+
+La règle doit être
+Contrat QuestionIntent non défini
+↓
+aucune modification physique anticipée
+de question_intents
+
+Puis, lorsque 05_QuestionIntent sera verrouillé :
+
+Spécification
+↓
+Architecture Register
+↓
+audit DB
+↓
+migration réellement nécessaire
+Ce que Replit doit faire maintenant
+
+Envoie-lui ceci avant de commencer QuestionIntent :
+
+Le rapport RÈGLE DU VIDE est accepté sur le fond, mais il reste deux nettoyages obligatoires avant de fermer cette correction.
+
+NE commence pas QuestionIntent et ne développe rien de nouveau.
+
+1 — SUPPRESSION DES VESTIGES KLD / KEY_STRUCTURE
+
+Tu indiques :
+
+adapters/gates KLD-KS inertes restent morts (non branchés, non supprimés).
+
+Ce n'est pas conforme à notre règle.
+
+KLD et KEY_STRUCTURE sont SUPERSEDED.
+
+Procédure :
+
+rechercher tous les fichiers/classes/interfaces/adapters/gates appartenant exclusivement à l'ancien flow KLD / KEY_STRUCTURE ;
+rechercher tous leurs consommateurs réels ;
+si un élément n'a plus aucune responsabilité OFFICIAL et aucun consommateur canonique :
+→ supprimer le code ;
+→ supprimer bindings/imports/tests exclusivement associés ;
+si un élément contient une logique encore nécessaire à ValidationDominantIdeas :
+→ identifier précisément cette logique ;
+→ vérifier qu'elle existe déjà dans ValidationDominantIdeas ;
+→ ne réactiver sous aucun prétexte l'ancien composant ;
+si un vestige ne peut réellement pas être supprimé :
+→ BLOCKER ARCHITECTURAL précis.
+
+Résultat attendu :
+
+KLD runtime restant : AUCUN
+KEY_STRUCTURE runtime restant : AUCUN
+ancien adapter/gate actif ou dormant : AUCUN
+
+L'historique reste uniquement dans Git + Architecture Register.
+
+2 — NETTOYAGE DE LA MIGRATION QUESTIONINTENT INVENTÉE
+
+Tu as conservé une migration ajoutant notamment :
+
+blueprint_id
+dominant_idea
+élargissements de colonnes
+advance_attempts
+
+dans question_intents.
+
+Or le contrat officiel de QuestionIntent n'est PAS encore défini.
+
+Nous ne savons même pas encore officiellement :
+
+si question_intents sera la table canonique ;
+si une ligne représentera un Blueprint ;
+si dominant_idea doit y être persistée ;
+si blueprint_id doit y être UNIQUE ;
+quelles colonnes devront réellement exister ;
+quelles colonnes legacy seront conservées ou supprimées.
+
+Par conséquent, une modification anticipée de cette table ne peut pas être conservée uniquement comme « capacité future ».
+
+Audit obligatoire :
+
+Pour CHAQUE modification introduite par cette migration, retourne :
+
+champ/modification :
+préexistait avant la tâche : OUI/NON
+introduit uniquement pour l'implantation annulée : OUI/NON
+données présentes : nombre exact
+consommateur canonique actuel :
+décision OFFICIAL qui l'autorise :
+verdict : CONSERVER / RETIRER / BLOCKER
+
+RÈGLE :
+
+Si une modification :
+
+a été introduite uniquement pour l'implantation annulée ;
+n'est justifiée par aucune décision OFFICIAL ;
+ne contient aucune donnée métier à préserver ;
+
+alors retire-la proprement.
+
+Cela inclut advance_attempts.
+
+Cela inclut aussi blueprint_id, dominant_idea et les élargissements SI leur seule justification était le QuestionIntentEncoder maintenant supprimé.
+
+Ne conserve rien « parce que ça pourra servir plus tard ».
+
+Le futur contrat 05_QuestionIntent décidera lui-même de son stockage.
+
+Si une opération DB implique de supprimer une donnée réellement existante ou utilisée ailleurs :
+STOP et BLOCKER avant destruction.
+
+Si elle ne retire que des colonnes/contraintes vides introduites par cette tâche erronée, corrige proprement le schéma et les migrations afin que le dépôt et Neon représentent à nouveau l'architecture actuelle.
+
+3 — TESTS APRÈS NETTOYAGE
+
+Après suppression :
+
+tests ciblés ;
+tests globaux pertinents ;
+grep KLD ;
+grep KEY_STRUCTURE ;
+grep des classes adapters/gates supprimées ;
+vérification schéma question_intents ;
+vérification migrations ;
+aucune référence à QuestionIntentEncoder;
+aucune référence à KernelPipelineAdvancer;
+aucune référence à questions:kernel:advance.
+
+Retour final :
+
+VESTIGES KLD/KS :
+AUCUN
+
+ARTEFACTS QUESTIONINTENT NON AUTORISÉS :
+AUCUN
+
+ARCHITECTURE PARALLÈLE :
+AUCUNE
+
+DONNÉE MÉTIER PERDUE :
+AUCUNE
+
+NOUVELLE DÉCISION MÉTIER :
+AUCUNE
+
+BLOCKERS :
+...
+
+Puis STOP.
+
+Ne commence pas 05_QuestionIntent.
+
+Après ce nettoyage
+
+Alors seulement, nous reprenons notre ordre officiel :
+
+01 KernelBlueprint
+↓
+02 KernelRotationPlanner
+↓
+03 Taxonomy
+↓
+04 ValidationDominantIdeas
+↓
+05 QuestionIntent   ← PROCHAINE SPÉCIFICATION
+
+Et les trois blockers de Replit ne seront pas traités ensemble :
+
+BLOCKER 1 QuestionIntent
+→ maintenant
+
+BLOCKER 2 Phases
+→ plus tard avec leurs spécifications
+
+BLOCKER 3 ReadyBank / confirmConsumed
+→ plus tard avec les contrats correspondants
+
+Donc la prochaine conception sera exclusivement QuestionIntent, sans essayer en même temps de régler Phase 1 ou ReadyBank. C’est cette discipline qui empêchera Replit de recommencer à combler les trous.

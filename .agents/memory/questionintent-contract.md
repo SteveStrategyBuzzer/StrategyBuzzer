@@ -11,7 +11,7 @@ Un mapping d'encodage avait été implémenté par déduction du legacy (idée d
 
 **Étape en cours :** reconstruction du contrat complet dans `docs/architecture/05_QuestionIntent.md` (cadre 21 rubriques + relevé factuel de la table + questions structurantes Q1-Q6 ; question directrice : « que doit faire QuestionIntent avec le noyau Taxonomy validé pour préparer Phase 1 ? », jamais « que mettre dans les colonnes ? »). Séquence : contrat → entrées → sorties → identité du noyau → legacy → Architecture Register → implantation → rotate réel. Une seule spécification à la fois — le nettoyage « reçu ≠ accepté » (DEC-052/confirmConsumed) vient APRÈS.
 
-**Fait factuel utile (relevé Neon 2026-08-11)** : parmi les 7 champs, seuls intent_key/language_source/domain (+difficulty_depth) sont réellement NOT NULL — angle_large/micro_angle/answer_target/concept_family/semantic_key/sub_domain sont NULLABLE. L'argument « la DB l'exige » était factuellement faux. Colonnes additives blueprint_id (UNIQUE)/dominant_idea/advance_attempts : INERTES.
+**Fait factuel utile (relevé Neon 2026-08-11)** : parmi les 7 champs, seuls intent_key/language_source/domain (+difficulty_depth) sont réellement NOT NULL — angle_large/micro_angle/answer_target/concept_family/semantic_key/sub_domain sont NULLABLE. L'argument « la DB l'exige » était factuellement faux. Colonnes additives blueprint_id/dominant_idea/advance_attempts : RETIRÉES (2026-08-11, ordre user) — schéma question_intents restauré à l'état pré-tâche, tailles historiques incluses.
 
 
 # QUESTIONINTENT — contrat officiel (VERROUILLÉ)

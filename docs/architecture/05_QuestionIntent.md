@@ -228,6 +228,14 @@ destructive sur ordre explicite uniquement).
 ⚠️ Ce relevé est de l'INFORMATION D'INVENTAIRE pour la rubrique 5.21.
 Il ne porte AUCUNE autorité métier (§0, §3). Table VIDE : 0 ligne.
 
+Nettoyage du 11 août 2026 : la migration anticipée `2026_08_11_120000`
+(blueprint_id UNIQUE, dominant_idea, advance_attempts, élargissements) a été
+RETIRÉE intégralement — down équivalent appliqué sur Neon, tailles historiques
+restaurées, registre migrations purgé. Le schéma ci-dessous est l'état
+PRÉ-TÂCHE restauré. Les colonnes de l'ère KLD/KS (`kernel_code`, `ks_hash`,
+`kld_hash` — migration préexistante 2026_07_03, toutes vides) demeurent :
+leur sort relève de la rubrique 5.21.
+
 Constat factuel notable : parmi les 7 champs verrouillés UNSPECIFIED,
 seuls `intent_key`, `language_source`, `domain` (et `difficulty_depth`)
 sont réellement NOT NULL — `angle_large`, `micro_angle`, `answer_target`,
@@ -240,14 +248,14 @@ sont réellement NOT NULL — `angle_large`, `micro_angle`, `answer_target`,
 | intent_key | varchar(255) UNIQUE | NOT NULL | BankWorker |
 | language_source | char(2) default 'en' | NOT NULL | BankWorker |
 | domain | varchar(64) | NOT NULL | BankWorker |
-| sub_domain | varchar(256) | nullable | BankWorker |
+| sub_domain | varchar(64) | nullable | BankWorker |
 | difficulty_depth | smallint | NOT NULL | BankWorker |
-| subject | varchar(256) | nullable | BankWorker |
-| angle_large | varchar(512) | nullable | BankWorker |
-| micro_angle | varchar(512) | nullable | BankWorker |
+| subject | varchar(255) | nullable | BankWorker |
+| angle_large | varchar(255) | nullable | BankWorker |
+| micro_angle | varchar(255) | nullable | BankWorker |
 | answer_target | text | nullable | BankWorker |
 | potential_trap | text | nullable | BankWorker |
-| concept_family | varchar(256) | nullable | BankWorker |
+| concept_family | varchar(191) | nullable | BankWorker |
 | source | varchar(32) | nullable | BankWorker |
 | semantic_key | varchar(255) UNIQUE partiel | nullable | BankWorker |
 | dialysis_status | varchar(32) default 'pending' | NOT NULL | Dialyse |
@@ -262,13 +270,10 @@ sont réellement NOT NULL — `angle_large`, `micro_angle`, `answer_target`,
 | kernel_code | varchar(32) UNIQUE partiel | nullable | ère KLD/KS (SUPERSEDED) |
 | ks_hash | varchar(64) | nullable | ère KLD/KS (SUPERSEDED) |
 | kld_hash | varchar(64) | nullable | ère KLD/KS (SUPERSEDED) |
-| blueprint_id | char(36) UNIQUE | nullable | additive 2026-08-11 — INERTE |
-| dominant_idea | varchar(512) | nullable | additive 2026-08-11 — INERTE |
-| advance_attempts | smallint default 0 | NOT NULL | additive 2026-08-11 — INERTE |
 | created_at / updated_at | timestamp | nullable | technique |
 
 Index/unicités : `intent_key` UNIQUE ; `semantic_key` UNIQUE partiel (non
-null) ; `kernel_code` UNIQUE partiel (non null) ; `blueprint_id` UNIQUE ;
+null) ; `kernel_code` UNIQUE partiel (non null) ;
 index (domain, sub_domain, difficulty_depth), concept_family,
 dialysis_status, frame_status partiel.
 

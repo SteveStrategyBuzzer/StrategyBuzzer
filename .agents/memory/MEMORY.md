@@ -23,3 +23,4 @@
 - [KLD contrat corrigé (2026-07-04)](kld-contract-corrected.md) — ⛔ SUPERSEDED 2026-08-11 : KLD retiré du flow. Historique seulement.
 - [KernelIdentifierManager — futur composant](kernel-identifier-manager.md) — ⛔ ABANDONNÉ 2026-08-11 avec KLD/KS (sa raison d'être = kld_hash/ks_hash). Ne plus le proposer.
 - [RefreshDatabase incompatible SQLite — pattern de contournement](sqlite-refreshdb-workaround.md) — Migration 2026_03_15_100004 contient ADD CONSTRAINT CHECK (syntaxe PG) : RefreshDatabase plante sur SQLite. Pattern : Schema::create() dans setUp() + Schema::dropIfExists() dans tearDown(), PAS de use RefreshDatabase.
+- [Garde anti-rollback pgsql](pgsql-guardrail-schema-removal.md) — migrate:rollback interdit sur Neon ; retrait de schéma ordonné = script transactionnel + garde count=0, jamais par commande artisan.
