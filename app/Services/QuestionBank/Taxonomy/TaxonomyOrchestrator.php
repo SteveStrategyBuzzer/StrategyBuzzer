@@ -7,6 +7,7 @@ namespace App\Services\QuestionBank\Taxonomy;
 use App\Services\QuestionBank\Rotation\DomainExhaustionChecker;
 use App\Services\QuestionBank\Rotation\TaxonomyNavigatorInterface;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use RuntimeException;
 
 /**
@@ -394,7 +395,12 @@ final class TaxonomyOrchestrator implements DomainExhaustionChecker, TaxonomyNav
         $attemptNum = $this->repo->getNextAttemptNumber('IDEA', $contextKey);
 
         if ($attemptNum > TaxonomyConfig::MAX_DOMINANT_IDEA_GENERATION_ATTEMPTS) {
+            // All attempts already consumed in previous calls — subject is done.
+            // Check for zero-PASS so we can emit the observability warning before returning.
             $this->repo->markSubjectIdeaGenerationExhausted($subject->id);
+            $passCount = count($this->repo->getPassIdeaValues($subject->id));
+            $failCount = count($this->repo->getFailIdeaDetails($subject->id));
+            $this->warnIfZeroPass($subject, $subdomain, $depth, $domainCode, $passCount, $failCount, $attemptNum, 'MAX_ATTEMPTS_ALREADY_REACHED');
             return false;
         }
 
@@ -510,14 +516,53 @@ final class TaxonomyOrchestrator implements DomainExhaustionChecker, TaxonomyNav
             || $attemptNum >= TaxonomyConfig::MAX_DOMINANT_IDEA_GENERATION_ATTEMPTS
         ) {
             $this->repo->markSubjectIdeaGenerationExhausted($subject->id);
+
+            // ── Alerte : sujet épuisé sans aucune idée PASS ───────────────────
+            $totalPass = count(array_merge($passIdeas, $newPassIdeas));
+            $totalFail = count($failDetails) + count($newFailDetails);
+            $this->warnIfZeroPass($subject, $subdomain, $depth, $domainCode, $totalPass, $totalFail, $attemptNum, $response['status']);
         }
 
         return ! empty($newPassIdeas);
     }
 
     // =========================================================================
-    // Helper
+    // Helpers
     // =========================================================================
+
+    /**
+     * Émet un Log::warning si un sujet est épuisé sans aucune idée PASS.
+     *
+     * Gemini a systématiquement renvoyé des idées invalides — le sujet est
+     * silencieusement abandonné. Ce warning est l'unique signal ops disponible
+     * avant qu'un opérateur lance `php artisan questions:taxonomy:exhausted-subjects`.
+     */
+    private function warnIfZeroPass(
+        object $subject,
+        object $subdomain,
+        int    $depth,
+        string $domainCode,
+        int    $passCount,
+        int    $failCount,
+        int    $attemptNumber,
+        string $status,
+    ): void {
+        if ($passCount === 0 && $failCount > 0) {
+            Log::warning('taxonomy.subject_exhausted_with_zero_pass', [
+                'depth'          => $depth,
+                'domain_code'    => $domainCode,
+                'subdomain_name' => $subdomain->subdomain_name,
+                'subject_id'     => $subject->id,
+                'subject_name'   => $subject->subject_name,
+                'fail_count'     => $failCount,
+                'attempt_number' => $attemptNumber,
+                'status'         => $status,
+                'message'        => "Subject exhausted with {$failCount} FAIL idea(s) and 0 PASS — "
+                                   . "Gemini returned unusable ideas for all {$attemptNumber} attempt(s). "
+                                   . "Run `php artisan questions:taxonomy:exhausted-subjects` for a full report.",
+            ]);
+        }
+    }
 
     /**
      * Construit le tableau de territoire à retourner depuis une ligne d'idée.

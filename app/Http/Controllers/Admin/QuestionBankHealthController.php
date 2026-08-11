@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Services\QuestionBank\BankDryDetector;
 use App\Services\QuestionBank\BankSelfHealer;
 use App\Services\QuestionBank\QuestionBankRepository;
+use App\Services\QuestionBank\Taxonomy\TaxonomyBankRepository;
 use App\Services\QuestionBank\Worker\BankNeedsCalculator;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -75,6 +76,37 @@ class QuestionBankHealthController extends Controller
             'last_action' => $selfHealer->lastActionSnapshot(),
         ];
 
+        // ── Taxonomy: subjects exhausted with 0 PASS ideas ───────────────────
+        // Gemini silently abandoned these subjects after returning only FAIL ideas.
+        // A Log::warning("taxonomy.subject_exhausted_with_zero_pass") is also
+        // emitted at generation time. Full details: `php artisan questions:taxonomy:exhausted-subjects`
+        //
+        // Wrapped in try/catch: taxonomy tables may not exist in environments
+        // that only partially provision the schema (e.g. test SQLite databases).
+        $taxonomy = ['exhausted_subjects_with_zero_pass' => ['count' => 0, 'alert' => false, 'subjects' => []]];
+        try {
+            $taxonomyRepo      = new TaxonomyBankRepository();
+            $exhaustedSubjects = $taxonomyRepo->findExhaustedWithOnlyFails(minFails: 1);
+            $taxonomy = [
+                'exhausted_subjects_with_zero_pass' => [
+                    'count'    => count($exhaustedSubjects),
+                    'alert'    => count($exhaustedSubjects) > 0,
+                    'subjects' => array_map(fn ($r) => [
+                        'depth'          => $r->depth,
+                        'domain_code'    => $r->domain_code,
+                        'subdomain_name' => $r->subdomain_name,
+                        'subject_id'     => $r->subject_id,
+                        'subject_name'   => $r->subject_name,
+                        'fail_count'     => (int) $r->fail_count,
+                        'exhausted_at'   => $r->exhausted_at,
+                    ], $exhaustedSubjects),
+                ],
+            ];
+        } catch (\Throwable) {
+            // Taxonomy schema not available — return safe empty defaults.
+            $taxonomy['exhausted_subjects_with_zero_pass']['error'] = 'unavailable';
+        }
+
         return response()->json([
             'reported_at' => now()->toIso8601String(),
             'worker' => [
@@ -90,6 +122,7 @@ class QuestionBankHealthController extends Controller
             'critical_segments' => $deficits,
             'matches_buildable' => $buildable,
             'dry' => $dry,
+            'taxonomy' => $taxonomy,
         ]);
     }
 

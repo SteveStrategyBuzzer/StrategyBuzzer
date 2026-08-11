@@ -6,6 +6,7 @@ namespace Tests\Unit\QuestionBank\Taxonomy;
 
 use App\Services\QuestionBank\Taxonomy\DepthContractRegistry;
 use App\Services\QuestionBank\Taxonomy\TaxonomyBankRepository;
+use App\Services\QuestionBank\Taxonomy\TaxonomyConfig;
 use App\Services\QuestionBank\Taxonomy\TaxonomyGeminiClient;
 use App\Services\QuestionBank\Taxonomy\TaxonomyOrchestrator;
 use App\Services\QuestionBank\Taxonomy\ValidationDominantIdeas;
@@ -518,8 +519,250 @@ class TaxonomyOrchestratorTest extends TestCase
     }
 
     // =========================================================================
+    // §50 — warnIfZeroPass : warning émis quand toutes les idées sont FAIL
+    //
+    // Strategy: bypass validation entirely by pre-seeding FAIL rows directly
+    // in DB via repo, then mock Gemini to return NO_MORE_IDEAS + empty candidates.
+    // This gives totalFail > 0 and totalPass = 0 → warning fires reliably,
+    // independent of what ValidationDominantIdeas decides about any specific value.
+    // =========================================================================
+
+    public function test_warning_logged_when_subject_exhausted_with_only_fail_ideas(): void
+    {
+        // Pre-seed subdomain + subject + FAIL ideas directly in DB.
+        // This bypasses ValidationDominantIdeas entirely so the test is not
+        // coupled to which strings the validator accepts or rejects.
+        $sd = $this->repo->findOrCreateSubdomain(2, 'histoire', 'Époque médiévale');
+        $s  = $this->repo->findOrCreateSubject($sd->id, 'Croisades');
+        $this->repo->persistFailIdea($s->id, 'Idée invalide A', 'FORMAT_MINIMAL_IRREDUCTIBLE_VIOLATION', null);
+        $this->repo->persistFailIdea($s->id, 'Idée invalide B', 'GENERIC_CATEGORY', null);
+
+        // Gemini returns NO_MORE_IDEAS with empty candidates so no new ideas
+        // are processed.  failDetails loads 2 FAILs from DB, newFailDetails
+        // stays empty → totalPass=0, totalFail=2 → warnIfZeroPass fires.
+        $this->gemini->method('generateIdeas')->willReturn([
+            'status'     => 'NO_MORE_IDEAS',
+            'candidates' => [],
+        ]);
+        // Stop the fillBank() loop cleanly after subject exhaustion
+        $this->gemini->method('generateSubjects')->willReturn([
+            'status'     => 'NO_MORE_SUBJECTS',
+            'candidates' => [],
+        ]);
+        $this->gemini->method('generateSubdomains')->willReturn([
+            'status'     => 'NO_MORE_SUBDOMAINS',
+            'candidates' => [],
+        ]);
+
+        $handler = $this->pushTestLogHandler();
+        $this->orchestrator->peekNext(2, 'histoire');
+
+        $warnings = $this->filterWarnings($handler, 'taxonomy.subject_exhausted_with_zero_pass');
+        $this->assertNotEmpty($warnings, 'Expected warning to be logged when subject exhausted with only FAILs.');
+
+        $ctx = $warnings[0]['context'];
+        $this->assertSame('histoire', $ctx['domain_code']);
+        $this->assertSame('Croisades', $ctx['subject_name']);
+        $this->assertGreaterThan(0, $ctx['fail_count']);
+        $this->assertArrayHasKey('depth', $ctx);
+        $this->assertArrayHasKey('subdomain_name', $ctx);
+        $this->assertArrayHasKey('subject_id', $ctx);
+        $this->assertArrayHasKey('attempt_number', $ctx);
+        $this->assertArrayHasKey('message', $ctx);
+    }
+
+    public function test_warning_logged_on_early_return_path_when_max_attempts_already_reached(): void
+    {
+        // Simulate MAX_ATTEMPTS_ALREADY_REACHED: 3 memory entries already stored
+        // so getNextAttemptNumber returns MAX+1 → early-return branch.
+        $sd = $this->repo->findOrCreateSubdomain(2, 'histoire', 'Monde antique');
+        $s  = $this->repo->findOrCreateSubject($sd->id, 'Cités grecques');
+
+        $this->repo->persistFailIdea($s->id, 'mauvaise idée A', 'FORMAT_MINIMAL_IRREDUCTIBLE_VIOLATION', null);
+        $this->repo->persistFailIdea($s->id, 'mauvaise idée B', 'GENERIC_CATEGORY', null);
+
+        $contextKey = TaxonomyBankRepository::ideaContextKey(
+            2, 'histoire', 'Monde antique', 'Cités grecques'
+        );
+        for ($i = 1; $i <= TaxonomyConfig::MAX_DOMINANT_IDEA_GENERATION_ATTEMPTS; $i++) {
+            $this->repo->persistMemoryEntry(
+                'IDEA', $contextKey, $i,
+                ['mauvaise idée A', 'mauvaise idée B'],
+                [],
+                [['value' => 'mauvaise idée A', 'reason' => 'FORMAT_MINIMAL_IRREDUCTIBLE_VIOLATION', 'conflict_with' => null]],
+                [],
+                false
+            );
+        }
+
+        // Mark subdomain generation_exhausted so fillBank() reaches
+        // generateNewSubdomain() (not generateNewSubject()) after early-return.
+        DB::table('taxonomy_subdomain_bank')
+            ->where('id', $sd->id)
+            ->update(['generation_exhausted' => true]);
+
+        // generateIdeas must NOT be called on the early-return path
+        $this->gemini->expects($this->never())->method('generateIdeas');
+        $this->gemini->method('generateSubdomains')->willReturn([
+            'status'     => 'NO_MORE_SUBDOMAINS',
+            'candidates' => [],
+        ]);
+
+        $handler = $this->pushTestLogHandler();
+        $this->orchestrator->peekNext(2, 'histoire');
+
+        $warnings = $this->filterWarnings($handler, 'taxonomy.subject_exhausted_with_zero_pass');
+        $this->assertNotEmpty($warnings, 'Expected warning on MAX_ATTEMPTS_ALREADY_REACHED path.');
+
+        $ctx = $warnings[0]['context'];
+        $this->assertSame('histoire', $ctx['domain_code']);
+        $this->assertSame('Cités grecques', $ctx['subject_name']);
+        $this->assertSame('MAX_ATTEMPTS_ALREADY_REACHED', $ctx['status']);
+        $this->assertGreaterThan(0, $ctx['fail_count']);
+    }
+
+    // =========================================================================
+    // §51 — warnIfZeroPass : PAS de warning quand ≥1 idée PASS générée
+    // =========================================================================
+
+    public function test_no_warning_when_subject_has_at_least_one_pass_idea(): void
+    {
+        $this->mockGeminiFullPipeline(
+            subdomain: 'Révolution industrielle',
+            subject: 'Inventeurs',
+            idea: 'James Watt',
+        );
+
+        $handler = $this->pushTestLogHandler();
+        $result  = $this->orchestrator->peekNext(2, 'histoire');
+
+        $this->assertNotNull($result);
+        $this->assertSame('James Watt', $result['dominant_idea_active']);
+
+        $warnings = $this->filterWarnings($handler, 'taxonomy.subject_exhausted_with_zero_pass');
+        $this->assertEmpty($warnings, 'No warning should be logged when at least one PASS idea was generated.');
+    }
+
+    // =========================================================================
+    // §52 — TaxonomyBankRepository::findExhaustedWithOnlyFails()
+    // =========================================================================
+
+    public function test_find_exhausted_with_only_fails_returns_subjects_with_no_pass(): void
+    {
+        $sd = $this->repo->findOrCreateSubdomain(2, 'histoire', 'Antiquité');
+        $s  = $this->repo->findOrCreateSubject($sd->id, 'Pharaons');
+
+        // Marquer épuisé + persister 2 FAILs, 0 PASS
+        $this->repo->persistFailIdea($s->id, 'Toutankhamon ?', 'INVALID_CHAR', null);
+        $this->repo->persistFailIdea($s->id, '??', 'TOO_SHORT', null);
+        DB::table('taxonomy_subject_bank')->where('id', $s->id)->update(['idea_generation_exhausted' => true]);
+
+        $rows = $this->repo->findExhaustedWithOnlyFails(minFails: 1);
+
+        $this->assertCount(1, $rows);
+        $this->assertSame('Pharaons', $rows[0]->subject_name);
+        $this->assertSame('Antiquité', $rows[0]->subdomain_name);
+        $this->assertSame(2, (int) $rows[0]->fail_count);
+    }
+
+    public function test_find_exhausted_with_only_fails_excludes_subjects_with_pass_ideas(): void
+    {
+        $sd = $this->repo->findOrCreateSubdomain(2, 'histoire', 'Antiquité');
+        $s  = $this->repo->findOrCreateSubject($sd->id, 'Pharaons');
+
+        // 1 PASS + 1 FAIL → doit être EXCLU (le sujet a produit du bon contenu)
+        $this->repo->persistPassIdea($s->id, 'Ramsès II');
+        $this->repo->persistFailIdea($s->id, '??', 'TOO_SHORT', null);
+        DB::table('taxonomy_subject_bank')->where('id', $s->id)->update(['idea_generation_exhausted' => true]);
+
+        $rows = $this->repo->findExhaustedWithOnlyFails(minFails: 1);
+
+        $this->assertCount(0, $rows, 'Un sujet avec ≥1 PASS ne doit pas apparaître dans le rapport d\'alerte.');
+    }
+
+    public function test_find_exhausted_with_only_fails_excludes_non_exhausted_subjects(): void
+    {
+        $sd = $this->repo->findOrCreateSubdomain(2, 'histoire', 'Antiquité');
+        $s  = $this->repo->findOrCreateSubject($sd->id, 'Pharaons');
+
+        // 2 FAILs mais PAS marqué exhausted → doit être EXCLU
+        $this->repo->persistFailIdea($s->id, '?', 'TOO_SHORT', null);
+        $this->repo->persistFailIdea($s->id, '??', 'TOO_SHORT', null);
+        // idea_generation_exhausted reste false
+
+        $rows = $this->repo->findExhaustedWithOnlyFails(minFails: 1);
+
+        $this->assertCount(0, $rows, 'Un sujet non-exhausted ne doit pas apparaître même avec des FAILs.');
+    }
+
+    public function test_find_exhausted_with_only_fails_respects_min_fails_threshold(): void
+    {
+        $sd = $this->repo->findOrCreateSubdomain(2, 'histoire', 'Antiquité');
+        $s  = $this->repo->findOrCreateSubject($sd->id, 'Pharaons');
+
+        // 1 FAIL uniquement
+        $this->repo->persistFailIdea($s->id, '?', 'TOO_SHORT', null);
+        DB::table('taxonomy_subject_bank')->where('id', $s->id)->update(['idea_generation_exhausted' => true]);
+
+        // minFails=1 → inclus
+        $this->assertCount(1, $this->repo->findExhaustedWithOnlyFails(minFails: 1));
+        // minFails=2 → exclu (seulement 1 FAIL)
+        $this->assertCount(0, $this->repo->findExhaustedWithOnlyFails(minFails: 2));
+        // minFails=3 → exclu
+        $this->assertCount(0, $this->repo->findExhaustedWithOnlyFails(minFails: 3));
+    }
+
+    // =========================================================================
     // Helpers
     // =========================================================================
+
+    // =========================================================================
+    // Log-capture helpers
+    //
+    // Log::fake() requires Illuminate\Foundation\Testing\TestCase and is not
+    // available in PHPUnit\Framework\TestCase + CreatesApplication.  Instead we
+    // push a Monolog TestHandler directly onto the active log channel's
+    // underlying Monolog logger so we can inspect captured records.
+    // =========================================================================
+
+    /**
+     * Pushes a Monolog TestHandler onto the active log channel.
+     * Returns the handler so the caller can inspect records after the act.
+     */
+    private function pushTestLogHandler(): \Monolog\Handler\TestHandler
+    {
+        // $this->app is not set in PHPUnit\Framework\TestCase — use the global
+        // app() helper which resolves from the same IoC container bootstrapped
+        // by CreatesApplication::createApplication().
+        /** @var \Illuminate\Log\Logger $illuminateLogger */
+        $illuminateLogger = app('log')->driver();
+
+        /** @var \Monolog\Logger $monolog */
+        $monolog = $illuminateLogger->getLogger();
+
+        $handler = new \Monolog\Handler\TestHandler();
+        $monolog->pushHandler($handler);
+
+        return $handler;
+    }
+
+    /**
+     * Returns records from $handler whose level is WARNING and whose message
+     * matches $message exactly.
+     *
+     * @return array<array{level: \Monolog\Level, message: string, context: array}>
+     */
+    private function filterWarnings(\Monolog\Handler\TestHandler $handler, string $message): array
+    {
+        // In Monolog 3, TestHandler::getRecords() returns LogRecord objects that
+        // implement ArrayAccess. Accessing $r['level'] via ArrayAccess returns the
+        // integer value (e.g. 300), NOT the Level enum. Use $r->level (the public
+        // readonly property) to get the actual Level enum for comparison.
+        return array_values(array_filter(
+            $handler->getRecords(),
+            fn ($r) => $r->level === \Monolog\Level::Warning && $r->message === $message
+        ));
+    }
 
     /**
      * Configure le mock Gemini pour retourner un sous-domaine → sujet → idée valides.

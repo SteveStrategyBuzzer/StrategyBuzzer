@@ -491,6 +491,61 @@ final class TaxonomyBankRepository
         return ($max === null) ? 1 : (int) $max + 1;
     }
 
+    // =========================================================================
+    // Observabilité — sujets épuisés sans PASS
+    // =========================================================================
+
+    /**
+     * Retourne les sujets marqués idea_generation_exhausted qui ont ≥ $minFails
+     * idées FAIL et 0 idée PASS (= Gemini a systématiquement échoué).
+     *
+     * Utilisé par le /health endpoint et la commande questions:taxonomy:exhausted-subjects.
+     *
+     * @param  int  $minFails  Seuil minimum d'idées FAIL (défaut : 1)
+     * @return array<object>   Lignes avec subdomain_name, subject_name, depth,
+     *                         domain_code, fail_count, exhausted_at
+     */
+    public function findExhaustedWithOnlyFails(int $minFails = 1): array
+    {
+        return DB::table(self::TABLE_SUBJECTS . ' as s')
+            ->join(self::TABLE_SUBDOMAINS . ' as sd', 'sd.id', '=', 's.subdomain_id')
+            ->where('s.idea_generation_exhausted', true)
+            ->whereRaw(
+                '(SELECT COUNT(*) FROM ' . self::TABLE_IDEAS . ' di'
+                . ' WHERE di.subject_id = s.id AND di.validation_status = ?) = 0',
+                ['PASS']
+            )
+            ->whereRaw(
+                '(SELECT COUNT(*) FROM ' . self::TABLE_IDEAS . ' di'
+                . ' WHERE di.subject_id = s.id AND di.validation_status = ?) >= ?',
+                ['FAIL', $minFails]
+            )
+            ->orderBy('sd.depth')
+            ->orderBy('sd.domain_code')
+            ->orderBy('s.id')
+            ->get([
+                'sd.depth',
+                'sd.domain_code',
+                'sd.subdomain_name',
+                's.id as subject_id',
+                's.subject_name',
+                's.updated_at as exhausted_at',
+                DB::raw(
+                    '(SELECT COUNT(*) FROM ' . self::TABLE_IDEAS . ' di'
+                    . ' WHERE di.subject_id = s.id AND di.validation_status = \'FAIL\') as fail_count'
+                ),
+            ])
+            ->all();
+    }
+
+    /**
+     * Retourne le nombre de sujets épuisés sans aucune idée PASS.
+     */
+    public function countExhaustedWithOnlyFails(): int
+    {
+        return count($this->findExhaustedWithOnlyFails(minFails: 1));
+    }
+
     /**
      * Retourne le nombre d'appels déjà effectués pour un contexte.
      */
