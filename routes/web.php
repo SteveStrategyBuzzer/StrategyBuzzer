@@ -534,6 +534,11 @@ Route::get('/privacy-policy', function () {
 Route::get('/admin/questions/audit-log', \App\Http\Controllers\Admin\QuestionBankAuditLogController::class)
     ->name('admin.questions.audit-log');
 
+// #127 Taxonomy-gaps detail page — lists every subject exhausted with zero PASS ideas.
+// Same QB_HEALTH_TOKEN auth as the audit-log and health endpoints.
+Route::get('/admin/questions/taxonomy-gaps', \App\Http\Controllers\Admin\TaxonomyGapsController::class)
+    ->name('admin.questions.taxonomy-gaps');
+
 Route::view('/data-deletion', 'data-deletion')->name('data.deletion');
 
 /* ===== DEV/TEST-ONLY SUPPORT ROUTES =====

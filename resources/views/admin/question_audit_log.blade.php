@@ -78,6 +78,24 @@
         .pagination .info { color: var(--muted); margin-left: auto; font-size: 12px; }
         code.endpoint { font-size: 12px; color: var(--accent); }
         .table-wrap { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        .tax-gap-panel {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        .tax-gap-panel .count-badge {
+            font-size: 26px;
+            font-weight: 700;
+            line-height: 1;
+        }
+        .tax-gap-panel .count-badge.alert { color: var(--ko); }
+        .tax-gap-panel .count-badge.ok { color: var(--ok); }
+        .panel.alert-panel { border-color: var(--ko); background: rgba(231,76,60,0.06); }
+        .panel.ok-panel   { border-color: var(--ok); background: rgba(46,204,113,0.06); }
+        .badge.warn { background: rgba(231,76,60,0.15); color: var(--ko); }
+        .tax-link { color: var(--accent); text-decoration: none; font-size: 13px; }
+        .tax-link:hover { text-decoration: underline; }
         @media (max-width: 639px) {
             body { padding: 12px; }
             .panel { padding: 12px; }
@@ -88,6 +106,48 @@
 </head>
 <body>
     <h1>{{ __('Question Audit Log') }}</h1>
+
+    {{-- #127 Taxonomy Gaps summary — loaded inline so ops see it without a separate curl --}}
+    @php
+        $taxCount = 0;
+        $taxError = null;
+        try {
+            $taxRepo = new \App\Services\QuestionBank\Taxonomy\TaxonomyBankRepository();
+            $taxCount = count($taxRepo->findExhaustedWithOnlyFails(minFails: 1));
+        } catch (\Throwable $e) {
+            $taxError = $e->getMessage();
+        }
+        $taxDetailUrl = url('/admin/questions/taxonomy-gaps')
+            . (request()->query('token') ? '?token=' . urlencode(request()->query('token')) : '');
+    @endphp
+    <div class="panel {{ $taxCount > 0 ? 'alert-panel' : 'ok-panel' }}">
+        <div class="tax-gap-panel">
+            <span class="count-badge {{ $taxCount > 0 ? 'alert' : 'ok' }}">{{ $taxCount }}</span>
+            <div>
+                <div style="font-weight:600;margin-bottom:3px;">
+                    {{ __('Taxonomy Gaps') }}
+                    @if($taxCount > 0)
+                        &mdash; <span class="badge warn">{{ $taxCount }} {{ $taxCount === 1 ? __('subject') : __('subjects') }} {{ __('exhausted with zero PASS ideas') }}</span>
+                    @else
+                        &mdash; <span class="badge ok">{{ __('All subjects have PASS ideas') }}</span>
+                    @endif
+                </div>
+                @if($taxError)
+                    <div style="color:var(--muted);font-size:12px;">{{ __('Unavailable') }}: {{ $taxError }}</div>
+                @elseif($taxCount > 0)
+                    <div style="font-size:13px;color:var(--muted);">
+                        {{ __('Gemini returned only FAILs for these subjects — they will never yield questions without intervention.') }}
+                        <a class="tax-link" href="{{ $taxDetailUrl }}">{{ __('View subject list →') }}</a>
+                    </div>
+                @else
+                    <div style="font-size:13px;color:var(--muted);">
+                        {{ __('No subjects exhausted with zero PASS ideas.') }}
+                        <a class="tax-link" href="{{ $taxDetailUrl }}">{{ __('View details →') }}</a>
+                    </div>
+                @endif
+            </div>
+        </div>
+    </div>
 
     <div class="panel">
         <form class="filters" method="GET" action="{{ url()->current() }}">
