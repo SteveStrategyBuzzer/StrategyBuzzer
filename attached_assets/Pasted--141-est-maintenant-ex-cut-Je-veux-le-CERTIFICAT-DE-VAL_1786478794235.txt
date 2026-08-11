@@ -1,0 +1,120 @@
+#141 est maintenant exécuté. Je veux le CERTIFICAT DE VALIDATION avant de passer à #142.
+
+Ne modifie plus le code sauf si un test de #141 échoue.
+
+Retourne exactement :
+
+1. TEST POSTGRES RÉEL
+
+* nom exact du test ;
+* fichier exact ;
+* nombre N de `assignKernelCode()` lancés en concurrence ;
+* confirmation que le test utilise la base PostgreSQL DE TEST / CI ;
+* confirmation explicite que Neon production n'a pas été utilisée.
+
+2. CONCURRENCE
+   Pour un même bassin `(Depth + Domaine)` :
+
+* Depth utilisé ;
+* Domaine utilisé ;
+* nombre d'appels concurrents N ;
+* mécanisme réel de concurrence utilisé ;
+* confirmation que les transactions se chevauchent réellement ;
+* confirmation que `lockForUpdate()` est exécuté sur PostgreSQL et n'est pas un no-op.
+
+3. RÉSULTAT DES KERNEL_CODE
+   Donne :
+
+* nombre de codes retournés ;
+* nombre de codes uniques ;
+* premier suffixe ;
+* dernier suffixe ;
+* preuve que l'ensemble obtenu est exactement une séquence base36 sans trou à partir de `0000`.
+
+Exemple si N=10 :
+
+0000
+0001
+...
+0009
+
+Si N dépasse 10, la transition doit respecter :
+
+0009
+→ 000A
+
+4. ÉTAT DU COMPTEUR
+   Avant le test :
+   `next_value = 0`
+
+Après N allocations réussies :
+`next_value = N`
+
+Je veux la valeur DB réellement relue après les transactions, pas une valeur gardée en mémoire.
+
+5. ABSENCE DE COLLISION
+   Confirme :
+
+* duplicate suffix = 0 ;
+* duplicate `kernel_code` = 0 ;
+* violation UNIQUE = 0 ;
+* suffixe perdu = 0 ;
+* suffixe attribué deux fois = 0.
+
+6. IDEMPOTENCE
+   Après la concurrence :
+
+* reprendre au moins un des mêmes Blueprints ;
+* rappeler `assignKernelCode()` ;
+* vérifier que son `kernel_code` reste identique ;
+* vérifier que `next_value` n'avance PAS.
+
+7. PERSISTANCE / RELECTURE
+
+* fermer/recréer les services ou le contexte applicatif ;
+* relire depuis PostgreSQL ;
+* vérifier les `kernel_code` persistés ;
+* vérifier `next_value` ;
+* faire une allocation supplémentaire ;
+* vérifier qu'elle reçoit exactement le suffixe suivant.
+
+8. CI
+
+* commande exacte exécutée ;
+* résultat PASS/FAIL ;
+* confirmation que ce test est inclus dans la suite CI PostgreSQL et pas seulement exécutable manuellement.
+
+9. NON-RÉGRESSION
+   Donne :
+
+* tests QuestionIntent ciblés ;
+* tests orchestrateur concernés ;
+* nombre de tests/assertions ;
+* régressions introduites par #141 : OUI/NON.
+
+10. VERDICT
+
+Retourne exactement :
+
+#141 CONCURRENCY VALIDATION
+
+PostgreSQL réel test/CI : PASS/FAIL
+Concurrence même bassin : PASS/FAIL
+Kernel codes uniques : PASS/FAIL
+Séquence sans trou : PASS/FAIL
+next_value exact : PASS/FAIL
+Idempotence : PASS/FAIL
+Persistance/restart : PASS/FAIL
+CI intégrée : PASS/FAIL
+Régression : 0 / ...
+
+VERDICT #141 :
+PASS
+ou
+FAIL
+
+Si FAIL :
+corrige uniquement 05_QuestionIntent et réexécute #141.
+
+Si PASS :
+STOP. Ne lance pas encore #142.
