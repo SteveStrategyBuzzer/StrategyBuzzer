@@ -1,0 +1,104 @@
+name: "#141 KernelCodeEngine — Concurrent PostgreSQL Test"
+
+# Déclenché sur les changements qui touchent KernelCodeEngine ou ce test.
+# workflow_dispatch permet un run manuel depuis l'onglet Actions GitHub.
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'app/Services/QuestionBank/KernelCodeEngine.php'
+      - 'app/Exceptions/QuestionBank/KernelCodeEngineException.php'
+      - 'tests/Concurrent/kernel_code_concurrent.php'
+      - 'database/migrations/*kernel_code*'
+      - '.github/workflows/concurrent-test.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'app/Services/QuestionBank/KernelCodeEngine.php'
+      - 'app/Exceptions/QuestionBank/KernelCodeEngineException.php'
+      - 'tests/Concurrent/kernel_code_concurrent.php'
+      - 'database/migrations/*kernel_code*'
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: 'Raison du run manuel (optionnel)'
+        required: false
+        default: 'run manuel #141'
+
+jobs:
+  concurrent-test:
+    name: "KernelCodeEngine concurrent (N=20, pgsql)"
+    runs-on: ubuntu-latest
+
+    # Variables d'environnement pour ce job.
+    # DATABASE_URL est parsé par config/database.php (clé 'url' du driver pgsql).
+    # DB_CONNECTION force pgsql — annule toute valeur sqlite dans .env.
+    env:
+      APP_NAME: StrategyBuzzer
+      APP_ENV: testing
+      APP_DEBUG: "false"
+      # APP_KEY : clé temporaire valide pour Bootstrap Laravel (aucun chiffrement
+      # réel n'est utilisé par ce test — uniquement des opérations DB).
+      APP_KEY: "base64:VGVzdEtleUZvckNJQ29uY3VycmVuY2VUZXN0QAAAAAAAAAA="
+      DB_CONNECTION: pgsql
+      # NEON_DATABASE_URL → DATABASE_URL : lu par config/database.php pgsql.url
+      # Doit être configuré dans Settings → Secrets de ce dépôt GitHub.
+      DATABASE_URL: ${{ secrets.NEON_DATABASE_URL }}
+      LOG_CHANNEL: stderr
+      CACHE_DRIVER: array
+      SESSION_DRIVER: array
+      QUEUE_CONNECTION: sync
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP 8.2
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          # pdo_pgsql  : connexion PostgreSQL
+          # pcntl      : pcntl_fork() pour la concurrence
+          # intl       : normalizer_normalize() pour les segments kernel_code
+          extensions: pdo, pdo_pgsql, pcntl, intl
+          coverage: none
+          ini-values: |
+            memory_limit=256M
+
+      - name: Validate composer.json
+        run: composer validate --strict --no-check-lock
+
+      - name: Install Composer dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress --optimize-autoloader
+
+      - name: Verify pgsql connection before test
+        # Vérifie que NEON_DATABASE_URL est défini et que le driver est accessible
+        # avant de lancer le test de concurrence.
+        run: |
+          php -r "
+            require 'vendor/autoload.php';
+            \$app = require_once 'bootstrap/app.php';
+            \$app->make('Illuminate\Contracts\Console\Kernel')->bootstrap();
+            \Illuminate\Support\Facades\Config::set('database.default', 'pgsql');
+            \$driver = \Illuminate\Support\Facades\DB::connection('pgsql')->getDriverName();
+            echo 'Driver: ' . \$driver . PHP_EOL;
+            if (\$driver !== 'pgsql') { echo 'ERREUR: pgsql requis' . PHP_EOL; exit(1); }
+            echo 'Connexion pgsql OK' . PHP_EOL;
+          "
+
+      - name: Run KernelCodeEngine concurrent test (#141)
+        # Ce script :
+        #   1. Crée un schéma PostgreSQL isolé test_kce_{runId}
+        #   2. Lance N=20 processus concurrents via pcntl_fork()
+        #   3. Vérifie unicité, séquence, idempotence, persistance
+        #   4. DROP SCHEMA CASCADE → nettoyage complet
+        #   5. Sort exit 0 si PASS, exit 1 si FAIL
+        run: php tests/Concurrent/kernel_code_concurrent.php
+
+      - name: Upload test artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: concurrent-test-failure-${{ github.run_id }}
+          path: /tmp/kce_conc_*/
+          retention-days: 3

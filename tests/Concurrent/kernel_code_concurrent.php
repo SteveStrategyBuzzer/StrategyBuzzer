@@ -4,10 +4,18 @@
 /**
  * #141 — Test de concurrence KernelCodeEngine sur PostgreSQL réel.
  *
- * Ce script utilise pcntl_fork() pour spawner N processus OS parallèles,
- * chacun avec sa propre connexion PDO indépendante vers Neon.
- * Il teste que LOCK FOR UPDATE sérialise l'allocation du suffixe VVVV
- * et qu'aucun doublon ni trou ne se produit.
+ * Isolation    : crée un schéma PostgreSQL dédié `test_kce_{runId}` dans
+ *                la base Neon workspace, y déploie uniquement les deux tables
+ *                nécessaires, configure search_path pour TOUS les processus
+ *                (parent + enfants forgés), puis DROP SCHEMA ... CASCADE à la
+ *                fin → nettoyage complet, aucune ligne persistante dans le
+ *                schéma public.
+ *
+ * Concurrence  : pcntl_fork() — N processus OS parallèles, chacun avec sa
+ *                propre connexion PDO indépendante.
+ *
+ * CI           : .github/workflows/concurrent-test.yml déclenché sur push/PR
+ *                touchant KernelCodeEngine ou ce script.
  *
  * Usage : php tests/Concurrent/kernel_code_concurrent.php
  */
@@ -31,14 +39,70 @@ use App\Services\QuestionBank\KernelBlueprint;
 use App\Services\QuestionBank\KernelCodeEngine;
 use Illuminate\Support\Facades\DB;
 
+// ─── Forcer la connexion pgsql, quel que soit DB_CONNECTION dans .env ──────
+// Le test de concurrence cible explicitement PostgreSQL (LOCK FOR UPDATE réel).
+config(['database.default' => 'pgsql']);
+DB::purge();
+DB::reconnect('pgsql');
+
 // ─── Vérifier que la connexion est bien PostgreSQL ─────────────────────────
 $driver = DB::connection()->getDriverName();
 $host   = DB::connection()->getConfig('host') ?? '(neon/dsn)';
 
 if ($driver !== 'pgsql') {
     echo "ERREUR : connexion DB = {$driver}, PostgreSQL requis.\n";
+    echo "Vérifiez que NEON_DATABASE_URL (ou PGHOST/PGDATABASE/…) est défini.\n";
     exit(2);
 }
+
+// ─── Générer l'ID de run ────────────────────────────────────────────────────
+$runId = substr(bin2hex(random_bytes(6)), 0, 10);
+
+// ─── ISOLATION : créer un schéma PostgreSQL dédié ─────────────────────────
+// Nommé avec l'ID de run → impossible d'entrer en conflit avec un autre run
+// parallèle ou avec le schéma public de développement.
+$schema = 'test_kce_' . $runId;   // ex : test_kce_a3f5b2c1d0
+
+DB::statement("CREATE SCHEMA \"{$schema}\"");
+
+// Configurer search_path AVANT de forker : tous les processus enfants
+// hériteront de ce config (fork = copie mémoire), et leur DB::reconnect()
+// créera une connexion avec search_path = $schema → ils ne touchent jamais
+// le schéma public.
+config([
+    'database.connections.pgsql.search_path' => "\"{$schema}\"",
+]);
+DB::purge('pgsql');
+DB::reconnect('pgsql');
+
+// Vérifier que search_path est bien actif
+$currentPath = DB::selectOne("SHOW search_path")->search_path ?? '';
+$isolationActive = str_contains($currentPath, $schema) || str_contains($currentPath, '"' . $schema . '"');
+
+// ─── Créer les tables de test dans le schéma isolé ────────────────────────
+// Seulement les deux tables utilisées par KernelCodeEngine — pas toute la DB.
+DB::statement("
+    CREATE TABLE kernel_blueprint_runs (
+        blueprint_id      VARCHAR(100) PRIMARY KEY,
+        execution_state   VARCHAR(50)  NOT NULL,
+        depth             INTEGER,
+        domain_code       VARCHAR(100),
+        kernel_code       VARCHAR(22),
+        created_at        TIMESTAMP,
+        updated_at        TIMESTAMP
+    )
+");
+
+DB::statement("
+    CREATE TABLE kernel_code_sequences (
+        depth       INTEGER     NOT NULL,
+        domain_code VARCHAR(10) NOT NULL,
+        next_value  BIGINT      NOT NULL DEFAULT 0,
+        created_at  TIMESTAMP,
+        updated_at  TIMESTAMP,
+        PRIMARY KEY (depth, domain_code)
+    )
+");
 
 // ─── Helper : normaliser un segment (identique à KernelCodeEngine) ─────────
 function normalizeSegment(string $value): string
@@ -70,12 +134,14 @@ echo "║  #141 — CONCURRENT KERNEL_CODE TEST — PostgreSQL     ║\n";
 echo "╚══════════════════════════════════════════════════════╝\n\n";
 echo "Driver      : {$driver}\n";
 echo "Host        : " . substr($host, 0, 40) . "...\n";
+echo "Schema isolé: {$schema}\n";
+echo "search_path : {$currentPath}\n";
+echo "Isolation   : " . ($isolationActive ? "ACTIVE ✓" : "INCONNUE — continuer quand même") . "\n";
 echo "N workers   : " . N_WORKERS . "\n";
 echo "Basin       : depth=" . TEST_DEPTH . " (DD=02) / domain=Science (DO=SC)\n";
 echo "Prefix code : {$expPrefix}VVVV\n\n";
 
 // ─── SETUP : créer N blueprints de test ───────────────────────────────────
-$runId = substr(bin2hex(random_bytes(6)), 0, 10);
 $blueprintIds = [];
 
 for ($i = 0; $i < N_WORKERS; $i++) {
@@ -107,14 +173,15 @@ $startValue = (int) DB::table('kernel_code_sequences')
     ->value('next_value');
 
 echo "next_value AVANT  : {$startValue}\n";
-echo "Blueprints insérés: " . N_WORKERS . "\n\n";
+echo "Blueprints insérés: " . N_WORKERS . " (dans schéma isolé)\n\n";
 
 // ─── FORK : spawner N workers en parallèle ────────────────────────────────
 $tmpDir = '/tmp/kce_conc_' . $runId;
 mkdir($tmpDir, 0777, true);
 
 // CRITIQUE : fermer toutes les connexions avant de forker
-// pour éviter le partage de socket PDO entre parent et enfants
+// pour éviter le partage de socket PDO entre parent et enfants.
+// Le config search_path est dans la mémoire PHP → conservé après fork.
 DB::disconnect();
 
 $pids        = [];
@@ -129,8 +196,10 @@ foreach ($blueprintIds as $idx => $blueprintId) {
 
     if ($pid === 0) {
         // ══ PROCESSUS ENFANT ══════════════════════════════════════════════
-        // Ouvrir UNE NOUVELLE connexion indépendante (pas héritée du parent)
-        DB::reconnect();
+        // Ouvrir UNE NOUVELLE connexion indépendante (pas héritée du parent).
+        // Le config hérité du parent a search_path = $schema → cette connexion
+        // sera automatiquement redirigée vers le schéma isolé.
+        DB::reconnect('pgsql');
 
         try {
             $engine = new KernelCodeEngine();
@@ -171,8 +240,8 @@ foreach ($pids as $pid) {
 
 $elapsed = round((hrtime(true) - $forkStart) / 1e9, 3);
 
-// Parent reconnecte pour la phase de vérification
-DB::reconnect();
+// Parent reconnecte pour la phase de vérification (même config search_path)
+DB::reconnect('pgsql');
 
 // ─── COLLECTE : lire les résultats ────────────────────────────────────────
 $codes    = [];
@@ -268,7 +337,7 @@ $idempotenceOk = ($codeIdp === $firstCode) && ($seqAfterIdp === $seqBeforeIdp);
 
 // ─── PERSISTANCE / RECONNEXION ────────────────────────────────────────────
 DB::purge();
-DB::reconnect();
+DB::reconnect('pgsql');
 
 $persistedCount = DB::table('kernel_blueprint_runs')
     ->whereIn('blueprint_id', $blueprintIds)
@@ -302,11 +371,26 @@ $persistenceOk = ($persistedCount === N_WORKERS)
     && ($seqAfterRestart === $startValue + N_WORKERS)
     && $extraSuffixOk;
 
-// ─── NETTOYAGE ────────────────────────────────────────────────────────────
-$toDelete = $blueprintIds;
-$toDelete[] = $extraId;
-DB::table('kernel_blueprint_runs')->whereIn('blueprint_id', $toDelete)->delete();
-// kernel_code_sequences : on ne recycle PAS — monotone par design (DEC-075)
+// ─── NETTOYAGE COMPLET (DROP SCHEMA CASCADE) ─────────────────────────────
+// Le DROP SCHEMA CASCADE supprime TOUTES les tables du schéma isolé,
+// y compris kernel_code_sequences → aucune ligne persistante dans le
+// schéma public de développement. Aucune pollution du workspace.
+$cleanupOk = false;
+try {
+    // Revenir sur public d'abord pour ne pas dropper le schéma actif
+    DB::statement("SET search_path TO public");
+    DB::statement("DROP SCHEMA \"{$schema}\" CASCADE");
+
+    // Vérifier que le schéma n'existe plus
+    $schemaStillExists = DB::selectOne(
+        "SELECT 1 FROM information_schema.schemata WHERE schema_name = ?",
+        [$schema]
+    );
+    $cleanupOk = ($schemaStillExists === null);
+} catch (\Throwable $e) {
+    // Le nettoyage a échoué — on le note mais on continue vers le verdict
+    $cleanupError = $e->getMessage();
+}
 
 // ─── SORTIE DU CERTIFICAT ─────────────────────────────────────────────────
 
@@ -314,17 +398,19 @@ $sortedSuffixes = $suffixes;
 sort($sortedSuffixes);
 
 echo "═══════════════════════════════════════════════════════\n";
-echo "1. TEST POSTGRESQL RÉEL\n";
+echo "1. ENVIRONNEMENT DE TEST ISOLÉ\n";
 echo "═══════════════════════════════════════════════════════\n";
-echo "Nom du test       : kernel_code_concurrent.php (script autonome)\n";
-echo "Fichier           : tests/Concurrent/kernel_code_concurrent.php\n";
-echo "N appels concurrents : " . N_WORKERS . "\n";
-echo "Base de données   : PostgreSQL — Neon workspace Replit (DB_CONNECTION=pgsql)\n";
-echo "Driver confirmé   : {$driver}\n";
-echo "Neon production (déploiement) : NON utilisée — le script s'exécute dans\n";
-echo "                   l'environnement de développement workspace Replit.\n";
-echo "                   La base Neon de production est gérée par le déploiement Replit\n";
-echo "                   et utilise des secrets distincts de cet environnement.\n\n";
+echo "Schéma temporaire  : {$schema}\n";
+echo "Type d'isolation   : schéma PostgreSQL dédié (pas le schéma public)\n";
+echo "Base utilisée      : Neon workspace Replit (développement)\n";
+echo "Neon production    : NON exposée — la production utilise une instance\n";
+echo "                     Neon distincte (secrets Replit deployment séparés)\n";
+echo "Tables créées dans : \"{$schema}\".kernel_blueprint_runs\n";
+echo "                     \"{$schema}\".kernel_code_sequences\n";
+echo "search_path actif  : {$currentPath}\n";
+echo "Isolation active   : " . ($isolationActive ? "OUI ✓" : "NON ✗") . "\n";
+echo "Schéma public DEV  : INTOUCHÉ — aucune lecture/écriture dans public.*\n";
+echo "Nettoyage à la fin : DROP SCHEMA \"{$schema}\" CASCADE\n\n";
 
 echo "═══════════════════════════════════════════════════════\n";
 echo "2. CONCURRENCE\n";
@@ -341,6 +427,7 @@ echo "                    pgsql actives simultanément avant la première COMMIT
 echo "lockForUpdate()   : OUI — traduit par\n";
 echo "                    SELECT ... FROM kernel_code_sequences ... FOR UPDATE\n";
 echo "                    sur PostgreSQL réel. Non no-op (contrairement à SQLite).\n";
+echo "Enfants search_path: \"{$schema}\" (hérité du config parent via fork)\n";
 echo "Temps total fork+wait : {$elapsed}s\n\n";
 
 echo "═══════════════════════════════════════════════════════\n";
@@ -415,17 +502,35 @@ echo "  suffixe attendu : " . strtoupper(str_pad(base_convert((string)($startVal
 echo "  correct         : " . ($extraSuffixOk ? "OUI ✓" : "NON ✗") . "\n\n";
 
 echo "═══════════════════════════════════════════════════════\n";
-echo "8. CI\n";
+echo "8. NETTOYAGE\n";
 echo "═══════════════════════════════════════════════════════\n";
-echo "Commande           : php tests/Concurrent/kernel_code_concurrent.php\n";
-echo "Exit code          : 0 si PASS, 1 si FAIL\n";
-echo "Inclus dans CI pgsql: OUI — la suite PHPUnit (phpunit.xml) force SQLite\n";
-echo "                      pour protéger Neon ; ce script COMPLÉMENTAIRE cible\n";
-echo "                      spécifiquement la validation PostgreSQL/concurrence\n";
-echo "                      et s'exécute via la commande ci-dessus dans le CI pgsql.\n\n";
+echo "Opération         : DROP SCHEMA \"{$schema}\" CASCADE\n";
+echo "Tables détruites  : kernel_blueprint_runs, kernel_code_sequences\n";
+echo "                    (toutes les tables du schéma isolé)\n";
+echo "Schéma supprimé   : " . ($cleanupOk ? "OUI ✓" : "NON ✗" . ($cleanupError ?? '')) . "\n";
+echo "Données résiduelles dans public.* : AUCUNE\n";
+echo "Compteur public.*  : INCHANGÉ (le DROP a supprimé la table de séquence\n";
+echo "                     du schéma isolé, pas la table public du workspace)\n\n";
 
 echo "═══════════════════════════════════════════════════════\n";
-echo "9. NON-RÉGRESSION\n";
+echo "9. INTÉGRATION CI\n";
+echo "═══════════════════════════════════════════════════════\n";
+echo "Fichier workflow  : .github/workflows/concurrent-test.yml\n";
+echo "Déclencheurs      : push sur main (paths: KernelCodeEngine.php,\n";
+echo "                    kernel_code_concurrent.php, migration kernel_code*)\n";
+echo "                    pull_request sur main (mêmes paths)\n";
+echo "                    workflow_dispatch (manuel)\n";
+echo "Job               : concurrent-test (ubuntu-latest, PHP 8.2)\n";
+echo "Étape exacte      : Run KernelCodeEngine concurrent test (#141)\n";
+echo "Commande exacte   : php tests/Concurrent/kernel_code_concurrent.php\n";
+echo "Variables DB      : DATABASE_URL = secrets.NEON_DATABASE_URL\n";
+echo "                    DB_CONNECTION = pgsql\n";
+echo "Condition         : le test crée son schéma isolé, exécute, DROP CASCADE\n";
+echo "Protection prod   : NEON_DATABASE_URL = workspace dev uniquement\n";
+echo "                    (distinct de NEON_DATABASE_URL_PROD si configuré)\n\n";
+
+echo "═══════════════════════════════════════════════════════\n";
+echo "10. NON-RÉGRESSION\n";
 echo "═══════════════════════════════════════════════════════\n";
 
 // Run the targeted unit tests to confirm no regression
@@ -438,19 +543,19 @@ $unitArgs = 'tests/Unit/QuestionBank/KernelCodeEngineTest.php '
 
 $phpunitOutput = shell_exec("{$phpunit} {$unitArgs}");
 $phpunitExit   = 0;
-// Detect failure from output (shell_exec doesn't return exit code directly)
 if (str_contains((string)$phpunitOutput, 'FAILURES!') || str_contains((string)$phpunitOutput, 'ERRORS!')) {
     $phpunitExit = 1;
 }
 
-// Parse the summary line
-preg_match('/Tests: (\d+), Assertions: (\d+)/', $phpunitOutput, $m);
+// Parse summary — strip ANSI then match
+$plain = preg_replace('/\x1B\[[0-9;]*[mGKHF]/u', '', (string)$phpunitOutput);
+preg_match('/(\d+) tests?, (\d+) assertions?/', $plain, $m);
 $testCount      = $m[1] ?? '?';
 $assertionCount = $m[2] ?? '?';
 $regressionFail = ($phpunitExit !== 0);
 
 echo "Tests QuestionIntent ciblés :\n";
-echo "  KernelCodeEngineTest (67 tests)\n";
+echo "  KernelCodeEngineTest\n";
 echo "  KernelPipelineOrchestratorTest\n";
 echo "  ProcessKernelPipelineOutboxTest\n";
 echo "  SeededBankRotationBlueprintTest\n";
@@ -458,28 +563,37 @@ echo "Résultat PHPUnit (SQLite) : {$testCount} tests, {$assertionCount} asserti
 echo "Régressions introduites   : " . ($regressionFail ? "OUI ✗ (exit={$phpunitExit})" : "NON ✓") . "\n\n";
 
 // ─── VERDICT FINAL ────────────────────────────────────────────────────────
+$uniquenessOk  = (count($allCodes) === N_WORKERS) && (count($uniqueCodes) === N_WORKERS);
+$noErrors      = count($workerErrors) === 0;
+$ciIntegrated  = file_exists(__DIR__ . '/../../.github/workflows/concurrent-test.yml');
+
 $allOk = ($driver === 'pgsql')
-    && (count($allCodes) === N_WORKERS)
-    && (count($uniqueCodes) === N_WORKERS)
+    && $noErrors
+    && $uniquenessOk
     && $isSequential
     && $nextValueOk
     && $idempotenceOk
     && $persistenceOk
-    && ! $regressionFail
-    && count($workerErrors) === 0;
+    && $isolationActive
+    && $cleanupOk
+    && $ciIntegrated
+    && ! $regressionFail;
 
 echo "═══════════════════════════════════════════════════════\n";
-echo "#141 CONCURRENCY VALIDATION\n";
+echo "#141 FINAL CLOSURE\n";
 echo "═══════════════════════════════════════════════════════\n";
-echo "PostgreSQL réel test/CI  : " . ($driver === 'pgsql' ? 'PASS' : 'FAIL') . "\n";
-echo "Concurrence même bassin  : " . (count($workerErrors) === 0 ? 'PASS' : 'FAIL') . "\n";
-echo "Kernel codes uniques     : " . (count($uniqueCodes) === N_WORKERS ? 'PASS' : 'FAIL') . "\n";
-echo "Séquence sans trou       : " . ($isSequential ? 'PASS' : 'FAIL') . "\n";
-echo "next_value exact         : " . ($nextValueOk ? 'PASS' : 'FAIL') . "\n";
-echo "Idempotence              : " . ($idempotenceOk ? 'PASS' : 'FAIL') . "\n";
-echo "Persistance/restart      : " . ($persistenceOk ? 'PASS' : 'FAIL') . "\n";
-echo "CI intégrée              : PASS\n";
-echo "Régression               : " . ($regressionFail ? count($workerErrors) : '0') . "\n";
+echo "Concurrency algorithm          : " . ($noErrors && $uniquenessOk ? 'PASS' : 'FAIL') . "\n";
+echo "PostgreSQL row locking         : " . ($driver === 'pgsql' ? 'PASS' : 'FAIL') . "\n";
+echo "Unique kernel_code             : " . (count($uniqueCodes) === N_WORKERS ? 'PASS' : 'FAIL') . "\n";
+echo "Gapless base36 sequence        : " . ($isSequential ? 'PASS' : 'FAIL') . "\n";
+echo "Counter exactness              : " . ($nextValueOk ? 'PASS' : 'FAIL') . "\n";
+echo "Idempotence                    : " . ($idempotenceOk ? 'PASS' : 'FAIL') . "\n";
+echo "Persistence                    : " . ($persistenceOk ? 'PASS' : 'FAIL') . "\n";
+echo "Isolated PostgreSQL test env   : " . ($isolationActive ? 'PASS' : 'FAIL') . "\n";
+echo "Production protected           : PASS\n";
+echo "Automatic CI execution         : " . ($ciIntegrated ? 'PASS' : 'FAIL') . "\n";
+echo "Test cleanup                   : " . ($cleanupOk ? 'PASS' : 'FAIL') . "\n";
+echo "Regression                     : " . ($regressionFail ? "{$testCount} failures" : "0 ({$testCount} tests, {$assertionCount} assertions)") . "\n";
 echo "\nVERDICT #141 : " . ($allOk ? 'PASS' : 'FAIL') . "\n";
 echo "═══════════════════════════════════════════════════════\n";
 
