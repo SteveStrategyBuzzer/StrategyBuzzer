@@ -1,0 +1,104 @@
+STOP avant le push.
+
+Le remote GitHub `main` est très en retard. Avant de pousser les 632 commits, fais uniquement un AUDIT DE SYNCHRONISATION non destructif.
+
+Je veux :
+
+1. `git fetch origin`
+
+2. Confirmer le HEAD local exact :
+   `git rev-parse HEAD`
+
+3. Confirmer le HEAD distant :
+   `git rev-parse origin/main`
+
+4. Vérifier que `origin/main` est bien un ancêtre du HEAD local :
+   `git merge-base --is-ancestor origin/main HEAD`
+
+Résultat obligatoire :
+exit code 0.
+
+Si ce test échoue :
+STOP — aucun push.
+
+5. Donner :
+   `git rev-list --left-right --count origin/main...HEAD`
+
+Je veux connaître exactement :
+
+* commits présents seulement sur origin ;
+* commits présents seulement en local.
+
+Pour un simple fast-forward attendu :
+origin-only = 0.
+
+6. Confirmer :
+
+* aucun rebase nécessaire ;
+* aucun force push nécessaire ;
+* aucun commit distant à écraser ;
+* le push serait strictement FAST-FORWARD.
+
+7. Vérifier l'état local :
+   `git status --short`
+
+Je veux savoir s'il reste des fichiers non commités.
+
+8. Auditer tous les fichiers locaux :
+   `.github/workflows/*`
+
+Pour chacun, donne :
+
+* nom ;
+* événements déclencheurs ;
+* est-ce qu'un `push` vers `main` déclenche quelque chose ;
+* est-ce qu'il existe un déploiement production, migration DB, VM sync ou autre effet externe.
+
+Ne lance rien.
+
+9. Confirmer que les deux fichiers #141 sont bien contenus dans le HEAD local :
+
+* `.github/workflows/concurrent-test.yml`
+* `tests/Concurrent/kernel_code_concurrent.php`
+
+10. Retour final :
+
+GIT SYNC AUDIT
+
+Local HEAD:
+...
+
+Origin/main:
+...
+
+Origin-only commits:
+...
+
+Local-only commits:
+...
+
+origin/main ancestor of HEAD:
+PASS/FAIL
+
+Push type:
+FAST-FORWARD / NON FAST-FORWARD
+
+Uncommitted changes:
+...
+
+Workflows triggered by push to main:
+...
+
+Unexpected deployment side effect:
+YES/NO
+
+#141 files committed:
+PASS/FAIL
+
+SAFE TO PUSH:
+YES/NO
+
+Si SAFE TO PUSH = YES :
+STOP et attends mon GO.
+
+Ne pousse rien pendant cet audit.
