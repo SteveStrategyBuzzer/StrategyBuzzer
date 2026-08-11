@@ -393,6 +393,131 @@ class TaxonomyOrchestratorTest extends TestCase
     }
 
     // =========================================================================
+    // §48 — Survie au redémarrage : une idée consommée n'est jamais re-servie
+    //        après instanciation d'un orchestrateur tout neuf
+    //
+    // Simule un redémarrage de processus : même DB (SQLite persistante dans
+    // le même test), nouvel objet TaxonomyOrchestrator — aucun état in-memory
+    // partagé entre les deux instances.
+    // =========================================================================
+
+    public function test_consumed_idea_not_returned_after_process_restart(): void
+    {
+        // Pré-peupler DEUX idées pour le même sujet (A puis B)
+        $sd = $this->repo->findOrCreateSubdomain(2, 'histoire', 'Renaissance');
+        $s  = $this->repo->findOrCreateSubject($sd->id, 'Artistes');
+        $this->repo->persistPassIdea($s->id, 'Léonard de Vinci');
+        $this->repo->persistPassIdea($s->id, 'Michel-Ange');
+
+        // ── Instance 1 (avant le "redémarrage") ─────────────────────────────
+        $result1 = $this->orchestrator->peekNext(2, 'histoire');
+        $this->assertNotNull($result1);
+        $ideaA = $result1['dominant_idea_active'];
+
+        // Consommer l'idée A
+        $this->orchestrator->confirmConsumed(2, 'histoire');
+
+        // ── Instance 2 — simule un redémarrage de processus ─────────────────
+        // Gemini ne doit pas être appelé car une idée PASS+AVAILABLE reste en DB
+        $gemini2 = $this->createMock(TaxonomyGeminiClient::class);
+        $gemini2->expects($this->never())->method('generateSubdomains');
+        $gemini2->expects($this->never())->method('generateIdeas');
+
+        $freshOrchestrator = new TaxonomyOrchestrator(
+            new TaxonomyBankRepository(),
+            $gemini2,
+            new ValidationDominantIdeas(),
+        );
+
+        $result2 = $freshOrchestrator->peekNext(2, 'histoire');
+
+        // Le fresh orchestrateur doit retourner une idée…
+        $this->assertNotNull($result2,
+            'Un orchestrateur tout neuf doit trouver l\'idée B encore disponible en DB.'
+        );
+
+        // …et ce ne doit PAS être l'idée déjà consommée
+        $ideaB = $result2['dominant_idea_active'];
+        $this->assertNotSame($ideaA, $ideaB,
+            "L'idée «{$ideaA}» a été consommée avant le redémarrage ; "
+            . "elle ne doit jamais être re-servie par un nouvel orchestrateur."
+        );
+    }
+
+    // =========================================================================
+    // §49 — Anti-régression : zéro chevauchement sur 10 cycles consécutifs
+    //
+    // Pré-peuple 10 idées, simule 10 "redémarrages" (un orchestrateur neuf
+    // par cycle), vérifie qu'aucune idée n'est retournée deux fois.
+    // =========================================================================
+
+    public function test_no_overlap_across_ten_restart_cycles(): void
+    {
+        // Pré-peupler 10 idées dans la même banque (depth=4, domain=histoire)
+        $sd = $this->repo->findOrCreateSubdomain(4, 'histoire', 'Révolution industrielle');
+        $s  = $this->repo->findOrCreateSubject($sd->id, 'Inventions clés');
+
+        $allIdeas = [
+            'Machine à vapeur',
+            'Métier à tisser mécanique',
+            'Locomotive à vapeur',
+            'Procédé Bessemer',
+            'Dynamo électrique',
+            'Télégraphe électrique',
+            'Machine à coudre industrielle',
+            'Laminoir',
+            'Pompe à vapeur de Watt',
+            'Réfrigérateur à compression',
+        ];
+
+        foreach ($allIdeas as $idea) {
+            $this->repo->persistPassIdea($s->id, $idea);
+        }
+
+        $returned = [];
+
+        for ($cycle = 1; $cycle <= 10; $cycle++) {
+            // Chaque itération crée un orchestrateur neuf (= redémarrage processus)
+            // Gemini ne doit jamais être appelé : toutes les idées viennent de la DB
+            $gemini = $this->createMock(TaxonomyGeminiClient::class);
+            $gemini->expects($this->never())->method('generateSubdomains');
+            $gemini->expects($this->never())->method('generateIdeas');
+
+            $freshOrchestrator = new TaxonomyOrchestrator(
+                new TaxonomyBankRepository(),
+                $gemini,
+                new ValidationDominantIdeas(),
+            );
+
+            $result = $freshOrchestrator->peekNext(4, 'histoire');
+
+            $this->assertNotNull($result,
+                "Cycle {$cycle}/10 : l'orchestrateur doit trouver une idée AVAILABLE en DB."
+            );
+
+            $idea = $result['dominant_idea_active'];
+
+            $this->assertNotContains($idea, $returned,
+                "Cycle {$cycle}/10 : l'idée «{$idea}» a déjà été retournée dans un cycle précédent "
+                . '(chevauchement interdit).'
+            );
+
+            $returned[] = $idea;
+
+            // Consommer via le même orchestrateur frais (confirmConsumed est DB-only)
+            $freshOrchestrator->confirmConsumed(4, 'histoire');
+        }
+
+        // Garantie finale : exactement 10 idées distinctes retournées
+        $this->assertCount(10, $returned,
+            '10 cycles doivent produire 10 idées distinctes, sans répétition.'
+        );
+        $this->assertCount(10, array_unique($returned),
+            'Aucune idée ne doit apparaître plus d\'une fois sur les 10 cycles.'
+        );
+    }
+
+    // =========================================================================
     // Helpers
     // =========================================================================
 
