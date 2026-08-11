@@ -24,9 +24,6 @@ class Kernel extends ConsoleKernel
         // Traitement de l'Outbox Kernel (CURRENT_KERNEL_RECEIVED → Blueprint suivant)
         // withoutOverlapping() : interdit deux exécutions simultanées
         $schedule->command('questions:kernel:process-outbox')->everyMinute()->withoutOverlapping();
-
-        // Flow canonique kernel — fait avancer le noyau en vol (Phases 1-2 → ReadyBank).
-        $schedule->command('questions:kernel:advance')->everyMinute()->withoutOverlapping();
     }
 
     /**

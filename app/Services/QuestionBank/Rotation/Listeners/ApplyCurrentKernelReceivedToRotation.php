@@ -6,22 +6,22 @@ namespace App\Services\QuestionBank\Rotation\Listeners;
 
 use App\Services\QuestionBank\Rotation\DepthNeedMatrix;
 use App\Services\QuestionBank\Rotation\Events\CurrentKernelReceived;
-use App\Services\QuestionBank\Rotation\TaxonomyNavigatorInterface;
 use Illuminate\Support\Facades\DB;
 
 /**
  * ApplyCurrentKernelReceivedToRotation — listener de l'événement CURRENT_KERNEL_RECEIVED.
  *
- * Responsabilités (DEC-063 + RACCORDEMENT B du flow canonique 2026-08-11) :
+ * Responsabilités (DEC-063) :
  *   - Vérifier l'idempotence via kernel_current_kernel_receipts (PK blueprint_id)
- *   - Si non comptabilisé : confirmer la consommation Taxonomy (confirmConsumed)
- *     + insérer le reçu + incrémenter kernel_received_total[depth][domain]
+ *   - Si non comptabilisé : insérer le reçu + incrémenter
+ *     kernel_received_total[depth][domain]
  *   - Marquer l'événement Outbox comme traité
  *
- * RACCORDEMENT B : la consommation Taxonomy est confirmée UNIQUEMENT ici — après
- * acceptation ReadyBank (CURRENT_KERNEL_RECEIVED), jamais au simple passage dans
- * QuestionIntent. Le reçu sert de gate d'idempotence : une double réception du
- * même Blueprint ne produit qu'UN SEUL avancement du curseur Taxonomy.
+ * ⏸ RACCORDEMENT B (Taxonomy.confirmConsumed) : NON branché.
+ *   BLOCKER ARCHITECTURAL (audit 2026-08-11) — la décision officielle définissant
+ *   QUELLE issue du noyau autorise la consommation Taxonomy n'existe pas encore.
+ *   Il est INTERDIT de déduire « réception = consommation » (DEC-052 ne couvre que
+ *   la comptabilisation rotation, pas la consommation des idées Taxonomy).
  *
  * Tout est exécuté dans une transaction atomique.
  * Rejouable : un événement déjà comptabilisé ne produit aucun second incrément.
@@ -31,10 +31,6 @@ final class ApplyCurrentKernelReceivedToRotation
     private const RECEIPTS_TABLE = 'kernel_current_kernel_receipts';
     private const OUTBOX_TABLE   = 'kernel_pipeline_outbox';
     private const STATE_V2_TABLE = 'kernel_rotation_state_v2';
-
-    public function __construct(
-        private readonly TaxonomyNavigatorInterface $taxonomy,
-    ) {}
 
     /**
      * Comptabilisation idempotente du noyau reçu (sans marquer l'Outbox).
@@ -56,10 +52,6 @@ final class ApplyCurrentKernelReceivedToRotation
                 ->exists();
 
             if (! $alreadyReceived) {
-                // ── RACCORDEMENT B : consommation Taxonomy, gated par le reçu ──
-                // Double réception du même Blueprint = UN SEUL avancement.
-                $this->taxonomy->confirmConsumed((int) $event->depth, (string) $event->domain);
-
                 // Insérer le reçu de comptabilisation
                 DB::table(self::RECEIPTS_TABLE)->insert([
                     'blueprint_id' => $event->blueprintId,

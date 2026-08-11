@@ -22,11 +22,18 @@ use RuntimeException;
  *   CRÉATION DU KERNELBLUEPRINT (Factory — AVANT KRP, jamais PAR KRP)
  *     → KernelRotationPlanner (depth + domain)
  *     → Taxonomy ↕ ValidationDominantIdeas (sous-domaine, sujet, idée dominante VALIDÉE)
- *     → QuestionIntent (QuestionIntentEncoder — encodage passif, RACCORDEMENT A)
+ *     → QuestionIntent
+ *         ⏸ BLOCKER ARCHITECTURAL (audit 2026-08-11) — le contrat d'encodage
+ *           officiel du NOYAU MÈRE n'est pas défini. AUCUN encodage n'est
+ *           exécuté ici. Interdit de déduire un mapping des colonnes legacy.
  *     → Phase 1 → Validation Phase 1 → Phase 2 → Validation Phase 2
- *       (tapis roulant questions:kernel:advance)
- *     → ReadyBank (KernelBlueprintReadyBankReceiver)
- *     → Taxonomy.confirmConsumed() idempotent (RACCORDEMENT B — gated par le reçu)
+ *         ⏸ BLOCKER ARCHITECTURAL — la définition officielle des Phases et leur
+ *           correspondance (ou non) avec les commandes existantes n'est pas établie.
+ *     → ReadyBank
+ *         ⏸ BLOCKER ARCHITECTURAL — la condition officielle d'« acceptation »
+ *           (réception canonique) n'est pas définie en termes d'états du noyau.
+ *     → Taxonomy.confirmConsumed() idempotent
+ *         (NON branché — dépend du BLOCKER ReadyBank ; réception ≠ consommation)
  *     → CURRENT_KERNEL_RECEIVED → CRÉATION DU BLUEPRINT SUIVANT → KRP.
  *
  * Ce que cet orchestrateur fait :
@@ -34,15 +41,13 @@ use RuntimeException;
  *   2. Transmettre le Blueprint à KRP (planV2) → obtient depth + domain
  *   3. Transmettre depth + domain à Taxonomy (peekNext)
  *   4. Sur EMPTY (null) : applyEmptyTransitionV2 → planV2 → peekNext (boucle)
- *   5. Sur TERRITORY_PROVIDED : fillTaxonomy → engagement + encodage QuestionIntent
- *      dans UNE transaction (RACCORDEMENT A) → ROTATION_ASSIGNED
+ *   5. Sur TERRITORY_PROVIDED : fillTaxonomy → engagement → ROTATION_ASSIGNED
  *   6. Sur aucun Depth disponible : retourner PRODUCTION_ON_HOLD
  *
  * Ce que cet orchestrateur NE fait PAS :
- *   - N'exécute pas Phase 1 / Validation 1 / Phase 2 / Validation 2
- *     (→ questions:kernel:advance)
- *   - N'appelle pas confirmConsumed() — la consommation n'est confirmée qu'après
- *     acceptation ReadyBank (→ ApplyCurrentKernelReceivedToRotation)
+ *   - N'encode AUCUN QuestionIntent (RÈGLE DU VIDE — contrat manquant, voir BLOCKERS)
+ *   - N'exécute pas les Phases (aucune correspondance officielle établie)
+ *   - N'appelle pas confirmConsumed()
  *   - ⛔ N'invoque JAMAIS KLD / KEY_STRUCTURE / IdeaSlotLoader (SUPERSEDED)
  *
  * ═══════════════════════════════════════════════════════════════════════════
@@ -56,7 +61,6 @@ use RuntimeException;
  *
  * Résultats de run() :
  *   ROTATION_ASSIGNED   — Blueprint avec depth + domain + slots Taxonomy écrits.
- *                          Prêt à entrer dans le pipeline intellectuel.
  *   PRODUCTION_ON_HOLD  — DepthNeedMatrix a atteint toutes ses cibles.
  *                          Aucun Blueprint n'est engagé.
  *
@@ -87,10 +91,10 @@ final class KernelPipelineOrchestrator
 
     /**
      * Blueprint engagé — KRP a écrit depth + domain,
-     * Taxonomy a fourni le territoire, Blueprint = ENGAGED_IN_PIPELINE,
-     * QuestionIntent encodé (RACCORDEMENT A).
+     * Taxonomy a fourni le territoire, Blueprint = ENGAGED_IN_PIPELINE.
      *
-     * Les Phases 1-2 (questions:kernel:advance) commencent après ce retour.
+     * ⏸ La suite du pipeline (QuestionIntent, Phases, ReadyBank) est en attente
+     * des décisions métier officielles (BLOCKERS ARCHITECTURAUX, audit 2026-08-11).
      */
     public const STATUS_ROTATION_ASSIGNED = 'ROTATION_ASSIGNED';
 
@@ -101,7 +105,6 @@ final class KernelPipelineOrchestrator
         private readonly KernelBlueprintFactory     $factory,
         private readonly KernelRotationPlanner      $planner,
         private readonly TaxonomyNavigatorInterface $taxonomy,
-        private readonly QuestionIntentEncoder      $intentEncoder,
     ) {}
 
     /**
@@ -110,9 +113,8 @@ final class KernelPipelineOrchestrator
      * @param  string|null  $previousDomain  Domaine du Blueprint précédent.
      *
      * @return array{
-     *     status:     string,
-     *     blueprint:  KernelBlueprint,
-     *     intent_id?: int
+     *     status:    string,
+     *     blueprint: KernelBlueprint
      * }
      *
      * @throws RuntimeException STOP si la garde anti-boucle est déclenchée.
@@ -161,26 +163,20 @@ final class KernelPipelineOrchestrator
             }
 
             // ── TERRITORY_PROVIDED — KRP a terminé sa responsabilité ──────────
-            // Écrire les slots Taxonomy, puis engager le Blueprint ET encoder le
-            // QuestionIntent dans UNE transaction (RACCORDEMENT A) : le territoire
-            // ne vit pas dans kernel_blueprint_runs — l'atomicité interdit un
-            // Blueprint engagé sans intent (perte de territoire sur crash).
+            // Écrire les slots Taxonomy sur le DTO, puis engager le Blueprint.
+            // ⏸ AUCUN encodage QuestionIntent ici : le contrat d'encodage du
+            // NOYAU MÈRE est un BLOCKER ARCHITECTURAL ouvert (audit 2026-08-11).
             $blueprint->fillTaxonomy(
                 $territory['sub_domain']                                        ?? '',
                 $territory['subject']                                           ?? '',
                 $territory['dominant_idea'] ?? $territory['dominant_idea_active'] ?? '',
             );
 
-            $intentId = DB::transaction(function () use ($blueprint): int {
-                $this->engageBlueprint($blueprint);
-
-                return $this->intentEncoder->encode($blueprint);
-            });
+            $this->engageBlueprint($blueprint);
 
             return [
                 'status'    => self::STATUS_ROTATION_ASSIGNED,
                 'blueprint' => $blueprint,
-                'intent_id' => $intentId,
             ];
         }
     }

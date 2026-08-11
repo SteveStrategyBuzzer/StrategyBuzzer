@@ -1,0 +1,213 @@
+Les mappings suivants sont exactement des décisions de QuestionIntent :
+
+angle_large
+micro_angle
+answer_target
+concept_family
+intent_key
+semantic_key
+language_source
+
+Et actuellement Replit reconnaît lui-même qu’ils ont été déduits du legacy, pas de notre contrat :
+
+angle_large = dominant_idea
+micro_angle = dominant_idea
+answer_target = dominant_idea
+
+concept_family = subdomain
+
+intent_key = semantic_key = BP:{blueprint_id}
+
+language_source = en
+
+Donc la bonne réaction n’est pas :
+
+valider les 7 mappings
+↓
+faire tourner le pipeline
+
+La bonne réaction est :
+
+STOP #140
+↓
+05_QuestionIntent
+↓
+reconstruction de son contrat complet
+↓
+définition officielle de ses entrées
+↓
+définition officielle de ses sorties
+↓
+définition de l'identité du noyau
+↓
+détermination de ce qui devient legacy
+↓
+Architecture Register
+↓
+implantation QuestionIntent
+↓
+ensuite seulement premier rotate réel
+Ce serait une erreur de faire du « champ par champ »
+
+Parce que nous risquerions de faire ceci :
+
+Pourquoi angle_large ?
+→ parce que la DB le demande.
+
+Pourquoi micro_angle ?
+→ parce que le validator le demande.
+
+Pourquoi answer_target ?
+→ parce qu'il faut mettre quelque chose.
+
+Et nous reviendrions exactement à :
+
+CODE EXISTANT
+↓
+ARCHITECTURE SUPPOSÉE
+
+alors que notre règle est l’inverse.
+
+Ce que #140 a bien fait
+
+Il nous a donné une information extrêmement utile :
+
+la frontière architecturale exacte est maintenant connue.
+
+Taxonomy
+↓
+QuestionIntentEncoder
+↓
+???? contrat QuestionIntent non verrouillé
+↓
+Phase 1
+
+C’est ici que le pipeline doit rester bloqué.
+
+Et les données déjà certaines de Taxonomy sont :
+
+depth
+domain
+subdomain_active
+subject_active
+dominant_idea_active
+
+La question suivante est maintenant :
+
+Que doit exactement faire QuestionIntent avec ce noyau Taxonomy validé pour préparer Phase 1 ?
+
+Pas :
+
+« Que devons-nous mettre dans les colonnes existantes ? »
+
+C’est une différence fondamentale.
+
+Attention aussi à cette phrase de #140
+
+Il écrit :
+
+confirmConsumed UNIQUEMENT après acceptation ReadyBank
+
+puis :
+
+DEC-052
+quarantaine reçue, rotation jamais bloquée
+
+Ça devra aussi être nettoyé plus tard, car « reçu » et « accepté » ne doivent pas être fusionnés sans contrat officiel.
+
+Mais nous ne devons pas résoudre ça maintenant en même temps que QuestionIntent.
+
+Une seule spécification à la fois.
+
+Instruction à donner à Replit maintenant
+
+#140 reste BLOQUÉ. Ne lance aucun rotate réel.
+
+La RÈGLE DU VIDE a correctement détecté que le problème se situe maintenant à la frontière QuestionIntent.
+
+Je ne valide PAS les mappings legacy champ par champ à ce stade.
+
+Les mappings suivants restent UNSPECIFIED et NON AUTORISÉS :
+
+angle_large = dominant_idea
+micro_angle = dominant_idea
+answer_target = dominant_idea
+concept_family = sub_domain
+intent_key = BP:{blueprint_id}
+semantic_key = BP:{blueprint_id}
+language_source = en
+
+Le fait que ces colonnes soient NOT NULL, requises par un validator ou présentes dans l'ancien code ne leur donne aucune autorité métier.
+
+Ne cherche pas d'autres valeurs pour les remplir.
+
+Ne modifie pas QuestionIntent pour rendre le pipeline exécutable.
+
+Ne lance pas le premier noyau réel.
+
+La prochaine étape architecturale est maintenant :
+
+05_QuestionIntent
+
+Nous allons d'abord définir complètement son contrat métier :
+
+Mission
+Position
+Responsabilités
+Interdictions
+Entrées
+Sorties
+Slots Blueprint lus
+Slots Blueprint écrits
+Données internes
+Mécanismes
+Communication
+Contrats
+États
+Transitions
+Cas limites
+Persistance
+Validation
+Tests
+Identité du noyau
+Relation exacte avec Phase 1
+statut de chacun des champs legacy actuels
+
+Jusqu'à ce que cette spécification soit fournie et verrouillée :
+
+Taxonomy
+↓
+FRONTIÈRE QUESTIONINTENT
+↓
+STOP
+
+Le workflow peut rester en no-op s'il n'engage aucun noyau réel et n'effectue aucune création Gemini.
+
+Ne tente aucun contournement.
+
+Ne propose aucune équivalence métier à partir du schéma DB.
+
+Conserve #140 comme tâche future bloquée par :
+
+BLOCKED_AT_QUESTION_INTENT_CONTRACT.
+
+Donc notre prochaine étape ici
+
+On passe à 05_QuestionIntent.
+
+Et cette fois nous le construirons à partir de :
+
+KernelBlueprint
+↓
+KRP
+↓
+Taxonomy
+↕ ValidationDominantIdeas
+↓
+[ QUESTIONINTENT À DÉFINIR ]
+↓
+Phase 1
+
+sans regarder d’abord angle_large, micro_angle, answer_target ou les autres colonnes pour décider de sa mission.
+
+C’est précisément le type de frontière pour lequel nous avons créé la RÈGLE DU VIDE.

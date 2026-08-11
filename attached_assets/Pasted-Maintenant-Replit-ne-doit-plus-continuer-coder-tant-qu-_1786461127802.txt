@@ -1,0 +1,153 @@
+Maintenant, Replit ne doit plus continuer à coder tant qu’il n’a pas nettoyé ce qu’il vient d’implanter et identifié les vrais vides de contrat.
+
+L’ordre exact doit être :
+
+STOP nouvelles modifications
+↓
+AUDIT de ce qui vient d'être implanté
+↓
+séparer :
+  - plomberie technique valide
+  - décisions métier explicitement autorisées
+  - décisions métier inventées
+↓
+retirer/isoler les décisions inventées
+↓
+identifier les BLOCKERS architecturaux restants
+↓
+nous les présenter AVANT de continuer
+↓
+nous décidons
+↓
+Replit reprend seulement avec la décision fournie
+
+Dans le cas actuel, il doit notamment vérifier QuestionIntent, la logique de retries/Quarantine et la condition exacte de confirmConsumed().
+
+Envoie-lui ceci :
+
+Applique maintenant le protocole anti-ambiguïté.
+
+NE CONTINUE PAS à développer le pipeline au-delà des contrats actuellement certains.
+
+Ta prochaine action n'est pas d'ajouter du code.
+
+Ta prochaine action est un AUDIT DE CONFORMITÉ de l'implantation que tu viens de réaliser.
+
+Procède dans cet ordre :
+
+Gèle les nouvelles modifications.
+Reprends tous les changements de la tâche actuelle et classe chacun dans une des catégories suivantes :
+
+A — PLUMBING TECHNIQUE CONFORME
+B — RÈGLE MÉTIER EXPLICITEMENT AUTORISÉE
+C — RÈGLE MÉTIER DÉDUITE / INVENTÉE
+D — LEGACY UTILISÉ COMME SOURCE DE VÉRITÉ
+E — CONTRAT MANQUANT / AMBIGU
+
+Pour toute catégorie C ou D :
+ne la considère pas comme valide ;
+retire-la ou isole-la si elle n'est pas nécessaire au plumbing déjà conforme ;
+ne la remplace pas par une nouvelle hypothèse.
+Vérifie en priorité les trois zones déjà identifiées :
+
+QUESTIONINTENT
+
+aucun mapping métier ne doit être déduit des colonnes legacy ;
+notamment ne pas considérer automatiquement :
+dominant_idea = angle_large
+dominant_idea = micro_angle
+dominant_idea = answer_target
+sub_domain = concept_family
+si QuestionIntent ne possède pas un contrat suffisant pour continuer :
+BLOCKER ARCHITECTURAL.
+
+PHASES / QUARANTINE
+
+ne pas inventer un nombre de retries ;
+ne pas décider qu'un dépassement de retries envoie en Quarantine ;
+ne pas définir Phase 1 / Validation / Phase 2 à partir des commandes existantes ;
+si ces règles sont nécessaires :
+BLOCKER ARCHITECTURAL.
+
+READYBANK / CONFIRMCONSUMED
+
+ne pas déduire :
+received = accepted
+rejected = consumed
+quarantine = consumed
+human_review = consumed
+partial_review = consumed
+identifier la décision OFFICIAL exacte qui autorise la consommation Taxonomy ;
+si cette décision n'existe pas ou est ambiguë :
+BLOCKER ARCHITECTURAL.
+Conserve uniquement ce qui est certain et conforme, notamment si confirmé par audit :
+KernelBlueprint créé AVANT KRP ;
+KRP ne crée jamais le Blueprint ;
+Taxonomy reste propriétaire de ses données ;
+ValidationDominantIdeas reste l'unique autorité des Idées Dominantes ;
+KLD / KEY_STRUCTURE / KernelIdentifierManager restent SUPERSEDED ;
+aucune architecture parallèle ;
+outbox et idempotence purement techniques ;
+BankWorker intact.
+Ensuite ARRÊTE-TOI et présente les vides avant de coder davantage.
+
+Pour chaque vide, utilise exactement :
+
+BLOCKER ARCHITECTURAL
+
+Module actif :
+...
+
+Frontière exacte :
+...
+
+Information manquante ou ambiguë :
+...
+
+Pourquoi elle est nécessaire :
+...
+
+Code legacy trouvé :
+...
+
+Pourquoi ce code ne constitue pas une décision métier :
+...
+
+Impact si aucune décision n'est prise :
+...
+
+Options possibles :
+...
+(ne choisis aucune option)
+
+Aucun code dépendant de cette décision n'a été implanté ou conservé.
+
+À la fin, fournis aussi :
+
+IMPLANTATION CONFORME CONSERVÉE
+
+...
+
+LOGIQUE INVENTÉE RETIRÉE / ISOLÉE
+
+...
+
+LEGACY NON RÉACTIVÉ
+
+...
+
+BLOCKERS ARCHITECTURAUX
+
+...
+
+NOUVELLE DÉCISION MÉTIER INVENTÉE
+
+AUCUNE
+
+ARCHITECTURE PARALLÈLE RESTANTE
+
+AUCUNE
+
+Ne reprends l'implantation au-delà de ces frontières qu'après notre réponse explicite aux BLOCKERS.
+
+Donc, sa prochaine tâche n’est pas de finir le pipeline. Sa prochaine tâche est de nous dire exactement : « voici ce qui est certain, voici ce que j’ai dû retirer, voici les décisions qui vous appartiennent encore. »

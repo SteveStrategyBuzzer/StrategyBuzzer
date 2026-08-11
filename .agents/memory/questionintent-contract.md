@@ -5,17 +5,13 @@ description: Contrat verrouillé de QUESTIONINTENT — PUR ENCODEUR (zéro contr
 
 > ⚠️ **Partiellement SUPERSEDED 2026-08-11** — toute mention de KLD/KEY_STRUCTURE dans ce fichier est obsolète (absorbés par ValidationDominantIdeas). Voir [canonical-kernel-flow.md](canonical-kernel-flow.md).
 
-## Encodage réel — mapping legacy VERROUILLÉ (implémenté 2026-08-11)
+## Encodage réel — mapping legacy RETIRÉ puis verrouillé UNSPECIFIED (2026-08-11)
 
-L'encodeur écrit UNE ligne `question_intents` par Blueprint (idempotence par UNIQUE(blueprint_id)). La table garde ses colonnes legacy NOT NULL exigées par le validateur de frame ; le mapping est du PUR VOCABULAIRE, aucune valeur fabriquée :
+Un mapping d'encodage avait été implémenté par déduction du legacy (idée dominante répétée dans angle_large/micro_angle/answer_target, concept_family=sous-domaine, intent_key/semantic_key='BP:'+blueprint_id, language_source='en'). L'audit RÈGLE DU VIDE l'a fait **RETIRER intégralement** — encodeur supprimé, zéro ligne jamais écrite. Le user a ensuite verrouillé PAR ÉCRIT : ces 7 mappings sont **UNSPECIFIED et NON AUTORISÉS** ; NOT NULL/validator/ancien code = zéro autorité métier ; interdit de chercher d'autres valeurs, de modifier QuestionIntent pour rendre le pipeline exécutable, de lancer le premier noyau réel, tout contournement, toute équivalence métier déduite du schéma DB. Gel : `BLOCKED_AT_QUESTION_INTENT_CONTRACT`.
 
-- `dominant_idea` = `angle_large` = `micro_angle` = `answer_target` = l'idée dominante active fournie par Taxonomy (une seule vérité, répétée là où le legacy l'exige).
-- `concept_family` = sous-domaine actif ; `subject` = sujet actif ; `domain`/`difficulty_depth` = rotation.
-- `intent_key` = `semantic_key` = `'BP:' + blueprint_id` (identité = le Blueprint, rien d'autre).
-- `source` = `'kernel_rotation'` ; `language_source` = `'en'` ; `frame_status` = NULL au départ (le tapis roulant le fait progresser).
-- ⛔ `kernel_code`, `ks_hash`, `kld_hash` restent NULL — JAMAIS fabriqués (KLD/KS superseded ; les sections ks_hash/kernel_print plus bas datent de l'ère KLD/KS).
+**Étape en cours :** reconstruction du contrat complet dans `docs/architecture/05_QuestionIntent.md` (cadre 21 rubriques + relevé factuel de la table + questions structurantes Q1-Q6 ; question directrice : « que doit faire QuestionIntent avec le noyau Taxonomy validé pour préparer Phase 1 ? », jamais « que mettre dans les colonnes ? »). Séquence : contrat → entrées → sorties → identité du noyau → legacy → Architecture Register → implantation → rotate réel. Une seule spécification à la fois — le nettoyage « reçu ≠ accepté » (DEC-052/confirmConsumed) vient APRÈS.
 
-**Why :** le validateur de frame exige ces champs non-null ; plutôt que d'inventer des hashs (ré-ouvrir KLD/KS par la fenêtre), on répète l'idée dominante validée. **How to apply :** tout code lisant angle_large/micro_angle/answer_target sur un intent issu de la rotation lit EN FAIT l'idée dominante ; ne jamais les diverger.
+**Fait factuel utile (relevé Neon 2026-08-11)** : parmi les 7 champs, seuls intent_key/language_source/domain (+difficulty_depth) sont réellement NOT NULL — angle_large/micro_angle/answer_target/concept_family/semantic_key/sub_domain sont NULLABLE. L'argument « la DB l'exige » était factuellement faux. Colonnes additives blueprint_id (UNIQUE)/dominant_idea/advance_attempts : INERTES.
 
 
 # QUESTIONINTENT — contrat officiel (VERROUILLÉ)

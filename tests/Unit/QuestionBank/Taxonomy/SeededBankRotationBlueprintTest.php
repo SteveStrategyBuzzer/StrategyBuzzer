@@ -9,7 +9,6 @@ use App\Services\QuestionBank\Rotation\DepthNeedMatrix;
 use App\Services\QuestionBank\Rotation\KernelBlueprintFactory;
 use App\Services\QuestionBank\Rotation\KernelPipelineOrchestrator;
 use App\Services\QuestionBank\Rotation\KernelRotationPlanner;
-use App\Services\QuestionBank\Rotation\QuestionIntentEncoder;
 use App\Services\QuestionBank\Taxonomy\TaxonomyBankRepository;
 use App\Services\QuestionBank\Taxonomy\TaxonomyGeminiClient;
 use App\Services\QuestionBank\Taxonomy\TaxonomyOrchestrator;
@@ -96,14 +95,12 @@ class SeededBankRotationBlueprintTest extends TestCase
             new KernelBlueprintFactory(),
             new KernelRotationPlanner(),
             $taxonomy,
-            new QuestionIntentEncoder(),
         );
     }
 
     protected function tearDown(): void
     {
         DB::statement('PRAGMA foreign_keys = OFF');
-        Schema::dropIfExists('question_intents');
         Schema::dropIfExists('taxonomy_generation_memory');
         Schema::dropIfExists('taxonomy_dominant_idea_bank');
         Schema::dropIfExists('taxonomy_subject_bank');
@@ -153,15 +150,6 @@ class SeededBankRotationBlueprintTest extends TestCase
         $this->assertSame('ENGAGED_IN_PIPELINE', $run->execution_state);
         $this->assertSame($this->firstDepth, (int) $run->depth);
         $this->assertSame(self::FIRST_DOMAIN, $run->domain_code);
-
-        // ── 5. RACCORDEMENT A — QuestionIntent encodé dans la même transaction ─
-        // (chemin réel : TaxonomyOrchestrator expose dominant_idea_active)
-        $intent = DB::table('question_intents')
-            ->where('blueprint_id', $blueprint->blueprint_id)
-            ->first();
-        $this->assertNotNull($intent, 'ROTATION_ASSIGNED ⇒ QuestionIntent encodé — RACCORDEMENT A');
-        $this->assertSame('Paris est traversée par la Seine', $intent->dominant_idea);
-        $this->assertSame('kernel_rotation', $intent->source);
     }
 
     // =========================================================================
@@ -266,26 +254,6 @@ class SeededBankRotationBlueprintTest extends TestCase
             $table->primary(['depth', 'domain_code']);
         });
 
-        Schema::create('question_intents', function (Blueprint $table) {
-            $table->id();
-            $table->string('intent_key')->unique();
-            $table->string('semantic_key', 255)->nullable();
-            $table->string('language_source', 8)->default('en');
-            $table->string('domain', 64);
-            $table->string('sub_domain', 256);
-            $table->unsignedTinyInteger('difficulty_depth');
-            $table->string('subject', 256)->nullable();
-            $table->string('dominant_idea', 512)->nullable();
-            $table->string('angle_large', 512)->nullable();
-            $table->string('micro_angle', 512)->nullable();
-            $table->text('answer_target')->nullable();
-            $table->string('concept_family', 256)->nullable();
-            $table->string('source', 32)->default('ai_pipeline');
-            $table->string('frame_status', 32)->nullable();
-            $table->char('blueprint_id', 36)->nullable()->unique();
-            $table->unsignedTinyInteger('advance_attempts')->default(0);
-            $table->timestamps();
-        });
     }
 
     private function createTaxonomySchema(): void

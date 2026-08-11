@@ -6,13 +6,19 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * RACCORDEMENT A — lien Blueprint → QuestionIntent (flow canonique 2026-08-11).
+ * Colonnes additives : capacité de lien Blueprint → question_intents.
+ *
+ * ⏸ AUDIT RÈGLE DU VIDE (2026-08-11) : l'encodage QuestionIntent lui-même est un
+ * BLOCKER ARCHITECTURAL ouvert (contrat officiel manquant). AUCUN code n'écrit
+ * ces colonnes aujourd'hui — elles sont INERTES (0 ligne concernée).
  *
  * - blueprint_id     : identité du KernelBlueprint (kernel_blueprint_runs.blueprint_id).
- *                      UNIQUE : un Blueprint engagé produit exactement UN QuestionIntent.
+ *                      UNIQUE : un Blueprint ne pourra produire qu'UN QuestionIntent.
  * - dominant_idea    : idée dominante VALIDÉE fournie par Taxonomy ↕ ValidationDominantIdeas
  *                      (largeur alignée sur taxonomy_dominant_idea_bank.idea_value = 512).
- * - advance_attempts : compteur anti-boucle du tapis roulant questions:kernel:advance.
+ * - advance_attempts : INERTE — le mécanisme qui l'utilisait a été retiré (audit
+ *                      2026-08-11) ; suppression = migration destructive, uniquement
+ *                      sur ordre explicite de l'utilisateur.
  *
  * Élargissements PG (labels Taxonomy plus larges que les colonnes historiques) :
  *   sub_domain 64→256, subject 255→256, concept_family 191→256 (subdomain_name = 256),

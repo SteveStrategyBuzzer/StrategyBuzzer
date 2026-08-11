@@ -10,7 +10,6 @@ use App\Services\QuestionBank\Rotation\KernelPipelineOutboxRepository;
 use App\Services\QuestionBank\Rotation\KernelRotationPlanner;
 use App\Services\QuestionBank\Rotation\Listeners\ApplyCurrentKernelReceivedToRotation;
 use App\Services\QuestionBank\Rotation\ProcessKernelPipelineOutbox;
-use App\Services\QuestionBank\Rotation\QuestionIntentEncoder;
 use App\Services\QuestionBank\Taxonomy\TaxonomyBankRepository;
 use App\Services\QuestionBank\Taxonomy\TaxonomyGeminiClient;
 use App\Services\QuestionBank\Taxonomy\TaxonomyOrchestrator;
@@ -128,15 +127,14 @@ class QuestionsKernelProcessOutboxCommand extends Command
             new ValidationDominantIdeas(),
         );
 
-        // RACCORDEMENT B : le listener confirme la consommation Taxonomy
-        // (idempotence par reçu) avant comptabilisation.
-        $listener = new ApplyCurrentKernelReceivedToRotation($taxonomy);
+        // ⏸ confirmConsumed NON branché — BLOCKER ARCHITECTURAL (audit 2026-08-11) :
+        // la condition officielle autorisant la consommation Taxonomy n'est pas définie.
+        $listener = new ApplyCurrentKernelReceivedToRotation();
 
         $orchestrator = new KernelPipelineOrchestrator(
             new KernelBlueprintFactory(),
             new KernelRotationPlanner(),
             $taxonomy,
-            new QuestionIntentEncoder(),
         );
 
         return new ProcessKernelPipelineOutbox($listener, $orchestrator, $outboxRepo);
