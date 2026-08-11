@@ -3,6 +3,9 @@ name: knowledge_frequency vs historique des paires
 description: Two distinct kernel-pipeline responsibilities that must never be merged — notoriety scoring vs pedagogical anti-duplication.
 ---
 
+> ⚠️ **Partiellement SUPERSEDED 2026-08-11** — toute mention de KLD/KEY_STRUCTURE dans ce fichier est obsolète (absorbés par ValidationDominantIdeas). Voir [canonical-kernel-flow.md](canonical-kernel-flow.md).
+
+
 # Séparation verrouillée : knowledge_frequency ≠ historique des paires
 
 Deux responsabilités distinctes du pipeline noyau. Ne JAMAIS les fusionner.

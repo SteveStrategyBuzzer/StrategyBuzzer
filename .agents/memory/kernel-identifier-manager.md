@@ -3,6 +3,9 @@ name: KernelIdentifierManager — futur composant
 description: Composant futur identifié en 2026-07-04 — unique autorité de génération de tous les identifiants du noyau (kernel_code, ks_hash, kld_hash, semantic_key, intent_key).
 ---
 
+> ⛔ **SUPERSEDED 2026-08-11** — KLD/KEY_STRUCTURE retirés du flow canonique ; responsabilités absorbées par ValidationDominantIdeas. Ne pas rebrancher. Voir [canonical-kernel-flow.md](canonical-kernel-flow.md). Conservé pour historique.
+
+
 # KernelIdentifierManager — Futur composant (non implémenté)
 
 ## Raison d'être

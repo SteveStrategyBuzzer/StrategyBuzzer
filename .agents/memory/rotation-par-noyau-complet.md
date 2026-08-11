@@ -3,6 +3,9 @@ name: ROTATION PAR NOYAU COMPLET
 description: Architecture officielle (VERROUILLAGE 2026-06-19) — Rotation = orchestrateur DÉTERMINISTE de progression des noyaux mères. Aucun hasard. KEY_STRUCTURE AVANT KLD. Source de vérité pour Rotation/Taxonomy/KEY_STRUCTURE/KLD.
 ---
 
+> ⚠️ **Partiellement SUPERSEDED 2026-08-11** — toute mention de KLD/KEY_STRUCTURE dans ce fichier est obsolète (absorbés par ValidationDominantIdeas). Voir [canonical-kernel-flow.md](canonical-kernel-flow.md).
+
+
 # ROTATION PAR NOYAU COMPLET (VERROUILLÉ 2026-06-19)
 
 Rotation n'est PAS un simple distributeur Depth/Domaine. C'est l'**orchestrateur de progression méthodique** des NOYAUX MÈRES. **Le hasard ne décide jamais** quels sujets/idées sont exploités.

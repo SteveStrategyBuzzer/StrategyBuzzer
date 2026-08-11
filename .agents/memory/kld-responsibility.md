@@ -3,6 +3,9 @@ name: KEY_LEARNING_DIRECTION — responsabilité exacte
 description: Scope verrouillé de KEY_LEARNING_DIRECTION — registre de dossiers pédagogiques + synonymes + familles d'idées. 3 sorties. Mécanisme en 7 étapes.
 ---
 
+> ⛔ **SUPERSEDED 2026-08-11** — KLD/KEY_STRUCTURE retirés du flow canonique ; responsabilités absorbées par ValidationDominantIdeas. Ne pas rebrancher. Voir [canonical-kernel-flow.md](canonical-kernel-flow.md). Conservé pour historique.
+
+
 # KEY_LEARNING_DIRECTION — responsabilité exacte (verrouillée)
 
 ## Mission officielle (verrouillée 2026-07-05)

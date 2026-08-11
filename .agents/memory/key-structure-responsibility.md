@@ -3,6 +3,9 @@ name: KEY_STRUCTURE — responsabilité exacte
 description: KEY_STRUCTURE = gardien de la qualité du matériau taxonomique. Valide + élague l'arbre produit par Taxonomy. Frontière avec QuestionIntent (ks_hash/encodage) et KLD.
 ---
 
+> ⛔ **SUPERSEDED 2026-08-11** — KLD/KEY_STRUCTURE retirés du flow canonique ; responsabilités absorbées par ValidationDominantIdeas. Ne pas rebrancher. Voir [canonical-kernel-flow.md](canonical-kernel-flow.md). Conservé pour historique.
+
+
 # KEY_STRUCTURE — responsabilité exacte
 
 ⚠️ MAJ 2026-06-19 (voir `rotation-par-noyau-complet.md`) : ORDRE CHANGÉ — **KEY_STRUCTURE intervient AVANT KLD**. Rôle DOUBLE et élargi : (6A) **ÉGRAINAGE INTELLECTUEL** — vérifie que la cascade Depth→Domaine→Sous-domaine→Sujet→Idée est NATURELLE et peut REFUSER même sans collision (Everest→Mort PASS ; Everest→Frontière FAIL) ; (6B) **PRÉ-CODE** `yy-xx-xxx-xxx-xxx-zz` (yy=Depth, xx=Domaine [Rotation] ; sous-domaine/sujet/idée [Taxonomy] ; zz=collision, `00` si aucune), détecte les collisions structurelles, compare les `zz`, et **appelle KLD** pour arbitrer (FAIL=même sujet+idée → avancer ; PASS=différent → `zz` différent). Le scope « garde qualité + élagage du matériau taxonomique » ci-dessous reste valable et s'ajoute.

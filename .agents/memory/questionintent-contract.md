@@ -3,6 +3,9 @@ name: QUESTIONINTENT contract (official)
 description: Contrat verrouillé de QUESTIONINTENT — PUR ENCODEUR (zéro contrôle métier, pas de ruleset). Reçoit le NOYAU MÈRE complet déjà validé et produit son encodage officiel. Le NOYAU MÈRE est UNE entité complète indivisible — pas de fan-out, pas de puces, pas de découpage sujet/idée.
 ---
 
+> ⚠️ **Partiellement SUPERSEDED 2026-08-11** — toute mention de KLD/KEY_STRUCTURE dans ce fichier est obsolète (absorbés par ValidationDominantIdeas). Voir [canonical-kernel-flow.md](canonical-kernel-flow.md).
+
+
 # QUESTIONINTENT — contrat officiel (VERROUILLÉ)
 
 Position (CORRIGÉ 2026-06-19) : QUESTIONINTENT n'est PLUS une étape après KEY_STRUCTURE. C'est un **mécanisme d'encodage APPELÉ DANS ROTATION**, après que ROTATION a inscrit Depth + Domaine.

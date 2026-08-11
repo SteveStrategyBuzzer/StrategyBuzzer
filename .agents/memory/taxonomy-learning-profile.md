@@ -3,6 +3,9 @@ name: TAXONOMY_LEARNING_PROFILE
 description: Profil d'apprentissage par (domaine/sous-domaine/depth) qui permet à Taxonomy d'apprendre des recadrages KEY_STRUCTURE et d'ajuster sa génération future.
 ---
 
+> ⚠️ **Partiellement SUPERSEDED 2026-08-11** — toute mention de KLD/KEY_STRUCTURE dans ce fichier est obsolète (absorbés par ValidationDominantIdeas). Voir [canonical-kernel-flow.md](canonical-kernel-flow.md).
+
+
 # TAXONOMY_LEARNING_PROFILE (VALIDÉ)
 
 Rôle : permettre à Taxonomy d'apprendre des recadrages émis par KEY_STRUCTURE et d'éviter de répéter la même dérive sur un Sous-domaine déjà connu.

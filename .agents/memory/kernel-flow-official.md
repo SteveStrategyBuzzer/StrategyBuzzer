@@ -3,6 +3,9 @@ name: Kernel Flow Official
 description: Flow officiel "Blueprint First". Source de vérité pour toute implémentation kernel/rotation. CORRIGÉ 2026-06-19 — QUESTIONINTENT encode l'identité DANS Rotation (après Depth+Domaine), AVANT KLD/KEY_STRUCTURE.
 ---
 
+> ⛔ **SUPERSEDED 2026-08-11** — KLD/KEY_STRUCTURE retirés du flow canonique ; responsabilités absorbées par ValidationDominantIdeas. Ne pas rebrancher. Voir [canonical-kernel-flow.md](canonical-kernel-flow.md). Conservé pour historique.
+
+
 # Flow officiel Kernel — Blueprint First
 
 Document de référence validé. Remplace toutes les interprétations précédentes.

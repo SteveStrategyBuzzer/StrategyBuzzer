@@ -3,6 +3,9 @@ name: KLD contrat corrigé (2026-07-04)
 description: Corrections obligatoires au document technique KLD avant PATCH B — moteur pur, pas de DB, pas de hash, DTO typé.
 ---
 
+> ⛔ **SUPERSEDED 2026-08-11** — KLD/KEY_STRUCTURE retirés du flow canonique ; responsabilités absorbées par ValidationDominantIdeas. Ne pas rebrancher. Voir [canonical-kernel-flow.md](canonical-kernel-flow.md). Conservé pour historique.
+
+
 # KEY_LEARNING_DIRECTION — Contrat corrigé (2026-07-04)
 
 ## Trois corrections par rapport à l'audit initial

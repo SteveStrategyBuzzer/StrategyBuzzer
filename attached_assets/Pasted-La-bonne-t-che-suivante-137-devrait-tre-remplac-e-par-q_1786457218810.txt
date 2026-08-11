@@ -1,0 +1,119 @@
+La bonne tâche suivante
+
+#137 devrait être remplacée par quelque chose comme :
+
+#137 — Brancher Taxonomy → QuestionIntent
+et fermer le cycle de consommation Taxonomy au ReadyBank
+
+Il y a en réalité deux raccordements différents :
+
+RACCORDEMENT A — pipeline intellectuel
+
+Taxonomy
+↓
+QuestionIntent
+↓
+Phase 1
+
+et :
+
+RACCORDEMENT B — confirmation de consommation
+
+Validation Phase 2
+↓
+ReadyBank
+↓
+confirmConsumed()
+↓
+CURRENT_KERNEL_RECEIVED
+↓
+Blueprint suivant
+
+Il ne faut pas fusionner ces deux responsabilités.
+
+Envoie ceci à Replit
+
+REFUS de la tâche #137 dans sa forme actuelle.
+
+Elle réintroduit une architecture SUPERSEDED.
+
+Ne pas brancher :
+
+Taxonomy
+→ KLD
+→ KEY_STRUCTURE
+→ QuestionIntent
+
+Depuis #120, les responsabilités pertinentes de KLD + KEY_STRUCTURE sont intégrées dans ValidationDominantIdeas, qui intervient pendant la création/validation des Idées Dominantes dans Taxonomy.
+
+Le flow canonique est maintenant :
+
+KernelBlueprint
+→ KernelRotationPlanner
+→ Taxonomy
+↕ ValidationDominantIdeas
+→ QuestionIntent
+→ Phase 1
+→ Validation Phase 1
+→ Phase 2
+→ Validation Phase 2
+→ ReadyBank
+→ CURRENT_KERNEL_RECEIVED
+→ Blueprint suivant
+
+Donc :
+
+Ne réactive ni KLD ni KEY_STRUCTURE.
+Ne crée pas IdeaSlotLoader → KLD → KS.
+Ne réintroduis aucun ancien adapter/gate KLD/KS dans le pipeline actif.
+ValidationDominantIdeas reste l'unique autorité de validation des Idées Dominantes.
+
+Le problème réel identifié par #137 est cependant valide :
+
+confirmConsumed() n'est actuellement pas raccordé au cycle terminal et le curseur Taxonomy doit pouvoir avancer en production.
+
+Mais confirmConsumed() ne doit PAS être appelé après QuestionIntent.
+
+Le principe à implanter est :
+
+Taxonomy fournit :
+subdomain_active
+subject_active
+dominant_idea_active
+↓
+QuestionIntent
+↓
+Phase 1
+↓
+Validation Phase 1
+↓
+Phase 2
+↓
+Validation Phase 2
+↓
+ReadyBank accepte le noyau canonique
+↓
+Taxonomy.confirmConsumed(...) idempotent
+↓
+CURRENT_KERNEL_RECEIVED
+↓
+KRP / Blueprint suivant
+
+La consommation Taxonomy représente l'utilisation réussie de cette unité pour produire un noyau accepté, pas simplement son passage dans QuestionIntent.
+
+Remplace donc #137 par un audit/implantation du raccordement canonique :
+
+A — Taxonomy → QuestionIntent
+
+et
+
+B — ReadyBank → confirmConsumed() → CURRENT_KERNEL_RECEIVED
+
+sans KLD, sans KEY_STRUCTURE et sans architecture parallèle.
+
+Avant implantation, vérifie les composants réels issus de #120/#121 et réutilise le chemin canonique existant.
+
+Aucun ancien KLD/KS ne doit redevenir actif.
+
+Donc : ne clique pas GO sur #137 actuelle.
+Le problème du curseur est réel, mais la solution proposée ferait revenir StrategyBuzzer vers l’architecture que nous venons justement de supprimer.
