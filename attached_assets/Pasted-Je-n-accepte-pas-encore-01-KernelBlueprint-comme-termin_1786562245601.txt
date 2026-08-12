@@ -1,0 +1,136 @@
+Je n’accepte pas encore 01_KernelBlueprint comme terminalement verrouillé. L’implantation B1/B2 paraît correcte, mais il reste 2 preuves obligatoires.
+
+1. Le test concurrent PostgreSQL n’a pas encore été exécuté
+
+Replit a créé :
+
+tests/Concurrent/kernel_blueprint_factory_concurrent.php
+
+mais son bloc de validation rapporte seulement :
+
+157 tests PHPUnit GREEN
+
+Cela ne prouve pas que le test pcntl_fork PostgreSQL a réellement tourné.
+
+Pour B1, la preuve requise reste :
+
+20 créations simultanées
+→ 1 SUCCESS
+→ 19 REFUS
+→ exactement 1 Blueprint actif
+
+L’index partiel sur une expression constante est conceptuellement adapté à l’invariant, mais il faut maintenant le prouver sur PostgreSQL réel.
+
+2. DEC-034 et DEC-035 sont suspects
+
+Replit annonce :
+
+DEC-034 — write-once
+DEC-035 — atomicité DB
+
+Or notre Architecture Register possède déjà une longue histoire de décisions jusqu’à DEC-081.
+
+Un numéro ancien/gap ne peut pas être réutilisé.
+
+Avant d’accepter ces deux décisions, Replit doit vérifier le Register complet :
+
+DEC-034 existait-il déjà ?
+DEC-035 existait-il déjà ?
+
+Si oui, il doit restaurer leur contenu historique et attribuer les prochains IDs libres après DEC-081 aux nouvelles décisions.
+
+Il ne faut jamais écraser ou recycler une décision.
+
+Ce que tu lui dis
+01_KernelBlueprint — validation terminale incomplète.
+
+Ne touche à aucun autre module.
+
+1. Exécute réellement :
+tests/Concurrent/kernel_blueprint_factory_concurrent.php
+
+sur PostgreSQL réel et isolé.
+
+Retour obligatoire :
+
+Workers: 20
+SUCCESS: ...
+REFUS: ...
+Blueprints actifs finaux: ...
+Unique violations capturées correctement: PASS/FAIL
+Index partiel actif: PASS/FAIL
+Exit code: ...
+
+Résultat attendu :
+SUCCESS = 1
+REFUS = 19
+Blueprints actifs = 1
+Exit code = 0
+
+2. Audite immédiatement l'Architecture Register complet pour :
+
+DEC-034
+DEC-035
+
+Pour chacun :
+- existait avant cette modification : OUI/NON
+- contenu historique :
+- a été écrasé : OUI/NON
+
+Si DEC-034 ou DEC-035 existaient déjà :
+- restaure leur contenu historique ;
+- ne les réutilise pas ;
+- attribue aux décisions write-once et atomicité les premiers IDs réellement libres après le plus grand DEC existant actuellement (au moins après DEC-081).
+
+3. Confirme aussi :
+
+01_KernelBlueprint.md version : 1.5
+Nouvelle logique métier : AUCUNE
+B1 = correction d'implantation d'un invariant existant
+B2 = enforcement technique du contrat d'ownership/write-once existant
+
+Retour final :
+
+01_KERNELBLUEPRINT — PREUVE TERMINALE
+
+PostgreSQL concurrency:
+PASS/FAIL
+
+20 workers:
+PASS/FAIL
+
+1 SUCCESS / 19 refus:
+PASS/FAIL
+
+Exactly 1 active Blueprint:
+PASS/FAIL
+
+Write-once:
+PASS/FAIL
+
+Direct external write blocked:
+PASS/FAIL
+
+DEC IDs unique:
+PASS/FAIL
+
+Architecture Register intact:
+PASS/FAIL
+
+Tests:
+...
+
+Régressions:
+...
+
+BLOCKERS:
+...
+
+VERDICT:
+VERROUILLÉ / NON VERROUILLÉ
+
+Puis STOP.
+
+Pas de KRP, Taxonomy, VDI ou Phase1.
+
+Si ces deux contrôles reviennent entièrement verts, 01_KernelBlueprint pourra alors être fermé terminalement, et on passera à 02_KernelRotationPlanner.

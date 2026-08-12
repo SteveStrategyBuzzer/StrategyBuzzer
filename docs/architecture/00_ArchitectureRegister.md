@@ -105,6 +105,28 @@ Il est interdit de créer une copie distincte pour chaque slot `FAIL` appartenan
 
 ---
 
+## DEC-034 — Immutabilité write-once de KernelBlueprint
+
+**Version :** 1.0
+**Date :** 12 août 2026
+**Statut :** OFFICIAL
+**Module :** `01_KernelBlueprint.md`
+
+Toutes les propriétés de `KernelBlueprint` sont privées. La lecture publique passe par `__get()` (comportement transparent). L'écriture directe externe est interceptée par `__set()` et lève `LogicException`. Chaque slot ne peut être attribué qu'une seule fois via la méthode `fill*()` de son propriétaire. Un second appel à `fill*()` sur un slot déjà rempli lève `LogicException`. Méthodes d'écriture : `initializeBlueprintId()` (Factory), `fillRotation()` (KRP), `fillTaxonomy()` (Taxonomy), `fillKernelCode()` (KernelCodeEngine).
+
+---
+
+## DEC-035 — Atomicité DB de la création de Blueprint
+
+**Version :** 1.0
+**Date :** 12 août 2026
+**Statut :** OFFICIAL
+**Module :** `01_KernelBlueprint.md`
+
+L'unicité du Blueprint actif (DEC-067) est garantie par deux niveaux : (1) vérification applicative `SELECT EXISTS` (chemin rapide, séquentiel) ; (2) index unique partiel PostgreSQL `one_active_blueprint_idx` sur l'expression constante `(1)` filtré aux états `CREATED_UNENGAGED` et `ENGAGED_IN_PIPELINE` (atomique, protège contre la concurrence). Sur conflit DB, `UniqueConstraintViolationException` est capturée et convertie en la même `RuntimeException` que le chemin applicatif. Sur SQLite (PHPUnit), la migration est un NO-OP ; seul le chemin applicatif protège. Test concurrent : 20 workers forkés → exactement 1 SUCCESS, 19 refus, 1 Blueprint actif.
+
+---
+
 ## DEC-051 — Initialisation par DepthNeedMatrix
 
 **Version :** 1.0
