@@ -403,4 +403,4 @@ KernelCodeEngine ne produit aucun contenu cognitif. Il ne choisit pas recognitio
 **Statut :** OFFICIAL
 **Module :** `05_QuestionIntent.md`
 
-KLD et KEY_STRUCTURE sont SUPERSEDED (absorbés par ValidationDominantIdeas). `ks_hash` et `kld_hash` n'ont aucun consommateur officiel dans le runtime actuel (audit 2026-08-11 : présents uniquement dans `$fillable` et comme slots null dans KernelFrameBuilder). KernelCodeEngine ne les écrit pas et ne les lit pas. Leur suppression physique sera décidée séparément après audit de consommateurs réels.
+KLD et KEY_STRUCTURE sont SUPERSEDED (absorbés par ValidationDominantIdeas). KernelCodeEngine ne les écrit pas et ne les lit pas. `ks_hash`, `kld_hash` et `question_intents.kernel_code` ont été supprimés physiquement le 11 août 2026 (audit #142/#147 : 0 writer, 0 reader, 0 données). Migrations : `2026_08_11_300000` (ks_hash, kld_hash) + `2026_08_11_310000` (kernel_code + index). Chaîne UP→DOWN vérifiée (#146 PASS). Stockage canonique = `kernel_blueprint_runs.kernel_code` (KernelCodeEngine, DEC-070).

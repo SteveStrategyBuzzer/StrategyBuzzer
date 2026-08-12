@@ -327,28 +327,24 @@ Si la conclusion est qu'il doit changer structurellement :
 → versionner aussi le contrat KernelBlueprint concerné
 → inscrire la décision à l'Architecture Register
 
-## 6.2 ks_hash et kld_hash — legacy à justifier
+## 6.2 ks_hash, kld_hash et kernel_code — SUPPRIMÉS (11 août 2026)
 
-Ces champs proviennent de l'ère KLD / KEY_STRUCTURE, modules maintenant
-SUPERSEDED. Leur existence physique ne leur donne aucune légitimité.
-
-Ils entrent dans 05_QuestionIntent avec le statut :
+Audit effectué (#142, #147 — 11 août 2026) :
 
 ```text
-ks_hash  → LEGACY À JUSTIFIER
-kld_hash → LEGACY À JUSTIFIER
+ks_hash             → writer AUCUN / reader AUCUN / données 0 → SUPPRIMÉ
+kld_hash            → writer AUCUN / reader AUCUN / données 0 → SUPPRIMÉ
+question_intents.kernel_code → writer AUCUN / reader AUCUN / données 0 → SUPPRIMÉ
 ```
 
-La question correcte est :
+Migrations destructives appliquées :
+- `2026_08_11_300000` : supprime ks_hash, kld_hash
+- `2026_08_11_310000` : supprime kernel_code + index qi_kernel_code_idx
 
-```text
-Existe-t-il encore aujourd'hui une information métier distincte
-que ks_hash ou kld_hash représente ?
+Chaîne UP→DOWN vérifiée sur schéma PostgreSQL isolé (#146 : PASS).
 
-  Réponse non → suppression (migration destructive sur ordre explicite)
-  Réponse oui → nouvelle justification métier explicite
-               (jamais « conservation parce que la colonne existe »)
-```
+Stockage canonique du kernel_code = `kernel_blueprint_runs.kernel_code` (KernelCodeEngine).
+`question_intents` n'est pas et ne sera pas le stockage canonique de 05_QuestionIntent.
 
 ---
 
@@ -532,12 +528,11 @@ sans contrôle métier) ? Qui la porte ?
 ## 9.18 Tests — OPEN
 Critères d'acceptation de l'implantation.
 
-## 9.19 Identité du noyau — OPEN [→ Point E/J + §6]
-**Point J :** Qu'est-ce qu'un « même intent » ? Quel niveau de collision doit
-être interdit ? Est-ce réellement une responsabilité de QuestionIntent ?
-`kld_hash`/`ks_hash` sont abandonnés avec KLD/KS (§6.2). Qu'est-ce qui
-identifie un noyau désormais : forme, grain, unicité, générateur, stabilité
-dans le temps (Quarantaine, ReadyBank, gameplay, anti-répétition) ?
+## 9.19 Identité du noyau — VERROUILLÉ [→ Point E/J + §6]
+**Point J — VERROUILLÉ (11 août 2026) :** L'identité canonique du noyau est
+`kernel_blueprint_runs.kernel_code` (format DD-DO-SUB-SUJ-IDE-VVVV, 22 chars,
+KernelCodeEngine). `kld_hash`/`ks_hash` supprimés (§6.2). Unicité garantie par
+index UNIQUE PARTIEL + compteur séquentiel par bassin (Depth, domain_code).
 
 ## 9.20 Relation exacte avec Phase 1 — OPEN [→ Point M]
 **Point M (suite) :** Que consomme Phase 1 exactement ? Sous quelle forme le
@@ -548,9 +543,9 @@ faire dessus ?
 **Point N — décision explicite, élément par élément :**
 
 ```text
-kernel_code     → §6.1 (CAS PARTICULIER — audit requis)
-ks_hash         → §6.2 (LEGACY À JUSTIFIER)
-kld_hash        → §6.2 (LEGACY À JUSTIFIER)
+kernel_code (question_intents) → SUPPRIMÉ (#147, 2026-08-11) — voir §6.2
+ks_hash                        → SUPPRIMÉ (#142, 2026-08-11) — voir §6.2
+kld_hash                       → SUPPRIMÉ (#142, 2026-08-11) — voir §6.2
 intent_key      → OPEN
 semantic_key    → OPEN
 angle_large     → UNSPECIFIED (§5)
@@ -644,9 +639,10 @@ Nettoyage du 11 août 2026 : la migration anticipée `2026_08_11_120000`
 (blueprint_id UNIQUE, dominant_idea, advance_attempts, élargissements) a été
 RETIRÉE intégralement — down équivalent appliqué sur Neon, tailles historiques
 restaurées, registre migrations purgé. Le schéma ci-dessous est l'état
-PRÉ-TÂCHE restauré. Les colonnes de l'ère KLD/KS (`kernel_code`, `ks_hash`,
-`kld_hash` — migration préexistante 2026_07_03, toutes vides) demeurent :
-leur sort relève de la rubrique 9.21 et du §6.
+PRÉ-TÂCHE restauré, puis nettoyé le 11 août 2026 (#142, #147) : les colonnes
+de l'ère KLD/KS (`kernel_code`, `ks_hash`, `kld_hash`) ont été SUPPRIMÉES
+(audites 0 donnée, 0 writer, 0 reader — voir §6.2). Le schéma ci-dessous est
+l'état actuel après nettoyage.
 
 Constat factuel notable : parmi les 7 champs verrouillés UNSPECIFIED,
 seuls `intent_key`, `language_source`, `domain` (et `difficulty_depth`)
@@ -679,15 +675,15 @@ sont réellement NOT NULL — `angle_large`, `micro_angle`, `answer_target`,
 | frame_en | jsonb | nullable | ère frame |
 | frame_status | varchar(32) | nullable | ère frame |
 | frame_validated_at | timestamp | nullable | ère frame |
-| kernel_code | varchar(32) UNIQUE partiel | nullable | ère KLD/KS (SUPERSEDED) |
-| ks_hash | varchar(64) | nullable | ère KLD/KS (SUPERSEDED) |
-| kld_hash | varchar(64) | nullable | ère KLD/KS (SUPERSEDED) |
+| ~~kernel_code~~ | ~~varchar(32)~~ | ~~nullable~~ | **SUPPRIMÉ #147** |
+| ~~ks_hash~~ | ~~varchar(64)~~ | ~~nullable~~ | **SUPPRIMÉ #142** |
+| ~~kld_hash~~ | ~~varchar(64)~~ | ~~nullable~~ | **SUPPRIMÉ #142** |
 | created_at / updated_at | timestamp | nullable | technique |
 
-Index/unicités : `intent_key` UNIQUE ; `semantic_key` UNIQUE partiel (non
-null) ; `kernel_code` UNIQUE partiel (non null) ;
-index (domain, sub_domain, difficulty_depth), concept_family,
+Index/unicités actifs : `intent_key` UNIQUE ; `semantic_key` UNIQUE partiel
+(non null) ; index (domain, sub_domain, difficulty_depth), concept_family,
 dialysis_status, frame_status partiel.
+`kernel_code` UNIQUE partiel et `qi_kernel_code_idx` : **SUPPRIMÉS #147**.
 
 ---
 
