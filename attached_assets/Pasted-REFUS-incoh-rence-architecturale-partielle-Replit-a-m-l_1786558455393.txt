@@ -1,0 +1,199 @@
+REFUS — incohérence architecturale partielle.
+
+Replit a mélangé nettoyage documentaire légitime et nouvelles décisions d’architecture non autorisées.
+
+Ce qui est acceptable
+
+Le nettoyage de 02_KernelRotationPlanner.md est cohérent pour :
+
+retirer IdeaSlotLoader ;
+retirer KLD / KEY_STRUCTURE comme moteurs actifs ;
+retirer les formulations réellement superseded ;
+passer le document à une nouvelle version plutôt que modifier silencieusement l’ancienne.
+
+Ces corrections peuvent rester.
+
+Ce qui ne peut pas devenir OFFICIAL tel quel
+
+Replit vient d’introduire plusieurs concepts qui ne faisaient pas partie du contrat verrouillé connu :
+
+SHORTFALL
+DepthProductionState
+double condition de sélection
+DEPTH_RESERVOIRS_EXHAUSTED_WITH_SHORTFALL
+14 étapes corrigées
+KRP-023 → KRP-030
+DEC-047 → DEC-050
+
+Ce ne sont pas de simples corrections de mots. Ce sont des décisions métier/architecture.
+
+Donc elles ne peuvent pas être injectées parce qu’un « correctif v1.2 » existe ou parce que le code semble les nécessiter.
+
+Selon notre méthode :
+
+compréhension métier
+↓
+architecture
+↓
+spécification complète
+↓
+Architecture Register
+↓
+audit code
+
+Pas :
+
+correctif trouvé
+↓
+nouvelles notions ajoutées dans 02
+Point particulièrement dangereux : confirmConsumed()
+
+Replit dit l’avoir retiré avec les modules superseded.
+
+Là, attention.
+
+confirmConsumed n’est pas automatiquement dans la même catégorie que KLD/KEY_STRUCTURE.
+
+Notre architecture actuelle contient encore conceptuellement :
+
+ReadyBank
+↓
+confirmConsumed
+↓
+CURRENT_KERNEL_RECEIVED
+↓
+Blueprint suivant
+
+Le contrat exact de confirmConsumed reste à définir plus tard, mais cela ne veut pas dire que le concept est supprimé.
+
+Donc il ne faut pas déclarer :
+
+confirmConsumed = SUPERSEDED
+
+sans décision officielle spécifique.
+
+Autre problème : les DEC-047 → DEC-050
+
+Nous avons déjà un Architecture Register historique avec des numéros permanents.
+
+Avant de créer DEC-047 à DEC-050, Replit doit vérifier que ces identifiants n’existent pas déjà.
+
+Une décision permanente ne peut jamais être réutilisée ou écrasée.
+
+Avec QuestionIntent déjà rendu jusqu’à DEC-077, il est particulièrement suspect de créer aujourd’hui de nouvelles décisions numérotées 047–050.
+
+Si ces IDs existent déjà :
+
+INTERDICTION ABSOLUE de les remplacer.
+
+Il faut prendre les prochains identifiants libres.
+
+Et surtout : on vient de sauter l’ordre de travail
+
+Notre dernier audit concluait :
+
+01_KernelBlueprint
+→ audit terminal d’abord
+
+puis
+02_KernelRotationPlanner
+
+Replit vient directement de modifier 02.
+
+Donc ne lance surtout pas #148 Taxonomy ni #149 VDI maintenant.
+
+Ce que tu lui dis maintenant
+
+STOP.
+
+Ne commence ni #148 ni #149.
+
+Les modifications de 02_KernelRotationPlanner.md ne sont PAS encore acceptées comme OFFICIAL.
+
+Conserve uniquement comme corrections sûres le nettoyage des références réellement superseded :
+
+IdeaSlotLoader ;
+KLD ;
+KEY_STRUCTURE.
+
+En revanche, les éléments suivants restent UNDER_REVIEW et ne doivent pas être considérés comme architecture acquise :
+
+SHORTFALL ;
+DepthProductionState ;
+double condition de sélection ;
+DEPTH_RESERVOIRS_EXHAUSTED_WITH_SHORTFALL ;
+nouvel algorithme 14 étapes ;
+KRP-023→030.
+
+Ne les implémente pas.
+
+Vérifie aussi confirmConsumed() :
+
+il ne doit PAS être classé SUPERSEDED simplement parce que KLD/KEY_STRUCTURE le sont.
+
+Dans l’architecture actuelle, confirmConsumed reste un contrat conceptuel du chemin vers CURRENT_KERNEL_RECEIVED, même si son contrat détaillé sera défini plus tard.
+
+Vérifie ensuite l’Architecture Register :
+
+est-ce que DEC-047, DEC-048, DEC-049 et DEC-050 existaient déjà avant cette modification ?
+si OUI : ne les écrase pas et restaure leur contenu historique ;
+si NON : ne les rends pas OFFICIAL tant que nous n’avons pas validé les nouvelles décisions.
+
+Retourne uniquement :
+
+KRP DOCUMENT AUDIT
+
+Stale IdeaSlotLoader retiré: PASS/FAIL
+Stale KLD retiré: PASS/FAIL
+Stale KEY_STRUCTURE retiré: PASS/FAIL
+
+confirmConsumed classé SUPERSEDED:
+OUI/NON
+
+SHORTFALL:
+EXISTAIT DÉJÀ DANS DÉCISION OFFICIAL / NOUVELLE PROPOSITION
+
+DepthProductionState:
+EXISTAIT DÉJÀ / NOUVELLE PROPOSITION
+
+Double condition:
+EXISTAIT DÉJÀ / NOUVELLE PROPOSITION
+
+DEC-047 à DEC-050 existaient déjà:
+OUI/NON
+
+Architecture Register écrasé:
+OUI/NON
+
+Nouvelle logique implémentée:
+OUI/NON
+
+#148 lancé:
+NON
+
+#149 lancé:
+NON
+
+Puis STOP.
+
+Après ça
+
+On revient à l’ordre officiel :
+
+01_KernelBlueprint
+↓
+validation terminale
+↓
+02_KernelRotationPlanner
+↓
+relecture complète et validation des nouvelles notions
+↓
+03_Taxonomy
+↓
+04_ValidationDominantIdeas
+↓
+05_QuestionIntent déjà verrouillé
+↓
+06_Phase1
+
+Le point principal : le nettoyage de KRP est bon, mais SHORTFALL et toute la nouvelle mécanique ne doivent pas entrer dans l’architecture par la porte arrière.

@@ -7,7 +7,7 @@
 **Implantation :** à confirmer après raccordement terminal
 **Validation :** à confirmer après audit
 
-Ce document intègre le **Correctif v1.2** (14 juillet 2026) : compte à rebours par domaine, double condition de sélection, SHORTFALL, DepthProductionState, KRP-023→030, DEC-047→050.
+Ce document intègre le **Correctif v1.2** (14 juillet 2026) : compte à rebours par domaine, double condition de sélection, SHORTFALL, DepthProductionState, KRP-023→030, DEC-078→081 (UNDER_REVIEW).
 
 Ce document remplace intégralement la version 1.4.
 
@@ -92,6 +92,7 @@ Interdictions absolues (hors périmètre KRP) :
 
 * ne jamais exécuter Phase 1 / Validation 1 / Phase 2 / Validation 2 ;
 * ne jamais exécuter QuestionIntent (→ pipeline intellectuel aval) ;
+* ne jamais appeler `confirmConsumed()` (→ contrat aval à définir ; appartient au chemin ReadyBank → CURRENT_KERNEL_RECEIVED, hors périmètre KRP) ;
 * ne jamais décider lui-même du Depth ou du Domaine.
 
 ## 2.3 KernelRotationPlanner
@@ -1473,7 +1474,7 @@ KRP n'écrit jamais `kernel_code`. `kernel_code = null` à la sortie de KRP.
 
 ---
 
-## DEC-047 — Compte à rebours par domaine
+## DEC-078 — Compte à rebours par domaine
 
 **Version :** 1.0
 **Date :** 14 juillet 2026
@@ -1487,7 +1488,7 @@ kernel_remaining = kernel_target - kernel_received
 
 ---
 
-## DEC-048 — ReadyBank décrémente le besoin de production
+## DEC-079 — ReadyBank décrémente le besoin de production
 
 **Version :** 1.0
 **Date :** 14 juillet 2026
@@ -1499,7 +1500,7 @@ La création d'un Blueprint ne réduit jamais le compteur.
 
 ---
 
-## DEC-049 — Taxonomy et compteur indépendants
+## DEC-080 — Taxonomy et compteur indépendants
 
 **Version :** 1.0
 **Date :** 14 juillet 2026
@@ -1514,7 +1515,7 @@ et que son besoin restant est supérieur à zéro.
 
 ---
 
-## DEC-050 — Shortfall explicite
+## DEC-081 — Shortfall explicite
 
 **Version :** 1.0
 **Date :** 14 juillet 2026
