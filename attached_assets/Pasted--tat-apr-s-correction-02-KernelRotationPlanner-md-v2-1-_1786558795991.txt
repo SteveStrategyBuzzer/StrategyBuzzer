@@ -1,0 +1,130 @@
+État après correction
+02_KernelRotationPlanner.md v2.1
+
+Nettoyage legacy :
+IdeaSlotLoader        ✅ retiré
+KLD                   ✅ retiré
+KEY_STRUCTURE         ✅ retiré
+
+confirmConsumed()     ✅ préservé
+                      contrat aval encore à définir
+
+SHORTFALL             UNDER_REVIEW
+DepthProductionState  UNDER_REVIEW
+Double condition      UNDER_REVIEW
+KRP-023 → KRP-030     UNDER_REVIEW
+DEC-078 → DEC-081     UNDER_REVIEW
+
+Nouvelle logique codée : NON
+
+Donc ces nouvelles notions ne font pas encore partie de l’architecture officielle et ne doivent influencer ni le code ni les modules suivants tant qu’on ne les a pas validées.
+
+Maintenant : 01_KernelBlueprint uniquement
+
+On revient exactement à l’ordre prévu.
+
+L’audit terminal de 01_KernelBlueprint doit comparer le contrat officiel verrouillé au code actuel, sans inventer de nouvelles responsabilités.
+
+Il doit vérifier en priorité :
+
+1. Création du Blueprint
+   - créé AVANT KRP
+   - une seule instance canonique active
+   - blueprint_id persistant et unique
+
+2. Propriété des slots
+   - KRP écrit seulement depth + domain
+   - Taxonomy écrit seulement :
+       subdomain_active
+       subject_active
+       dominant_idea_active
+   - QuestionIntent écrit seulement kernel_code
+
+3. Partie 1
+   - structure exacte présente
+   - aucune ancienne clé yy-xx
+   - aucun rotation_identifier
+   - aucun domain_code comme slot canonique
+   - aucun KLD / KS
+
+4. Immutabilité
+   - vérifier réellement si un moteur peut réécrire
+     un slot qu’il ne possède pas
+   - ne pas conclure uniquement à partir de propriétés publiques
+
+5. Concurrence de création
+   - vérifier si deux create() simultanés peuvent
+     créer deux Blueprints actifs
+   - si oui : vrai défaut à corriger
+   - si non : preuve technique
+
+6. Persistance / états
+   - CREATED_UNENGAGED
+   - ENGAGED
+   - réception ReadyBank / états déjà officiellement définis
+   - aucune invention d’état
+
+7. Parties futures
+   - Parts 2–6 absentes = NORMAL
+   - ne rien ajouter pour Phase1 maintenant
+
+8. Tests
+   - contrat Blueprint
+   - Factory
+   - propriétaires des écritures
+   - concurrence si nécessaire
+   - non-régression
+
+Retour attendu :
+
+01_KERNELBLUEPRINT — AUDIT TERMINAL
+
+Architecture contractuelle :
+PASS / FAIL
+
+Création avant KRP :
+PASS / FAIL
+
+Un seul Blueprint canonique actif :
+PASS / FAIL
+
+Atomicité création :
+PASS / FAIL / À CORRIGER
+
+blueprint_id unique/persistant :
+PASS / FAIL
+
+KRP propriétaire depth/domain :
+PASS / FAIL
+
+Taxonomy propriétaire slots taxonomy :
+PASS / FAIL
+
+QuestionIntent propriétaire kernel_code :
+PASS / FAIL
+
+Écriture hors propriété possible :
+OUI / NON
+
+Réécriture illégale d'un slot possible :
+OUI / NON
+
+Legacy actif :
+...
+
+Parties 2–6 :
+ATTENDUES PLUS TARD / PROBLÈME
+
+Tests :
+...
+
+Régressions :
+...
+
+BLOCKERS :
+...
+
+VERDICT 01_KernelBlueprint :
+VERROUILLÉ / À CORRIGER
+
+Puis STOP. Pas de retour sur KRP, pas de Taxonomy, pas de VDI tant que 01_KernelBlueprint n’est pas fermé terminalement.
