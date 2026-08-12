@@ -1,0 +1,312 @@
+Cet audit permet maintenant de trancher 2 des 3 blockers. Le troisième demande encore une décision de cycle de vie précise.
+
+Verdict sur les 3 blockers
+BLOCKER 1 — EMPTY vs Blueprint write-once
+
+VRAI BLOCKER ARCHITECTURAL.
+
+01_KernelBlueprint v1.5 est maintenant verrouillé et devient le contrat d’entrée de KRP. Donc cette ancienne règle KRP :
+
+EMPTY
+→ garder le même Blueprint
+→ remplacer depth + domain
+
+n’est plus compatible avec :
+
+depth/domain
+NULL → valeur
+puis immuables
+
+La solution n’est pas d’ajouter overwriteRotation(). Cela contournerait directement le contrat write-once que nous venons de verrouiller.
+
+Donc :
+
+DEC-066 / KRP-R18
+→ doit être SUPERSEDED
+
+Mais il manque encore un élément avant de coder : quel est le devenir officiel du Blueprint auquel KRP a attribué un couple qui se révèle EMPTY ?
+
+On ne doit pas inventer une nouvelle transition ou un nouvel état silencieusement. C’est le seul vrai point métier qu’il reste à définir pour ce blocker.
+
+BLOCKER 2 — KernelCodeEngine dans KernelPipelineOrchestrator
+
+CE N’EST PAS UN BLOCKER.
+
+L’audit confond deux responsabilités.
+
+KernelRotationPlanner
+≠
+KernelPipelineOrchestrator
+
+KRP doit effectivement s’arrêter après :
+
+depth + domain
+
+Mais un orchestrateur de pipeline peut parfaitement faire :
+
+Factory
+↓
+KRP
+↓
+Taxonomy
+↓
+VDI
+↓
+QuestionIntent / KernelCodeEngine
+
+sans donner à KRP la responsabilité de QuestionIntent.
+
+Le critère est :
+
+KernelRotationPlanner.php
+→ n'appelle pas KernelCodeEngine
+
+KernelPipelineOrchestrator.php
+→ coordonne les moteurs successifs
+
+Donc si c’est bien ce que fait le code :
+
+BLOCKER 2 = REJETÉ
+
+La spécification KRP doit seulement être reformulée pour dire :
+
+KRP ne déclenche/exécute pas lui-même QuestionIntent.
+
+et non :
+
+l’orchestrateur global n’a pas le droit de continuer vers QuestionIntent.
+
+BLOCKER 3 — cycle autonome vs besoin réel
+
+VRAI BLOCKER, mais nous avons déjà assez d’architecture pour trancher le principe.
+
+Le modèle actuel :
+
+cycle_completed
++
+CYCLE_TARGET en Tours codés en dur
+↓
+KRP décide tout seul combien produire
+
+ne correspond pas à ce que nous avons défini.
+
+La création intellectuelle doit produire en fonction d’un besoin de banque.
+
+Le gameplay ne vient pas piloter directement KRP pendant une partie. Il détermine en amont les besoins que la banque doit pouvoir satisfaire.
+
+Donc :
+
+besoins des niveaux/modes
+↓
+DepthNeedMatrix
+↓
+kernel_target par Depth + Domaine
+↓
+KRP
+
+Puis :
+
+kernel_remaining
+=
+kernel_target - kernel_received
+
+C’est cela qui détermine s’il reste du contenu intellectuel à produire.
+
+Le modèle autonome cycle_completed / CYCLE_TARGET ne doit donc plus être l’autorité de besoin.
+
+Important pour Depth 10
+
+Le fait que :
+
+DepthNeedMatrix::CYCLE_TARGET[10] = 100
+
+ne doit surtout pas être validé parce que le Boss Solo est le niveau 100.
+
+Boss niveau 100
+≠
+target de 100 Tours
+
+Ce sont deux concepts totalement différents.
+
+Depth 10 est supporté parce que la banque doit pouvoir fournir le contenu nécessaire au Boss 100. Le volume à produire doit venir du besoin défini pour la banque, pas du numéro du niveau.
+
+Ce que devient le correctif UNDER_REVIEW
+
+Nous pouvons maintenant séparer les éléments :
+
+kernel_target
+→ principe VALIDÉ
+
+kernel_received
+→ principe VALIDÉ
+
+kernel_remaining
+→ principe VALIDÉ
+
+pilotage par besoin réel
+→ principe VALIDÉ
+
+En revanche :
+
+SHORTFALL
+DepthProductionState
+les 6 noms d'états
+algorithme exact §24
+KRP-023→030
+DEC-078→081
+
+restent UNDER_REVIEW tant qu’on n’a pas relu entièrement KRP et résolu le cas EMPTY.
+
+Autrement dit, la direction du correctif est bonne, mais ses mécanismes détaillés ne deviennent pas automatiquement OFFICIAL.
+
+Dis ceci maintenant à Replit
+
+Audit KRP reçu. STOP sur toute implantation.
+
+Voici les décisions architecturales :
+
+BLOCKER 1 — CONFIRMÉ
+
+01_KernelBlueprint v1.5 est désormais le contrat amont verrouillé.
+
+depth et domain sont write-once.
+
+Par conséquent l’ancienne règle :
+
+EMPTY → conserver le même Blueprint → remplacer depth/domain
+
+n’est plus admissible.
+
+DEC-066 / KRP-R18 doivent être considérés comme candidats à SUPERSEDED.
+
+INTERDICTION d’ajouter overwriteRotation() ou de lever la protection write-once.
+
+Ne code rien encore.
+
+Il reste à définir officiellement le devenir du Blueprint dont le couple Depth+Domaine se révèle EMPTY.
+
+Ne crée aucun nouvel état ou transition sans décision.
+
+BLOCKER 2 — REJETÉ
+
+KernelRotationPlanner et KernelPipelineOrchestrator ne sont pas la même responsabilité.
+
+KRP :
+
+Blueprint → écrit depth + domain → FIN KRP
+
+L’orchestrateur global peut ensuite coordonner :
+
+Taxonomy → VDI → QuestionIntent
+
+Vérifie seulement que KernelRotationPlanner.php n’appelle jamais directement KernelCodeEngine.
+
+Si c’est le cas :
+
+BLOCKER 2 = CLOSED
+
+Corriger ultérieurement la formulation documentaire qui confond KRP avec l’orchestrateur global.
+
+BLOCKER 3 — PRINCIPE TRANCHÉ
+
+Le modèle officiel doit être piloté par les besoins intellectuels de la banque, pas par un nombre autonome de Tours hardcodé.
+
+Chaîne conceptuelle :
+
+besoins contenus des niveaux/modes
+→ DepthNeedMatrix
+→ kernel_target par (Depth + Domaine)
+→ KRP
+
+Puis :
+
+kernel_remaining = kernel_target - kernel_received
+
+kernel_received est comptabilisé uniquement selon le contrat officiel de réception.
+
+Donc :
+
+kernel_target = principe retenu ;
+kernel_received = principe retenu ;
+kernel_remaining = principe retenu ;
+cycle_completed + CYCLE_TARGET ne doit plus être l’autorité déterminant combien produire.
+
+Attention :
+
+Depth 10 = contenu destiné au Solo Boss niveau 100
+
+ne signifie absolument PAS :
+
+CYCLE_TARGET[10] = 100.
+
+Le nombre 100 du niveau ne définit aucun volume de production.
+
+Les éléments suivants restent UNDER_REVIEW :
+
+SHORTFALL ;
+DepthProductionState ;
+noms exacts des états ;
+algorithme §24 ;
+KRP-023→030 ;
+DEC-078→081.
+
+Ils ne doivent pas encore être implémentés ni promus OFFICIAL.
+
+Maintenant, retourne uniquement :
+
+KRP ARCHITECTURE RESOLUTION
+
+BLOCKER 1:
+CONFIRMÉ
+
+DEC-066/KRP-R18 en conflit avec Blueprint v1.5:
+PASS/FAIL
+
+overwriteRotation ajouté:
+NON
+
+BLOCKER 2:
+CLOSED / ENCORE CONFLIT
+
+KernelRotationPlanner appelle KernelCodeEngine:
+OUI/NON
+
+KernelPipelineOrchestrator identifié comme orchestrateur global:
+OUI/NON
+
+BLOCKER 3:
+PRINCIPE RÉSOLU
+
+Source officielle du besoin:
+DepthNeedMatrix
+
+kernel_target:
+RETENU
+
+kernel_received:
+RETENU
+
+kernel_remaining:
+RETENU
+
+cycle_completed/CYCLE_TARGET comme autorité de production:
+À SUPERSEDE / autre
+
+CYCLE_TARGET[10]=100 justifié architecturalement:
+OUI/NON
+
+SHORTFALL:
+UNDER_REVIEW
+
+DepthProductionState:
+UNDER_REVIEW
+
+Nouvelle logique codée:
+NON
+
+DÉCISION ENCORE REQUISE:
+devenir du Blueprint après EMPTY
+
+Puis STOP.
+
+La situation est donc beaucoup plus claire : KRP n’a plus trois problèmes ouverts. Il en reste essentiellement un à concevoir correctement : le traitement du Blueprint lorsqu’un couple sélectionné mène à EMPTY.
