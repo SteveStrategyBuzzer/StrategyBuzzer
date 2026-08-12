@@ -1,0 +1,247 @@
+01_KernelBlueprint peut maintenant être accepté terminalement.
+
+01 — État officiel
+01_KernelBlueprint.md v1.5
+
+Architecture :      100 %
+Contrat :           100 %
+Implémentation :    100 %
+Validation :        100 %
+
+Atomicité création PostgreSQL : PASS
+20 créations simultanées :      PASS
+1 succès / 19 refus :           PASS
+1 Blueprint actif final :       PASS
+
+Write-once :                     PASS
+Écriture externe arbitraire :   BLOQUÉE
+Ownership des slots :            PASS
+Legacy actif :                   AUCUN
+Régressions :                    0
+
+BLOCKERS : AUCUN
+
+STATUT :
+VERROUILLÉ
+
+DEC-034 et DEC-035 peuvent rester puisqu’il a vérifié qu’ils n’avaient jamais été utilisés auparavant. Aucun historique n’a été remplacé.
+
+Prochaine étape : 02_KernelRotationPlanner uniquement
+
+Mais ici il faut être particulièrement strict, parce que le document contient déjà :
+
+SHORTFALL
+DepthProductionState
+double condition
+KRP-023 → KRP-030
+DEC-078 → DEC-081
+
+qui sont encore UNDER_REVIEW.
+
+Et il faut aussi confronter KRP à notre clarification récente sur les Depths :
+
+Le pipeline = création intellectuelle.
+
+Le besoin de contenu par Depth vient des besoins de banque/gameplay.
+
+Depth 10 est intellectuellement supporté.
+Il n'est pas interdit.
+Il est destiné au contenu appelé par le Solo Boss 100.
+
+KRP ne doit pas inventer une logique gameplay.
+
+Donc dis maintenant à Replit :
+
+01_KernelBlueprint est terminalement VERROUILLÉ.
+
+Passe uniquement à l’AUDIT TERMINAL de 02_KernelRotationPlanner.
+
+Aucun changement de code pendant l’audit.
+Aucun travail Taxonomy, VDI ou Phase1.
+
+Reconstruis d’abord le contrat KRP OFFICIAL et distingue strictement :
+
+architecture déjà OFFICIAL ;
+éléments SUPERSEDED ;
+propositions UNDER_REVIEW ;
+comportement actuel du code.
+Mission KRP à vérifier
+
+KRP appartient uniquement au pipeline de création intellectuelle.
+
+Il doit déterminer le prochain couple de production :
+
+Depth + Domaine
+
+à partir des besoins de production et de l’état des réservoirs.
+
+Il écrit uniquement :
+
+depth
+domain
+
+dans le Blueprint.
+
+Puis sa responsabilité sur le Blueprint courant s’arrête.
+
+Il ne crée pas le Blueprint.
+Il ne crée pas Taxonomy.
+Il ne valide pas les idées.
+Il ne crée pas kernel_code.
+Il ne contient aucune logique gameplay.
+
+Depths
+
+Vérifie attentivement le traitement actuel de :
+
+2, 4, 6, 7, 8, 9, 10
+
+Depth 10 est un Depth intellectuellement valide.
+
+La restriction Solo Boss 100 concerne la consommation/appel gameplay, pas QuestionIntent et pas la capacité intellectuelle de création.
+
+Audite surtout si DepthNeedMatrix / KRP :
+
+reçoit/représente les besoins de production ;
+ou invente lui-même arbitrairement un besoin par simple cycle fixe.
+
+Ne corrige rien avant de rapporter cette distinction.
+
+Vérifications obligatoires
+Blueprint créé AVANT KRP : PASS/FAIL
+KRP écrit exclusivement depth + domain : PASS/FAIL
+Nombre de domaines créateurs = 8 : PASS/FAIL
+Depth 10 supporté intellectuellement : PASS/FAIL
+Source réelle du besoin de Depth dans le code actuel :
+DepthNeedMatrix
+cycle autonome
+demande externe
+autre
+kernel_target, kernel_received, kernel_remaining :
+OFFICIAL
+UNDER_REVIEW
+absent
+
+États actuels par couple :
+
+ACTIVE
+AVAILABLE
+TARGET_COMPLETE
+EMPTY / RESERVOIR_EMPTY
+SHORTFALL
+
+Pour chacun : OFFICIAL / UNDER_REVIEW / CODE_ONLY / ABSENT.
+
+Conditions exactes de changement de domaine.
+Conditions exactes de changement de Depth.
+Interaction Taxonomy :
+AVAILABLE
+EMPTY
+consommation/réservoirs
+Interaction ReadyBank / CURRENT_KERNEL_RECEIVED.
+confirmConsumed() :
+concept conservé, contrat aval encore à définir.
+Vérifier qu’il n’est pas implémenté comme responsabilité KRP par erreur.
+Persistance :
+rotation state ;
+compteurs ;
+idempotence réception ;
+reprise après restart.
+Legacy :
+IdeaSlotLoader absent ;
+KLD absent ;
+KEY_STRUCTURE absent ;
+BankTarget absent ;
+rotation_identifier absent comme contrat KRP.
+Comparer intégralement :
+
+02_KernelRotationPlanner.md v2.1
+
+avec le code actuel.
+
+Les §20–24, KRP-023→030 et DEC-078→081 restent UNDER_REVIEW et ne doivent PAS être considérés comme OFFICIAL simplement parce qu’ils sont écrits dans le document.
+
+Retour uniquement :
+
+02_KERNELROTATIONPLANNER — AUDIT TERMINAL
+
+Architecture OFFICIAL reconstruite:
+...
+
+Création Blueprint avant KRP:
+PASS/FAIL
+
+Ownership depth/domain:
+PASS/FAIL
+
+Depths intellectuellement supportés:
+...
+
+Domaines créateurs:
+...
+
+Source du besoin Depth:
+...
+
+Cycle fixe autonome actuellement présent:
+OUI/NON
+
+Compatibilité avec besoins de production:
+PASS/FAIL/À DÉCIDER
+
+kernel_target:
+OFFICIAL/UNDER_REVIEW/...
+
+kernel_received:
+...
+
+kernel_remaining:
+...
+
+SHORTFALL:
+UNDER_REVIEW / ...
+
+DepthProductionState:
+UNDER_REVIEW / ...
+
+Conditions changement domaine:
+...
+
+Conditions changement Depth:
+...
+
+Taxonomy AVAILABLE/EMPTY:
+PASS/FAIL
+
+CURRENT_KERNEL_RECEIVED:
+PASS/FAIL
+
+confirmConsumed:
+...
+
+Persistance:
+PASS/FAIL
+
+Idempotence:
+PASS/FAIL
+
+Legacy actif:
+...
+
+Écarts contrat ↔ code:
+...
+
+Écarts document ↔ architecture OFFICIAL:
+...
+
+BLOCKERS:
+...
+
+VERDICT 02_KernelRotationPlanner:
+VERROUILLÉ / À CORRIGER / DÉCISION ARCHITECTURALE REQUISE
+
+Puis STOP.
+
+Ne modifie rien pendant cet audit.
+
+C’est à 02_KernelRotationPlanner qu’on doit maintenant déterminer proprement si la logique actuelle de rotation correspond réellement à la manière dont les besoins intellectuels par Depth doivent alimenter la production.
