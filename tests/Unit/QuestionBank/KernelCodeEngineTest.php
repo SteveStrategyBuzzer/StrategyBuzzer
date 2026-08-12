@@ -73,12 +73,9 @@ class KernelCodeEngineTest extends TestCase
         ?string $existingCode    = null,
     ): KernelBlueprint {
         $bp = new KernelBlueprint();
-        $bp->blueprint_id        = $blueprintId;
-        $bp->depth               = $depth;
-        $bp->domain              = $domain;
-        $bp->subdomain_active    = $subdomain;
-        $bp->subject_active      = $subject;
-        $bp->dominant_idea_active = $dominantIdea;
+        $bp->initializeBlueprintId($blueprintId);
+        $bp->fillRotation($depth, $domain);
+        $bp->fillTaxonomy($subdomain, $subject, $dominantIdea);
 
         DB::table('kernel_blueprint_runs')->insert([
             'blueprint_id'    => $blueprintId,
@@ -296,12 +293,9 @@ class KernelCodeEngineTest extends TestCase
 
         // Remettre le Blueprint en mémoire (simulate new call)
         $bp2 = new KernelBlueprint();
-        $bp2->blueprint_id        = 'bp-test-0001';
-        $bp2->depth               = 4;
-        $bp2->domain              = 'Géographie';
-        $bp2->subdomain_active    = 'Canada';
-        $bp2->subject_active      = 'Confédération canadienne';
-        $bp2->dominant_idea_active = "Acte de l'Amérique du Nord britannique";
+        $bp2->initializeBlueprintId('bp-test-0001');
+        $bp2->fillRotation(4, 'Géographie');
+        $bp2->fillTaxonomy('Canada', 'Confédération canadienne', "Acte de l'Amérique du Nord britannique");
 
         $code2 = $this->engine->assignKernelCode($bp2);
 
@@ -371,32 +365,24 @@ class KernelCodeEngineTest extends TestCase
     public function test_missing_blueprint_throws(): void
     {
         $bp = new KernelBlueprint();
-        $bp->blueprint_id = 'bp-inexistant';
-        $bp->depth        = 4;
-        $bp->domain       = 'Géographie';
-        $bp->subdomain_active     = 'Canada';
-        $bp->subject_active       = 'Sujet';
-        $bp->dominant_idea_active = 'Idée';
+        $bp->initializeBlueprintId('bp-inexistant');
+        $bp->fillRotation(4, 'Géographie');
+        $bp->fillTaxonomy('Canada', 'Sujet', 'Idée');
 
         $this->expectException(KernelCodeEngineException::class);
         $this->expectExceptionMessage('QUESTION_INTENT_MISSING_INPUT');
         $this->engine->assignKernelCode($bp);
     }
 
-    /** @dataProvider missingFieldProvider */
-    public function test_missing_field_throws(string $field): void
+    public function test_missing_rotation_throws(): void
     {
+        // Rotation non remplie (depth + domain = null) → engine doit refuser.
         $bp = new KernelBlueprint();
-        $bp->blueprint_id         = 'bp-miss';
-        $bp->depth                = 4;
-        $bp->domain               = 'Géographie';
-        $bp->subdomain_active     = 'Canada';
-        $bp->subject_active       = 'Sujet';
-        $bp->dominant_idea_active = 'Idée';
-        $bp->$field               = null;
+        $bp->initializeBlueprintId('bp-miss-rot');
+        $bp->fillTaxonomy('Canada', 'Sujet', 'Idée');
 
         DB::table('kernel_blueprint_runs')->insert([
-            'blueprint_id'    => 'bp-miss',
+            'blueprint_id'    => 'bp-miss-rot',
             'execution_state' => 'ENGAGED_IN_PIPELINE',
             'kernel_code'     => null,
             'created_at'      => now(),
@@ -408,26 +394,32 @@ class KernelCodeEngineTest extends TestCase
         $this->engine->assignKernelCode($bp);
     }
 
-    public static function missingFieldProvider(): array
+    public function test_missing_taxonomy_throws(): void
     {
-        return [
-            ['depth'],
-            ['domain'],
-            ['subdomain_active'],
-            ['subject_active'],
-            ['dominant_idea_active'],
-        ];
+        // Taxonomy non remplie (3 slots = null) → engine doit refuser.
+        $bp = new KernelBlueprint();
+        $bp->initializeBlueprintId('bp-miss-tax');
+        $bp->fillRotation(4, 'Géographie');
+
+        DB::table('kernel_blueprint_runs')->insert([
+            'blueprint_id'    => 'bp-miss-tax',
+            'execution_state' => 'ENGAGED_IN_PIPELINE',
+            'kernel_code'     => null,
+            'created_at'      => now(),
+            'updated_at'      => now(),
+        ]);
+
+        $this->expectException(KernelCodeEngineException::class);
+        $this->expectExceptionMessage('QUESTION_INTENT_MISSING_INPUT');
+        $this->engine->assignKernelCode($bp);
     }
 
     public function test_invalid_domain_throws_and_no_suffix_consumed(): void
     {
         $bp = new KernelBlueprint();
-        $bp->blueprint_id         = 'bp-dom';
-        $bp->depth                = 4;
-        $bp->domain               = 'Général';
-        $bp->subdomain_active     = 'Canada';
-        $bp->subject_active       = 'Sujet';
-        $bp->dominant_idea_active = 'Idée';
+        $bp->initializeBlueprintId('bp-dom');
+        $bp->fillRotation(4, 'Général');
+        $bp->fillTaxonomy('Canada', 'Sujet', 'Idée');
 
         DB::table('kernel_blueprint_runs')->insert([
             'blueprint_id'    => 'bp-dom',

@@ -1,0 +1,255 @@
+L’audit est bon sur le fond, mais les solutions proposées pour B1 ne sont pas sûres telles qu’écrites, et B2 doit être corrigé selon le contrat déjà verrouillé, pas par un choix technique improvisé.
+
+Verdict de l’audit 01_KernelBlueprint
+B1 — Atomicité de création : VRAI BLOCKER
+
+La règle officielle est bien :
+
+un seul KernelBlueprint canonique actif à la fois
+
+Le code actuel fait :
+
+SELECT exists
+↓
+puis INSERT
+
+Donc deux créations simultanées peuvent effectivement passer ensemble.
+
+Mais attention : les deux solutions proposées par Replit sont imparfaites.
+
+transaction + lockForUpdate() sur le SELECT n’est pas suffisante lorsque zéro Blueprint actif existe : PostgreSQL ne peut pas verrouiller une ligne qui n’existe pas.
+
+Et cet index proposé est également incorrect :
+
+UNIQUE (execution_state)
+WHERE execution_state IN (...)
+
+Il autoriserait simultanément :
+
+1 × CREATED_UNENGAGED
++
+1 × ENGAGED_IN_PIPELINE
+
+car les deux valeurs sont différentes.
+
+Il faut une contrainte DB qui impose réellement une seule ligne appartenant à l’ensemble des états actifs, par exemple un index unique partiel sur une constante, puis un test de concurrence PostgreSQL réel.
+
+B2 — Immutabilité / ownership : VRAI ÉCART D’IMPLÉMENTATION, mais solution à cadrer
+
+Le contrat existe déjà :
+
+KRP
+→ écrit depth + domain
+
+Taxonomy
+→ écrit subdomain_active + subject_active + dominant_idea_active
+
+QuestionIntent
+→ écrit kernel_code
+
+Et une fois un slot attribué, il ne doit pas pouvoir être remplacé silencieusement.
+
+Donc le fait que :
+
+$blueprint->depth = 99;
+
+soit techniquement possible depuis n’importe quel module signifie que le contrat n’est pas réellement imposé par l’objet.
+
+Même chose pour :
+
+fillRotation(A)
+↓
+fillRotation(B)
+
+qui peut réécrire l’identité déjà attribuée.
+
+Mais je ne veux surtout pas que Replit transforme immédiatement toute la classe en readonly, car le Blueprint est précisément rempli progressivement par plusieurs moteurs.
+
+La correction doit préserver :
+
+création vide
+↓
+écriture KRP une fois
+↓
+écriture Taxonomy une fois
+↓
+écriture QuestionIntent une fois
+
+tout en interdisant :
+
+réécriture
+écriture directe arbitraire
+écriture d’un slot appartenant à un autre moteur
+Autre clarification importante
+
+KernelBlueprintRunRepository::markKernelCodeAssigned() n’est pas automatiquement un deuxième propriétaire de kernel_code.
+
+Si :
+
+KernelCodeEngine
+↓
+Repository
+↓
+DB
+
+alors le Repository n’est que le mécanisme de persistance utilisé par QuestionIntent.
+
+Le propriétaire architectural reste :
+
+QuestionIntent / KernelCodeEngine
+
+Il faut seulement vérifier qu’aucun autre service n’appelle markKernelCodeAssigned() pour attribuer lui-même un code.
+
+Donne ceci à Replit maintenant
+
+Audit 01_KernelBlueprint accepté avec B1 et B2 comme écarts d’implémentation réels.
+
+Ne touche à aucun autre module.
+
+Le contrat 01_KernelBlueprint existe déjà : il ne faut inventer aucune nouvelle architecture.
+
+B1 — Un seul Blueprint actif
+
+Corriger la race condition de KernelBlueprintFactory::create().
+
+Attention :
+
+transaction + lockForUpdate() sur une recherche qui peut retourner zéro ligne n’est PAS une preuve suffisante sous PostgreSQL.
+
+Attention également :
+
+UNIQUE(execution_state)
+WHERE execution_state IN (...)
+
+est incorrect pour notre invariant, car il permettrait une ligne CREATED_UNENGAGED ET une ligne ENGAGED_IN_PIPELINE simultanément.
+
+La DB doit garantir :
+
+COUNT(
+  execution_state IN (
+    CREATED_UNENGAGED,
+    ENGAGED_IN_PIPELINE
+  )
+) <= 1
+
+Utiliser une garantie PostgreSQL réellement atomique, par exemple un unique partial index sur une expression constante pour tous les états actifs, ou une solution équivalente démontrablement sûre.
+
+Puis créer un test PostgreSQL réel avec créations concurrentes.
+
+Résultat obligatoire :
+
+N créations simultanées
+→ exactement 1 SUCCESS
+→ N-1 refus
+→ exactement 1 Blueprint actif en DB
+B2 — Immutabilité / ownership
+
+Le Blueprint doit rester progressivement remplissable :
+
+Factory → blueprint_id
+KRP → depth + domain
+Taxonomy → subdomain_active + subject_active + dominant_idea_active
+QuestionIntent → kernel_code
+
+Mais :
+
+aucune écriture directe arbitraire d’un slot ne doit être possible depuis un autre module ;
+un slot déjà attribué ne doit pas pouvoir recevoir une autre valeur ;
+un double appel fill*() ne doit jamais remplacer silencieusement une valeur existante.
+
+Ne transforme PAS aveuglément toute la classe en readonly si cela casse le remplissage progressif.
+
+Audite d’abord tous les accès directs actuels aux propriétés du Blueprint et applique la solution minimale compatible PHP 8.2 permettant :
+
+lecture autorisée
+écriture seulement via le contrat propriétaire
+première attribution autorisée
+réécriture interdite
+
+Si le passage des propriétés publiques à une encapsulation contrôlée exige des modifications de consommateurs, celles-ci doivent être purement mécaniques et ne modifier aucune responsabilité.
+
+Repository kernel_code
+
+Vérifie tous les callers de :
+
+KernelBlueprintRunRepository::markKernelCodeAssigned()
+
+Si seul KernelCodeEngine l’utilise pour persister l’attribution :
+
+propriétaire architectural = QuestionIntent
+Repository = mécanisme de persistance
+
+donc aucune architecture parallèle.
+
+Si un autre service l’utilise comme writer autonome :
+
+STOP et retourne OWNERSHIP_CONFLICT.
+
+Validation finale
+
+Exécuter :
+
+tests Blueprint Partie 1 ;
+tests Factory ;
+tests orchestrateur affectés ;
+tests QuestionIntent de non-régression ;
+test PostgreSQL concurrent B1 ;
+nouveaux tests write-once B2.
+
+Retour :
+
+01_KERNELBLUEPRINT — CORRECTION TERMINALE
+
+B1 atomicité DB:
+PASS/FAIL
+
+Test concurrence PostgreSQL:
+PASS/FAIL
+
+Créations concurrentes:
+...
+
+Blueprints actifs finaux:
+1 / autre
+
+B2 écriture directe arbitraire:
+IMPOSSIBLE / ENCORE POSSIBLE
+
+fillRotation write-once:
+PASS/FAIL
+
+fillTaxonomy write-once:
+PASS/FAIL
+
+fillKernelCode write-once:
+PASS/FAIL
+
+Ownership KRP:
+PASS/FAIL
+
+Ownership Taxonomy:
+PASS/FAIL
+
+Ownership QuestionIntent:
+PASS/FAIL
+
+markKernelCodeAssigned callers:
+...
+
+Architecture parallèle:
+AUCUNE / ...
+
+Régressions:
+...
+
+BLOCKERS:
+...
+
+VERDICT 01_KernelBlueprint:
+VERROUILLÉ / NON VERROUILLÉ
+
+Puis STOP.
+
+Aucun travail sur KRP, Taxonomy, VDI ou Phase 1.
+
+C’est maintenant la bonne correction terminale de 01_KernelBlueprint. Une fois celle-ci verte, seulement alors on revient à 02_KernelRotationPlanner.

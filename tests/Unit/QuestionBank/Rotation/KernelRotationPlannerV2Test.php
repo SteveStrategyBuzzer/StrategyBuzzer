@@ -339,8 +339,9 @@ class KernelRotationPlannerV2Test extends TestCase
 
     private function makeBlueprint(?string $blueprintId = null): KernelBlueprint
     {
+        $id = $blueprintId ?? (string) \Illuminate\Support\Str::orderedUuid();
         $bp = new KernelBlueprint();
-        $bp->blueprint_id = $blueprintId ?? (string) \Illuminate\Support\Str::orderedUuid();
+        $bp->initializeBlueprintId($id);
 
         // Enregistrer dans kernel_blueprint_runs
         DB::table('kernel_blueprint_runs')->insert([

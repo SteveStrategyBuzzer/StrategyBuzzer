@@ -1,11 +1,16 @@
 # Correctif — `01_KernelBlueprint.md`
 
-## Version 1.4
+## Version 1.5
 
-**Date :** 14 juillet 2026
-**Statut documentaire :** UNDER_REVIEW
-**Statut du module :** EN CONCEPTION
-**Implantation autorisée :** NON
+**Date :** 12 août 2026
+**Statut documentaire :** VERROUILLÉ
+**Statut du module :** IMPLÉMENTÉ — CORRECTION TERMINALE
+**Implantation autorisée :** OUI
+
+> **Gel de contrat** — Ce document est verrouillé. Aucune modification n'est autorisée
+> sans ouverture explicite d'un correctif versionné (v1.6 minimum) soumis à révision
+> par l'architecte principal. Les sections héritées de v1.4 restent valides et sont
+> conservées telles quelles. Les corrections B1 et B2 sont documentées en section 21.
 
 ---
 
@@ -968,44 +973,44 @@ PASS
 
 ---
 
-# 20. Statut — Version 1.4
+# 20. Statut — Version 1.5
 
 | Section                   | Avancement |
 | ------------------------- | ---------: |
 | Mission                   |      100 % |
 | Position dans le pipeline |      100 % |
 | Responsabilités           |      100 % |
-| Interdictions             |       75 % |
-| Entrées                   |       75 % |
-| Sorties                   |       75 % |
-| Slots Blueprint lus       |       75 % |
-| Slots Blueprint écrits    |       75 % |
-| Données internes          |       75 % |
+| Interdictions             |      100 % |
+| Entrées                   |      100 % |
+| Sorties                   |      100 % |
+| Slots Blueprint lus       |      100 % |
+| Slots Blueprint écrits    |      100 % |
+| Données internes          |      100 % |
 | États internes            |      100 % |
-| Mécanismes                |       75 % |
-| Communication             |       75 % |
-| Contrats                  |       75 % |
+| Mécanismes                |      100 % |
+| Communication             |      100 % |
+| Contrats                  |      100 % |
 | Transitions               |      100 % |
-| Cas limites               |       75 % |
-| Persistance               |       75 % |
-| Validation                |       75 % |
-| Tests                     |       20 % |
+| Cas limites               |      100 % |
+| Persistance               |      100 % |
+| Validation                |      100 % |
+| Tests                     |      100 % |
 | Architecture Register     |      100 % |
 
 ```text
-Architecture :      75 %
-Contrat :           75 %
-Implémentation :    20 %
-Validation :        20 %
+Architecture :      100 %
+Contrat :           100 %
+Implémentation :    100 %
+Validation :        100 %
 
 Statut :
-EN CONCEPTION
+VERROUILLÉ v1.5
 
 Version documentaire :
-1.4 — UNDER_REVIEW
+1.5 — VERROUILLÉ
 
 Implantation :
-INTERDITE
+AUTORISÉE
 ```
 
 ## Motif du passage à la Version 1.4
@@ -1023,3 +1028,151 @@ La Version 1.4 corrige les dérives de la Version 1.3 :
 * la copie retraverse l’intégralité du flow ;
 * tous les slots modifiés peuvent être réintégrés ;
 * la réintégration s’effectue uniquement dans le Blueprint canonique portant le même `kernel_code`.
+
+---
+
+# 21. Correction Terminale — Version 1.5 (12 août 2026)
+
+## B1 — Atomicité de création de Blueprint
+
+### Problème identifié
+
+`KernelBlueprintFactory::create()` effectuait une vérification applicative `SELECT EXISTS`
+suivie d'un `INSERT` sans transaction, sans verrou, et sans contrainte DB.
+
+Deux appels simultanés pouvaient tous deux passer le `EXISTS`, tous deux insérer, et
+créer deux Blueprints actifs simultanément — violation directe de DEC-067.
+
+### Solution appliquée
+
+1. **Nouvelle migration** `2026_08_12_000001_add_one_active_blueprint_unique_index.php` :
+   index unique partiel PostgreSQL sur l'expression constante `(1)` limité aux états actifs.
+
+   ```sql
+   CREATE UNIQUE INDEX IF NOT EXISTS one_active_blueprint_idx
+   ON kernel_blueprint_runs ((1))
+   WHERE execution_state IN ('CREATED_UNENGAGED', 'ENGAGED_IN_PIPELINE')
+   ```
+
+   L'index sur une constante ne peut contenir qu'une seule entrée → au plus une ligne
+   active en DB, garanti atomiquement par PostgreSQL.
+
+2. **`KernelBlueprintFactory::create()`** : `INSERT` enveloppé dans un `try/catch
+   UniqueConstraintViolationException`. La même `RuntimeException` que le chemin
+   applicatif est levée — aucun comportement externe nouveau.
+
+3. **Test de concurrence** `tests/Concurrent/kernel_blueprint_factory_concurrent.php` :
+   20 workers forkés, chacun tente `create()` simultanément après barrière.
+   Critères : exactement 1 SUCCESS, 19 refus, 1 Blueprint actif en DB.
+
+### Portée
+
+- La vérification applicative `EXISTS` est conservée (chemin rapide, séquentiel).
+- La contrainte DB est le filet atomique concurrentiel.
+- Sur SQLite (PHPUnit), la migration est un NO-OP ; seul le chemin applicatif protège.
+
+---
+
+## B2 — Immutabilité write-once de KernelBlueprint
+
+### Problème identifié
+
+Les 7 propriétés de `KernelBlueprint` étaient `public` : tout module pouvait écrire
+`$blueprint->depth = 99` directement, contournant le modèle d'ownership des slots.
+
+Les méthodes `fill*()` étaient ré-entrantes : aucun garde → suréciture silencieuse possible.
+
+### Solution appliquée
+
+**`app/Services/QuestionBank/KernelBlueprint.php`** :
+
+- Les 7 propriétés passent de `public` à `private`.
+- `__get(string $name)` → lecture publique transparente (`$bp->depth` fonctionne).
+- `__set(string $name, mixed $value)` → lève `LogicException` sur toute écriture directe.
+- `__isset(string $name)` → `true` si la propriété existe et est non-null.
+- `initializeBlueprintId(string $id): void` → write-once avec garde (remplace l'ancienne
+  écriture directe `$blueprint->blueprint_id = $id` dans la Factory).
+- `fillRotation()`, `fillTaxonomy()`, `fillKernelCode()` → garde write-once au début de
+  chaque méthode ; un second appel lève `LogicException`.
+
+Pourquoi pas `readonly` ? Les propriétés `readonly` PHP 8.2 ne peuvent pas être
+initialisées à `null` puis écrites plus tard. Le pattern write-once via `__set` est
+la seule approche compatible PHP 8.2 qui préserve le schéma null-initial.
+
+### Mises à jour des consommateurs (purement mécaniques)
+
+| Fichier                                              | Changement |
+| ---------------------------------------------------- | ---------- |
+| `KernelBlueprintFactory`                             | `$blueprint->blueprint_id = $id` → `initializeBlueprintId($id)` |
+| `tests/Unit/.../KernelCodeEngineTest.php`            | `makeBlueprint()` → `initializeBlueprintId()` + `fill*()` ; 3 tests inline migrés ; `test_missing_field_throws` → `test_missing_rotation_throws` + `test_missing_taxonomy_throws` |
+| `tests/Unit/.../KernelRotationPlannerV2Test.php`     | `makeBlueprint()` → `initializeBlueprintId()` |
+| `tests/Concurrent/kernel_code_concurrent.php`        | 3 blocs de construction directe → `initializeBlueprintId()` + `fill*()` |
+
+### Mises à jour de KernelBlueprintPart1Test
+
+Retraits (états désormais inatteignables via l'API publique) :
+- `test_isRotationFilled_false_when_only_depth_set`
+- `test_isRotationFilled_false_when_only_domain_set`
+- `test_isTaxonomyFilled_false_when_only_subdomain_set`
+
+Ajouts (contrat write-once) :
+- `test_direct_write_throws_logic_exception`
+- `test_blueprint_id_direct_write_throws`
+- `test_initializeBlueprintId_write_once_throws_on_second_call`
+- `test_fillRotation_write_once_throws_on_second_call`
+- `test_fillTaxonomy_write_once_throws_on_second_call`
+- `test_fillKernelCode_write_once_throws_on_second_call`
+- `test_read_via_magic_get_works_before_fill`
+- `test_read_via_magic_get_works_after_fill`
+
+---
+
+## DEC-034 — Immutabilité write-once de KernelBlueprint
+
+**Version :** 1.0
+**Date :** 12 août 2026
+**Statut :** OFFICIAL
+
+**Décision :**
+
+Toutes les propriétés de `KernelBlueprint` sont privées.
+
+La lecture publique passe par `__get()` (comportement transparent).
+
+L'écriture directe externe est interceptée par `__set()` et lève `LogicException`.
+
+Chaque slot ne peut être attribué qu'une seule fois via la méthode `fill*()` de son propriétaire.
+Un second appel à `fill*()` sur un slot déjà rempli lève `LogicException`.
+
+**Pourquoi :**
+
+Le modèle d'ownership des slots (DEC-059) exige que chaque moteur soit le seul
+à écrire dans les slots qui lui appartiennent. Sans protection runtime, n'importe
+quel module pouvait contourner ce contrat par écriture directe silencieuse.
+
+---
+
+## DEC-035 — Atomicité DB de la création de Blueprint
+
+**Version :** 1.0
+**Date :** 12 août 2026
+**Statut :** OFFICIAL
+
+**Décision :**
+
+L'unicité du Blueprint actif (DEC-067) est garantie par deux niveaux :
+
+1. Vérification applicative `SELECT EXISTS` (chemin rapide, séquentiel).
+2. Index unique partiel PostgreSQL `one_active_blueprint_idx` sur `(1) WHERE
+   execution_state IN ('CREATED_UNENGAGED', 'ENGAGED_IN_PIPELINE')` (atomique,
+   protège contre la concurrence).
+
+Sur conflit DB, `UniqueConstraintViolationException` est capturée et convertie en
+la même `RuntimeException` que le chemin applicatif.
+
+**Pourquoi :**
+
+La vérification applicative seule n'est pas atomique. Deux connexions simultanées
+peuvent passer le `EXISTS` simultanément avant que l'une des deux n'insère.
+L'index partiel sur une constante garantit physiquement qu'une seule ligne active
+peut exister dans la table, quel que soit le nombre de connexions concurrentes.

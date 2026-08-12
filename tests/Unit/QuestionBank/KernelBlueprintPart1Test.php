@@ -289,22 +289,6 @@ class KernelBlueprintPart1Test extends TestCase
         $this->assertFalse($this->blueprint()->isRotationFilled());
     }
 
-    public function test_isRotationFilled_false_when_only_depth_set(): void
-    {
-        $bp = $this->blueprint();
-        $bp->depth = 4;
-
-        $this->assertFalse($bp->isRotationFilled());
-    }
-
-    public function test_isRotationFilled_false_when_only_domain_set(): void
-    {
-        $bp = $this->blueprint();
-        $bp->domain = 'science';
-
-        $this->assertFalse($bp->isRotationFilled());
-    }
-
     public function test_isRotationFilled_true_after_fillRotation(): void
     {
         $bp = $this->blueprint();
@@ -316,14 +300,6 @@ class KernelBlueprintPart1Test extends TestCase
     public function test_isTaxonomyFilled_false_when_empty(): void
     {
         $this->assertFalse($this->blueprint()->isTaxonomyFilled());
-    }
-
-    public function test_isTaxonomyFilled_false_when_only_subdomain_set(): void
-    {
-        $bp = $this->blueprint();
-        $bp->subdomain_active = 'Physique';
-
-        $this->assertFalse($bp->isTaxonomyFilled());
     }
 
     public function test_isTaxonomyFilled_true_after_fillTaxonomy(): void
@@ -441,5 +417,82 @@ class KernelBlueprintPart1Test extends TestCase
 
         $this->assertSame(8,            $bp->depth,  'depth doit rester inchangé après fillTaxonomy');
         $this->assertSame('géographie', $bp->domain, 'domain doit rester inchangé après fillTaxonomy');
+    }
+
+    // =========================================================================
+    // 9. Contrat write-once — écriture directe externe interdite (B2)
+    // =========================================================================
+
+    public function test_direct_write_throws_logic_exception(): void
+    {
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessageMatches('/Écriture directe interdite/');
+
+        $bp = new KernelBlueprint();
+        $bp->depth = 4; // doit lever une LogicException
+    }
+
+    public function test_blueprint_id_direct_write_throws(): void
+    {
+        $this->expectException(\LogicException::class);
+        $bp = new KernelBlueprint();
+        $bp->blueprint_id = 'should-fail';
+    }
+
+    public function test_initializeBlueprintId_write_once_throws_on_second_call(): void
+    {
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessageMatches('/write-once violation/');
+
+        $bp = new KernelBlueprint();
+        $bp->initializeBlueprintId('first-id');
+        $bp->initializeBlueprintId('second-id'); // doit lever une LogicException
+    }
+
+    public function test_fillRotation_write_once_throws_on_second_call(): void
+    {
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessageMatches('/write-once violation/');
+
+        $bp = new KernelBlueprint();
+        $bp->fillRotation(4, 'science');
+        $bp->fillRotation(6, 'histoire'); // doit lever une LogicException
+    }
+
+    public function test_fillTaxonomy_write_once_throws_on_second_call(): void
+    {
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessageMatches('/write-once violation/');
+
+        $bp = new KernelBlueprint();
+        $bp->fillTaxonomy('SD1', 'S1', 'I1');
+        $bp->fillTaxonomy('SD2', 'S2', 'I2'); // doit lever une LogicException
+    }
+
+    public function test_fillKernelCode_write_once_throws_on_second_call(): void
+    {
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessageMatches('/write-once violation/');
+
+        $bp = new KernelBlueprint();
+        $bp->fillKernelCode('04-sc-phy-lum-ref-01');
+        $bp->fillKernelCode('04-sc-phy-lum-ref-02'); // doit lever une LogicException
+    }
+
+    public function test_read_via_magic_get_works_before_fill(): void
+    {
+        $bp = new KernelBlueprint();
+        $this->assertNull($bp->depth);
+        $this->assertNull($bp->domain);
+        $this->assertNull($bp->blueprint_id);
+        $this->assertNull($bp->kernel_code);
+    }
+
+    public function test_read_via_magic_get_works_after_fill(): void
+    {
+        $bp = new KernelBlueprint();
+        $bp->fillRotation(7, 'sport');
+        $this->assertSame(7,       $bp->depth);
+        $this->assertSame('sport', $bp->domain);
     }
 }

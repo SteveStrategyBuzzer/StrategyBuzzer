@@ -204,13 +204,10 @@ foreach ($blueprintIds as $idx => $blueprintId) {
         try {
             $engine = new KernelCodeEngine();
 
-            $bp                      = new KernelBlueprint();
-            $bp->blueprint_id        = $blueprintId;
-            $bp->depth               = TEST_DEPTH;
-            $bp->domain              = TEST_DOMAIN;
-            $bp->subdomain_active    = TEST_SUB;
-            $bp->subject_active      = TEST_SUJ;
-            $bp->dominant_idea_active = TEST_IDE;
+            $bp = new KernelBlueprint();
+            $bp->initializeBlueprintId($blueprintId);
+            $bp->fillRotation(TEST_DEPTH, TEST_DOMAIN);
+            $bp->fillTaxonomy(TEST_SUB, TEST_SUJ, TEST_IDE);
 
             $code = $engine->assignKernelCode($bp);
 
@@ -320,13 +317,10 @@ $seqBeforeIdp = (int) DB::table('kernel_code_sequences')
 $firstBpId   = $blueprintIds[0];
 $firstCode   = $codes[0] ?? null;
 
-$bpIdp                       = new KernelBlueprint();
-$bpIdp->blueprint_id         = $firstBpId;
-$bpIdp->depth                = TEST_DEPTH;
-$bpIdp->domain               = TEST_DOMAIN;
-$bpIdp->subdomain_active     = TEST_SUB;
-$bpIdp->subject_active       = TEST_SUJ;
-$bpIdp->dominant_idea_active = TEST_IDE;
+$bpIdp = new KernelBlueprint();
+$bpIdp->initializeBlueprintId($firstBpId);
+$bpIdp->fillRotation(TEST_DEPTH, TEST_DOMAIN);
+$bpIdp->fillTaxonomy(TEST_SUB, TEST_SUJ, TEST_IDE);
 
 $codeIdp = (new KernelCodeEngine())->assignKernelCode($bpIdp);
 
@@ -354,13 +348,10 @@ DB::table('kernel_blueprint_runs')->insert([
     'depth' => TEST_DEPTH, 'domain_code' => TEST_DOMAIN, 'kernel_code' => null,
     'created_at' => now(), 'updated_at' => now(),
 ]);
-$bpExtra                       = new KernelBlueprint();
-$bpExtra->blueprint_id         = $extraId;
-$bpExtra->depth                = TEST_DEPTH;
-$bpExtra->domain               = TEST_DOMAIN;
-$bpExtra->subdomain_active     = TEST_SUB;
-$bpExtra->subject_active       = TEST_SUJ;
-$bpExtra->dominant_idea_active = TEST_IDE;
+$bpExtra = new KernelBlueprint();
+$bpExtra->initializeBlueprintId($extraId);
+$bpExtra->fillRotation(TEST_DEPTH, TEST_DOMAIN);
+$bpExtra->fillTaxonomy(TEST_SUB, TEST_SUJ, TEST_IDE);
 
 $extraCode      = (new KernelCodeEngine())->assignKernelCode($bpExtra);
 $extraSuffix    = substr($extraCode, -4);
