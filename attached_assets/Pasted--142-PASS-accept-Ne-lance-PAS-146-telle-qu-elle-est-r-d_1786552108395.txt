@@ -1,0 +1,159 @@
+#142 PASS accepté.
+
+Ne lance PAS #146 telle qu'elle est rédigée.
+
+## #146 — CORRECTION
+
+La migration originale de juillet a créé :
+
+* `kernel_code`
+* `ks_hash`
+* `kld_hash`
+
+La migration #142 d'août supprime `ks_hash` et `kld_hash`.
+
+Lors d'un rollback normal, les migrations s'exécutent dans l'ordre inverse :
+
+1. le `down()` de la migration #142 doit restaurer `ks_hash` et `kld_hash` ;
+2. ensuite seulement le `down()` de la migration originale peut supprimer les trois colonnes qu'elle avait historiquement créées.
+
+Donc NE MODIFIE PAS la migration historique uniquement parce que les colonnes sont absentes dans le schéma courant.
+
+#146 devient uniquement un AUDIT TECHNIQUE :
+
+* sur une PostgreSQL de test isolée/vierge ;
+* exécuter la chaîne UP complète ;
+* vérifier le schéma ;
+* exécuter la chaîne DOWN complète dans l'ordre Laravel normal ;
+* vérifier qu'elle revient au schéma initial.
+
+Si la chaîne PASS :
+→ aucune modification ;
+→ #146 = NOT_NEEDED / CLOSED.
+
+Si elle FAIL :
+→ retourne le point exact de rupture AVANT de modifier une migration historique.
+
+---
+
+## PROCHAINE TÂCHE ACTIVE : #147 CORRIGÉE
+
+#147 ne doit PAS demander :
+
+« Est-ce que Phase 1 écrira `question_intents.kernel_code` ? »
+
+Phase 1 ne doit pas définir rétroactivement le contrat QuestionIntent.
+
+Le contrat 05_QuestionIntent est maintenant :
+
+`kernel_blueprint_runs.kernel_code`
+= identité canonique du noyau.
+
+QuestionIntent est le propriétaire exclusif de son écriture.
+
+La table legacy `question_intents` n'est PAS le stockage canonique de QuestionIntent.
+
+Donc fais maintenant l'audit de :
+
+`question_intents.kernel_code`
+
+exactement comme pour `ks_hash` et `kld_hash`.
+
+Pour ce champ, retourne :
+
+* migration d'origine ;
+* présence actuelle en DB ;
+* nombre total de lignes `question_intents` ;
+* nombre de `kernel_code` non-null ;
+* writer runtime OFFICIAL ;
+* reader runtime OFFICIAL ;
+* `$fillable` ;
+* factory ;
+* tests ;
+* contraintes/index ;
+* décision Architecture Register justifiant son existence actuelle.
+
+### Verdict
+
+Si :
+
+* writer OFFICIAL = AUCUN ;
+* reader OFFICIAL = AUCUN ;
+* données métier = 0 ;
+* responsabilité architecturale actuelle = AUCUNE ;
+
+alors :
+
+`question_intents.kernel_code`
+= VESTIGE LEGACY
+
+et il doit être supprimé proprement :
+
+* colonne DB ;
+* `$fillable` ;
+* factory ;
+* tests exclusivement associés ;
+* références runtime mortes.
+
+Ne crée aucun remplacement.
+
+Ne touche PAS à :
+
+* `kernel_blueprint_runs.kernel_code` ;
+* `KernelCodeEngine` ;
+* son compteur ;
+* son format ;
+* Phase 1 ;
+* frame_en ;
+* Quarantine ;
+* ReadyBank.
+
+Si un writer, reader ou des données réelles existent :
+
+STOP et retourne `LEGACY_CONFLICT` avant suppression.
+
+Après nettoyage, exécute les tests QuestionIntent/KernelCodeEngine/Orchestrator pertinents.
+
+Retour :
+
+#147 FINAL AUDIT
+
+question_intents.kernel_code rows non-null:
+...
+
+Writer OFFICIAL:
+...
+
+Reader OFFICIAL:
+...
+
+Responsabilité actuelle:
+...
+
+Verdict:
+SUPPRIMÉ / CONSERVER / BLOCKER
+
+kernel_blueprint_runs.kernel_code intact:
+PASS/FAIL
+
+KernelCodeEngine intact:
+PASS/FAIL
+
+Régressions:
+...
+
+Nouvelle décision métier inventée:
+AUCUNE
+
+Architecture parallèle:
+AUCUNE
+
+BLOCKERS:
+...
+
+VERDICT #147:
+PASS / FAIL
+
+Puis STOP.
+
+Ne commence PAS Phase 1.
