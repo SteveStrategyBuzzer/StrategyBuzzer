@@ -1,0 +1,809 @@
+# `02_KernelRotationPlanner.md`
+
+## Correctif du mécanisme de rotation — Version 1.2
+
+**Date :** 14 juillet 2026
+**Statut documentaire :** UNDER_REVIEW
+**Statut du module :** EN CONCEPTION
+**Implantation autorisée :** NON
+
+---
+
+# Rôle réel du KernelRotationPlanner
+
+Le KernelRotationPlanner combine trois informations distinctes.
+
+## Information provenant de ReadyBank
+
+```text
+CURRENT_KERNEL_RECEIVED
+```
+
+ReadyBank confirme qu’un noyau canonique a terminé son flow et a été reçu.
+
+Cette confirmation permet au KernelRotationPlanner de comptabiliser un noyau réellement produit.
+
+ReadyBank ne détermine pas :
+
+* le prochain domaine ;
+* le prochain Depth ;
+* l’état des réservoirs ;
+* le nombre total de noyaux encore disponibles dans Taxonomy.
+
+---
+
+## Information provenant de Taxonomy
+
+Taxonomy communique l’état réel des réservoirs pour le Depth concerné.
+
+Pour chaque domaine :
+
+```text
+AVAILABLE
+```
+
+ou :
+
+```text
+EMPTY
+```
+
+Taxonomy indique ainsi :
+
+* si le domaine peut encore alimenter un nouveau Blueprint ;
+* si le réservoir du domaine est vide ;
+* quels domaines ne doivent plus être sélectionnés pour ce Depth.
+
+Taxonomy ne choisit pas le prochain couple.
+
+Taxonomy ne gère pas le compte à rebours de production du KernelRotationPlanner.
+
+---
+
+## Information détenue par KernelRotationPlanner
+
+Le KernelRotationPlanner conserve, pour chaque couple :
+
+```text
+Depth + Domaine
+```
+
+le nombre de noyaux :
+
+* demandés ;
+* reçus par ReadyBank ;
+* restant à produire.
+
+Structure conceptuelle :
+
+```text
+kernel_target
+kernel_received
+kernel_remaining
+```
+
+Calcul :
+
+```text
+kernel_remaining
+=
+kernel_target
+-
+kernel_received
+```
+
+Exemple :
+
+```text
+Depth : 4
+Domaine : Histoire
+
+kernel_target    = 50
+kernel_received  = 37
+kernel_remaining = 13
+```
+
+Le KernelRotationPlanner sait alors que treize noyaux doivent encore être produits pour le domaine Histoire au Depth 4.
+
+---
+
+# Compte à rebours par domaine
+
+Le compte à rebours est conservé séparément pour chaque domaine et pour chaque Depth.
+
+Exemple :
+
+| Depth | Domaine    | Cible | Reçus | Restants | Réservoir |
+| ----: | ---------- | ----: | ----: | -------: | --------- |
+|     4 | Géographie |    50 |    50 |        0 | AVAILABLE |
+|     4 | Histoire   |    50 |    37 |       13 | AVAILABLE |
+|     4 | Faune      |    50 |    50 |        0 | EMPTY     |
+|     4 | Art        |    50 |    41 |        9 | AVAILABLE |
+|     4 | Sport      |    50 |    50 |        0 | AVAILABLE |
+|     4 | Cinéma     |    50 |    48 |        2 | AVAILABLE |
+|     4 | Cuisine    |    50 |    50 |        0 | EMPTY     |
+|     4 | Science    |    50 |    45 |        5 | AVAILABLE |
+
+Dans cet exemple :
+
+* Géographie ne doit plus être sélectionné, car son compteur est à zéro ;
+* Faune ne doit plus être sélectionné, car son compteur est à zéro et son réservoir est vide ;
+* Histoire reste sélectionnable ;
+* Art reste sélectionnable ;
+* Cinéma reste sélectionnable ;
+* Science reste sélectionnable ;
+* le Depth 4 n’est pas terminé.
+
+---
+
+# Décrémentation du compteur
+
+Le compteur diminue uniquement après la confirmation de ReadyBank.
+
+```text
+Blueprint créé
+↓
+Taxonomy remplit le noyau
+↓
+QuestionIntent
+↓
+Phase 1
+↓
+Validation Phase 1
+↓
+Phase 2
+↓
+Validation Phase 2
+↓
+ReadyBank reçoit le noyau canonique
+↓
+CURRENT_KERNEL_RECEIVED
+↓
+KernelRotationPlanner :
+kernel_received + 1
+kernel_remaining - 1
+```
+
+## Événements qui ne diminuent pas le compteur
+
+Le compteur ne diminue pas lors de :
+
+* la sélection du domaine ;
+* la création du Blueprint ;
+* l’écriture de `depth` et `domain` ;
+* l’écriture du sous-domaine ;
+* l’écriture du sujet ;
+* l’écriture de l’idée dominante ;
+* la création des contenus cognitifs ;
+* l’envoi d’une copie à Quarantine ;
+* la correction d’une copie ;
+* l’entrée partielle de certains slots dans ReadyBank.
+
+Un noyau est comptabilisé une seule fois, lors de sa réception canonique confirmée par ReadyBank.
+
+---
+
+# Condition de sélection d’un domaine
+
+Un domaine est sélectionnable uniquement si les deux conditions suivantes sont vraies :
+
+```text
+kernel_remaining > 0
+```
+
+et :
+
+```text
+reservoir_status = AVAILABLE
+```
+
+Formule :
+
+```text
+DOMAIN_SELECTABLE
+=
+kernel_remaining > 0
+AND
+Taxonomy.reservoir_status = AVAILABLE
+```
+
+## Domaine dont le compteur est à zéro
+
+```text
+kernel_remaining = 0
+```
+
+Le domaine a rempli son objectif de production pour le Depth courant.
+
+Il est retiré de la rotation, même si Taxonomy possède encore du contenu disponible.
+
+Le contenu supplémentaire reste dans Taxonomy pour une éventuelle décision architecturale future.
+
+Le KernelRotationPlanner ne produit jamais plus de noyaux que la cible officielle.
+
+## Domaine dont le réservoir est vide
+
+```text
+reservoir_status = EMPTY
+```
+
+Le domaine est retiré de la rotation, même si son compteur est supérieur à zéro.
+
+Cependant, cette situation ne doit pas être considérée comme un objectif rempli.
+
+Elle produit un écart :
+
+```text
+RESERVOIR_EMPTY_BEFORE_TARGET
+```
+
+Exemple :
+
+```text
+kernel_target    = 50
+kernel_received  = 43
+kernel_remaining = 7
+reservoir_status = EMPTY
+```
+
+Résultat :
+
+```text
+Domaine indisponible
+Objectif non atteint
+Écart de production : 7 noyaux
+```
+
+Le KernelRotationPlanner ne peut pas inventer les sept noyaux manquants.
+
+Il conserve cet écart pour la validation architecturale du Depth.
+
+---
+
+# Condition avant une nouvelle rotation
+
+Après le démarrage initial, une nouvelle rotation est calculée lorsque les informations suivantes sont disponibles :
+
+```text
+ReadyBank :
+CURRENT_KERNEL_RECEIVED
+```
+
+et :
+
+```text
+Taxonomy :
+état actuel des réservoirs du Depth
+```
+
+Le KernelRotationPlanner met alors à jour :
+
+1. le compteur du domaine du noyau reçu ;
+2. l’état connu de chaque réservoir ;
+3. les domaines encore sélectionnables ;
+4. la prochaine position du DomainCycle ;
+5. l’état de complétude du Depth.
+
+Le flow est :
+
+```text
+ReadyBank reçoit le noyau canonique
+↓
+ReadyBank informe KernelRotationPlanner :
+CURRENT_KERNEL_RECEIVED
+```
+
+En parallèle :
+
+```text
+Taxonomy maintient les réservoirs
+↓
+Taxonomy informe KernelRotationPlanner :
+état des réservoirs du Depth courant
+```
+
+Le KernelRotationPlanner combine :
+
+```text
+noyau précédent reçu
++
+compteurs mis à jour
++
+état des réservoirs
+↓
+calcul de la prochaine position
+```
+
+---
+
+# Sélection du prochain couple
+
+## Cas 1 — Le Depth possède encore des domaines sélectionnables
+
+Exemple :
+
+```text
+Depth 4
+
+Géographie
+remaining = 0
+reservoir = AVAILABLE
+
+Histoire
+remaining = 13
+reservoir = AVAILABLE
+
+Faune
+remaining = 0
+reservoir = EMPTY
+
+Art
+remaining = 9
+reservoir = AVAILABLE
+```
+
+Le KernelRotationPlanner :
+
+1. conserve le Depth 4 ;
+2. poursuit le DomainCycle ;
+3. ignore Géographie, car son compteur est à zéro ;
+4. ignore Faune, car son compteur est à zéro ;
+5. sélectionne le prochain domaine dont :
+
+   * le compteur est supérieur à zéro ;
+   * le réservoir est disponible.
+
+Résultat possible :
+
+```text
+Depth 4
++
+Histoire
+```
+
+---
+
+## Cas 2 — Un domaine est vide avant la fin du compte à rebours
+
+Exemple :
+
+```text
+Depth 4
+Domaine : Cinéma
+
+kernel_remaining = 4
+reservoir_status = EMPTY
+```
+
+Le KernelRotationPlanner :
+
+* retire Cinéma de la rotation active ;
+* conserve `kernel_remaining = 4` ;
+* inscrit l’écart `RESERVOIR_EMPTY_BEFORE_TARGET` ;
+* poursuit avec le prochain domaine sélectionnable ;
+* ne considère pas automatiquement l’objectif Cinéma comme réussi.
+
+---
+
+## Cas 3 — Tous les compteurs sont à zéro
+
+```text
+Géographie : 0
+Histoire   : 0
+Faune      : 0
+Art        : 0
+Sport      : 0
+Cinéma     : 0
+Cuisine    : 0
+Science    : 0
+```
+
+Le KernelRotationPlanner déclare :
+
+```text
+DEPTH_TARGET_COMPLETE
+```
+
+Il :
+
+1. ferme le Depth courant ;
+2. avance vers le prochain Depth ;
+3. réinitialise le DomainCycle au premier domaine ;
+4. charge les objectifs du nouveau Depth ;
+5. utilise l’état des réservoirs Taxonomy correspondant au nouveau Depth.
+
+---
+
+## Cas 4 — Tous les réservoirs sont vides, mais certains compteurs ne sont pas à zéro
+
+Exemple :
+
+```text
+Tous les réservoirs : EMPTY
+
+Histoire remaining = 3
+Art remaining      = 2
+Science remaining  = 4
+```
+
+Le Depth ne doit pas être déclaré complètement réussi.
+
+Il reçoit un état distinct :
+
+```text
+DEPTH_RESERVOIRS_EXHAUSTED_WITH_SHORTFALL
+```
+
+Le KernelRotationPlanner conserve :
+
+* les objectifs manquants ;
+* les domaines concernés ;
+* le nombre total de noyaux manquants.
+
+Cette situation devra être traitée par la validation du mécanisme de production.
+
+Elle ne doit pas être silencieusement transformée en réussite.
+
+---
+
+# Création du prochain Blueprint
+
+Après avoir sélectionné le prochain couple :
+
+```text
+Depth + Domaine
+```
+
+le KernelRotationPlanner crée une nouvelle instance canonique unique du KernelBlueprint.
+
+```text
+KernelRotationPlanner
+↓
+crée le nouveau KernelBlueprint
+↓
+écrit depth
+↓
+écrit domain
+↓
+rend le nouveau contexte disponible à Taxonomy
+↓
+Taxonomy travaille dans le réservoir correspondant
+↓
+Taxonomy écrit :
+sub_domain
+subject
+dominant_idea
+```
+
+Chaque noyau possède son propre Blueprint canonique.
+
+Le Blueprint précédent demeure dans ReadyBank.
+
+Le nouveau Blueprint représente uniquement le nouveau noyau en construction.
+
+---
+
+# Données internes du compte à rebours
+
+Le KernelRotationPlanner conserve une structure conceptuelle :
+
+```text
+DepthProductionState
+```
+
+Pour chaque Depth et domaine :
+
+```text
+depth
+domain
+kernel_target
+kernel_received
+kernel_remaining
+reservoir_status
+rotation_status
+last_received_kernel
+```
+
+Exemple :
+
+```text
+depth                = 4
+domain               = Histoire
+kernel_target        = 50
+kernel_received      = 37
+kernel_remaining     = 13
+reservoir_status     = AVAILABLE
+rotation_status      = SELECTABLE
+last_received_kernel = HI04...
+```
+
+---
+
+# États d’un couple Depth + Domaine
+
+```text
+PENDING
+AVAILABLE
+ACTIVE
+TARGET_COMPLETE
+RESERVOIR_EMPTY
+SHORTFALL
+```
+
+## PENDING
+
+Le couple n’a pas encore été activé.
+
+## AVAILABLE
+
+Le compteur est supérieur à zéro et Taxonomy possède du contenu disponible.
+
+## ACTIVE
+
+Un Blueprint est actuellement produit pour ce couple.
+
+## TARGET_COMPLETE
+
+Le compteur est arrivé à zéro.
+
+Le domaine a atteint son objectif pour le Depth.
+
+## RESERVOIR_EMPTY
+
+Taxonomy indique que le réservoir ne contient plus d’unité exploitable.
+
+## SHORTFALL
+
+Le réservoir est vide alors que le compteur indique encore des noyaux à produire.
+
+---
+
+# Condition de complétude du Depth
+
+Le KernelRotationPlanner doit distinguer deux états.
+
+## Depth complété normalement
+
+```text
+tous les kernel_remaining = 0
+```
+
+Résultat :
+
+```text
+DEPTH_TARGET_COMPLETE
+```
+
+## Depth arrêté par épuisement des réservoirs
+
+```text
+tous les réservoirs = EMPTY
++
+au moins un kernel_remaining > 0
+```
+
+Résultat :
+
+```text
+DEPTH_RESERVOIRS_EXHAUSTED_WITH_SHORTFALL
+```
+
+Ces deux états ne doivent jamais être confondus.
+
+---
+
+# Mécanisme complet corrigé
+
+```text
+DÉBUT
+
+1. Charger le Depth actif.
+
+2. Charger, pour chaque domaine :
+      kernel_target
+      kernel_received
+      kernel_remaining
+
+3. Recevoir de Taxonomy :
+      état de chaque réservoir.
+
+4. Identifier les domaines sélectionnables :
+      kernel_remaining > 0
+      ET
+      reservoir_status = AVAILABLE
+
+5. S’il existe un domaine sélectionnable :
+      poursuivre le DomainCycle ;
+      choisir le prochain domaine sélectionnable ;
+      créer un nouveau KernelBlueprint ;
+      écrire depth ;
+      écrire domain ;
+      transmettre le contexte à Taxonomy.
+
+6. Le Blueprint traverse le pipeline.
+
+7. ReadyBank reçoit le noyau canonique.
+
+8. ReadyBank transmet :
+      CURRENT_KERNEL_RECEIVED.
+
+9. KernelRotationPlanner :
+      incrémente kernel_received ;
+      décrémente kernel_remaining ;
+      empêche une seconde comptabilisation du même kernel_code.
+
+10. Taxonomy transmet l’état actualisé des réservoirs.
+
+11. KernelRotationPlanner recalcule les domaines sélectionnables.
+
+12. Si tous les compteurs sont à zéro :
+      terminer le Depth ;
+      passer au prochain Depth.
+
+13. Si tous les réservoirs sont vides,
+    mais certains compteurs sont supérieurs à zéro :
+      déclarer SHORTFALL ;
+      conserver les écarts ;
+      ne pas déclarer une réussite normale.
+
+14. Sinon :
+      sélectionner le prochain couple.
+
+FIN après le dernier Depth traité.
+```
+
+---
+
+# Contrats ajoutés
+
+## CONTRAT KRP-023 — Compteur par couple
+
+Chaque couple `Depth + Domaine` possède un objectif, un nombre reçu et un nombre restant.
+
+## CONTRAT KRP-024 — Décrémentation par ReadyBank
+
+Le compteur diminue uniquement lorsque ReadyBank confirme la réception canonique d’un noyau.
+
+## CONTRAT KRP-025 — Comptabilisation unique
+
+Un même `kernel_code` ne peut jamais être comptabilisé deux fois.
+
+## CONTRAT KRP-026 — Double condition de sélection
+
+Un domaine est sélectionnable uniquement si :
+
+```text
+kernel_remaining > 0
+AND
+reservoir_status = AVAILABLE
+```
+
+## CONTRAT KRP-027 — Objectif atteint
+
+Un domaine atteint son objectif lorsque `kernel_remaining = 0`.
+
+## CONTRAT KRP-028 — Réservoir vide avant cible
+
+Un réservoir vide avec un compteur supérieur à zéro produit un `SHORTFALL`.
+
+Il ne constitue pas un objectif atteint.
+
+## CONTRAT KRP-029 — Complétude normale du Depth
+
+Un Depth est normalement complété lorsque tous les compteurs de ses domaines sont à zéro.
+
+## CONTRAT KRP-030 — État distinct d’épuisement incomplet
+
+L’épuisement de tous les réservoirs avec des compteurs non nuls produit :
+
+```text
+DEPTH_RESERVOIRS_EXHAUSTED_WITH_SHORTFALL
+```
+
+---
+
+# Architecture Register — Ajouts
+
+## DEC-047 — Compte à rebours par domaine
+
+**Version :** 1.0
+**Date :** 14 juillet 2026
+**Statut :** UNDER_REVIEW
+
+**Décision proposée :**
+
+KernelRotationPlanner conserve un compte à rebours distinct pour chaque couple `Depth + Domaine`.
+
+```text
+kernel_remaining
+=
+kernel_target
+-
+kernel_received
+```
+
+---
+
+## DEC-048 — ReadyBank décrémente le besoin de production
+
+**Version :** 1.0
+**Date :** 14 juillet 2026
+**Statut :** UNDER_REVIEW
+
+**Décision proposée :**
+
+Le besoin restant diminue uniquement après `CURRENT_KERNEL_RECEIVED`.
+
+La création d’un Blueprint ne réduit jamais le compteur.
+
+---
+
+## DEC-049 — Taxonomy et compteur indépendants
+
+**Version :** 1.0
+**Date :** 14 juillet 2026
+**Statut :** UNDER_REVIEW
+
+**Décision proposée :**
+
+Taxonomy indique la disponibilité réelle du réservoir.
+
+KernelRotationPlanner indique le besoin restant de production.
+
+Un domaine est sélectionnable seulement lorsque le réservoir est disponible et que son besoin restant est supérieur à zéro.
+
+---
+
+## DEC-050 — Shortfall explicite
+
+**Version :** 1.0
+**Date :** 14 juillet 2026
+**Statut :** UNDER_REVIEW
+
+**Décision proposée :**
+
+Un réservoir vide avant l’atteinte de la cible produit un écart explicite.
+
+Cet écart ne doit jamais être transformé silencieusement en objectif atteint.
+
+---
+
+# Statut — Version 1.2
+
+| Section                   | Avancement |
+| ------------------------- | ---------: |
+| Mission                   |      100 % |
+| Position dans le pipeline |      100 % |
+| Responsabilités           |      100 % |
+| Interdictions             |      100 % |
+| Entrées                   |      100 % |
+| Sorties                   |      100 % |
+| Slots Blueprint lus       |       75 % |
+| Slots Blueprint écrits    |      100 % |
+| Données internes          |      100 % |
+| États internes            |      100 % |
+| Mécanismes                |      100 % |
+| Communication             |      100 % |
+| Contrats                  |      100 % |
+| Transitions               |      100 % |
+| Cas limites               |      100 % |
+| Persistance               |       75 % |
+| Validation                |       75 % |
+| Tests                     |       75 % |
+| Architecture Register     |      100 % |
+
+```text
+Architecture :      75 %
+Contrat :           75 %
+Implémentation :    20 %
+Validation :        20 %
+
+Statut :
+EN CONCEPTION
+
+Version documentaire :
+1.2 — UNDER_REVIEW
+
+Implantation :
+INTERDITE
+```

@@ -1,11 +1,13 @@
 # STRATEGYBUZZER — MÉCANISME EXACT DU KERNELROTATIONPLANNER
 
-**Version :** 2.0
-**Date :** 28 juillet 2026
+**Version :** 2.1
+**Date :** 12 août 2026
 **Spécification écrite :** OUI
 **Statut :** UNDER_REVIEW
 **Implantation :** à confirmer après raccordement terminal
 **Validation :** à confirmer après audit
+
+Ce document intègre le **Correctif v1.2** (14 juillet 2026) : compte à rebours par domaine, double condition de sélection, SHORTFALL, DepthProductionState, KRP-023→030, DEC-047→050.
 
 Ce document remplace intégralement la version 1.4.
 
@@ -88,11 +90,9 @@ Responsabilités (périmètre KRP strictement) :
 
 Interdictions absolues (hors périmètre KRP) :
 
-* ne jamais charger `dominant_idea` (→ IdeaSlotLoader, spec future) ;
-* ne jamais exécuter KLD (→ KeyLearningDirection, spec future) ;
-* ne jamais exécuter KEY_STRUCTURE (→ spec future) ;
-* ne jamais appeler `confirmConsumed()` (→ responsabilité KLD+KEY_STRUCTURE, spec future) ;
-* ne jamais exécuter Phase 1 / Validation 1 / Phase 2 / Validation 2.
+* ne jamais exécuter Phase 1 / Validation 1 / Phase 2 / Validation 2 ;
+* ne jamais exécuter QuestionIntent (→ pipeline intellectuel aval) ;
+* ne jamais décider lui-même du Depth ou du Domaine.
 
 ## 2.3 KernelRotationPlanner
 
@@ -215,8 +215,8 @@ Sortie possible :
 
 KRP ne sait pas ce que Taxonomy fait en interne.
 KRP ne reçoit pas et n'inspecte pas `dominant_idea_active`.
-Les modules qui traitent `dominant_idea_active` (IdeaSlotLoader, KLD, KEY_STRUCTURE)
-appartiennent au pipeline intellectuel, hors périmètre KRP.
+Les modules qui traitent `dominant_idea_active` appartiennent au pipeline intellectuel
+(QuestionIntent et suites), hors périmètre KRP.
 
 ## TaxonomyResult = TERRITORY_PROVIDED | EMPTY
 
@@ -852,7 +852,7 @@ Le code V2 ne doit plus utiliser :
 
 ```text
 ALLOWED_DEPTHS = [4,6,7,8,9]
-DEPTH_TARGETS en noyaux
+DEPTH_TARGETS en noyaux (ancienne forme scalaire par Depth sans ventilation domaine)
 current_domain_index
 completed_domains
 last_rotation_identifier
@@ -861,15 +861,12 @@ remaining_kernels
 chooseDepth par déficit maximal
 advanceDomainIndex
 depth_position / domain_position
-AVAILABLE
-TARGET_COMPLETE
-RESERVOIR_EMPTY
-EMPTY_BEFORE_TARGET
-kernel_target (par Domaine)
-kernel_remaining
-reservoir_status_by_depth_and_domain
 WAITING_TAXONOMY_STATE
 ```
+
+Note : `kernel_target`, `kernel_remaining`, `reservoir_status`, `AVAILABLE`, `TARGET_COMPLETE`,
+`RESERVOIR_EMPTY`, `SHORTFALL` ont été réintroduits par le Correctif v1.2 (voir §20–§24).
+Ils ne sont plus legacy — ils font partie du contrat de production en cours de spécification.
 
 Colonnes et méthodes legacy conservées physiquement pour le retour arrière.
 
@@ -1020,6 +1017,65 @@ Conséquences :
 * Même sur `PRODUCTION_ON_HOLD`, le Blueprint est créé avant que KRP constate
   l'absence de besoin.
 
+## KRP-023 — Compteur par couple
+
+Chaque couple `Depth + Domaine` possède un objectif, un nombre reçu et un nombre restant.
+
+```text
+kernel_remaining = kernel_target - kernel_received
+```
+
+## KRP-024 — Décrémentation par ReadyBank
+
+Le compteur diminue uniquement lorsque ReadyBank confirme la réception canonique d'un noyau
+(`CURRENT_KERNEL_RECEIVED`).
+
+La création d'un Blueprint ne réduit jamais le compteur.
+
+## KRP-025 — Comptabilisation unique
+
+Un même `kernel_code` ne peut jamais être comptabilisé deux fois.
+
+## KRP-026 — Double condition de sélection
+
+Un domaine est sélectionnable uniquement si :
+
+```text
+kernel_remaining > 0
+AND
+reservoir_status = AVAILABLE
+```
+
+## KRP-027 — Objectif atteint
+
+Un domaine atteint son objectif lorsque `kernel_remaining = 0`.
+
+Il est retiré de la rotation, même si Taxonomy possède encore du contenu.
+
+## KRP-028 — Réservoir vide avant cible
+
+Un réservoir vide avec un compteur supérieur à zéro produit un `SHORTFALL`.
+
+Il ne constitue pas un objectif atteint.
+
+## KRP-029 — Complétude normale du Depth
+
+Un Depth est normalement complété lorsque tous les compteurs de ses domaines sont à zéro.
+
+```text
+DEPTH_TARGET_COMPLETE
+```
+
+## KRP-030 — État distinct d'épuisement incomplet
+
+L'épuisement de tous les réservoirs avec des compteurs non nuls produit :
+
+```text
+DEPTH_RESERVOIRS_EXHAUSTED_WITH_SHORTFALL
+```
+
+Ces deux états ne doivent jamais être confondus.
+
 ---
 
 # 19. Migrations
@@ -1041,6 +1097,242 @@ Aucune migration ne modifie :
 `question_groups`, `question_translations`, `taxonomy_progress`, `kernel_rotation_state` (legacy), tables BankWorker, Redis BankWorker.
 
 Aucun `DROP COLUMN` dans cette série.
+
+---
+
+# 20. Compte à rebours par domaine
+
+*(Correctif v1.2 — UNDER_REVIEW)*
+
+Le KernelRotationPlanner conserve, pour chaque couple `Depth + Domaine`, un compte à rebours distinct.
+
+Structure :
+
+```text
+kernel_target     — objectif officiel de noyaux pour ce couple
+kernel_received   — noyaux réellement reçus par ReadyBank
+kernel_remaining  — kernel_target - kernel_received
+```
+
+La décrémentation suit exactement le même canal que KRP-R02 :
+
+```text
+Blueprint créé → Taxonomy → QuestionIntent → Phase 1 → Phase 2
+→ ReadyBank reçoit le noyau canonique
+→ CURRENT_KERNEL_RECEIVED
+→ KernelRotationPlanner : kernel_received + 1 / kernel_remaining - 1
+```
+
+Le compteur ne diminue lors d'aucune étape antérieure à la réception canonique par ReadyBank.
+
+Taxonomy communique en parallèle l'état de chaque réservoir :
+
+```text
+reservoir_status = AVAILABLE   — le domaine peut encore alimenter un Blueprint
+reservoir_status = EMPTY       — le réservoir ne contient plus d'unité exploitable
+```
+
+---
+
+# 21. DepthProductionState
+
+*(Correctif v1.2 — UNDER_REVIEW)*
+
+Structure conceptuelle conservée par KernelRotationPlanner pour chaque couple :
+
+```text
+depth
+domain
+kernel_target
+kernel_received
+kernel_remaining
+reservoir_status
+rotation_status
+last_received_kernel
+```
+
+Exemple :
+
+```text
+depth                = 4
+domain               = Histoire
+kernel_target        = 50
+kernel_received      = 37
+kernel_remaining     = 13
+reservoir_status     = AVAILABLE
+rotation_status      = SELECTABLE
+last_received_kernel = HI04...
+```
+
+---
+
+# 22. États d'un couple Depth + Domaine
+
+*(Correctif v1.2 — UNDER_REVIEW)*
+
+```text
+PENDING           — le couple n'a pas encore été activé
+AVAILABLE         — kernel_remaining > 0 et reservoir AVAILABLE
+ACTIVE            — un Blueprint est actuellement produit pour ce couple
+TARGET_COMPLETE   — kernel_remaining = 0 (objectif atteint)
+RESERVOIR_EMPTY   — Taxonomy indique que le réservoir est épuisé
+SHORTFALL         — réservoir EMPTY alors que kernel_remaining > 0
+```
+
+Un domaine est sélectionnable uniquement si les deux conditions suivantes sont vraies :
+
+```text
+DOMAIN_SELECTABLE = kernel_remaining > 0 AND reservoir_status = AVAILABLE
+```
+
+Un domaine dont le compteur est à zéro est retiré de la rotation **même si** Taxonomy possède
+encore du contenu disponible pour ce couple. Le contenu excédentaire reste dans Taxonomy pour
+une décision architecturale future.
+
+Un domaine dont le réservoir est EMPTY **avant** d'atteindre sa cible produit un écart explicite :
+
+```text
+RESERVOIR_EMPTY_BEFORE_TARGET
+```
+
+Exemple d'écart :
+
+```text
+kernel_target    = 50
+kernel_received  = 43
+kernel_remaining = 7
+reservoir_status = EMPTY
+→ Domaine indisponible — Écart de production : 7 noyaux
+```
+
+Le KernelRotationPlanner conserve cet écart ; il ne l'efface pas et ne le comble pas par
+une autre source.
+
+---
+
+# 23. Condition de complétude du Depth
+
+*(Correctif v1.2 — UNDER_REVIEW)*
+
+Deux états distincts, à ne jamais confondre :
+
+## Depth complété normalement
+
+```text
+tous les kernel_remaining = 0
+→ DEPTH_TARGET_COMPLETE
+```
+
+## Depth arrêté par épuisement des réservoirs
+
+```text
+tous les réservoirs = EMPTY
++
+au moins un kernel_remaining > 0
+→ DEPTH_RESERVOIRS_EXHAUSTED_WITH_SHORTFALL
+```
+
+Dans ce second cas, le KernelRotationPlanner :
+
+* conserve les objectifs manquants par domaine ;
+* conserve le nombre total de noyaux manquants ;
+* ne déclare jamais une réussite normale ;
+* ne peut pas inventer les noyaux manquants.
+
+---
+
+# 24. Mécanisme complet corrigé — 4 cas
+
+*(Correctif v1.2 — UNDER_REVIEW)*
+
+## Cas 1 — Domaines encore sélectionnables dans le Depth
+
+```text
+Profil exemple (Depth 4) :
+Géographie  remaining=0   AVAILABLE   → non sélectionnable (cible atteinte)
+Histoire    remaining=13  AVAILABLE   → sélectionnable
+Faune       remaining=0   EMPTY       → non sélectionnable
+Art         remaining=9   AVAILABLE   → sélectionnable
+```
+
+KRP conserve le Depth 4, poursuit le DomainCycle, ignore les domaines non sélectionnables,
+sélectionne le prochain domaine où la double condition est vraie.
+
+## Cas 2 — Réservoir vide avant la cible
+
+```text
+Cinéma  kernel_remaining=4  reservoir_status=EMPTY
+```
+
+KRP retire Cinéma de la rotation, conserve `kernel_remaining=4`,
+inscrit `RESERVOIR_EMPTY_BEFORE_TARGET`, poursuit avec le prochain domaine sélectionnable.
+
+## Cas 3 — Tous les compteurs à zéro
+
+```text
+Tous les kernel_remaining = 0
+→ DEPTH_TARGET_COMPLETE
+```
+
+KRP : ferme le Depth, avance vers le prochain Depth, réinitialise le DomainCycle,
+charge les objectifs du nouveau Depth, utilise l'état des réservoirs Taxonomy correspondants.
+
+## Cas 4 — Tous les réservoirs vides, certains compteurs > 0
+
+```text
+Tous les réservoirs = EMPTY
+Histoire remaining=3, Art remaining=2, Science remaining=4
+→ DEPTH_RESERVOIRS_EXHAUSTED_WITH_SHORTFALL
+```
+
+KRP conserve les objectifs manquants et les domaines concernés.
+Cette situation doit être traitée par la validation du mécanisme de production.
+Elle ne doit jamais être transformée silencieusement en réussite.
+
+## Algorithme complet corrigé
+
+```text
+1. Charger le Depth actif.
+
+2. Charger, pour chaque domaine :
+      kernel_target / kernel_received / kernel_remaining
+
+3. Recevoir de Taxonomy : état de chaque réservoir (AVAILABLE | EMPTY).
+
+4. Identifier les domaines sélectionnables :
+      kernel_remaining > 0 ET reservoir_status = AVAILABLE
+
+5. S'il existe un domaine sélectionnable :
+      poursuivre le DomainCycle
+      choisir le prochain domaine sélectionnable
+      créer un nouveau KernelBlueprint (via KernelBlueprintFactory)
+      écrire depth + domain
+      transmettre le contexte à Taxonomy
+
+6. Le Blueprint traverse le pipeline.
+
+7. ReadyBank reçoit le noyau canonique.
+
+8. ReadyBank transmet CURRENT_KERNEL_RECEIVED.
+
+9. KernelRotationPlanner :
+      incrémente kernel_received
+      décrémente kernel_remaining
+      empêche une seconde comptabilisation du même kernel_code.
+
+10. Taxonomy transmet l'état actualisé des réservoirs.
+
+11. KernelRotationPlanner recalcule les domaines sélectionnables.
+
+12. Si tous les compteurs sont à zéro :
+      DEPTH_TARGET_COMPLETE — passer au prochain Depth.
+
+13. Si tous les réservoirs sont vides mais certains compteurs > 0 :
+      DEPTH_RESERVOIRS_EXHAUSTED_WITH_SHORTFALL
+      conserver les écarts — ne pas déclarer une réussite normale.
+
+14. Sinon : sélectionner le prochain couple sélectionnable.
+```
 
 ---
 
@@ -1178,3 +1470,56 @@ Quatre états techniques : `CREATED_UNENGAGED`, `ENGAGED_IN_PIPELINE`, `READY_BA
 **Statut :** OFFICIAL
 
 KRP n'écrit jamais `kernel_code`. `kernel_code = null` à la sortie de KRP.
+
+---
+
+## DEC-047 — Compte à rebours par domaine
+
+**Version :** 1.0
+**Date :** 14 juillet 2026
+**Statut :** UNDER_REVIEW
+
+KernelRotationPlanner conserve un compte à rebours distinct pour chaque couple `Depth + Domaine`.
+
+```text
+kernel_remaining = kernel_target - kernel_received
+```
+
+---
+
+## DEC-048 — ReadyBank décrémente le besoin de production
+
+**Version :** 1.0
+**Date :** 14 juillet 2026
+**Statut :** UNDER_REVIEW
+
+Le besoin restant diminue uniquement après `CURRENT_KERNEL_RECEIVED`.
+
+La création d'un Blueprint ne réduit jamais le compteur.
+
+---
+
+## DEC-049 — Taxonomy et compteur indépendants
+
+**Version :** 1.0
+**Date :** 14 juillet 2026
+**Statut :** UNDER_REVIEW
+
+Taxonomy indique la disponibilité réelle du réservoir (`reservoir_status`).
+
+KernelRotationPlanner indique le besoin restant de production (`kernel_remaining`).
+
+Un domaine est sélectionnable seulement lorsque le réservoir est `AVAILABLE`
+et que son besoin restant est supérieur à zéro.
+
+---
+
+## DEC-050 — Shortfall explicite
+
+**Version :** 1.0
+**Date :** 14 juillet 2026
+**Statut :** UNDER_REVIEW
+
+Un réservoir vide avant l'atteinte de la cible produit un écart explicite (`SHORTFALL`).
+
+Cet écart ne doit jamais être transformé silencieusement en objectif atteint.
