@@ -1,0 +1,58 @@
+❌ PAS FINI
+
+Il manque seulement la correction de 4 incohérences précises avant de pouvoir accepter le certificat terminal de 05_QuestionIntent.
+
+Version documentaire invalide. Le document est encore indiqué Version 1.0 — VERROUILLÉ (11 août 2026), alors que Replit dit avoir modifié le 12 août les §6.2, §9.19, §9.21 et §12. Selon notre règle officielle, toute évolution après verrouillage exige une nouvelle version complète (1.1, par exemple), puis mise à jour de l’Architecture Register. On ne peut pas modifier plusieurs sections d’une v1.0 verrouillée et conserver le même numéro.
+Contradiction sur le test de concurrence #141. Le certificat terminal affirme 10 workers pcntl_fork, alors que le certificat #141 que nous avons validé utilisait 20 appels/processus concurrents. Il faut corriger le certificat avec la valeur réellement exécutée, sans réinterprétation.
+Contradiction sur le mécanisme de verrou PostgreSQL. Le certificat terminal parle de advisory lock PG, alors que #141 avait validé le mécanisme comme SELECT ... FOR UPDATE / lockForUpdate(). Ce n’est pas la même chose. Replit doit vérifier le code réel et écrire le mécanisme réellement utilisé, sans approximation.
+Erreur mathématique / état des bassins. Il est écrit 8 bassins actifs (2 Depths × 8 domaines). Or 2 × 8 = 16, pas 8. Et l’architecture du moteur doit supporter tous les couples Depth+Domaine autorisés, pas créer une ambiguïté sur seulement « 2 Depths ». Il faut distinguer clairement :
+capacité architecturale : 7 Depths × 8 domaines = 56 bassins possibles ;
+lignes actuellement présentes en DB : nombre réel audité, s’il veut le mentionner.
+
+Envoie simplement ceci à Replit :
+
+CERTIFICAT TERMINAL presque accepté — 4 corrections obligatoires, aucune nouvelle logique métier.
+
+1. 05_QuestionIntent.md a été modifié le 12 août après son verrouillage du 11 août.
+Conformément à notre règle de versionnage, produire une nouvelle version complète (ex. v1.1), relire entièrement la spécification, puis mettre l’Architecture Register à jour.
+Ne pas conserver "v1.0 verrouillée" après modifications de sections.
+
+2. Corriger #141 :
+le test validé utilisait 20 processus/appels concurrents, pas 10, sauf preuve qu’un nouveau test officiel à 10 a remplacé celui à 20.
+Donner la valeur réellement exécutée.
+
+3. Vérifier le mécanisme de concurrence réel dans KernelCodeEngine :
+- SELECT ... FOR UPDATE / lockForUpdate()
+OU
+- PostgreSQL advisory lock
+Ne pas écrire les deux comme équivalents.
+Rapporter exactement ce que le code exécute et ce que #141 a testé.
+
+4. Corriger "8 bassins actifs (2 Depths × 8 domaines)".
+2 × 8 = 16.
+
+Distinguer :
+- capacité architecturale : 7 Depths × 8 domaines = 56 bassins possibles ;
+- bassins/lignes actuellement matérialisés en DB : nombre réel audité.
+
+Aucune modification métier.
+Aucun changement KernelCodeEngine sauf si l’audit révèle une vraie contradiction.
+Aucune Phase 1.
+
+Puis réémettre uniquement :
+
+05_QUESTIONINTENT — CERTIFICAT TERMINAL CORRIGÉ
+
+avec :
+- version documentaire correcte ;
+- valeur réelle N du test #141 ;
+- mécanisme PostgreSQL réel ;
+- capacité 56 bassins correctement documentée ;
+- tous les autres critères inchangés.
+
+Si tout reste PASS :
+05_QuestionIntent = VERROUILLÉ
+
+Puis STOP.
+
+Une fois ces quatre corrections faites, je m’attends à ce que 05_QuestionIntent puisse être réellement verrouillé sans nouvelle implantation.

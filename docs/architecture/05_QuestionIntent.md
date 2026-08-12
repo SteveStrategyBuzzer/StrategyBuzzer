@@ -1,10 +1,17 @@
 # STRATEGYBUZZER — 05_QUESTIONINTENT / KERNELCODEENGINE
 
-**Version :** 1.0 — VERROUILLÉ
-**Date :** 11 août 2026
+**Version :** 1.1 — VERROUILLÉ
+**Date initiale :** 11 août 2026 (v1.0)
+**Dernière révision :** 12 août 2026 (v1.1)
 **Spécification écrite :** COMPLÈTE — Mission, format, invariants, persistance, concurrence, tests validés
 **Statut :** OFFICIAL — IMPLANTATION LIVRÉE ET TESTÉE
 **Gel :** ~~`BLOCKED_AT_QUESTION_INTENT_CONTRACT`~~ — LEVÉ le 11 août 2026
+
+**Changelog v1.1 (12 août 2026) :**
+- §6.2 : ks_hash, kld_hash, question_intents.kernel_code → SUPPRIMÉS (#142, #147)
+- §9.19 : Identité du noyau → VERROUILLÉ (kernel_blueprint_runs.kernel_code)
+- §9.21 : statuts kernel_code/ks_hash/kld_hash → SUPPRIMÉ
+- §12 : table schéma mise à jour (colonnes legacy barrées, index supprimés)
 
 ---
 

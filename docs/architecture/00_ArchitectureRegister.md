@@ -311,7 +311,7 @@ KRP n'écrit jamais `kernel_code`. `kernel_code = null` à la sortie de KRP.
 **Version :** 1.0
 **Date :** 11 août 2026
 **Statut :** OFFICIAL
-**Module :** `05_QuestionIntent.md`
+**Module :** `05_QuestionIntent.md` — v1.1 (12 août 2026)
 
 KernelCodeEngine reçoit le KernelBlueprint dont le territoire intellectuel a été entièrement déterminé et validé, construit son kernel_code canonique selon la structure officielle StrategyBuzzer, attribue un suffixe séquentiel unique dans le bassin (Depth + Domaine), écrit ce kernel_code dans le KernelBlueprint et rend cette identité immuable. KernelCodeEngine ne modifie aucune composante intellectuelle du noyau et ne détermine aucun traitement cognitif de Phase 1.
 
