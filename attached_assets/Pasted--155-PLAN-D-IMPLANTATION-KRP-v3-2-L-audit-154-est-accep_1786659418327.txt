@@ -1,0 +1,388 @@
+#155 — PLAN D'IMPLANTATION KRP v3.2
+
+L'audit #154 est accepté comme base.
+
+Avant tout patch, corrige deux interprétations de l'audit :
+
+==================================================
+CORRECTION A — UN SEUL GATE
+==================================================
+
+GAP-003 est correct :
+le gate appartient à KernelPipelineOrchestrator.
+
+GAP-022 ne doit PAS être implanté comme un second gate autonome
+dans ProcessKernelPipelineOutbox.
+
+ProcessKernelPipelineOutbox doit rester transporteur/orchestrateur
+du traitement de l'Outbox.
+
+Séquence :
+
+ProcessKernelPipelineOutbox
+→ ApplyCurrentKernelReceivedToRotation
+→ KernelPipelineOrchestrator
+
+Puis KernelPipelineOrchestrator est l'UNIQUE propriétaire du gate :
+
+si KRP depth_state = PRODUCTION_ON_HOLD
+→ ne pas appeler KernelBlueprintFactory
+→ retourner résultat terminal/no-next-rotation approprié
+
+sinon
+→ KernelBlueprintFactory
+→ Blueprint
+→ KRP fillRotation
+
+Aucune seconde lecture décisionnelle concurrente de depth_state
+dans ProcessKernelPipelineOutbox.
+
+UNE RESPONSABILITÉ
+=
+UN PROPRIÉTAIRE
+=
+UNE IMPLÉMENTATION ACTIVE.
+
+==================================================
+CORRECTION B — PRODUCTION_ON_HOLD N'EST PAS UN ÉTAT BLUEPRINT
+==================================================
+
+L'état :
+
+NOT_ENGAGED_PRODUCTION_ON_HOLD
+
+actuellement présent dans kernel_blueprint_runs.execution_state
+est une trace de l'ancienne architecture.
+
+Dans KRP v3.2 :
+
+PRODUCTION_ON_HOLD
+=
+état de production/rotation KRP.
+
+Il ne doit PAS devenir :
+
+kernel_blueprint_runs.execution_state = PRODUCTION_ON_HOLD.
+
+En état terminal :
+
+aucun Blueprint n'est créé.
+
+Donc aucun Blueprint ne doit avoir besoin d'être marqué
+PRODUCTION_ON_HOLD.
+
+Le plan doit identifier :
+
+- tous les writers de NOT_ENGAGED_PRODUCTION_ON_HOLD ;
+- tous les readers ;
+- les tests associés ;
+- les éventuelles données historiques existantes ;
+- comment retirer le chemin actif sans violer 01_KernelBlueprint verrouillé.
+
+Ne modifie PAS la spécification 01_KernelBlueprint.
+
+==================================================
+OBJECTIF DU PLAN
+==================================================
+
+Construis maintenant le plan d'implantation complet de KRP v3.2
+à partir des 22 GAP de #154.
+
+AUCUN CODE pour cette étape.
+
+Sépare obligatoirement :
+
+LOT A — KRP AUTONOME
+Implantable sans 03_Taxonomy.
+
+LOT B — KRP PRÉPARABLE
+Le côté KRP du futur contrat peut être implanté/testé
+sans brancher encore Taxonomy.
+
+LOT C — INTÉGRATION TAXONOMY
+Ne peut réellement être connectée qu'après spécification
+et implantation de 03_Taxonomy.
+
+==================================================
+LOT A — À ÉVALUER
+==================================================
+
+Inclure au minimum :
+
+GAP-003
+→ gate unique dans KernelPipelineOrchestrator avant Factory
+
+GAP-006
+→ supprimer toute sortie automatique de PRODUCTION_ON_HOLD
+
+GAP-010
+→ rotation_status → depth_state
+→ ROTATION_ACTIVE | PRODUCTION_ON_HOLD
+
+GAP-012
+→ active_tour_id legacy
+
+GAP-014
+→ KernelRotationStateRepository comme accès persistant canonique
+
+GAP-015
+→ RESULT_PRODUCTION_ON_HOLD conforme
+
+GAP-022
+→ NE PAS créer de gate dans processOne
+→ seulement adapter son interaction au résultat de l'orchestrateur
+si nécessaire
+
+legacy autonomes :
+GAP-008
+GAP-009
+GAP-016
+GAP-017
+GAP-018
+
+==================================================
+LOT B — CÔTÉ KRP PRÉPARABLE
+==================================================
+
+Évalue si KRP peut déjà recevoir et persister conceptuellement :
+
+DOMAIN_EXHAUSTED(depth, domain)
+
+DEPTH_EXHAUSTED(depth)
+
+sans connecter Taxonomy.
+
+Le contrat KRP étant verrouillé, le côté réception/transition KRP
+peut potentiellement être implanté avec tests directs.
+
+Il doit pouvoir tester :
+
+DOMAIN_EXHAUSTED
+→ domain_states[depth][domain] = DOMAIN_EXHAUSTED
+
+réception répétée
+→ idempotente
+
+DEPTH_EXHAUSTED
+→ mémorisation prospective
+
+CURRENT_KERNEL_RECEIVED suivant
+→ prochain Depth
+
+DEPTH_EXHAUSTED(10)
++
+CURRENT_KERNEL_RECEIVED
+→ PRODUCTION_ON_HOLD
+
+Aucune dépendance Gemini/Taxonomy nécessaire pour tester directement
+le récepteur KRP si son interface est correctement isolée.
+
+NE PAS inventer le transport physique depuis Taxonomy.
+
+==================================================
+LOT C — INTÉGRATION APRÈS 03_TAXONOMY
+==================================================
+
+Doit contenir uniquement ce qui exige réellement le producteur Taxonomy :
+
+- émission réelle DOMAIN_EXHAUSTED ;
+- émission réelle DEPTH_EXHAUSTED ;
+- remplacement opérationnel de peekNext()->null ;
+- consommation exacte IdeaSlot ;
+- branchement du signal Taxonomy vers le récepteur KRP.
+
+Ne commence pas ces modifications maintenant.
+
+==================================================
+EMPTY LOOP
+==================================================
+
+Point à analyser soigneusement :
+
+GAP-001 / GAP-002 / GAP-007 sont architecturalement à supprimer.
+
+Mais ne laisse pas un chemin runtime incohérent où :
+
+Taxonomy peekNext() retourne null
+→ aucun mécanisme de remplacement existe
+→ pipeline casse silencieusement.
+
+Le plan doit préciser la séquence de retrait sûre :
+
+ancien EMPTY actif
+→ nouveau récepteur KRP disponible
+→ futur producteur Taxonomy disponible
+→ intégration validée
+→ suppression définitive EMPTY
+
+OU démontrer qu'on peut supprimer EMPTY immédiatement
+sans rendre le chemin actif incomplet.
+
+Ne choisis pas selon commodité.
+Justifie selon le call graph.
+
+==================================================
+CYCLE_TARGET / cycle_completed
+==================================================
+
+Ils sont SUPERSEDED comme autorité.
+
+Le plan doit supprimer leur rôle décisionnel.
+
+Ne conserve aucune logique "reporting éventuel" sans décision officielle.
+
+Si des colonnes doivent temporairement rester pour migration historique :
+
+elles peuvent rester physiquement
+mais avec :
+
+- zéro autorité ;
+- zéro writer métier futur si inutile ;
+- plan explicite de suppression.
+
+==================================================
+PERSISTANCE CIBLE
+==================================================
+
+Le plan doit définir exactement la migration vers :
+
+depth_state :
+ROTATION_ACTIVE | PRODUCTION_ON_HOLD
+
+domain_states :
+{
+  depth: {
+    domain: ACTIF | DOMAIN_EXHAUSTED
+  }
+}
+
+et l'information prospective DEPTH_EXHAUSTED nécessaire
+pour appliquer la transition au prochain CURRENT_KERNEL_RECEIVED.
+
+ATTENTION :
+
+ne crée pas un nouvel état métier DEPTH_EXHAUSTED_PENDING.
+
+La mémorisation prospective peut être une donnée persistante,
+pas un troisième depth_state.
+
+==================================================
+TESTS
+==================================================
+
+Pour chaque lot, indique :
+
+- tests conservés ;
+- tests supprimés ;
+- tests réécrits ;
+- nouveaux tests ;
+- tests de migration ;
+- tests restart/persistance ;
+- tests idempotence ;
+- tests concurrence si nécessaire.
+
+Ne supprime jamais un test simplement parce qu'il échoue.
+
+Il doit être identifié comme :
+
+architecture superseded
+ou
+test à adapter.
+
+==================================================
+RETOUR ATTENDU
+==================================================
+
+Retourne uniquement :
+
+#155 — PLAN D'IMPLANTATION KRP v3.2
+
+LOT A — AUTONOME
+1.
+2.
+...
+
+Fichiers touchés:
+...
+
+Migrations:
+...
+
+Tests:
+...
+
+LOT B — CÔTÉ KRP PRÉPARABLE
+1.
+2.
+...
+
+Interface/récepteur KRP proposé:
+...
+
+Persistance prospective DEPTH_EXHAUSTED:
+...
+
+Tests directs sans Taxonomy:
+...
+
+LOT C — APRÈS 03_TAXONOMY
+1.
+2.
+...
+
+Gate propriétaire unique:
+...
+
+ProcessKernelPipelineOutbox possède un gate:
+NON / OUI
+
+PRODUCTION_ON_HOLD appartient à:
+KRP / Blueprint / autre
+
+Blueprint execution_state PRODUCTION_ON_HOLD futur:
+INTERDIT / autre
+
+EMPTY loop — moment de suppression:
+...
+
+CYCLE_TARGET autorité après patch:
+AUCUNE / autre
+
+cycle_completed autorité après patch:
+AUCUNE / autre
+
+DomainExhaustionChecker PULL final:
+SUPPRIMÉ / autre
+
+Repository canonique:
+...
+
+Ordre exact des patches:
+1.
+2.
+3.
+...
+
+Étape pouvant être implantée immédiatement:
+...
+
+Étape bloquée par 03_Taxonomy:
+...
+
+Risque de casser le runtime entre les lots:
+OUI/NON
+Si OUI:
+...
+
+Implémentation effectuée:
+NON
+
+VERDICT:
+PLAN PRÊT POUR REVIEW / INCOMPLET
+
+Puis STOP.
+
+Aucun code.
+Aucune migration appliquée.
+Aucun test modifié.
+Aucun 03_Taxonomy.
