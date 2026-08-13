@@ -1,0 +1,398 @@
+1. Ne surtout pas démarrer 03_Taxonomy
+
+Sa tâche #152 dit en substance :
+
+03_Taxonomy doit trancher D1, D2, D3
+pour terminer KRP
+
+C’est contraire à notre méthode.
+
+L’ordre est :
+
+02_KernelRotationPlanner
+↓
+100 % spécifié
+↓
+VERROUILLÉ
+↓
+implantation
+↓
+validation
+↓
+03_Taxonomy
+
+Taxonomy ne peut pas devenir le module qui termine la spécification KRP.
+
+2. D1 n’est plus un blocker architectural KRP
+
+Replit demande encore :
+
+valeur de retour / Outbox / table intermédiaire ?
+
+Ce choix est trop technique pour empêcher le contrat KRP d’être complet.
+
+Ce que KRP doit verrouiller est le contrat sémantique d’entrée :
+
+Taxonomy constate après consommation exacte :
+
+DOMAIN_EXHAUSTED(depth, domain)
+ou
+DEPTH_EXHAUSTED(depth)
+
+↓ immédiatement
+
+la couche d'orchestration transmet l'information
+à l'état de rotation KRP
+
+↓
+KRP mémorise la modification pour la rotation FUTURE
+
+↓
+aucune nouvelle rotation n'est exécutée avant
+CURRENT_KERNEL_RECEIVED
+
+Donc :
+
+QUI produit l'information ?
+Taxonomy
+
+QUI possède la rotation ?
+KRP
+
+QUI transporte ?
+Orchestration
+
+QUAND l'information devient disponible ?
+Immédiatement après consommation exacte
+
+QUAND elle influence effectivement un nouveau Blueprint ?
+Au prochain CURRENT_KERNEL_RECEIVED
+
+Que l’implantation utilise ensuite une méthode directe, un événement ou l’Outbox peut être décidé pendant l’audit d’implantation, à condition que les garanties d’ordre, d’atomicité et d’idempotence respectent ce contrat.
+
+Donc :
+
+D1 = CONTRAT ARCHITECTURAL RÉSOLU
+transport physique = détail d'implantation à auditer
+3. D3 n’est pas une responsabilité KRP
+
+Replit demande :
+
+KRP attend Taxonomy :
+timeout / retry / alerte ?
+
+Mauvais cadrage.
+
+KRP a déjà terminé sa responsabilité après :
+
+fillRotation(depth, domain)
+
+Ensuite :
+
+Blueprint avec depth/domain
+↓
+Taxonomy prépare son réservoir si nécessaire
+↓
+Taxonomy complète son travail
+
+KRP n’attend pas activement Taxonomy.
+
+Le timeout, retry, panne Gemini, préparation longue, reprise de génération, etc. appartiendront à :
+
+Taxonomy
++
+orchestration du pipeline
+
+Donc :
+
+D3 = RETIRÉ DES BLOCKERS KRP
+→ à spécifier dans 03_Taxonomy
+
+Ça ne bloque pas 02_KernelRotationPlanner.
+
+4. D2 est le seul vrai choix architectural encore ouvert
+
+Celui-ci appartient réellement à KRP :
+
+DEPTH_EXHAUSTED(10)
+↓
+il n'existe plus de prochain Depth
+↓
+que fait la création intellectuelle ?
+
+C’est la seule décision que je considère encore réellement à trancher par nous.
+
+Les possibilités principales sont :
+
+A — arrêt de production
+B — mise en attente jusqu'à nouvelle matière
+C — retour automatique Depth 2
+
+Je déconseille fortement C tant qu’on ne définit pas une régénération Taxonomy, sinon KRP reviendrait sur des banques déjà épuisées.
+
+La solution la plus cohérente semble être :
+
+DEPTH_EXHAUSTED(10)
+→ cycle intellectuel épuisé
+→ aucune nouvelle rotation automatique
+→ production mise en attente
+
+Mais je ne la transformerais pas en décision OFFICIAL sans ton accord.
+
+5. Problème dans les DEC
+
+Replit doit corriger son Register avant #150.
+
+Il écrit à la fois :
+
+DEC-088
+= nouvelle décision UNDER_REVIEW
+sur CYCLE_TARGET
+
+et :
+
+SUPERSEDED : DEC-088 (partiel)
+
+Impossible. Une nouvelle décision ne peut pas se superseder elle-même.
+
+Autre problème :
+
+AVAILABLE → REJETÉ — DEC-086
+DepthProductionState → REJETÉ — DEC-086 zone
+
+Il faut vérifier précisément ce que décide DEC-086. Une décision permanente doit avoir un objet clair, pas devenir une « zone » où plusieurs concepts sont rangés.
+
+Et surtout :
+
+DEC-061
+
+contenait auparavant plusieurs notions, dont les 8 domaines officiels et Général exclu. Il ne faut pas la marquer globalement SUPERSEDED et accidentellement faire disparaître une partie encore officielle.
+
+Si une ancienne DEC contient à la fois du contenu conservé et remplacé, la nouvelle décision doit réénoncer explicitement ce qui reste officiel avant de superseder l’ancienne.
+
+6. DomainExhaustionChecker legacy : ne pas « conserver »
+
+Replit écrit :
+
+DomainExhaustionChecker::isExhausted()
+LEGACY PULL
+(conserver)
+
+Non.
+
+Notre nouvelle architecture est :
+
+Taxonomy
+→ connaît son propre inventaire
+→ détecte elle-même l'épuisement
+→ PUSH prospectif vers KRP
+
+Donc l’ancien modèle :
+
+KRP → Taxonomy :
+« es-tu épuisée ? »
+
+est une architecture parallèle.
+
+Il peut rester temporairement dans le code jusqu’au patch, mais l’objectif d’implantation doit être :
+
+nouveau PUSH opérationnel
+↓
+ancien PULL sans consommateur officiel
+↓
+suppression
+
+Pas « conserver ».
+
+7. kernel_target, kernel_remaining, SHORTFALL
+
+Il faut aussi enlever les formulations ambiguës du genre :
+
+kernel_target rejeté comme autorité
+mais pourrait servir au reporting
+
+kernel_remaining rejeté
+mais formule conservée pour traçabilité éventuelle
+
+Cela recrée exactement des données sans propriétaire « au cas où ».
+
+Pour KRP v3.0 :
+
+kernel_target comme mécanisme KRP → REJETÉ
+kernel_remaining comme mécanisme KRP → REJETÉ
+AVAILABLE → REJETÉ
+SHORTFALL → REJETÉ
+DepthProductionState → REJETÉ si aucune autre responsabilité démontrée
+
+S’ils deviennent utiles un jour pour des statistiques, une décision future les réintroduira avec un propriétaire clair.
+
+Ce que je dirais à Replit maintenant
+STOP.
+
+Ne lance ni #150, ni #151, ni #152.
+
+La reconstruction KRP v3.0 est proche, mais doit être corrigée avant REVIEW final.
+
+1. D1 — RECLASSER COMME RÉSOLU ARCHITECTURALEMENT
+
+Contrat :
+
+Taxonomy produit immédiatement après consommation exacte :
+
+DOMAIN_EXHAUSTED(depth, domain)
+ou
+DEPTH_EXHAUSTED(depth)
+
+La couche d'orchestration transmet ce signal à l'état KRP.
+
+KRP mémorise la modification uniquement pour les rotations futures.
+
+La modification ne provoque PAS immédiatement un nouveau Blueprint.
+
+CURRENT_KERNEL_RECEIVED reste le seul déclencheur de la prochaine rotation.
+
+Le choix physique :
+appel direct / Outbox / événement / autre
+est un détail d'implantation à choisir plus tard selon atomicité,
+ordre et idempotence.
+
+Donc D1 ne bloque plus la spécification KRP.
+
+2. D3 — RETIRER DES DÉCISIONS KRP
+
+KRP n'attend pas Taxonomy.
+
+KRP termine sa responsabilité après écriture write-once :
+
+depth + domain
+
+La préparation Taxonomy, ses timeout/retry/erreurs appartiennent
+à 03_Taxonomy + orchestration.
+
+D3 ne bloque donc PAS KRP.
+
+3. D2 — RESTE LA SEULE DÉCISION ARCHITECTURALE OUVERTE
+
+DEPTH_EXHAUSTED(10)
+→ aucun prochain Depth.
+
+Ne décide rien automatiquement.
+
+Rapporte ce point comme SEUL BLOCKER MÉTIER restant.
+
+4. Corriger l'Architecture Register avant tout enregistrement central :
+
+- DEC-088 ne peut pas être à la fois nouvelle décision et SUPERSEDED par elle-même.
+- auditer précisément DEC-086 : un identifiant = une décision claire.
+- auditer DEC-061 avant supersession globale :
+  préserver explicitement les éléments toujours officiels
+  (8 domaines créateurs, Général exclu, etc.).
+- mapper individuellement DEC-078, 079, 080, 081 :
+  OFFICIAL / SUPERSEDED / REJECTED / UNDER_REVIEW.
+  Pas de statut collectif ambigu.
+
+5. DomainExhaustionChecker::isExhausted() LEGACY PULL
+
+Ne pas écrire "conserver".
+
+Statut architectural :
+
+SUPERSEDED / À RETIRER lorsque le nouveau mécanisme PUSH
+DOMAIN_EXHAUSTED / DEPTH_EXHAUSTED est implanté et validé.
+
+Aucune architecture parallèle finale.
+
+6. Nettoyer les concepts sans propriétaire :
+
+AVAILABLE
+→ REJECTED
+
+SHORTFALL
+→ REJECTED
+
+kernel_target comme mécanisme KRP
+→ REJECTED
+
+kernel_remaining comme mécanisme KRP
+→ REJECTED
+
+DepthProductionState
+→ REJECTED sauf responsabilité indépendante explicitement démontrée.
+
+Ne conserve pas ces concepts "pour reporting éventuel".
+Une future décision pourra les recréer si nécessaire.
+
+7. Ne modifie aucun code.
+
+8. Ne commence pas 03_Taxonomy.
+
+Retourne uniquement :
+
+02_KRP — REVIEW CORRECTIF v3.0
+
+D1 contrat sémantique:
+RÉSOLU / NON
+
+Transport technique:
+DÉTAIL D'IMPLANTATION / BLOCKER
+
+D3 attente Taxonomy:
+HORS RESPONSABILITÉ KRP / autre
+
+Seule décision métier ouverte:
+...
+
+DEC-061 audit:
+...
+
+DEC-078:
+...
+
+DEC-079:
+...
+
+DEC-080:
+...
+
+DEC-081:
+...
+
+DEC-082→088 cohérence:
+PASS/FAIL
+
+DEC auto-superseded:
+AUCUNE / ...
+
+DomainExhaustionChecker legacy:
+À RETIRER APRÈS REMPLACEMENT / autre
+
+AVAILABLE:
+REJECTED
+
+SHORTFALL:
+REJECTED
+
+kernel_target KRP:
+REJECTED
+
+kernel_remaining KRP:
+REJECTED
+
+DepthProductionState:
+...
+
+Architecture parallèle finale prévue:
+AUCUNE
+
+Implémentation:
+NON
+
+BLOCKER RESTANT:
+DEPTH_EXHAUSTED(10) / autre
+
+VERDICT:
+PRÊTE POUR DÉCISION FINALE / INCOMPLÈTE
+
+Puis STOP.
+
+Après ce retour, il devrait normalement ne rester qu’une seule vraie question à toi : que doit faire la création intellectuelle quand Taxonomy annonce que le Depth 10 entier est épuisé. Une fois ce point tranché, on pourra viser le verrouillage complet de KRP avant de toucher à Taxonomy.
