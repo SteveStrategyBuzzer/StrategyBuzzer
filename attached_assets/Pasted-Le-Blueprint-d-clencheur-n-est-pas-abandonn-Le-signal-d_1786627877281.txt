@@ -1,0 +1,218 @@
+Le Blueprint déclencheur n'est pas abandonné
+
+Le signal de Taxonomy est pour la rotation suivante, pas pour invalider le Blueprint courant.
+
+Exemple :
+
+Blueprint A
+↓
+KRP
+Depth 2 + Géographie
+↓
+Taxonomy prend la dernière matière encore disponible
+pour Géographie / Depth 2
+↓
+Taxonomy peut compléter Blueprint A normalement
+↓
+Taxonomy constate ensuite :
+« Géographie est maintenant épuisée »
+↓
+DOMAIN_EXHAUSTED envoyé/mémorisé pour KRP
+↓
+Blueprint A continue normalement
+↓
+QuestionIntent
+↓
+...
+↓
+ReadyBank
+↓
+CURRENT_KERNEL_RECEIVED
+↓
+nouveau Blueprint B
+↓
+KRP sait désormais :
+Géographie retirée
+↓
+il passe au prochain domaine encore actif
+
+Donc ce n'est ni la lecture A ni la lecture B formulée par Replit.
+
+C'est une troisième lecture :
+
+Lecture C — signal prospectif
+
+Taxonomy réussit à traiter le Blueprint courant.
+
+Puis, après avoir consommé ce qu'il fallait pour ce Blueprint, elle constate l'état restant de sa banque.
+
+Elle peut alors dire :
+
+DOMAIN_EXHAUSTED
+= ce domaine vient d'être épuisé
+= ne me l'attribue plus aux prochains Blueprints
+
+Le Blueprint qui a consommé la dernière donnée valide reste parfaitement valide.
+
+Même logique pour le changement de Depth
+
+Supposons qu'il ne reste plus que Science au Depth 2.
+
+Blueprint X
+↓
+KRP
+Depth 2 + Science
+↓
+Taxonomy consomme la dernière matière disponible
+du dernier domaine encore actif
+↓
+Blueprint X est produit normalement
+↓
+Taxonomy constate :
+toutes les banques Depth 2 sont maintenant vides
+↓
+DEPTH_EXHAUSTED
+
+Le signal signifie :
+
+pour le PROCHAIN Blueprint :
+ne reste plus au Depth 2
+passe au Depth 4
+
+Puis seulement :
+
+Blueprint X
+↓
+reste du pipeline
+↓
+ReadyBank
+↓
+CURRENT_KERNEL_RECEIVED
+↓
+création Blueprint Y
+↓
+KRP :
+Depth 4
+premier domaine
+
+Il n'y a donc aucun Blueprint orphelin et aucun déclencheur spécial à inventer.
+
+Les trois comportements sont maintenant exactement
+A — Taxonomy ne dit rien
+Blueprint courant produit normalement
+↓
+ReadyBank
+↓
+Blueprint suivant
+↓
+KRP avance automatiquement d'un domaine
+
+Taxonomy n'envoie aucun AVAILABLE.
+
+B — Taxonomy envoie DOMAIN_EXHAUSTED
+Blueprint courant produit normalement
+↓
+Taxonomy :
+« ce domaine vient d'être épuisé »
+↓
+KRP mémorise/reçoit le retrait
+↓
+ReadyBank
+↓
+Blueprint suivant
+↓
+rotation normale en sautant ce domaine
+
+Même Depth.
+
+C — Taxonomy envoie DEPTH_EXHAUSTED
+Blueprint courant produit normalement
+↓
+Taxonomy :
+« toutes les banques de ce Depth sont maintenant vides »
+↓
+ReadyBank
+↓
+Blueprint suivant
+↓
+KRP passe au prochain Depth
+↓
+rotation des 8 domaines du nouveau Depth
+Ce que ça élimine
+
+On n'a plus besoin de :
+
+Taxonomy reçoit un Blueprint impossible
+Blueprint abandonné
+Blueprint réassigné
+overwriteRotation()
+AVAILABLE
+boucle EMPTY sur le même Blueprint
+déclencheur spécial pour recréer un Blueprint
+
+Le modèle est beaucoup plus propre parce que Taxonomy connaît l'état de sa banque après chaque consommation.
+
+Autrement dit :
+
+DOMAIN_EXHAUSTED ne signifie pas « je ne peux pas traiter ce Blueprint ».
+Il signifie « j'ai traité ce Blueprint, mais c'était la dernière possibilité pour ce domaine : ne me l'envoie plus ensuite ».
+
+Et :
+
+DEPTH_EXHAUSTED ne signifie pas « ce Blueprint échoue ».
+Il signifie « ce Blueprint termine la matière disponible de ce Depth : le prochain doit appartenir au Depth suivant ».
+
+Ce qu'il faut répondre à Replit
+Le point ouvert est tranché.
+
+Ni Lecture A ni Lecture B.
+
+LECTURE C — SIGNAL PROSPECTIF APRÈS CONSOMMATION.
+
+Taxonomy traite normalement le Blueprint courant.
+
+Après avoir consommé la matière nécessaire à ce Blueprint, Taxonomy connaît l'état restant de ses banques.
+
+Cas normal :
+Taxonomy ne dit rien.
+Le Blueprint continue jusqu'à ReadyBank.
+CURRENT_KERNEL_RECEIVED déclenche le Blueprint suivant.
+KRP avance automatiquement au domaine suivant.
+
+DOMAIN_EXHAUSTED :
+Le Blueprint courant reste VALIDE et continue normalement.
+Le signal signifie :
+« ce Blueprint vient de consommer la dernière matière disponible de ce domaine pour ce Depth ; ne m'attribue plus ce domaine aux prochains Blueprints ».
+
+KRP retire donc ce domaine de la rotation FUTURE du Depth courant.
+Au retour ReadyBank/CURRENT_KERNEL_RECEIVED, le Blueprint suivant reçoit le prochain domaine encore actif.
+
+DEPTH_EXHAUSTED :
+Le Blueprint courant reste VALIDE et continue normalement.
+Le signal signifie :
+« après cette consommation, toutes les banques des domaines de ce Depth sont maintenant épuisées ».
+
+Au retour ReadyBank/CURRENT_KERNEL_RECEIVED :
+nouveau Blueprint
+→ KRP passe au prochain Depth
+→ rotation recommence sur les domaines du nouveau Depth.
+
+Conséquences :
+
+- aucun Blueprint abandonné ;
+- aucune réaffectation depth/domain ;
+- aucun overwriteRotation();
+- write-once Blueprint préservé ;
+- aucun signal AVAILABLE ;
+- aucun déclencheur spécial hors ReadyBank/CURRENT_KERNEL_RECEIVED ;
+- les signaux Taxonomy modifient uniquement la rotation FUTURE.
+
+DEC-066 / KRP-R18 ancienne logique
+EMPTY → même Blueprint → remplacer depth/domain
+doit être SUPERSEDED.
+
+Ne code rien encore.
+
+Intègre cette décision dans la reconstruction complète de la spécification KRP et identifie maintenant uniquement les décisions qui restent réellement ouvertes.
+
+Là, le cycle Blueprint → KRP → Taxonomy → ... → ReadyBank → Blueprint suivant reste continu sans exception artificielle.
