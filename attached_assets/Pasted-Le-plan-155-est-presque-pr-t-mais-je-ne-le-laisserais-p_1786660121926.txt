@@ -1,0 +1,365 @@
+Le plan #155 est presque prêt, mais je ne le laisserais pas coder tel quel. Il contient 4 corrections nécessaires, dont trois peuvent produire une architecture fausse.
+
+1. BLOQUANT — CURRENT_KERNEL_RECEIVED doit toujours compter le noyau reçu
+
+Le LOT B-3 propose en substance :
+
+si pending_depth_exhausted_depth == null
+→ incrémenter kernel_received
+
+sinon
+→ changer de Depth / PRODUCTION_ON_HOLD
+
+C’est faux.
+
+Même si DEPTH_EXHAUSTED a été signalé, le Blueprint courant vient quand même d’arriver dans ReadyBank. Donc son CURRENT_KERNEL_RECEIVED doit être comptabilisé avant d’appliquer la transition prospective.
+
+La séquence doit être :
+
+CURRENT_KERNEL_RECEIVED
+↓
+idempotence par blueprint_id
+↓
+kernel_received_total +1
+pour le Depth + Domaine DU BLUEPRINT REÇU
+↓
+puis vérifier le signal DEPTH_EXHAUSTED mémorisé
+↓
+si aucun :
+    rotation normale
+si Depth 2/4/6/7/8/9 épuisé :
+    préparer prochain Depth
+si Depth 10 épuisé :
+    PRODUCTION_ON_HOLD
+
+DEC-093 doit rester vrai dans tous les cas.
+
+2. BLOQUANT — domain_states est écrit mais jamais utilisé pour choisir le prochain domaine
+
+LOT B prévoit :
+
+receiveDomainExhausted()
+→ domain_states[depth][domain] = DOMAIN_EXHAUSTED
+
+Mais le sélecteur actif reste basé sur l’ancien DepthTourState/tour_domain_states.
+
+Donc KRP pourrait recevoir :
+
+DOMAIN_EXHAUSTED(2, faune)
+
+et continuer plus tard à sélectionner Faune.
+
+Le LOT B doit également implanter le sélecteur KRP v3.2 :
+
+active_depth
++
+domain_position
++
+domain_states[active_depth]
+↓
+chercher le prochain domaine dans DomainCycle
+qui n'est PAS DOMAIN_EXHAUSTED
+
+Exemple :
+
+GE → HI → FA → AR...
+
+si :
+
+FA = DOMAIN_EXHAUSTED
+
+alors :
+
+GE → HI → AR → SP...
+
+Sans ça, le récepteur DOMAIN_EXHAUSTED ne sert à rien.
+
+3. BLOQUANT — peekNext() == null ne signifie PAS DOMAIN_EXHAUSTED
+
+Cette phrase du LOT C doit être supprimée :
+
+peekNext()->null
+→ Taxonomy signale DOMAIN_EXHAUSTED
+
+Nous avons précisément verrouillé le contraire.
+
+DOMAIN_EXHAUSTED existe seulement lorsque Taxonomy sait réellement que son réservoir est épuisé après consommation exacte.
+
+Un null technique peut éventuellement signifier autre chose :
+
+réservoir pas encore préparé
+erreur
+état intermédiaire
+absence temporaire
+autre comportement défini par 03_Taxonomy
+
+KRP n’a pas le droit d’en déduire l’épuisement.
+
+Le futur contrat doit être :
+
+Taxonomy
+↓
+consommation exacte
+↓
+recalcul réel du réservoir
+↓
+si réellement épuisé :
+DOMAIN_EXHAUSTED explicite
+
+Donc aucune conversion automatique null = exhausted.
+
+4. MAJEUR — conflit de signal ne doit pas devenir un NO-OP silencieux
+
+Le plan dit :
+
+receiveDepthExhausted(4)
+
+puis si pending_depth_exhausted_depth déjà non-null
+→ NO-OP
+
+Ça marche uniquement si c’est le même signal.
+
+Correct :
+
+pending = null
+receiveDepthExhausted(4)
+→ pending = 4
+
+receiveDepthExhausted(4)
+→ NO-OP idempotent
+
+Mais :
+
+pending = 4
+receiveDepthExhausted(6)
+
+ne doit surtout pas devenir NO-OP.
+
+C’est une incohérence.
+
+Il faut :
+
+même valeur
+→ NO-OP idempotent
+
+valeur différente
+→ REFUS / exception d'invariant
+
+Même principe pour les signaux : valider Depth supporté, Domaine officiel et cohérence avec le contexte de rotation attendu.
+
+Correction supplémentaire de migration
+
+Je corrigerais aussi A-4. Ceci :
+
+ADD depth_state
+BACKFILL
+DROP rotation_status
+
+dans la même migration n’est pas réellement une « migration additive ».
+
+Plus sûr :
+
+Migration 1
+→ ADD depth_state
+→ backfill
+
+patch code
+→ tous readers/writers utilisent depth_state
+
+tests
+→ validation
+
+Migration cleanup ultérieure
+→ DROP rotation_status
+
+Même principe pour les anciennes colonnes : ne pas réécrire une ancienne migration déjà appliquée juste pour ajouter un commentaire historique.
+
+Envoie ceci à Replit
+#155 — REVIEW CORRECTIF DU PLAN AVANT IMPLANTATION
+
+Le plan est accepté dans sa structure A/B/C, mais NE CODE PAS encore.
+
+5 corrections obligatoires.
+
+1 — CURRENT_KERNEL_RECEIVED
+
+Dans B-3, kernel_received_total doit être incrémenté
+pour CHAQUE CURRENT_KERNEL_RECEIVED valide et idempotent,
+même si DEPTH_EXHAUSTED est mémorisé.
+
+Ordre obligatoire :
+
+CURRENT_KERNEL_RECEIVED
+→ déduplication blueprint_id
+→ incrément kernel_received_total du couple du Blueprint reçu
+→ ensuite appliquer éventuelle transition DEPTH_EXHAUSTED
+→ prochain Depth ou PRODUCTION_ON_HOLD.
+
+DEC-093 doit rester vrai sans exception.
+
+2 — DOMAIN_EXHAUSTED DOIT INFLUENCER LE SÉLECTEUR
+
+LOT B ne peut pas seulement écrire :
+
+domain_states[depth][domain] = DOMAIN_EXHAUSTED.
+
+Il doit également fournir le sélecteur v3.2 actif :
+
+active_depth
++ domain_position
++ DomainCycle
++ domain_states[active_depth]
+
+→ prochain domaine différent de DOMAIN_EXHAUSTED.
+
+Exemple :
+
+DomainCycle :
+GE → HI → FA → AR → SP → CI → CU → SC
+
+FA = DOMAIN_EXHAUSTED
+
+rotation future :
+GE → HI → AR → SP → CI → CU → SC → GE
+
+KRP ne connaît toujours aucun SubjectSlot/IdeaSlot.
+
+3 — INTERDICTION ABSOLUE :
+
+peekNext() == null
+NE SIGNIFIE PAS
+DOMAIN_EXHAUSTED.
+
+Retirer du LOT C toute phrase qui transforme null en signal d'épuisement.
+
+DOMAIN_EXHAUSTED doit uniquement être émis explicitement
+par Taxonomy lorsqu'elle a réellement déterminé,
+après consommation exacte et recalcul de ses slots,
+que le bassin Depth + Domaine est épuisé.
+
+Le comportement de peekNext/null sera défini dans 03_Taxonomy.
+
+KRP n'en déduit rien.
+
+4 — IDEMPOTENCE DES SIGNAUX
+
+receiveDepthExhausted(depth) :
+
+pending = null
+→ mémoriser depth
+
+pending == même depth
+→ NO-OP idempotent
+
+pending != depth reçu
+→ ERREUR D'INVARIANT
+→ ne pas écraser
+→ ne pas ignorer silencieusement.
+
+Même exigence générale :
+valider Depth autorisé et contexte cohérent.
+
+receiveDomainExhausted(depth, domain) :
+
+déjà DOMAIN_EXHAUSTED pour le même couple
+→ NO-OP
+
+autre couple
+→ indépendant
+
+Depth/domain invalide
+→ REFUS.
+
+5 — MIGRATIONS
+
+Ne présente pas :
+
+ADD colonne
++ BACKFILL
++ DROP ancienne colonne
+
+comme migration additive atomique.
+
+Préférer :
+
+M1 :
+ADD nouvelle colonne
++ backfill
+
+PATCH :
+readers/writers basculés vers nouvelle colonne
+
+VALIDATION
+
+M-cleanup :
+DROP ancienne colonne
+
+après confirmation de zéro reader/writer.
+
+Ne modifie pas une ancienne migration déjà exécutée
+uniquement pour y ajouter un commentaire historique.
+
+==================================================
+RETOUR ATTENDU
+==================================================
+
+Retourne uniquement :
+
+#155 — PLAN D'IMPLANTATION KRP v3.2 CORRIGÉ
+
+CURRENT_KERNEL_RECEIVED incrémente toujours kernel_received_total:
+OUI/NON
+
+Ordre compteur puis transition:
+...
+
+Sélecteur DomainCycle utilise domain_states:
+OUI/NON
+
+DOMAIN_EXHAUSTED retiré des rotations futures:
+OUI/NON
+
+peekNext null = DOMAIN_EXHAUSTED:
+NON / OUI
+
+Producteur exclusif DOMAIN_EXHAUSTED:
+...
+
+Conflit pending Depth différent:
+ERREUR D'INVARIANT / autre
+
+Migration rotation_status→depth_state:
+...
+
+Ancienne colonne supprimée seulement après zéro caller:
+OUI/NON
+
+LOT A:
+...
+
+LOT B:
+...
+
+LOT C:
+...
+
+EMPTY loop supprimée:
+QUAND exactement
+
+Étapes immédiatement implantables:
+...
+
+Étapes dépendantes de 03_Taxonomy:
+...
+
+Risque runtime intermédiaire:
+...
+
+VERDICT:
+PLAN PRÊT À IMPLANTER / INCOMPLET
+
+Puis STOP.
+
+Aucun code.
+
+Après ces corrections, on pourra autoriser LOT A + LOT B côté KRP. On ne devrait pas attendre 03_Taxonomy pour implanter le récepteur et le nouveau moteur de sélection KRP ; en revanche l’émission réelle des signaux par Taxonomy restera strictement réservée au module suivant.
