@@ -1,47 +1,52 @@
 ---
-name: KRP v3.1 — état des décisions après REVIEW CORRECTIF
-description: Statut résolu de D1/D2/D3, PRODUCTION_ON_HOLD terminal, nouveaux DECs, spec v3.1 UNDER_REVIEW
+name: KRP v3.2 — VERROUILLÉ 13 août 2026
+description: État final verrouillé de 02_KernelRotationPlanner v3.2 — décisions OFFICIAL/SUPERSEDED/REJECTED, séquence de suite obligatoire
 ---
 
-# KRP v3.0 → v3.1 : décisions closes
+# 02_KernelRotationPlanner v3.2 — VERROUILLÉ
 
-**Spec :** `docs/architecture/02_KernelRotationPlanner.md` v3.1, UNDER_REVIEW, 13 août 2026.
+**Fichier :** `docs/architecture/02_KernelRotationPlanner.md`
+**Date de verrouillage :** 13 août 2026
+**Architecture 100 % / Contrat 100 % / Implémentation 0 % / Validation 0 %**
 
-## D1 — Canal sémantique RÉSOLU (transport = détail d'implantation)
-Contrat : Taxonomy produit, KRP possède, Orchestration transporte, disponible immédiatement après consommation exacte, influence uniquement au prochain CURRENT_KERNEL_RECEIVED. Le choix physique (retour enrichi / Outbox / table / événement) sera arrêté à l'audit d'implantation. DEC-087 mis à jour, UNDER_REVIEW.
+## Décisions OFFICIAL (nouvelles, issues de v3.x)
 
-**Why :** Le contrat sémantique est complet et ne requiert pas le choix physique pour verrouiller la spec KRP.
+| DEC | Objet |
+|---|---|
+| DEC-082 | DOMAIN_EXHAUSTED prospectif (+ DomainCycle réénoncé avant supersession DEC-061) |
+| DEC-083 | DEPTH_EXHAUSTED prospectif |
+| DEC-084 | Indépendance rotation KRP ↔ progression Taxonomy |
+| DEC-085 | Deux flux distincts : informationnel et déclencheur |
+| DEC-087 | Canal d'épuisement : contrat sémantique résolu, transport = détail d'implantation |
+| DEC-088 | CYCLE_TARGET/cycle_completed remplacés par DEPTH_EXHAUSTED comme autorité de Depth |
+| DEC-092 | Transition terminale DEPTH_EXHAUSTED(10) → PRODUCTION_ON_HOLD |
+| DEC-093 | CURRENT_KERNEL_RECEIVED seul incrémenteur de kernel_received_total |
+| DEC-094 | DepthCycle intellectuel officiel (remplace DEC-065) |
 
-## D2 — DEPTH_EXHAUSTED(10) RÉSOLU : PRODUCTION_ON_HOLD
-`depth_state = PRODUCTION_ON_HOLD`. Aucun retour automatique Depth 2. Aucun IDLE distinct. Aucun Blueprint créé après entrée. Sortie = hors contrat actuel. DEC-092 créé UNDER_REVIEW.
+## Décisions REJECTED
 
-**Why :** Reboucler vers Depth 2 serait revenir sur des banques déjà épuisées. L'état IDLE est moins précis que PRODUCTION_ON_HOLD qui exprime la sémantique correcte.
+DEC-078 (kernel_remaining autorité), DEC-080 (AVAILABLE|EMPTY), DEC-081 (SHORTFALL),
+DEC-086 (signal AVAILABLE), DEC-089 (SHORTFALL états dérivés), DEC-090 (DepthProductionState),
+DEC-091 (double condition kernel_remaining+AVAILABLE)
 
-**How to apply :** Gate obligatoire : si `depth_state = PRODUCTION_ON_HOLD`, KernelBlueprintFactory ne crée aucune enveloppe canonique. Mécanisme de gate = détail d'implantation. Idempotent.
+## Décisions SUPERSEDED dans ce spec
 
-## D3 — RETIRÉ DU PÉRIMÈTRE KRP
-KRP termine après fillRotation(depth, domain). Timeout/retry/Gemini = 03_Taxonomy + orchestration.
+DEC-061 (superseded par DEC-082+083), DEC-065 (superseded par DEC-094),
+DEC-066 (superseded par DEC-034+082), DEC-079 (superseded par DEC-093)
 
-## Nouveaux DECs créés (UNDER_REVIEW sauf REJECTED)
-- DEC-089 : SHORTFALL et états dérivés → REJECTED
-- DEC-090 : DepthProductionState → REJECTED
-- DEC-091 : Double condition kernel_remaining > 0 AND AVAILABLE → REJECTED
-- DEC-092 : PRODUCTION_ON_HOLD terminal → UNDER_REVIEW
-- DEC-088 : renommé (titre sans ambiguïté "SUPERSEDED") → UNDER_REVIEW
-- DEC-087 : mis à jour (D1 résolu) → UNDER_REVIEW
+## Points constitutionnels verrouillés
 
-## DEC-065 registre : deux clauses partiellement supersedées
-- « Après Depth 10 : reprend à Depth 2 » → SUPERSEDED par DEC-092
-- « PRODUCTION_ON_HOLD = aucun Depth sous cycle_target » → SUPERSEDED par DEC-088 + DEC-092
-- DepthCycle lui-même (2→4→6→7→8→9→10) reste OFFICIAL
+- **DEPTH_EXHAUSTED_PENDING** : N'EST PAS un état métier officiel. Signal mémorisé prospectivement, mécanisme = détail d'implantation. États métier = ROTATION_ACTIVE | PRODUCTION_ON_HOLD uniquement.
+- **Gate PRODUCTION_ON_HOLD** : appartient à l'ORCHESTRATION, pas à KernelBlueprintFactory. La Factory ne connaît ni KRP, ni Taxonomy, ni PRODUCTION_ON_HOLD.
+- **Blueprint créé avant fillRotation** : OUI (DEC-058 OFFICIAL inchangé) — en cycle normal uniquement. Si PRODUCTION_ON_HOLD : Factory non appelée.
+- **Statuts autorisés** : DRAFT / UNDER_REVIEW / OFFICIAL / SUPERSEDED / REJECTED — aucun statut partiel.
+- **DEC-094 scope** : DepthCycle uniquement. Domaines = voir DEC-082. Transition Depth 10 = voir DEC-092.
 
-## Corrections de cohérence (v3.1)
-- hedges supprimés : kernel_target, kernel_remaining, CYCLE_TARGET, cycle_completed
-- DomainExhaustionChecker::isExhausted() → À RETIRER après PUSH, aucune architecture parallèle
-- DEC-082 : DomainCycle réénoncé avant supersession DEC-061
-- depth_state dans §20.2 : NOT_ENGAGED_PRODUCTION_ON_HOLD → PRODUCTION_ON_HOLD
-- §19.1 : KRP n'attend pas Taxonomy (clarification)
-- KRP-R25 ajouté, tests PRODUCTION_ON_HOLD ajoutés
+## Séquence de suite obligatoire
 
-## État UNDER_REVIEW
-Toutes les nouvelles décisions restent UNDER_REVIEW jusqu'au verrouillage explicite du spec. DEC-087 ne devient OFFICIAL qu'au verrouillage.
+1. ✅ 02_KernelRotationPlanner v3.2 VERROUILLÉ
+2. → 00_ArchitectureRegister synchronisé (DEC-061, 065, 066, 079 → SUPERSEDED ; DEC-082→094 ajoutés OFFICIAL/REJECTED)
+3. → Audit du code KRP existant (écarts code ↔ spec v3.2 documentés)
+4. → Implantation
+5. → Validation terminale
+6. → 03_Taxonomy (SEULEMENT après)

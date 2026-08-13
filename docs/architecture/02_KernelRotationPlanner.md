@@ -2,9 +2,15 @@
 
 **Version :** 3.2
 **Date :** 13 août 2026
-**Statut :** UNDER_REVIEW
+**Statut :** VERROUILLÉ
 **Remplace :** version 2.1 intégralement (v3.0 → v3.2 : D1 résolu, D2 tranché, D3 retiré du périmètre KRP, 3 corrections constitutionnelles)
-**Aucune implémentation pendant cette phase.**
+
+| Dimension | Taux |
+|---|---|
+| Architecture | 100 % |
+| Contrat | 100 % |
+| Implémentation | 0 % |
+| Validation | 0 % |
 
 ---
 
@@ -1486,7 +1492,7 @@ Quatre états : `CREATED_UNENGAGED`, `ENGAGED_IN_PIPELINE`, `READY_BANK_RECEIVED
 ## DEC-082 — DOMAIN_EXHAUSTED prospectif
 
 **Version :** 1.0 — **Date :** 13 août 2026
-**Statut :** UNDER_REVIEW
+**Statut :** OFFICIAL
 
 `DOMAIN_EXHAUSTED(depth, domain)` : signal prospectif de Taxonomy vers KRP, émis après consommation exacte du Blueprint courant.
 
@@ -1506,7 +1512,7 @@ Rotation déterministe, circulaire, continue tant qu'aucun signal prospectif d'�
 ## DEC-083 — DEPTH_EXHAUSTED prospectif
 
 **Version :** 1.0 — **Date :** 13 août 2026
-**Statut :** UNDER_REVIEW
+**Statut :** OFFICIAL
 
 `DEPTH_EXHAUSTED(depth)` : signal prospectif de Taxonomy vers KRP, émis quand tous les bassins Domaines du Depth courant sont épuisés.
 
@@ -1519,7 +1525,7 @@ Idempotent : signal `DEPTH_EXHAUSTED` déjà mémorisé → NO-OP.
 ## DEC-084 — Indépendance rotation KRP ↔ progression Taxonomy
 
 **Version :** 1.0 — **Date :** 13 août 2026
-**Statut :** UNDER_REVIEW
+**Statut :** OFFICIAL
 
 KRP Tour Number ne détermine jamais le Taxonomy Subject Number ni le Taxonomy Idea Number.
 Les 8 domaines partagent le cycle KRP mais leurs réservoirs Taxonomy progressent indépendamment.
@@ -1530,7 +1536,7 @@ Aucune synchronisation artificielle entre les progressions de domaines n'est adm
 ## DEC-085 — Deux flux distincts : informationnel et déclencheur
 
 **Version :** 1.0 — **Date :** 13 août 2026
-**Statut :** UNDER_REVIEW
+**Statut :** OFFICIAL
 
 Flux informationnel : Taxonomy → signal d'épuisement → mise à jour de l'état KRP (immédiate, sans attendre ReadyBank).
 Flux déclencheur : `CURRENT_KERNEL_RECEIVED` → prochain Blueprint → rotation effective.
@@ -1550,7 +1556,7 @@ Taxonomy ne doit pas envoyer un signal `AVAILABLE`. L'absence de signal d'épuis
 ## DEC-087 — Canal d'épuisement : contrat sémantique résolu, transport = détail d'implantation
 
 **Version :** 1.1 — **Date :** 13 août 2026
-**Statut :** UNDER_REVIEW
+**Statut :** OFFICIAL
 
 Contrat sémantique complet (D1 résolu) : QUI produit = Taxonomy ; QUI possède la rotation = KRP ; QUI transporte = Orchestration ; QUAND disponible = immédiatement après consommation exacte ; QUAND influence un Blueprint = au prochain `CURRENT_KERNEL_RECEIVED`.
 
@@ -1563,7 +1569,7 @@ Contraintes inchangées : Taxonomy ne modifie pas directement `kernel_rotation_s
 ## DEC-088 — Remplacement de CYCLE_TARGET / cycle_completed comme autorité de changement de Depth par DEPTH_EXHAUSTED
 
 **Version :** 1.1 — **Date :** 13 août 2026
-**Statut :** UNDER_REVIEW
+**Statut :** OFFICIAL
 
 `CYCLE_TARGET` et `cycle_completed` sont rejetés comme autorité de décision de changement de Depth. `DEPTH_EXHAUSTED` de Taxonomy est l'autorité. Si ces compteurs deviennent utiles pour du reporting, une décision future les réintroduira avec un propriétaire clair.
 
@@ -1601,7 +1607,7 @@ La sélection du prochain domaine repose uniquement sur : domaine `ACTIF` (non `
 ## DEC-092 — Transition terminale DEPTH_EXHAUSTED(10) → PRODUCTION_ON_HOLD
 
 **Version :** 1.0 — **Date :** 13 août 2026
-**Statut :** UNDER_REVIEW
+**Statut :** OFFICIAL
 
 Après `DEPTH_EXHAUSTED(10)` : `depth_state = PRODUCTION_ON_HOLD`. Aucun retour automatique à Depth 2. Aucun état `IDLE` distinct. Aucun Blueprint créé après entrée en `PRODUCTION_ON_HOLD`.
 
@@ -1618,7 +1624,7 @@ Idempotent : `PRODUCTION_ON_HOLD → PRODUCTION_ON_HOLD` = NO-OP.
 ## DEC-093 — CURRENT_KERNEL_RECEIVED seul incrémenteur de kernel_received_total
 
 **Version :** 1.0 — **Date :** 13 août 2026
-**Statut :** UNDER_REVIEW
+**Statut :** OFFICIAL
 
 `CURRENT_KERNEL_RECEIVED` est le seul événement qui incrémente `kernel_received_total[depth][domain]`.
 La création d'un `KernelBlueprint` ne modifie jamais `kernel_received_total`.
@@ -1628,9 +1634,12 @@ La création d'un `KernelBlueprint` ne modifie jamais `kernel_received_total`.
 ## DEC-094 — DepthCycle intellectuel officiel
 
 **Version :** 1.0 — **Date :** 13 août 2026
-**Statut :** UNDER_REVIEW
+**Statut :** OFFICIAL
 
-DepthCycle intellectuel : `2 → 4 → 6 → 7 → 8 → 9 → 10`. Depth 10 intellectuellement valide.
-8 domaines de création : Géographie, Histoire, Faune, Art, Sport, Cinéma, Cuisine, Science.
-`Général` exclu de la création intellectuelle.
-La transition après Depth 10 est définie séparément par DEC-092.
+DepthCycle : `2 → 4 → 6 → 7 → 8 → 9 → 10`.
+
+Après Depth 10 : la transition terminale est définie exclusivement par DEC-092.
+
+Rotation des domaines : voir DEC-082.
+
+Remplace : DEC-065.
