@@ -1,9 +1,9 @@
 # STRATEGYBUZZER — MÉCANISME EXACT DU KERNELROTATIONPLANNER
 
-**Version :** 3.0
+**Version :** 3.1
 **Date :** 13 août 2026
 **Statut :** UNDER_REVIEW
-**Remplace :** version 2.1 intégralement
+**Remplace :** version 2.1 intégralement (v3.0 → v3.1 : D1 résolu, D2 tranché, D3 retiré du périmètre KRP, 9 corrections de cohérence)
 **Aucune implémentation pendant cette phase.**
 
 ---
@@ -521,23 +521,25 @@ Taxonomy ne modifie pas arbitrairement la rotation elle-même.
 
 KRP ne consulte pas les réservoirs internes de Taxonomy pour décider de l'épuisement.
 
-## 12.3 Canal technique — DÉCISION OUVERTE (D1)
+## 12.3 Canal technique — CONTRAT SÉMANTIQUE RÉSOLU
 
-La forme exacte du canal entre Taxonomy et l'état KRP n'est pas encore définie.
+Le contrat sémantique du canal entre Taxonomy et l'état KRP est entièrement défini :
 
-Contraintes du canal à respecter :
+- QUI produit l'information : Taxonomy ;
+- QUI possède la rotation : KRP ;
+- QUI transporte : l'Orchestration ;
+- QUAND l'information est disponible : immédiatement après consommation exacte ;
+- QUAND elle influence un nouveau Blueprint : au prochain `CURRENT_KERNEL_RECEIVED` uniquement.
+
+Contraintes obligatoires du canal, quel que soit le transport physique :
 
 - pas de second propriétaire de l'état de rotation ;
 - Taxonomy n'écrit pas directement dans `kernel_rotation_state_v2` ;
 - KRP ne lit pas les tables Taxonomy pour décider de l'épuisement.
 
-Options à trancher lors de la spécification de `03_Taxonomy` :
+Le transport physique exact (retour enrichi / Outbox / événement / table intermédiaire / autre mécanisme) est un **détail d'implantation** soumis aux garanties d'ordre, d'atomicité, d'idempotence et de persistance. Ce choix sera arrêté lors de l'audit d'implantation, sans bloquer la spécification KRP.
 
-- valeur de retour enrichie de la consommation Taxonomy ;
-- événement / Listener distinct (Outbox) ;
-- table d'état intermédiaire consultée par KRP au prochain `CURRENT_KERNEL_RECEIVED`.
-
-**Ne rien implémenter sur ce point sans décision.**
+**Ne rien implémenter sur le transport physique sans décision d'implantation.**
 
 ---
 
@@ -589,7 +591,7 @@ Quarantine ne bloque jamais la rotation.
 ```
 active_depth      : int (2, 4, 6, 7, 8, 9, ou 10)
 domain_states     : map depth → map domain → ACTIF | DOMAIN_EXHAUSTED
-depth_state       : ROTATION_ACTIVE | DEPTH_EXHAUSTED_PENDING | NOT_ENGAGED_PRODUCTION_ON_HOLD
+depth_state       : ROTATION_ACTIVE | DEPTH_EXHAUSTED_PENDING | PRODUCTION_ON_HOLD
 ```
 
 ## 14.2 Transitions
@@ -608,13 +610,21 @@ depth_state : ROTATION_ACTIVE → DEPTH_EXHAUSTED_PENDING
 (idempotent : DEPTH_EXHAUSTED_PENDING → DEPTH_EXHAUSTED_PENDING = NO-OP)
 ```
 
-**Au prochain CURRENT_KERNEL_RECEIVED si DEPTH_EXHAUSTED_PENDING :**
+**Au prochain CURRENT_KERNEL_RECEIVED si DEPTH_EXHAUSTED_PENDING et prochain Depth disponible :**
 
 ```
 active_depth = prochain Depth du DepthCycle
 domain_states[nouveau_depth] = tous ACTIF
 depth_state = ROTATION_ACTIVE
 ```
+
+**Au prochain CURRENT_KERNEL_RECEIVED si DEPTH_EXHAUSTED_PENDING sur Depth 10 (aucun Depth suivant) :**
+
+```
+depth_state = PRODUCTION_ON_HOLD
+```
+→ Aucune nouvelle rotation. Aucun Blueprint créé. La création intellectuelle est suspendue.
+(idempotent : `PRODUCTION_ON_HOLD → PRODUCTION_ON_HOLD` = NO-OP)
 
 ---
 
@@ -746,7 +756,7 @@ fillRotation(4, 'geographie')
 
 ## 19.1 Premier passage (Taxonomy non initialisée)
 
-KRP écrit `depth + domain`. Le Blueprint attend la préparation Taxonomy. Aucun timeout côté KRP.
+KRP écrit `depth + domain` et termine sa responsabilité. La suite du pipeline attend la préparation Taxonomy. KRP n'attend pas activement Taxonomy : aucun timeout côté KRP, aucun retry côté KRP, aucune gestion Gemini côté KRP. Ces responsabilités appartiennent à `03_Taxonomy` et à l'orchestration du pipeline.
 
 ## 19.2 Tous les domaines d'un Depth DOMAIN_EXHAUSTED
 
@@ -760,17 +770,57 @@ Note : `DEPTH_EXHAUSTED` est l'autorité. KRP ne dérive pas `DEPTH_EXHAUSTED` d
 
 ## 19.3 DEPTH_EXHAUSTED(10) — transition terminale
 
-**DÉCISION ENCORE OUVERTE (D2).**
+**D2 — TRANCHÉ.**
 
-Que fait KRP après `DEPTH_EXHAUSTED` sur Depth 10 ?
+Taxonomy consomme la dernière matière intellectuelle valide du dernier Domaine encore actif au Depth 10. Le Blueprint courant reste entièrement VALIDE et continue normalement dans le pipeline.
 
-Options à trancher, sans créer aucun état silencieusement :
+```
+dernière consommation Taxonomy valide sur Depth 10
+↓
+DEPTH_EXHAUSTED(10)
+↓
+KRP mémorise : depth_state = DEPTH_EXHAUSTED_PENDING
+↓
+Blueprint courant continue normalement
+↓
+ReadyBank
+↓
+CURRENT_KERNEL_RECEIVED
+↓
+KRP consulte : DEPTH_EXHAUSTED_PENDING + aucun Depth suivant
+↓
+depth_state = PRODUCTION_ON_HOLD
+↓
+AUCUNE prochaine rotation
+AUCUN Blueprint créé
+```
 
-- KRP s'arrête en état `IDLE` (attend recharge externe) ;
-- KRP recommence depuis Depth 2 (cycle infini) ;
-- KRP émet un signal ops et se met en pause.
+**Interdictions absolues après DEPTH_EXHAUSTED(10) :**
 
-**Ne rien implémenter sans décision.**
+- **Interdit** : retour automatique à Depth 2 (cycle infini) ;
+- **Interdit** : création d'un Blueprint sans position `depth + domain` valide ;
+- **Interdit** : état `IDLE` distinct de `PRODUCTION_ON_HOLD` ;
+- **Interdit** : sortie automatique de `PRODUCTION_ON_HOLD` sans décision architecturale explicite.
+
+**Garantie anti-Blueprint orphelin :**
+
+Le système connaît l'état `PRODUCTION_ON_HOLD` avant tout `CURRENT_KERNEL_RECEIVED` terminal. Si `depth_state = PRODUCTION_ON_HOLD`, `KernelBlueprintFactory` ne crée aucune nouvelle enveloppe canonique. La séquence interdite :
+
+```
+CURRENT_KERNEL_RECEIVED
+↓
+KernelBlueprintFactory crée Blueprint
+↓
+KRP découvre ensuite PRODUCTION_ON_HOLD
+↓
+Blueprint vide / orphelin
+```
+
+est architecturalement impossible. Le mécanisme exact du gate orchestration est un détail d'implantation — la garantie est obligatoire.
+
+**Sortie de PRODUCTION_ON_HOLD :**
+
+Non définie dans ce contrat. Aucun mécanisme de reprise automatique n'est prévu. Une décision architecturale distincte le définira si le projet en a besoin.
 
 ## 19.4 Blueprint actif existant au redémarrage
 
@@ -813,7 +863,7 @@ Une seule ligne active.
 id
 active_depth                      SMALLINT NULL
 depth_state                       VARCHAR  (ROTATION_ACTIVE | DEPTH_EXHAUSTED_PENDING
-                                            | NOT_ENGAGED_PRODUCTION_ON_HOLD)
+                                            | PRODUCTION_ON_HOLD)
 domain_states                     JSON
 active_blueprint_identity         VARCHAR  NULL
 last_counted_blueprint_identity   VARCHAR  NULL
@@ -913,11 +963,17 @@ Dans une seule transaction :
 2. passer `depth_state` à `DEPTH_EXHAUSTED_PENDING` ;
 3. persister.
 
-Au prochain `CURRENT_KERNEL_RECEIVED`, dans une seule transaction :
+Au prochain `CURRENT_KERNEL_RECEIVED` si prochain Depth disponible, dans une seule transaction :
 
 4. avancer `active_depth` vers le prochain Depth du DepthCycle ;
 5. initialiser `domain_states[nouveau_depth]` = tous `ACTIF` ;
 6. passer `depth_state` à `ROTATION_ACTIVE`.
+
+Au prochain `CURRENT_KERNEL_RECEIVED` si Depth 10 épuisé (aucun Depth suivant), dans une seule transaction :
+
+7. passer `depth_state` à `PRODUCTION_ON_HOLD` ;
+8. persister.
+→ Aucune création de Blueprint. La création intellectuelle est suspendue.
 
 ## 21.4 CURRENT_KERNEL_RECEIVED
 
@@ -953,7 +1009,7 @@ Les points suivants appartiennent à `03_Taxonomy` et ne doivent pas être inven
 - condition exacte d'épuisement réel du Domaine ;
 - persistance des identifiants exacts SubjectSlot / IdeaSlot ;
 - contrat exact remplaçant l'actuel `confirmConsumed(depth, domain)` ;
-- canal technique exact D1 (transmission DOMAIN_EXHAUSTED / DEPTH_EXHAUSTED vers KRP) ;
+- transport physique exact du canal d'épuisement (retour enrichi / Outbox / événement / table — hors contrat KRP, détail d'implantation) ;
 - reprise après restart / concurrence côté Taxonomy.
 
 ---
@@ -972,7 +1028,7 @@ Taxonomy ne doit pas envoyer un signal `AVAILABLE`. L'absence de signal d'épuis
 
 KRP ne change pas de Depth parce qu'un nombre arbitraire de Tours est atteint. Il change de Depth lorsque Taxonomy émet `DEPTH_EXHAUSTED`.
 
-`CYCLE_TARGET` et `cycle_completed` peuvent être conservés comme données de traçabilité si une décision officielle le justifie, mais ne constituent plus l'autorité de rotation.
+`CYCLE_TARGET` et `cycle_completed` sont **rejetés** comme autorité de rotation et comme autorité de changement de Depth. Si ces compteurs deviennent utiles pour du reporting, une décision future les réintroduira avec un propriétaire clair.
 
 `CYCLE_TARGET[10] = 100` n'est **pas** justifié par le numéro de niveau Solo Boss 100. Le numéro 100 du niveau ne définit aucun volume de production intellectuelle.
 
@@ -986,7 +1042,7 @@ La rotation KRP est pilotée par les signaux `DOMAIN_EXHAUSTED` et `DEPTH_EXHAUS
 
 **REJETÉ comme autorité de rotation.**
 
-`kernel_remaining = kernel_target - kernel_received` est mathématiquement correct. Il peut coexister comme donnée de reporting si une décision officielle le justifie, mais n'est pas un critère de sélection de domaine.
+`kernel_remaining = kernel_target - kernel_received` n'est pas un critère de sélection de domaine. **REJETÉ.** Si ce calcul devient utile pour du reporting, une décision future le réintroduira avec un propriétaire clair.
 
 ## 24.5 Double condition de sélection (`kernel_remaining > 0 AND reservoir_status = AVAILABLE`)
 
@@ -1008,23 +1064,23 @@ Un seul signal : `DEPTH_EXHAUSTED`. L'écart de production est un concept de rep
 
 ---
 
-# 25. Décisions encore réellement ouvertes
+# 25. Décisions architecturales KRP
 
 ## D1 — Canal technique DOMAIN_EXHAUSTED / DEPTH_EXHAUSTED
 
-La forme exacte du canal entre Taxonomy et l'état KRP n'est pas définie.
-À spécifier dans `03_Taxonomy` avant implémentation.
+**RÉSOLU.** Le contrat sémantique est complet (§12.3) : Taxonomy produit, KRP possède la rotation, l'Orchestration transporte, disponibilité immédiate après consommation exacte, influence uniquement au prochain `CURRENT_KERNEL_RECEIVED`. Le transport physique exact est un détail d'implantation.
 
 ## D2 — DEPTH_EXHAUSTED(10) — transition terminale
 
-Que fait KRP après l'épuisement de Depth 10 ?
-Ne rien créer ou implémenter sans décision explicite.
+**RÉSOLU.** Voir §19.3. Après `DEPTH_EXHAUSTED(10)` : `depth_state = PRODUCTION_ON_HOLD`. Aucun retour automatique à Depth 2. Aucun Blueprint créé. Sortie de `PRODUCTION_ON_HOLD` : non définie dans ce contrat.
 
 ## D3 — KRP attend Taxonomy : gestion du temps
 
-Si Taxonomy tarde à préparer un bassin, KRP attend-il indéfiniment ?
-Y a-t-il un mécanisme de retry ou d'alerte côté KRP ?
-À définir en coordination avec `03_Taxonomy`.
+**RETIRÉ DU PÉRIMÈTRE KRP.** KRP termine sa responsabilité après `fillRotation(depth, domain)` (write-once). Timeout, retry, gestion Gemini, préparation longue appartiennent à `03_Taxonomy` et à l'orchestration du pipeline.
+
+---
+
+**Aucune décision architecturale KRP n'est actuellement ouverte.**
 
 ---
 
@@ -1040,7 +1096,7 @@ Le chemin `applyEmptyTransitionV2` + boucle `planV2` dans l'Orchestrateur doit �
 
 Actuel : `DepthNeedMatrix::nextRequiredDepth()` compare `cycle_completed` vs `CYCLE_TARGET`.
 Nouveau : autorité = `DEPTH_EXHAUSTED` de Taxonomy.
-À ne pas modifier avant décision D1.
+À ne pas modifier avant implantation du transport physique D1 (détail d'implantation — contrat sémantique résolu).
 
 ## É3 — `confirmConsumed()` non branché
 
@@ -1048,10 +1104,10 @@ Implémenté dans `TaxonomyOrchestrator`, jamais appelé en V2.
 Le branchement dépend de la définition du canal D1.
 À traiter lors de `03_Taxonomy`. Ne pas corriger maintenant.
 
-## É4 — `DomainExhaustionChecker::isExhausted()` (LEGACY PULL)
+## É4 — `DomainExhaustionChecker::isExhausted()` (LEGACY PULL — À RETIRER)
 
 Mécanisme PULL existant dans `plan()` DEPRECATED. Non utilisé par V2.
-À conserver comme référence historique jusqu'à suppression physique autorisée.
+Statut architectural cible : **SUPERSEDED / À RETIRER** après implantation et validation du mécanisme PUSH (`DOMAIN_EXHAUSTED` / `DEPTH_EXHAUSTED`). Aucun consommateur officiel futur du mécanisme PULL. Aucune architecture parallèle finale.
 
 ## É5 — Format `domain_states` dans `kernel_rotation_state_v2`
 
@@ -1172,6 +1228,10 @@ Quarantine ne bloque jamais la rotation.
 KRP ne dérive pas `DEPTH_EXHAUSTED` depuis les `DOMAIN_EXHAUSTED` individuels.
 `DEPTH_EXHAUSTED` de Taxonomy est l'unique autorité de changement de Depth.
 
+## KRP-R25
+
+Si `depth_state = PRODUCTION_ON_HOLD`, aucune nouvelle rotation n'est produite et aucun nouveau Blueprint n'est créé. La création intellectuelle est suspendue jusqu'à décision architecturale explicite.
+
 ---
 
 # 28. Tests requis
@@ -1219,6 +1279,14 @@ KRP ne dérive pas `DEPTH_EXHAUSTED` depuis les `DOMAIN_EXHAUSTED` individuels.
 - Aucun test ne valide `overwriteRotation()` (interdit).
 - Aucun test ne valide un signal `AVAILABLE` (rejeté).
 - Aucun test ne valide `CYCLE_TARGET` comme critère de changement de Depth.
+
+## PRODUCTION_ON_HOLD
+
+- `DEPTH_EXHAUSTED(10)` reçu → `depth_state = DEPTH_EXHAUSTED_PENDING`.
+- Au `CURRENT_KERNEL_RECEIVED` suivant (Depth 10, aucun Depth suivant) : `depth_state = PRODUCTION_ON_HOLD`.
+- Aucun Blueprint créé après entrée en `PRODUCTION_ON_HOLD`.
+- Idempotence : `PRODUCTION_ON_HOLD → PRODUCTION_ON_HOLD` = NO-OP.
+- Aucun retour automatique à Depth 2.
 
 ---
 
@@ -1324,9 +1392,14 @@ Seul déclencheur de la prochaine rotation. Canal = événement transactionnel a
 
 ## DEC-065 — DepthCycle complet incluant Depth 2 et Depth 10
 
-**Statut :** OFFICIAL
+**Statut :** OFFICIAL (DepthCycle intact — deux clauses du registre v2.0 partiellement supersedées, voir note ci-dessous)
 
 DepthCycle = `2 → 4 → 6 → 7 → 8 → 9 → 10`. Depth 10 intellectuellement valide.
+
+Note de cohérence registre : la version v2.0 de DEC-065 dans le registre central contient deux clauses désormais obsolètes :
+- « Après Depth 10 : reprend à Depth 2 » → **SUPERSEDED par DEC-092** (transition terminale = PRODUCTION_ON_HOLD, aucun retour automatique) ;
+- « PRODUCTION_ON_HOLD = aucun Depth sous `cycle_target` » → **SUPERSEDED par DEC-088 + DEC-092** (`cycle_target` rejeté comme autorité ; PRODUCTION_ON_HOLD déclenché par DEPTH_EXHAUSTED(10)).
+Le DepthCycle lui-même (`2 → 4 → 6 → 7 → 8 → 9 → 10`) reste OFFICIAL inchangé.
 
 ---
 
@@ -1359,7 +1432,7 @@ Quatre états : `CREATED_UNENGAGED`, `ENGAGED_IN_PIPELINE`, `READY_BANK_RECEIVED
 **Version :** 1.0 — **Date :** 14 juillet 2026
 **Statut :** REJECTED comme autorité de rotation
 
-`kernel_remaining = kernel_target - kernel_received` est mathématiquement correct mais n'est pas un critère de sélection de domaine dans le contrat actuel. Peut coexister comme donnée de reporting si décidé séparément.
+`kernel_remaining = kernel_target - kernel_received` n'est pas un critère de sélection de domaine. **REJETÉ.** Si ce calcul devient utile pour du reporting, une décision future le réintroduira avec un propriétaire clair.
 
 ---
 
@@ -1401,6 +1474,12 @@ Le Blueprint déclencheur reste valide et continue normalement dans le pipeline.
 Le signal modifie uniquement la rotation future.
 Portée : `Depth + Domaine` exclusivement.
 Idempotent : deuxième réception du même signal = NO-OP.
+
+DomainCycle officiel (réénoncé explicitement avant supersession de DEC-061) :
+8 domaines de création : Géographie, Histoire, Faune, Art, Sport, Cinéma, Cuisine, Science.
+`Général` est exclu de la création intellectuelle.
+L'absence de signal d'épuisement signifie que le domaine est disponible — aucun signal `AVAILABLE` requis.
+Rotation déterministe, circulaire, continue tant qu'aucun signal prospectif d'épuisement ne retire un domaine de la rotation active.
 
 ---
 
@@ -1448,24 +1527,68 @@ Taxonomy ne doit pas envoyer un signal `AVAILABLE`. L'absence de signal d'épuis
 
 ---
 
-## DEC-087 — Canal technique d'épuisement non encore défini
+## DEC-087 — Canal d'épuisement : contrat sémantique résolu, transport = détail d'implantation
 
-**Version :** 1.0 — **Date :** 13 août 2026
-**Statut :** UNDER_REVIEW (décision D1 ouverte)
+**Version :** 1.1 — **Date :** 13 août 2026
+**Statut :** UNDER_REVIEW
 
-La forme exacte du canal entre Taxonomy et l'état KRP (`DOMAIN_EXHAUSTED`, `DEPTH_EXHAUSTED`) est à définir lors de la spécification de `03_Taxonomy`.
+Contrat sémantique complet (D1 résolu) : QUI produit = Taxonomy ; QUI possède la rotation = KRP ; QUI transporte = Orchestration ; QUAND disponible = immédiatement après consommation exacte ; QUAND influence un Blueprint = au prochain `CURRENT_KERNEL_RECEIVED`.
 
-Contraintes : Taxonomy ne modifie pas directement `kernel_rotation_state_v2`. KRP ne consulte pas les tables Taxonomy pour décider de l'épuisement.
+Le transport physique exact (retour enrichi / Outbox / événement / table intermédiaire) est un détail d'implantation soumis aux garanties d'ordre, d'atomicité, d'idempotence et de persistance. Ce choix sera arrêté lors de l'audit d'implantation.
+
+Contraintes inchangées : Taxonomy ne modifie pas directement `kernel_rotation_state_v2`. KRP ne consulte pas les tables Taxonomy pour décider de l'épuisement.
 
 ---
 
-## DEC-088 — CYCLE_TARGET / cycle_completed SUPERSEDED comme autorité de Depth
+## DEC-088 — Remplacement de CYCLE_TARGET / cycle_completed comme autorité de changement de Depth par DEPTH_EXHAUSTED
+
+**Version :** 1.1 — **Date :** 13 août 2026
+**Statut :** UNDER_REVIEW
+
+`CYCLE_TARGET` et `cycle_completed` sont rejetés comme autorité de décision de changement de Depth. `DEPTH_EXHAUSTED` de Taxonomy est l'autorité. Si ces compteurs deviennent utiles pour du reporting, une décision future les réintroduira avec un propriétaire clair.
+
+`CYCLE_TARGET[10] = 100` n'est pas justifié par le numéro de niveau Solo Boss 100. Le numéro du niveau de gameplay ne définit aucun volume de production intellectuelle.
+
+---
+
+## DEC-089 — SHORTFALL et états dérivés : REJECTED
+
+**Version :** 1.0 — **Date :** 13 août 2026
+**Statut :** REJECTED
+
+`SHORTFALL`, `DEPTH_TARGET_COMPLETE` et `DEPTH_RESERVOIRS_EXHAUSTED_WITH_SHORTFALL` sont rejetés comme états ou signaux KRP. Un seul signal d'épuisement existe : `DEPTH_EXHAUSTED`. L'écart de production éventuel est un concept de reporting/observabilité externe à KRP, sans propriétaire actuel. Si nécessaire, une décision future le réintroduira avec un propriétaire clair.
+
+---
+
+## DEC-090 — DepthProductionState : REJECTED
+
+**Version :** 1.0 — **Date :** 13 août 2026
+**Statut :** REJECTED
+
+`DepthProductionState` est rejeté. La structure est remplacée par `active_depth + domain_states` dans `kernel_rotation_state_v2`. Aucune autre responsabilité indépendante n'a été démontrée. Si une future décision lui attribue un rôle distinct, elle le définira explicitement.
+
+---
+
+## DEC-091 — Double condition de sélection (kernel_remaining > 0 AND reservoir_status = AVAILABLE) : REJECTED
+
+**Version :** 1.0 — **Date :** 13 août 2026
+**Statut :** REJECTED
+
+La sélection du prochain domaine repose uniquement sur : domaine `ACTIF` (non `DOMAIN_EXHAUSTED`) pour ce Depth. La double condition `kernel_remaining > 0 AND reservoir_status = AVAILABLE` est rejetée. `kernel_remaining` est rejeté comme critère de sélection (DEC-078). `AVAILABLE` est rejeté comme signal (DEC-086).
+
+---
+
+## DEC-092 — Transition terminale DEPTH_EXHAUSTED(10) → PRODUCTION_ON_HOLD
 
 **Version :** 1.0 — **Date :** 13 août 2026
 **Statut :** UNDER_REVIEW
 
-`CYCLE_TARGET` et `cycle_completed` ne sont plus l'autorité de décision de changement de Depth. `DEPTH_EXHAUSTED` de Taxonomy est l'autorité.
+Après `DEPTH_EXHAUSTED(10)` : `depth_state = PRODUCTION_ON_HOLD`. Aucun retour automatique à Depth 2. Aucun état `IDLE` distinct. Aucun Blueprint créé après entrée en `PRODUCTION_ON_HOLD`.
 
-`CYCLE_TARGET[10] = 100` n'est pas justifié par le numéro de niveau Solo Boss 100.
+Séquence : Blueprint courant reste VALIDE → `DEPTH_EXHAUSTED(10)` → `DEPTH_EXHAUSTED_PENDING` → au prochain `CURRENT_KERNEL_RECEIVED` (aucun Depth suivant) → `PRODUCTION_ON_HOLD`.
 
-Ces compteurs peuvent être conservés comme données de traçabilité si une décision officielle le justifie, mais sans rôle de rotation.
+Garantie obligatoire : si `depth_state = PRODUCTION_ON_HOLD`, `KernelBlueprintFactory` ne crée aucune nouvelle enveloppe canonique. Le mécanisme exact du gate orchestration est un détail d'implantation.
+
+Sortie de `PRODUCTION_ON_HOLD` : non définie dans ce contrat. Une décision architecturale distincte la définira si le projet en a besoin.
+
+Idempotent : `PRODUCTION_ON_HOLD → PRODUCTION_ON_HOLD` = NO-OP.

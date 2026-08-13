@@ -1,0 +1,640 @@
+Le review de Replit est correct sur presque tout. Il faut toutefois apporter deux corrections supplémentaires avant qu’il modifie la spec :
+
+DEC-087 ne peut pas devenir OFFICIAL maintenant. Tant que 02_KernelRotationPlanner n’est pas explicitement verrouillée, les nouvelles décisions restent UNDER_REVIEW.
+D2 peut être tranché maintenant : après DEPTH_EXHAUSTED(10), on ne reboucle pas vers Depth 2. La production intellectuelle passe en PRODUCTION_ON_HOLD, sans création automatique d’un nouveau Blueprint.
+
+Le point crucial est d’éviter qu’après le dernier noyau du Depth 10, CURRENT_KERNEL_RECEIVED provoque la création d’un Blueprint vide impossible à attribuer.
+
+Transmets ceci à Replit :
+
+STOP.
+
+Ton REVIEW CORRECTIF est accepté comme base, avec deux corrections supplémentaires.
+
+Ne lance toujours ni #150, ni #151, ni #152.
+
+Nous allons maintenant fermer les dernières ambiguïtés de 02_KernelRotationPlanner v3.0.
+
+==================================================
+1 — D1 : RÉSOLU, MAIS DEC-087 RESTE UNDER_REVIEW
+==================================================
+
+Ton analyse D1 est correcte :
+
+QUI produit l'information :
+Taxonomy
+
+QUI possède la rotation :
+KRP
+
+QUI transporte :
+Orchestration
+
+QUAND l'information est disponible :
+immédiatement après consommation exacte
+
+QUAND elle influence effectivement un nouveau Blueprint :
+au prochain CURRENT_KERNEL_RECEIVED
+
+Le transport physique exact :
+
+- retour enrichi ;
+- Outbox ;
+- événement ;
+- table intermédiaire ;
+- autre mécanisme ;
+
+est un détail d'implantation soumis aux garanties :
+
+- ordre ;
+- atomicité ;
+- idempotence ;
+- persistance.
+
+D1 ne bloque donc plus l'architecture KRP.
+
+CORRECTION :
+
+DEC-087 ne doit PAS devenir OFFICIAL maintenant.
+
+Nous sommes encore en REVIEW de la spécification.
+
+Statut :
+
+DEC-087 = UNDER_REVIEW
+
+jusqu'au verrouillage explicite de 02_KernelRotationPlanner.
+
+Lors du verrouillage final seulement, il pourra devenir OFFICIAL.
+
+==================================================
+2 — D3 : RETIRÉ DU PÉRIMÈTRE KRP
+==================================================
+
+Confirmé.
+
+KRP termine sa responsabilité après écriture write-once :
+
+depth
++
+domain
+
+KRP n'attend pas activement Taxonomy.
+
+Donc aucun :
+
+- timeout Taxonomy dans KRP ;
+- retry Taxonomy dans KRP ;
+- gestion Gemini dans KRP ;
+- mécanisme de préparation Taxonomy dans KRP.
+
+Ces responsabilités appartiennent à :
+
+03_Taxonomy
++
+orchestration du pipeline.
+
+D3 doit disparaître des décisions ouvertes de KRP.
+
+==================================================
+3 — D2 EST MAINTENANT TRANCHÉ
+==================================================
+
+La transition terminale est :
+
+DEPTH_EXHAUSTED(10)
+→ PRODUCTION_ON_HOLD
+
+INTERDIT :
+
+DEPTH_EXHAUSTED(10)
+→ Depth 2 automatique
+
+INTERDIT :
+
+DEPTH_EXHAUSTED(10)
+→ cycle intellectuel infini
+
+INTERDIT :
+
+DEPTH_EXHAUSTED(10)
+→ création automatique d'un nouveau Blueprint sans position valide
+
+INTERDIT :
+
+inventer un état IDLE distinct.
+
+Le nom retenu est :
+
+PRODUCTION_ON_HOLD
+
+==================================================
+4 — SÉMANTIQUE EXACTE DEPTH_EXHAUSTED(10)
+==================================================
+
+Taxonomy consomme la dernière matière intellectuelle valide du dernier Domaine encore actif au Depth 10.
+
+Le Blueprint courant reste entièrement VALIDE.
+
+Séquence :
+
+dernière consommation Taxonomy valide
+↓
+Taxonomy constate :
+tous les Domaines du Depth 10 sont épuisés
+↓
+DEPTH_EXHAUSTED(10)
+↓
+information immédiatement transmise à l'état de rotation KRP
+↓
+KRP mémorise :
+aucune prochaine position intellectuelle disponible
+↓
+Blueprint courant continue normalement
+↓
+QuestionIntent
+↓
+suite du pipeline
+↓
+ReadyBank
+↓
+CURRENT_KERNEL_RECEIVED
+↓
+KRP entre / demeure :
+PRODUCTION_ON_HOLD
+
+Aucune nouvelle rotation n'est produite.
+
+==================================================
+5 — AUCUN BLUEPRINT ORPHELIN APRÈS DEPTH 10
+==================================================
+
+Point critique.
+
+Le système sait AVANT le CURRENT_KERNEL_RECEIVED final que :
+
+DEPTH_EXHAUSTED(10)
+
+a déjà été signalé.
+
+Donc après réception du dernier noyau :
+
+CURRENT_KERNEL_RECEIVED
+↓
+état KRP consulté
+↓
+PRODUCTION_ON_HOLD
+↓
+AUCUNE prochaine position Depth + Domaine
+↓
+NE PAS créer un nouveau Blueprint.
+
+Il est interdit d'obtenir :
+
+CURRENT_KERNEL_RECEIVED
+↓
+KernelBlueprintFactory crée Blueprint
+↓
+KRP découvre ensuite qu'il n'a aucun Depth
+↓
+Blueprint vide/orphelin
+
+Cette séquence serait architecturalement fausse.
+
+Le contrat terminal doit donc garantir :
+
+si KRP est en PRODUCTION_ON_HOLD,
+aucune nouvelle enveloppe canonique n'est créée pour une rotation inexistante.
+
+Le mécanisme technique exact du gate orchestration
+est un détail d'implantation.
+
+Mais la garantie architecturale est obligatoire.
+
+==================================================
+6 — SORTIE DE PRODUCTION_ON_HOLD
+==================================================
+
+Ne pas inventer maintenant un mécanisme de reprise.
+
+KRP ne doit PAS décider lui-même :
+
+- recharge automatique ;
+- régénération Taxonomy ;
+- reset des banques ;
+- retour Depth 2 ;
+- nouvelle campagne ;
+- intervalle temporel de reprise.
+
+La règle actuelle est uniquement :
+
+PRODUCTION_ON_HOLD
+=
+aucune nouvelle rotation automatique disponible.
+
+La future condition autorisant une reprise devra faire l'objet
+d'une décision architecturale explicite si le projet en a besoin.
+
+Donc :
+
+entrée dans PRODUCTION_ON_HOLD
+= définie maintenant
+
+sortie de PRODUCTION_ON_HOLD
+= non automatique / hors contrat actuel
+
+==================================================
+7 — DEC-065 DOIT ÊTRE PARTIELLEMENT SUPERSEDED
+==================================================
+
+Le registre contient actuellement dans DEC-065 :
+
+- après Depth 10 → reprend à Depth 2 ;
+- PRODUCTION_ON_HOLD basé sur absence de Depth sous cycle_target.
+
+Ces deux parties ne sont plus compatibles avec la nouvelle architecture.
+
+Il faut préserver l'historique mais annoter précisément :
+
+ancienne clause :
+Depth 10 → retour automatique Depth 2
+→ SUPERSEDED
+
+nouvelle règle :
+DEPTH_EXHAUSTED(10)
+→ PRODUCTION_ON_HOLD
+→ aucun retour automatique
+
+ancienne condition PRODUCTION_ON_HOLD :
+aucun Depth sous cycle_target
+→ SUPERSEDED
+
+nouvelle condition :
+DEPTH_EXHAUSTED(10)
++
+aucune prochaine position intellectuelle
+→ PRODUCTION_ON_HOLD
+
+Ne supprime pas DEC-065.
+
+Documente précisément les parties remplacées et leur décision remplaçante.
+
+==================================================
+8 — APPLIQUER LES 9 CORRECTIONS DU REVIEW
+==================================================
+
+Applique maintenant les corrections que tu as toi-même identifiées :
+
+1.
+§12.3 + §25/D1 + §23 :
+D1 sémantiquement RÉSOLU.
+Transport physique = détail d'implantation.
+
+2.
+§25/D3 :
+retirer D3 des décisions KRP.
+§19.1 :
+KRP n'attend pas Taxonomy.
+
+3.
+DEC-088 :
+renommer pour supprimer toute apparence d'auto-supersession.
+
+Par exemple :
+
+DEC-088 —
+Remplacement de CYCLE_TARGET / cycle_completed
+comme autorité de changement de Depth
+par DEPTH_EXHAUSTED.
+
+4.
+kernel_target :
+REJECTED comme mécanisme KRP.
+Supprimer tout "peut servir plus tard".
+
+kernel_remaining :
+REJECTED comme mécanisme KRP.
+Supprimer tout "peut servir au reporting".
+
+5.
+DomainExhaustionChecker::isExhausted() :
+
+architecture cible :
+À RETIRER après implantation + validation du PUSH.
+
+Aucun consommateur officiel futur du PULL.
+
+6.
+Créer des décisions distinctes pour :
+
+SHORTFALL → REJECTED
+
+DepthProductionState → REJECTED
+
+double condition
+kernel_remaining > 0
+AND reservoir_status = AVAILABLE
+→ REJECTED
+
+Un identifiant permanent par décision.
+
+Avant attribution des numéros :
+vérifier de nouveau le dernier DEC réellement existant.
+
+7.
+CYCLE_TARGET / cycle_completed :
+aucun hedge "au cas où".
+Ils sont rejetés comme autorité de rotation/Depth.
+
+8.
+DEC-082 :
+réénoncer explicitement le contrat qu'elle utilise :
+
+DomainCycle de création :
+8 domaines
+
+Géographie
+Histoire
+Faune
+Art
+Sport
+Cinéma
+Cuisine
+Science
+
+Général exclu de la création.
+
+Aucun AVAILABLE requis.
+
+Rotation déterministe normale tant qu'aucun signal prospectif
+d'épuisement ne retire un domaine.
+
+9.
+Annoter DEC-065 comme PARTIELLEMENT SUPERSEDED
+selon la nouvelle règle Depth 10 décrite ci-dessus.
+
+==================================================
+9 — PROGRESSION TAXONOMY INDÉPENDANTE : À PRÉSERVER
+==================================================
+
+Ne modifie surtout pas cette règle pendant la correction.
+
+KRP :
+
+GE
+→ HI
+→ FA
+→ AR
+→ SP
+→ CI
+→ CU
+→ SC
+→ ...
+
+Taxonomy possède un curseur indépendant par :
+
+Depth + Domaine.
+
+Donc un même Tour KRP peut produire :
+
+GE → Sujet 1 / Idée 2
+HI → Sujet 2 / Idée 1
+FA → Sujet 1 / Idée 2
+AR → Sujet 3 / Idée 1
+etc.
+
+Le numéro du Tour KRP ne détermine jamais :
+
+- SubjectSlot ;
+- IdeaSlot ;
+- progression Taxonomy.
+
+==================================================
+10 — PRÉPARATION TAXONOMY : À PRÉSERVER
+==================================================
+
+Premier passage dans un bassin :
+
+Depth + Domaine
+↓
+création/préparation du sous-domaine
+↓
+SubjectBank
+↓
+premier Sujet
+↓
+IdeaBank du premier Sujet entièrement déterminé
+↓
+seulement ensuite consommation vers Blueprint.
+
+Passage au sujet suivant :
+
+Sujet courant épuisé
+↓
+Sujet suivant
+↓
+IdeaBank du nouveau Sujet entièrement déterminé
+↓
+seulement ensuite consommation.
+
+Aucune information Taxonomy partielle dans Blueprint.
+
+==================================================
+11 — 50 ET 5 RESTENT DES MAXIMUMS
+==================================================
+
+50 SubjectSlots maximum.
+
+PAS 50 sujets obligatoires.
+
+5 IdeaSlots maximum par sujet.
+
+PAS 5 idées dominantes obligatoires.
+
+Les compteurs sont dérivés des états réels des slots.
+
+==================================================
+12 — CONSOMMATION EXACTE : À PRÉSERVER
+==================================================
+
+Invariant futur Taxonomy :
+
+IdeaSlot sélectionné
+=
+IdeaSlot validé
+=
+dominant_idea_active écrit au Blueprint
+=
+IdeaSlot marqué CONSUMED.
+
+confirmConsumed(depth, domain)
+avec une nouvelle recherche "first available idea"
+reste NON CONFORME.
+
+Ne le corrige pas encore.
+
+Cette correction appartient à 03_Taxonomy après fermeture complète de KRP.
+
+==================================================
+13 — STATUT DES DÉCISIONS
+==================================================
+
+Nous sommes toujours en REVIEW.
+
+Donc toutes les nouvelles décisions de cette révision restent :
+
+UNDER_REVIEW
+
+jusqu'à validation explicite de la spec complète.
+
+Ne marque aucune nouvelle décision OFFICIAL automatiquement
+simplement parce que son contenu est maintenant déterminé.
+
+OFFICIAL intervient au verrouillage.
+
+==================================================
+14 — PAS D'IMPLANTATION
+==================================================
+
+Toujours :
+
+Implémentation = NON
+
+Ne lance pas #151.
+
+Ne lance pas #152.
+
+Ne commence pas 03_Taxonomy.
+
+Ne modifie pas le registre central avant que la cohérence
+de cette nouvelle version de la spec soit validée dans ce chat,
+sauf si tu dois uniquement produire le diff proposé sans l'appliquer.
+
+==================================================
+15 — RETOUR ATTENDU
+==================================================
+
+Corrige intégralement 02_KernelRotationPlanner.md
+dans une nouvelle révision v3.x UNDER_REVIEW.
+
+Puis retourne uniquement :
+
+02_KRP — REVIEW FINAL AVANT VERROUILLAGE
+
+Version:
+...
+
+D1:
+RÉSOLU / autre
+
+Transport physique:
+DÉTAIL D'IMPLANTATION / autre
+
+D3:
+HORS RESPONSABILITÉ KRP / autre
+
+D2:
+RÉSOLU / autre
+
+DEPTH_EXHAUSTED(10):
+...
+
+État terminal:
+PRODUCTION_ON_HOLD / autre
+
+Retour automatique Depth 2:
+INTERDIT / autre
+
+Création d'un Blueprint après entrée terminale:
+INTERDITE / autre
+
+Sortie automatique de PRODUCTION_ON_HOLD:
+AUCUNE / autre
+
+DEC-065:
+...
+
+DEC-061:
+...
+
+DEC-078:
+...
+
+DEC-079:
+...
+
+DEC-080:
+...
+
+DEC-081:
+...
+
+DEC-082→088:
+COHÉRENTS / FAIL
+
+Nouveaux DEC supplémentaires requis:
+...
+
+Statut des nouveaux DEC:
+UNDER_REVIEW / autre
+
+AVAILABLE:
+REJECTED
+
+SHORTFALL:
+REJECTED
+
+kernel_target KRP:
+REJECTED
+
+kernel_remaining KRP:
+REJECTED
+
+DepthProductionState:
+REJECTED
+
+double condition kernel_remaining + AVAILABLE:
+REJECTED
+
+CYCLE_TARGET autorité:
+SUPERSEDED / autre
+
+cycle_completed autorité:
+SUPERSEDED / autre
+
+DomainExhaustionChecker PULL cible:
+À RETIRER APRÈS REMPLACEMENT
+
+Architecture parallèle finale:
+AUCUNE
+
+Progression Taxonomy indépendante par Depth + Domaine:
+PASS/FAIL
+
+50 SubjectSlots:
+MAXIMUM
+
+5 IdeaSlots:
+MAXIMUM
+
+confirmConsumed actuel:
+NON CONFORME / autre
+
+Décisions architecturales KRP encore ouvertes:
+...
+
+Implémentation:
+NON
+
+Architecture:
+100 % / autre
+
+Contrat:
+100 % / autre
+
+VERDICT:
+PRÊTE À VERROUILLER / INCOMPLÈTE
+
+Puis STOP.
+
+Avec PRODUCTION_ON_HOLD, on ferme la dernière vraie transition métier de KRP sans créer un cycle artificiel vers Depth 2 et sans fabriquer un Blueprint orphelin après le dernier noyau du Depth 10. Une reprise future devra faire l’objet d’une décision distincte, plutôt que d’être implicite dans KRP.
