@@ -1,0 +1,401 @@
+On passe maintenant à #154.
+
+OBJECTIF :
+Auditer le code KRP existant contre la spécification verrouillée :
+
+docs/architecture/02_KernelRotationPlanner.md
+Version 3.2
+Statut : VERROUILLÉ
+
+IMPORTANT :
+
+- aucune modification de code ;
+- aucun patch ;
+- aucune migration ;
+- aucun test modifié ;
+- ne commence pas 03_Taxonomy ;
+- ne réinterprète pas l'architecture ;
+- le code existant n'est jamais la source de vérité ;
+- la seule source de vérité est 02_KernelRotationPlanner.md v3.2 + Architecture Register synchronisé.
+
+==================================================
+1 — RECONSTRUIRE LE CONTRAT KRP VERROUILLÉ
+==================================================
+
+Avant d'auditer le code, reconstruis explicitement les obligations KRP v3.2 :
+
+KRP doit :
+
+- recevoir un Blueprint déjà créé ;
+- écrire depth + domain UNE SEULE FOIS ;
+- utiliser le DepthCycle officiel :
+  2 → 4 → 6 → 7 → 8 → 9 → 10 ;
+- utiliser le DomainCycle officiel des 8 domaines créateurs ;
+- exclure Général de la création ;
+- faire tourner les domaines indépendamment de la progression Taxonomy ;
+- ne jamais connaître SubjectSlot / IdeaSlot ;
+- ne jamais synchroniser les domaines intellectuellement ;
+- avancer au prochain domaine au prochain CURRENT_KERNEL_RECEIVED ;
+- mémoriser prospectivement DOMAIN_EXHAUSTED ;
+- retirer uniquement le couple Depth + Domaine concerné des rotations futures ;
+- mémoriser prospectivement DEPTH_EXHAUSTED ;
+- passer au prochain Depth au prochain CURRENT_KERNEL_RECEIVED ;
+- après DEPTH_EXHAUSTED(10) :
+  PRODUCTION_ON_HOLD ;
+- ne jamais revenir automatiquement à Depth 2 ;
+- ne jamais provoquer la création d'un Blueprint en PRODUCTION_ON_HOLD ;
+- laisser l'orchestration décider si un nouveau cycle peut démarrer ;
+- conserver CURRENT_KERNEL_RECEIVED idempotent ;
+- incrémenter kernel_received_total uniquement sur CURRENT_KERNEL_RECEIVED.
+
+==================================================
+2 — INTERDICTIONS À RECHERCHER DANS LE CODE
+==================================================
+
+Recherche explicitement toute logique active ou potentiellement active correspondant à :
+
+- EMPTY loop ;
+- same Blueprint retry ;
+- réécriture depth/domain ;
+- overwriteRotation ;
+- AVAILABLE ;
+- reservoir_status AVAILABLE|EMPTY comme autorité KRP ;
+- SHORTFALL ;
+- DepthProductionState ;
+- kernel_target comme autorité de rotation ;
+- kernel_remaining comme autorité de rotation ;
+- double condition kernel_remaining + AVAILABLE ;
+- cycle_completed comme autorité de changement de Depth ;
+- CYCLE_TARGET comme autorité de changement de Depth ;
+- retour Depth 10 → Depth 2 ;
+- DomainExhaustionChecker PULL comme mécanisme officiel ;
+- KRP qui inspecte directement les banques Taxonomy ;
+- Factory qui connaît PRODUCTION_ON_HOLD/KRP state ;
+- Factory appelée alors qu'aucune prochaine position n'existe ;
+- création d'un Blueprint avant vérification du gate orchestration terminal ;
+- logique qui synchronise Sujet/Idée entre domaines.
+
+Pour chaque occurrence :
+
+ACTIF
+LEGACY MAIS APPELÉ
+LEGACY NON APPELÉ
+TEST SEULEMENT
+DOCUMENTATION SEULEMENT
+
+==================================================
+3 — AUDITER LES FICHIERS RÉELS
+==================================================
+
+Inspecte au minimum :
+
+KernelRotationPlanner.php
+KernelPipelineOrchestrator.php
+KernelRotationStateRepository.php
+DepthTourState.php
+TaxonomyNavigatorInterface.php
+DomainExhaustionChecker.php
+KernelBlueprintFactory / appelant Factory
+migrations/tables rotation KRP
+tests KRP
+tests orchestrator
+tests CURRENT_KERNEL_RECEIVED
+
+Et tout autre fichier réellement appelé par le chemin KRP v2/v3.
+
+Ne te limite pas à cette liste si le call graph montre d'autres dépendances.
+
+==================================================
+4 — CALL GRAPH RÉEL
+==================================================
+
+Produis le call graph du chemin actuellement actif :
+
+déclencheur
+↓
+orchestration
+↓
+Factory
+↓
+KRP
+↓
+Taxonomy
+↓
+suite pipeline
+↓
+ReadyBank / CURRENT_KERNEL_RECEIVED
+↓
+rotation suivante
+
+Identifie précisément :
+
+- quelle méthode KRP est réellement appelée ;
+- si plan(), planV2(), autre ;
+- quels anciens chemins sont encore atteignables ;
+- quels services sont morts ;
+- quels services sont encore branchés.
+
+==================================================
+5 — ÉTAT PERSISTANT ACTUEL
+==================================================
+
+Audite toutes les données persistées utilisées par KRP.
+
+Pour chaque champ/table :
+
+- nom ;
+- propriétaire ;
+- utilisé par quel code ;
+- compatible v3.2 : OUI/NON ;
+- doit rester ;
+- doit être migré ;
+- doit être supprimé ;
+- legacy non utilisé.
+
+Vérifier notamment :
+
+active_depth
+domain_position
+domain_states
+kernel_received_total
+cycle_completed
+cycle_target
+AVAILABLE/EMPTY
+rotation_identifier
+depth_position
+tout autre état présent.
+
+==================================================
+6 — DOMAIN_EXHAUSTED / DEPTH_EXHAUSTED
+==================================================
+
+Ne les implémente pas.
+
+Audite seulement :
+
+- existe-t-il déjà un signal équivalent ?
+- existe-t-il une structure persistante pouvant supporter le contrat ?
+- existe-t-il un mécanisme PULL actif ?
+- quel code devra être remplacé ?
+- où l'orchestration devra recevoir/appliquer le signal futur ?
+
+Le transport physique reste un choix d'implantation.
+
+Ne redéfinis pas le contrat sémantique verrouillé.
+
+==================================================
+7 — PRODUCTION_ON_HOLD
+==================================================
+
+Audite précisément le chemin terminal actuel.
+
+Réponds :
+
+- existe-t-il déjà un état PRODUCTION_ON_HOLD ?
+- qui le possède ?
+- le code retourne-t-il actuellement Depth 10 → Depth 2 ?
+- la Factory peut-elle actuellement être appelée sans prochaine position ?
+- où doit se trouver le gate orchestration selon le call graph réel ?
+- risque actuel de Blueprint orphelin : OUI/NON.
+
+Aucun patch maintenant.
+
+==================================================
+8 — TESTS
+==================================================
+
+Classe les tests actuels :
+
+A — conformes v3.2
+B — obsolètes car testent architecture superseded
+C — manquants
+D — à réécrire après implantation
+
+Identifier notamment les tests requis pour :
+
+- rotation GE→HI→...→SC→GE ;
+- skip d'un DOMAIN_EXHAUSTED ;
+- scope Depth + Domaine ;
+- indépendance des autres Depths ;
+- DEPTH_EXHAUSTED → prochain Depth ;
+- Depth 10 → PRODUCTION_ON_HOLD ;
+- aucune Factory appelée en PRODUCTION_ON_HOLD ;
+- write-once depth/domain ;
+- CURRENT_KERNEL_RECEIVED idempotent ;
+- kernel_received_total incrémenté une seule fois ;
+- aucun Blueprint orphelin ;
+- persistance/restart ;
+- concurrence si pertinente.
+
+==================================================
+9 — CLASSIFICATION DES ÉCARTS
+==================================================
+
+Chaque écart doit avoir :
+
+ID :
+KRP-GAP-001, KRP-GAP-002, ...
+
+Fichier :
+...
+
+Méthode/ligne :
+...
+
+Code actuel :
+...
+
+Contrat v3.2 attendu :
+...
+
+Type :
+ARCHITECTURE
+PERSISTENCE
+ORCHESTRATION
+LEGACY
+TEST
+MIGRATION
+AUTRE
+
+Criticité :
+BLOQUANT
+MAJEUR
+MINEUR
+
+Action future :
+SUPPRIMER
+REMPLACER
+MIGRER
+BRANCHER
+CONSERVER
+TESTER
+
+Dépend de 03_Taxonomy :
+OUI/NON
+
+Justification :
+...
+
+==================================================
+10 — RÈGLE IMPORTANTE SUR TAXONOMY
+==================================================
+
+Ne bloque pas tout KRP simplement parce que le futur PUSH Taxonomy
+n'est pas encore implanté.
+
+Sépare clairement :
+
+A — corrections KRP autonomes réalisables selon v3.2 ;
+
+B — intégration qui dépend réellement du futur contrat opérationnel
+de 03_Taxonomy.
+
+Mais NE CODE NI A NI B maintenant.
+
+==================================================
+11 — RETOUR ATTENDU
+==================================================
+
+Retourne uniquement :
+
+#154 — AUDIT CODE KRP CONTRE SPEC v3.2
+
+Spec auditée :
+02_KernelRotationPlanner v3.2 VERROUILLÉ
+
+Architecture Register synchronisé :
+PASS/FAIL
+
+Méthode KRP active réelle :
+...
+
+Call graph actif :
+...
+
+Nombre total d'écarts :
+...
+
+ÉCARTS BLOQUANTS :
+...
+
+ÉCARTS MAJEURS :
+...
+
+ÉCARTS MINEURS :
+...
+
+Legacy actif :
+...
+
+Legacy non appelé :
+...
+
+EMPTY loop active :
+OUI/NON
+
+overwrite depth/domain possible :
+OUI/NON
+
+CYCLE_TARGET autorité active :
+OUI/NON
+
+cycle_completed autorité active :
+OUI/NON
+
+AVAILABLE actif :
+OUI/NON
+
+DomainExhaustionChecker PULL actif :
+OUI/NON
+
+Retour Depth10→Depth2 actif :
+OUI/NON
+
+PRODUCTION_ON_HOLD existant :
+...
+
+Gate orchestration conforme :
+OUI/NON
+
+Risque Blueprint orphelin :
+OUI/NON
+
+kernel_received_total conforme :
+OUI/NON
+
+Persistance conforme :
+OUI/NON
+
+Tests conformes :
+...
+
+Tests obsolètes :
+...
+
+Tests manquants :
+...
+
+Écarts autonomes KRP :
+...
+
+Écarts dépendants de 03_Taxonomy :
+...
+
+Ordre de patch recommandé :
+1.
+2.
+3.
+...
+
+Implémentation effectuée :
+NON
+
+VERDICT AUDIT :
+PRÊT POUR PLAN D'IMPLANTATION / AUDIT INCOMPLET
+
+Puis STOP.
+
+Aucun code.
+Aucune migration.
+Aucun test modifié.
+Aucun 03_Taxonomy.
