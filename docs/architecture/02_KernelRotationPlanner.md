@@ -1,64 +1,45 @@
 # STRATEGYBUZZER — MÉCANISME EXACT DU KERNELROTATIONPLANNER
 
-**Version :** 2.1
-**Date :** 12 août 2026
-**Spécification écrite :** OUI
+**Version :** 3.0
+**Date :** 13 août 2026
 **Statut :** UNDER_REVIEW
-**Implantation :** à confirmer après raccordement terminal
-**Validation :** à confirmer après audit
-
-Ce document intègre le **Correctif v1.2** (14 juillet 2026) : compte à rebours par domaine, double condition de sélection, SHORTFALL, DepthProductionState, KRP-023→030, DEC-078→081 (UNDER_REVIEW).
-
-Ce document remplace intégralement la version 1.4.
-
-Il constitue la spécification de référence du module KernelRotationPlanner
-et de tous les composants de son périmètre direct.
+**Remplace :** version 2.1 intégralement
+**Aucune implémentation pendant cette phase.**
 
 ---
 
 # 1. Principe central
 
-Le `KernelRotationPlanner` décide seul du prochain couple :
+`KernelRotationPlanner` décide du prochain couple `depth + domain` et l'écrit **une seule fois** dans le Blueprint.
 
-```text
-depth
-+
-Domaine réel de création
+Flow canonique :
+
 ```
-
-Pour prendre cette décision, il utilise deux sources internes :
-
-```text
-DepthNeedMatrix
-→ indique quel Depth est actif
-→ indique les Tours complétés par Depth
-→ indique les noyaux déjà reçus par Depth + Domaine
-```
-
-```text
-Tour de Depth
-→ indique quels Domaines participent encore au Tour actif
-```
-
-La règle centrale est :
-
-```text
-Blueprint reçu par KRP
-+
-Depth actif (DepthNeedMatrix)
-+
-prochain Domaine ON (Tour de Depth)
+KernelBlueprintFactory
 ↓
-KRP écrit depth + domain dans le Blueprint
+Blueprint canonique vide
+↓
+KernelRotationPlanner
+↓
+écrit depth + domain (write-once)
+↓
+Taxonomy
+  ↕ ValidationDominantIdeas
+↓
+QuestionIntent / KernelCodeEngine
+↓
+suite du pipeline intellectuel
+↓
+ReadyBank
+↓
+CURRENT_KERNEL_RECEIVED
+↓
+nouveau Blueprint
+↓
+KRP — rotation suivante
 ```
 
-ReadyBank ne choisit jamais le prochain domaine.
-
-Taxonomy ne choisit jamais le prochain domaine.
-
-DepthNeedMatrix ne choisit jamais le prochain domaine.
-
-Le choix final appartient exclusivement au KernelRotationPlanner.
+Nous sommes uniquement dans le pipeline de **création intellectuelle**.
 
 ---
 
@@ -68,536 +49,509 @@ Le choix final appartient exclusivement au KernelRotationPlanner.
 
 Responsabilités :
 
-* créer une nouvelle instance vide de `KernelBlueprint` ;
-* générer `blueprint_id` (UUIDv7 — `Str::orderedUuid()`) ;
-* créer l'enregistrement d'exécution dans `kernel_blueprint_runs` ;
-* vérifier qu'aucun Blueprint actif (`CREATED_UNENGAGED` ou `ENGAGED_IN_PIPELINE`) n'existe déjà ;
-* ne remplir aucun slot métier ;
-* ne sélectionner aucun Depth ;
-* ne sélectionner aucun Domaine.
+- créer une nouvelle instance vide de `KernelBlueprint` ;
+- générer `blueprint_id` (UUIDv7 — `Str::orderedUuid()`) ;
+- créer l'enregistrement d'exécution dans `kernel_blueprint_runs` ;
+- vérifier qu'aucun Blueprint actif (`CREATED_UNENGAGED` ou `ENGAGED_IN_PIPELINE`) n'existe déjà ;
+- ne remplir aucun slot métier ;
+- ne sélectionner aucun Depth ;
+- ne sélectionner aucun Domaine.
 
-## 2.2 KernelPipelineOrchestrator
-
-Responsabilités (périmètre KRP strictement) :
-
-* demander la création du Blueprint à `KernelBlueprintFactory` ;
-* transmettre le Blueprint à KRP (`planV2`) → obtient `depth + domain` ;
-* transmettre `depth + domain` à Taxonomy via `TaxonomyInputPort` (`peekNext`) ;
-* sur EMPTY (`null`) : appeler `applyEmptyTransitionV2` + `planV2` dans le même Blueprint ;
-* sur `TERRITORY_PROVIDED` : écrire les slots Taxonomy + passer `ENGAGED_IN_PIPELINE` ;
-* retourner `ROTATION_ASSIGNED` ou `PRODUCTION_ON_HOLD` ;
-* ne jamais décider lui-même du Depth ou du Domaine.
-
-Interdictions absolues (hors périmètre KRP) :
-
-* ne jamais exécuter Phase 1 / Validation 1 / Phase 2 / Validation 2 ;
-* ne jamais exécuter QuestionIntent (→ pipeline intellectuel aval) ;
-* ne jamais appeler `confirmConsumed()` (→ contrat aval à définir ; appartient au chemin ReadyBank → CURRENT_KERNEL_RECEIVED, hors périmètre KRP) ;
-* ne jamais décider lui-même du Depth ou du Domaine.
-
-## 2.3 KernelRotationPlanner
+## 2.2 KernelRotationPlanner
 
 Responsabilités :
 
-* recevoir un Blueprint déjà créé ;
-* consulter `DepthNeedMatrix` pour identifier le Depth actif ;
-* consulter le `Tour de Depth` (état ON/OFF des Domaines) ;
-* sélectionner le prochain Domaine ON ;
-* écrire `depth + domain` dans le Blueprint via `fillRotation()` ;
-* gérer les transitions EMPTY (`applyEmptyTransitionV2`) ;
-* comptabiliser les réceptions ReadyBank (`receiveKernelReceivedV2`) ;
-* persister l'état dans `kernel_rotation_state_v2`.
+- recevoir un Blueprint déjà créé par `KernelBlueprintFactory` ;
+- lire l'état de rotation persisté (`active_depth`, `domain_states`) ;
+- sélectionner le prochain Domaine encore ACTIF dans le DomainCycle ;
+- écrire `depth + domain` via `fillRotation()` (write-once) ;
+- avancer la position dans le DomainCycle au prochain `CURRENT_KERNEL_RECEIVED` ;
+- sauter les domaines marqués `DOMAIN_EXHAUSTED` pour le Depth courant ;
+- changer de Depth après `DEPTH_EXHAUSTED` de Taxonomy ;
+- persister l'état de rotation.
 
 Interdictions absolues :
 
-* ne jamais créer le Blueprint ;
-* ne jamais écrire `blueprint_id` ;
-* ne jamais écrire `kernel_code` ;
-* ne jamais écrire `subdomain_active`, `subject_active`, `dominant_idea_active` ;
-* ne jamais scanner les 8 Domaines en avance (réponse à un signal EMPTY, pas anticipation).
+- ne jamais créer le Blueprint ;
+- ne jamais écrire `blueprint_id` ;
+- ne jamais écrire `kernel_code` ;
+- ne jamais écrire `subdomain_active`, `subject_active`, `dominant_idea_active` ;
+- ne jamais réutiliser le même Blueprint avec un autre couple `depth + domain` ;
+- ne jamais appeler `overwriteRotation()` — **cette méthode est interdite et n'existe pas** ;
+- ne jamais inspecter les réservoirs internes de Taxonomy ;
+- ne jamais calculer lui-même l'épuisement d'un bassin Taxonomy.
+
+## 2.3 KernelPipelineOrchestrator
+
+Responsabilités :
+
+- demander la création du Blueprint à `KernelBlueprintFactory` ;
+- transmettre le Blueprint à KRP (`planV2`) ;
+- transmettre `depth + domain` à Taxonomy (`peekNext`) ;
+- sur `TERRITORY_PROVIDED` : écrire les slots Taxonomy + passer `ENGAGED_IN_PIPELINE` ;
+- coordonner la suite du pipeline (Taxonomy → VDI → QuestionIntent → ReadyBank) ;
+- ne jamais décider lui-même du Depth ou du Domaine.
+
+Interdictions :
+
+- ne jamais réassigner le même Blueprint à un autre Depth ou Domaine ;
+- `KernelRotationPlanner.php` n'appelle jamais `KernelCodeEngine` directement.
+
+Note : `KernelPipelineOrchestrator` coordonne les moteurs successifs (KRP → Taxonomy → QuestionIntent).
+`KernelRotationPlanner` s'arrête après `fillRotation()`. Ce sont deux responsabilités distinctes.
 
 ---
 
 # 3. Identité canonique du Blueprint
 
-```text
+```
 blueprint_id
 ```
 
-Format : UUIDv7 (time-ordered UUID via `Str::orderedUuid()`)
+Format : UUIDv7 (`Str::orderedUuid()`).
 
 Règles :
 
-* généré par `KernelBlueprintFactory` avant l'entrée dans KRP ;
-* immuable pendant tout le pipeline ;
-* distinct de `kernel_code` ;
-* distinct du concept supprimé `rotation_identifier` ;
-* transmis jusqu'à ReadyBank ;
-* inclus dans `CURRENT_KERNEL_RECEIVED`.
-
-`rotation_identifier` est définitivement supprimé.
-
-`kernel_code` ne sert pas d'identité de Blueprint : il est généré par `KernelCodeEngine` (hors périmètre).
+- généré par `KernelBlueprintFactory` avant l'entrée dans KRP ;
+- immuable pendant tout le pipeline ;
+- distinct de `kernel_code` ;
+- `rotation_identifier` est définitivement supprimé.
 
 ---
 
-# 4. États du cycle de vie du Blueprint
+# 4. Slots Blueprint — périmètre exclusif
 
-États techniques d'orchestration — distincts des slots du Blueprint et des verdicts de validation.
+| Slot | Propriétaire | Contrainte |
+|---|---|---|
+| `blueprint_id` | KernelBlueprintFactory | write-once à la création |
+| `depth` | KernelRotationPlanner (`fillRotation`) | write-once |
+| `domain` | KernelRotationPlanner (`fillRotation`) | write-once |
+| `subdomain_active` | Taxonomy | après préparation complète |
+| `subject_active` | Taxonomy | après préparation complète |
+| `dominant_idea_active` | Taxonomy | après préparation complète |
+| `kernel_code` | KernelCodeEngine | hors périmètre KRP |
 
-```text
+`depth` et `domain` sont write-once. Aucun composant ne peut les réécrire après `fillRotation()`.
+
+---
+
+# 5. États du cycle de vie du Blueprint
+
+```
 CREATED_UNENGAGED
 ENGAGED_IN_PIPELINE
 READY_BANK_RECEIVED
 NOT_ENGAGED_PRODUCTION_ON_HOLD
 ```
 
-## 4.1 CREATED_UNENGAGED
+**CREATED_UNENGAGED** — Blueprint créé, aucun slot métier rempli.
 
-Le Blueprint vient d'être créé par `KernelBlueprintFactory`.
+**ENGAGED_IN_PIPELINE** — Taxonomy a fourni `subdomain_active / subject_active / dominant_idea_active`. Le couple `depth + domain` est définitivement engagé.
 
-Il peut encore :
+**READY_BANK_RECEIVED** — ReadyBank a reçu le Blueprint terminé. Provoque l'émission de `CURRENT_KERNEL_RECEIVED`.
 
-* recevoir plusieurs propositions `depth + domain` (sur EMPTY) ;
-* être engagé dans le pipeline ;
-* être arrêté avant engagement si aucun besoin ne reste.
+**NOT_ENGAGED_PRODUCTION_ON_HOLD** — KRP constate qu'aucun Depth disponible. Aucun slot métier inscrit. Le Blueprint reste comme trace technique non engagée.
 
-## 4.2 ENGAGED_IN_PIPELINE
-
-Taxonomy a fourni `subdomain_active`, `subject_active`, `dominant_idea_active`.
-
-À partir de ce moment :
-
-* le couple `depth + domain` est définitivement engagé et immuable ;
-* le Blueprint poursuit le pipeline intellectuel.
-
-## 4.3 READY_BANK_RECEIVED
-
-ReadyBank a reçu le Blueprint terminé.
-
-Cet état provoque l'émission de `CURRENT_KERNEL_RECEIVED`.
-
-## 4.4 NOT_ENGAGED_PRODUCTION_ON_HOLD
-
-KRP constate qu'aucun Depth ne possède encore `cycle_completed[depth] < cycle_target[depth]`.
-
-* aucun `depth + domain` n'est inscrit ;
-* le Blueprint ne poursuit pas le pipeline ;
-* aucun noyau n'est comptabilisé ;
-* aucun signal ReadyBank n'est produit ;
-* l'enveloppe reste comme trace technique non engagée.
+Règle : à tout instant, un seul Blueprint peut être `CREATED_UNENGAGED` ou `ENGAGED_IN_PIPELINE`.
 
 ---
 
-# 5. Un seul Blueprint actif
+# 6. DomainCycle officiel
 
-À tout instant, un seul Blueprint peut être dans l'état `CREATED_UNENGAGED` ou `ENGAGED_IN_PIPELINE`.
-
-Cette protection est vérifiée par `KernelBlueprintFactory` avant chaque création.
-
-Un nouveau Blueprint est autorisé après :
-
-* `CURRENT_KERNEL_RECEIVED` (comptabilisé par le listener) ;
-* ou classement d'un Blueprint précédent en `NOT_ENGAGED_PRODUCTION_ON_HOLD`.
-
----
-
-# 5b. Contrats d'entrée / sortie de KernelPipelineOrchestrator
-
-## TaxonomyInputPort
-
-```text
-Contrat : TaxonomyNavigatorInterface::peekNext(depth: int, domain: string)
-
-Sortie possible :
-  array{sub_domain, subject, ...}   → TERRITORY_PROVIDED
-  null                              → EMPTY (Domaine × Depth épuisé)
 ```
-
-KRP ne sait pas ce que Taxonomy fait en interne.
-KRP ne reçoit pas et n'inspecte pas `dominant_idea_active`.
-Les modules qui traitent `dominant_idea_active` appartiennent au pipeline intellectuel
-(QuestionIntent et suites), hors périmètre KRP.
-
-## TaxonomyResult = TERRITORY_PROVIDED | EMPTY
-
-```text
-TERRITORY_PROVIDED
-  → Blueprint.fillTaxonomy(sub_domain, subject, dominant_idea_raw)
-  → ENGAGED_IN_PIPELINE
-  → run() retourne ROTATION_ASSIGNED
-
-EMPTY
-  → applyEmptyTransitionV2(domain)  — Domaine ON → OFF, progression +1/8
-  → planV2($blueprint, $emptyDomain) — prochain Domaine ON (même Blueprint)
-  → peekNext(new depth, new domain)  — boucle
-```
-
-## CurrentKernelReceivedInputPort
-
-```text
-Contrat : CURRENT_KERNEL_RECEIVED (événement Outbox)
-  blueprint_id   : string (UUIDv7)
-  depth          : int
-  domain         : string
-  received_at    : timestamp
-
-Traitement :
-  ApplyCurrentKernelReceivedToRotation::applyCount()
-  → kernel_received_total[depth][domain] += 1  (idempotent par blueprint_id)
-  → autorise la création du Blueprint suivant (KRP-R11)
-```
-
----
-
-# 6. Tour de Depth
-
-## 6.1 Mission
-
-Répondre à la question :
-
-```text
-Quels Domaines participent encore au Tour de Depth actif ?
-```
-
-## 6.2 Domaines officiels — DomainCycle
-
-```text
-Géographie → Histoire → Faune → Art → Sport → Cinéma → Cuisine → Science
-→ retour à Géographie
+1. Géographie
+2. Histoire
+3. Faune
+4. Art
+5. Sport
+6. Cinéma
+7. Cuisine
+8. Science
 ```
 
 Code interne (snake_case) :
 
-```text
+```
 geographie, histoire, faune, art, sport, cinema, cuisine, science
 ```
 
-`Général` est exclu de la création.
+Règles :
 
-Aucun signal `AVAILABLE` n'existe.
+- `Général` est **exclu** de la création intellectuelle ;
+- l'ordre est déterministe et circulaire ;
+- **aucun signal `AVAILABLE` n'existe** ;
+- le cycle est commun à tous les Depths.
 
-## 6.3 Initialisation
+DepthCycle officiel :
 
-Au début de chaque Tour de Depth :
-
-```text
-geographie = ON
-histoire   = ON
-faune      = ON
-art        = ON
-sport      = ON
-cinema     = ON
-cuisine    = ON
-science    = ON
 ```
-
-## 6.4 Territoire fourni par Taxonomy
-
-`TaxonomyProgressManager::peekNext()` retourne un tableau non-null :
-
-```text
-Domaine reste ON
-Blueprint engagé dans le pipeline
-```
-
-## 6.5 EMPTY
-
-`TaxonomyProgressManager::peekNext()` retourne `null` :
-
-```text
-Domaine ON → OFF
-Domaine ignoré jusqu'à la fin du Tour de Depth
-```
-
-La transition `ON → OFF` est idempotente.
-
-Un Domaine déjà `OFF` ne produit aucun second incrément.
-
-## 6.6 Fermeture du Tour
-
-```text
-8 Domaines OFF
-↓
-Tour de Depth terminé
-```
-
----
-
-# 7. DepthNeedMatrix
-
-## 7.1 Mission
-
-Porter les cibles de Tours, les Tours complétés, et les noyaux reçus.
-
-Ne porte pas les états ON/OFF des Domaines.
-
-Ne prend aucune décision.
-
-## 7.2 DepthCycle officiel
-
-```text
 2 → 4 → 6 → 7 → 8 → 9 → 10
 ```
 
-Après Depth 10 : la recherche reprend à Depth 2.
-
-## 7.3 Cibles officielles
-
-```text
-cycle_target[2]  = 250
-cycle_target[4]  = 300
-cycle_target[6]  = 350
-cycle_target[7]  = 350
-cycle_target[8]  = 350
-cycle_target[9]  = 250
-cycle_target[10] = 100
-```
-
-Constantes de code — non persistées.
-
-## 7.4 Progression par Tour
-
-```text
-0/8 → 1/8 → 2/8 → … → 8/8
-```
-
-Chaque transition valide `ON → OFF` produit exactement `+1`.
-
-## 7.5 Fermeture d'un Tour
-
-À `8/8` :
-
-```text
-cycle_completed[active_depth] += 1
-```
-
-DepthNeedMatrix recherche ensuite le prochain Depth du cycle pour lequel :
-
-```text
-cycle_completed[depth] < cycle_target[depth]
-```
-
-Le résultat est retourné à KRP.
-
-KRP ne recommence jamais immédiatement un Tour du même Depth.
-
-## 7.6 Noyaux reçus
-
-```text
-kernel_received_total[depth][domain]
-```
-
-À chaque `CURRENT_KERNEL_RECEIVED` valide :
-
-```text
-kernel_received_total[depth][domain] += 1
-```
-
-Total du Depth = somme des huit Domaines.
-
-Aucun second compteur total distinct.
-
-## 7.7 Initialisation depuis ReadyBank
-
-Au premier démarrage d'un Depth :
-
-* `kernel_received_total[depth][domain]` est initialisé depuis la réalité ReadyBank ;
-* interdit d'initialiser à 0 si ReadyBank contient déjà des noyaux.
+Depth 10 est intellectuellement valide. La restriction Solo Boss niveau 100 appartient au gameplay consommateur — elle ne modifie pas la capacité de création de Taxonomy/KRP.
 
 ---
 
-# 8. KernelRotationPlanner — interface V2
+# 7. Initialisation KRP
 
-## 8.1 Méthodes V2
+Au démarrage de la production intellectuelle :
 
-```text
-planV2(KernelBlueprint $blueprint, ?string $previousDomain = null): string
+```
+active_depth = 2
+premier domaine = Géographie
+domain_states[2] = tous ACTIF
 ```
 
-Entrée : Blueprint vide (CREATED_UNENGAGED) + Domaine précédent (null = premier appel).
+Au démarrage de chaque nouveau Depth (après `DEPTH_EXHAUSTED`) :
 
-Sortie : `ROTATION_ASSIGNED` ou `NOT_ENGAGED_PRODUCTION_ON_HOLD`.
-
-```text
-applyEmptyTransitionV2(string $emptyDomain): void
 ```
-
-Appelé par l'Orchestrateur après un EMPTY de Taxonomy.
-
-Met à jour le Tour de Depth (ON → OFF).
-
-Si Tour 8/8 : ferme le Tour, sélectionne le prochain Depth.
-
-```text
-receiveKernelReceivedV2(string $blueprintId, int $depth, string $domain): void
-```
-
-Délégué au listener `ApplyCurrentKernelReceivedToRotation`.
-
-Comptabilise la réception de façon idempotente.
-
-## 8.2 Méthodes legacy (DEPRECATED)
-
-Les méthodes suivantes restent physiquement présentes pour le retour arrière mais ne sont plus utilisées par KRP V2 :
-
-```text
-plan(DomainExhaustionChecker $checker): array   — DEPRECATED
-initialize(?int $startDepth): void              — DEPRECATED
-buildDepthNeedMatrix(array $existingByDepth): array — DEPRECATED
-chooseDepth(array $matrix): int                 — DEPRECATED
-advanceDomainIndex(?int $currentIndex, array $domains): int — DEPRECATED
-```
-
-## 8.3 Sélection du Domaine — règle exacte
-
-KRP utilise `DepthTourState::getNextOnDomain(?string $previousDomain)` :
-
-1. Part du `previousDomain` ;
-2. parcourt le DomainCycle circulairement ;
-3. ignore les Domaines `OFF` ;
-4. retourne le premier Domaine `ON`.
-
-Aucun curseur numérique `domain_position` ou `current_domain_index` n'est persisté.
-
-## 8.4 Ce que KRP n'écrit jamais
-
-```text
-blueprint_id           → KernelBlueprintFactory
-kernel_code            → KernelCodeEngine (hors périmètre)
-subdomain_active       → Taxonomy
-subject_active         → Taxonomy
-dominant_idea_active   → Taxonomy
-rotation_identifier    → supprimé
+active_depth = prochain Depth du DepthCycle
+domain_states[nouveau_depth] = tous ACTIF
 ```
 
 ---
 
-# 9. Flow initial
+# 8. Rotation normale KRP
 
-```text
-KernelPipelineOrchestrator
-↓
-KernelBlueprintFactory crée le Blueprint
-↓
-état CREATED_UNENGAGED
-↓
-KRP.planV2($blueprint, null)
+## 8.1 Fonctionnement en absence de signal
+
+Taxonomy ne dit rien = le domaine est disponible.
+
 ```
-
-## 9.1 Un besoin existe
-
-```text
-KRP sélectionne active_depth (DepthNeedMatrix)
+CURRENT_KERNEL_RECEIVED
 ↓
-Tour de Depth initialisé (8 Domaines ON, progression 0/8)
+KRP avance au prochain domaine ACTIF du DomainCycle pour ce Depth
 ↓
-KRP sélectionne premier Domaine ON
+nouveau Blueprint créé par KernelBlueprintFactory
 ↓
-KRP écrit depth + domain via fillRotation()
+KRP écrit depth + domain (write-once)
 ↓
-Taxonomy.peekNext(depth, domain)
-```
-
-### Taxonomy fournit le territoire
-
-```text
-Blueprint.fillTaxonomy(subdomain, subject, dominant_idea)
-↓
-Blueprint = ENGAGED_IN_PIPELINE
+Taxonomy traite en silence
 ↓
 pipeline intellectuel
 ↓
 ReadyBank
+↓
+CURRENT_KERNEL_RECEIVED
+↓
+(répéter)
 ```
 
-### Taxonomy retourne null (EMPTY)
+KRP ne connaît pas :
 
-```text
-KRP.applyEmptyTransitionV2(domain)
-↓
-Domaine ON → OFF
-DepthNeedMatrix progression +1/8
-même Blueprint conservé
-↓
-KRP.planV2($blueprint, $emptyDomain)
-↓
-KRP sélectionne prochain Domaine ON
-↓
-KRP remplace depth + domain dans le même Blueprint
-↓
-Taxonomy.peekNext(nouveau depth, nouveau domain)
+- le numéro du sujet actif de chaque domaine ;
+- le numéro de l'idée dominante active ;
+- l'avancement interne des réservoirs Taxonomy.
+
+**KRP tourne, c'est tout.**
+
+## 8.2 Règle de sélection du domaine
+
+1. Part du domaine précédent.
+2. Parcourt le DomainCycle circulairement.
+3. Saute les domaines `DOMAIN_EXHAUSTED` pour ce Depth.
+4. Retourne le premier domaine `ACTIF` trouvé.
+
+## 8.3 Rotation KRP ≠ Progression Taxonomy (règle fondamentale)
+
+**KRP Tour Number ne détermine jamais le Taxonomy Subject Number ni le Taxonomy Idea Number.**
+
+Les 8 domaines partagent le cycle KRP, mais leurs réservoirs Taxonomy progressent **indépendamment**.
+
+Exemple valide au Tour KRP 2 :
+
+```
+Géographie → Sujet 1 / Idée 2
+Histoire   → Sujet 2 / Idée 1
 ```
 
-Ce cycle peut se répéter plusieurs fois avec le même Blueprint.
+Ceci est parfaitement correct. Le Sujet 1 de Histoire n'avait qu'une seule idée dominante valide.
 
-## 9.2 Aucun besoin
+Chaque bassin `Depth + Domaine` possède son propre état Taxonomy persistant.
 
-```text
-PRODUCTION_ON_HOLD
-↓
-Blueprint = NOT_ENGAGED_PRODUCTION_ON_HOLD
-↓
-aucun pipeline
-```
+**Interdiction absolue : aucune synchronisation artificielle entre les progressions de domaines.**
 
 ---
 
-# 10. Flow récurrent
+# 9. Contrat externe attendu de Taxonomy
 
-```text
-ReadyBank reçoit le Blueprint
-↓
-Blueprint = READY_BANK_RECEIVED
-↓
-CURRENT_KERNEL_RECEIVED (Outbox)
-↓
-ApplyCurrentKernelReceivedToRotation listener
-↓
-comptabilisation idempotente
-↓
-KernelPipelineOrchestrator crée le Blueprint suivant
-↓
-KRP.planV2($blueprint, $previousDomain)
-↓
-reprise du Tour de Depth actif
+KRP ne connaît pas les réservoirs internes de Taxonomy.
+
+KRP connaît uniquement :
+
+1. Le territoire fourni (`subdomain_active / subject_active / dominant_idea_active`) après préparation complète.
+2. Deux signaux prospectifs que Taxonomy peut émettre après consommation.
+
+## 9.1 Signal normal
+
+**Absence de signal = domaine disponible.**
+
+Taxonomy ne dit rien pendant le fonctionnement normal.
+Il n'existe aucun signal `AVAILABLE` nécessaire pour chaque noyau.
+
+## 9.2 Deux signaux d'épuisement
+
+```
+DOMAIN_EXHAUSTED(depth, domain)
+DEPTH_EXHAUSTED(depth)
 ```
 
-Tant que la progression est inférieure à `8/8` :
+Taxonomy est **seule autorité** pour déterminer l'épuisement.
 
-```text
-active_depth reste inchangé
-prochain Domaine ON sélectionné
+KRP ne calcule jamais lui-même la quantité intellectuelle restante.
+
+## 9.3 Premier passage d'un bassin
+
+Lors de la première arrivée KRP sur un bassin non encore initialisé :
+
+Taxonomy prépare :
+
+1. le sous-domaine ;
+2. son réservoir de SubjectSlots ;
+3. le premier SubjectSlot exploitable ;
+4. l'IdeaBank de ce premier sujet (complètement, selon le contrat VDI) ;
+5. seulement ensuite ouvre la consommation.
+
+Le Blueprint attend cette préparation.
+
+KRP ne saute pas vers un autre domaine pendant l'initialisation.
+KRP ne réécrit pas `depth + domain`.
+KRP ne crée pas de nouveau Blueprint.
+
+Taxonomy fournit le territoire quand l'état est READY.
+
+Note : « réservoir IdeaSlots complété » ne signifie pas automatiquement 5 IdeaSlots FILLED.
+Certains slots peuvent être EMPTY selon le contrat Taxonomy/VDI.
+Le futur contrat `03_Taxonomy` déterminera les critères exacts permettant de déclarer un sujet READY.
+
+## 9.4 Retour sur un bassin déjà initialisé
+
+Taxonomy ne recrée pas le sous-domaine ni le SubjectBank.
+
+Elle recharge son état persistant et continue depuis son propre curseur.
+
+Exemple :
+
+```
+Depth 2 / Géographie — Sous-domaine : Rocheuses / Sujet : Parcs
+
+IdeaSlot 1 → CONSUMED
+IdeaSlot 2 → FILLED   ← prochain
+IdeaSlot 3 → FILLED
+IdeaSlot 4 → FILLED
+IdeaSlot 5 → EMPTY
+
+Taxonomy utilise IdeaSlot 2
+→ ACTIVE → écrit dans Blueprint → CONSUMED
 ```
 
-À `8/8` :
+## 9.5 Changement de sujet
 
-```text
-cycle_completed[active_depth] += 1
-↓
-prochain Depth requis
-↓
-nouveau Tour de Depth (8 Domaines ON, progression 0/8)
+Quand tous les IdeaSlots exploitables du sujet courant sont CONSUMED :
+
 ```
+SubjectSlot courant → EXHAUSTED
+↓
+Taxonomy prépare le SubjectSlot suivant
+↓
+IdeaBank préparé complètement selon contrat VDI
+↓
+READY FOR CONSUMPTION
+↓
+seulement ensuite : subdomain_active / subject_active / dominant_idea_active → Blueprint
+```
+
+Le Blueprint attend cette préparation. Aucun Blueprint réassigné.
+
+## 9.6 Consommation exacte
+
+L'IdeaSlot sélectionné = l'IdeaSlot validé VDI = l'IdeaSlot écrit dans le Blueprint = l'IdeaSlot marqué CONSUMED.
+
+```
+IdeaSlot exact sélectionné
+↓
+ACTIVE
+↓
+subdomain_active / subject_active / dominant_idea_active écrits dans le Blueprint
+↓
+cette écriture réussit
+↓
+CE MÊME IdeaSlot → CONSUMED
+```
+
+Note pour `03_Taxonomy` : l'actuel `confirmConsumed(depth, domain)` cherche à nouveau « first available idea » — cela crée un risque que l'idée sélectionnée ≠ l'idée consommée. Cet écart doit être résolu dans `03_Taxonomy`. Ne pas corriger le code maintenant.
 
 ---
 
-# 11. Canal ReadyBank → KRP
+# 10. DOMAIN_EXHAUSTED
 
-## 11.1 Événement transactionnel avec Outbox
+## 10.1 Définition
 
-Nom : `CURRENT_KERNEL_RECEIVED`
+Taxonomy a traité le Blueprint courant normalement.
+Après consommation exacte, Taxonomy constate que ce bassin `Depth + Domaine` n'a plus de matière intellectuelle exploitable.
 
-Dans la même transaction que la réception ReadyBank :
+Signal : `DOMAIN_EXHAUSTED(depth, domain)`
 
-1. ReadyBank persiste le Blueprint ;
-2. exécution du Blueprint passe à `READY_BANK_RECEIVED` ;
-3. ReadyBank écrit un événement dans `kernel_pipeline_outbox` ;
-4. transaction validée.
+Sémantique :
+> "Le Blueprint courant reste valide et continue normalement. Après cette consommation, il n'existe plus de matière pour ce Depth + Domaine. Ne m'attribue plus ce Domaine pour les prochains Blueprints de ce Depth."
 
-## 11.2 Payload obligatoire
+## 10.2 Signal prospectif
 
-```text
+Le Blueprint déclencheur :
+
+- reste **VALIDE** ;
+- continue normalement dans le pipeline ;
+- n'est PAS réassigné ;
+- n'est PAS annulé.
+
+Le signal modifie uniquement la rotation **future** de KRP.
+
+## 10.3 Portée
+
+Exclusivement : `Depth + Domaine`.
+
+```
+DOMAIN_EXHAUSTED(2, faune)
+→ Depth 2 / Faune : DOMAIN_EXHAUSTED
+→ Depth 4 / Faune : non affecté
+→ Depth 6 / Faune : non affecté
+→ ...
+```
+
+## 10.4 Rotation après DOMAIN_EXHAUSTED
+
+Avant : `GÉ → HI → FA → AR → SP → CI → CU → SC`
+
+Après `DOMAIN_EXHAUSTED(2, faune)` :
+
+```
+GÉ → HI → AR → SP → CI → CU → SC → GÉ → ...
+```
+
+Même Depth. Aucun Blueprint réassigné. Aucune boucle. Aucun overwrite.
+
+## 10.5 Idempotence
+
+`DOMAIN_EXHAUSTED` reçu deux fois pour le même couple → NO-OP.
+
+---
+
+# 11. DEPTH_EXHAUSTED
+
+## 11.1 Définition
+
+Taxonomy constate que tous les bassins Domaines du Depth courant sont épuisés.
+
+Signal : `DEPTH_EXHAUSTED(depth)`
+
+Sémantique :
+> "Le Blueprint courant reste valide. Après cette consommation, tous les bassins Domaines de ce Depth sont épuisés. Le prochain Blueprint doit appartenir au prochain Depth."
+
+## 11.2 Signal prospectif
+
+Le Blueprint déclencheur reste valide et continue normalement.
+Le signal modifie uniquement le Depth de la rotation future.
+
+## 11.3 Rotation après DEPTH_EXHAUSTED
+
+```
+DEPTH_EXHAUSTED(2)
+↓
+Blueprint courant continue normalement
+↓
+ReadyBank
+↓
+CURRENT_KERNEL_RECEIVED
+↓
+nouveau Blueprint
+↓
+KRP : active_depth = 4, domain_states[4] = tous ACTIF
+↓
+premier domaine : Géographie
+```
+
+## 11.4 Idempotence
+
+`DEPTH_EXHAUSTED` reçu alors que `depth_state = DEPTH_EXHAUSTED_PENDING` → NO-OP.
+
+---
+
+# 12. Canal de transmission des signaux d'épuisement
+
+## 12.1 Deux flux distincts
+
+**FLUX INFORMATIONNEL :**
+
+```
+Taxonomy
+↓
+consommation exacte
+↓
+détection éventuelle : DOMAIN_EXHAUSTED ou DEPTH_EXHAUSTED
+↓
+information rendue disponible immédiatement à la couche de rotation
+(pour les prochains Blueprints)
+```
+
+**FLUX DE DÉCLENCHEMENT :**
+
+```
+Blueprint courant continue
+↓
+ReadyBank
+↓
+CURRENT_KERNEL_RECEIVED
+↓
+nouveau Blueprint
+↓
+KRP applique réellement la rotation modifiée
+```
+
+Ces deux flux sont indépendants. Taxonomy met à jour l'information d'épuisement immédiatement. KRP effectue réellement la rotation au prochain `CURRENT_KERNEL_RECEIVED`.
+
+## 12.2 Autorités
+
+```
+Taxonomy = autorité de l'épuisement
+KRP      = autorité de la rotation
+ReadyBank = déclencheur de la rotation suivante
+```
+
+Taxonomy ne modifie pas arbitrairement la rotation elle-même.
+
+KRP ne consulte pas les réservoirs internes de Taxonomy pour décider de l'épuisement.
+
+## 12.3 Canal technique — DÉCISION OUVERTE (D1)
+
+La forme exacte du canal entre Taxonomy et l'état KRP n'est pas encore définie.
+
+Contraintes du canal à respecter :
+
+- pas de second propriétaire de l'état de rotation ;
+- Taxonomy n'écrit pas directement dans `kernel_rotation_state_v2` ;
+- KRP ne lit pas les tables Taxonomy pour décider de l'épuisement.
+
+Options à trancher lors de la spécification de `03_Taxonomy` :
+
+- valeur de retour enrichie de la consommation Taxonomy ;
+- événement / Listener distinct (Outbox) ;
+- table d'état intermédiaire consultée par KRP au prochain `CURRENT_KERNEL_RECEIVED`.
+
+**Ne rien implémenter sur ce point sans décision.**
+
+---
+
+# 13. CURRENT_KERNEL_RECEIVED
+
+Seul déclencheur officiel de la prochaine rotation.
+
+## 13.1 Canal
+
+Événement transactionnel via `kernel_pipeline_outbox`.
+
+Payload obligatoire :
+
+```
 event_id          UUID
 event_type        = CURRENT_KERNEL_RECEIVED
 schema_version    = 1
@@ -609,34 +563,237 @@ occurred_at       datetime
 
 `kernel_code` peut être présent pour traçabilité — KRP ne l'utilise pas pour l'idempotence.
 
-## 11.3 Listener
+## 13.2 Listener
 
-```text
-ApplyCurrentKernelReceivedToRotation
-```
+`ApplyCurrentKernelReceivedToRotation`
 
 Séquence :
 
 1. vérifier `blueprint_id` dans `kernel_current_kernel_receipts` ;
-2. si le reçu existe : NO-OP (idempotent) ;
-3. sinon : insérer le reçu + `kernel_received_total[depth][domain] += 1` ;
+2. si présent → NO-OP (idempotent) ;
+3. sinon → insérer le reçu + `kernel_received_total[depth][domain] += 1` ;
 4. marquer l'événement Outbox comme traité.
 
-## 11.4 Règle de non-jouabilité
+## 13.3 Règle de comptabilisation
 
-Un Blueprint est comptabilisé dès sa réception canonique par ReadyBank, même si des slots sont `FAIL` ou en correction.
+Un Blueprint est comptabilisé dès sa réception canonique par ReadyBank, même si des slots sont `FAIL`.
 
 Quarantine ne bloque jamais la rotation.
 
 ---
 
-# 12. Persistance exacte
+# 14. États internes de rotation (persistés)
 
-Migrations additives — aucune colonne legacy supprimée dans la série initiale.
+## 14.1 État de rotation
 
-## 12.1 `kernel_blueprint_runs`
+```
+active_depth      : int (2, 4, 6, 7, 8, 9, ou 10)
+domain_states     : map depth → map domain → ACTIF | DOMAIN_EXHAUSTED
+depth_state       : ROTATION_ACTIVE | DEPTH_EXHAUSTED_PENDING | NOT_ENGAGED_PRODUCTION_ON_HOLD
+```
 
-```text
+## 14.2 Transitions
+
+**DOMAIN_EXHAUSTED reçu :**
+
+```
+domain_states[depth][domain] : ACTIF → DOMAIN_EXHAUSTED
+(idempotent : DOMAIN_EXHAUSTED → DOMAIN_EXHAUSTED = NO-OP)
+```
+
+**DEPTH_EXHAUSTED reçu :**
+
+```
+depth_state : ROTATION_ACTIVE → DEPTH_EXHAUSTED_PENDING
+(idempotent : DEPTH_EXHAUSTED_PENDING → DEPTH_EXHAUSTED_PENDING = NO-OP)
+```
+
+**Au prochain CURRENT_KERNEL_RECEIVED si DEPTH_EXHAUSTED_PENDING :**
+
+```
+active_depth = prochain Depth du DepthCycle
+domain_states[nouveau_depth] = tous ACTIF
+depth_state = ROTATION_ACTIVE
+```
+
+---
+
+# 15. Flow initial
+
+```
+KernelPipelineOrchestrator
+↓
+KernelBlueprintFactory::create()
+↓
+Blueprint = CREATED_UNENGAGED
+↓
+KRP : active_depth = 2, premier domaine = Géographie
+↓
+fillRotation(2, 'geographie')
+↓
+Taxonomy.peekNext(2, 'geographie')
+↓
+préparation du bassin si non initialisé
+↓
+TERRITORY_PROVIDED
+↓
+Blueprint.fillTaxonomy(subdomain, subject, dominant_idea)
+↓
+Blueprint = ENGAGED_IN_PIPELINE
+↓
+pipeline intellectuel
+↓
+ReadyBank
+↓
+CURRENT_KERNEL_RECEIVED
+↓
+nouveau Blueprint
+↓
+KRP avance au prochain domaine : Histoire
+```
+
+---
+
+# 16. Flow récurrent (rotation normale)
+
+```
+CURRENT_KERNEL_RECEIVED
+↓
+ApplyCurrentKernelReceivedToRotation
+↓
+kernel_received_total[depth][domain] += 1 (idempotent)
+↓
+KernelBlueprintFactory::create()
+↓
+KRP : active_depth inchangé, prochain domaine ACTIF
+↓
+fillRotation(depth, next_domain)
+↓
+Taxonomy.peekNext(depth, next_domain)
+↓
+TERRITORY_PROVIDED (cas normal)
+↓
+pipeline intellectuel
+↓
+ReadyBank
+↓
+CURRENT_KERNEL_RECEIVED
+↓
+(répéter)
+```
+
+Pendant le flux normal, Taxonomy ne dit rien.
+
+---
+
+# 17. Flow avec DOMAIN_EXHAUSTED
+
+```
+Blueprint A : KRP → Depth 2 + Faune
+↓
+Taxonomy consomme la dernière matière disponible pour Faune/Depth 2
+↓
+Blueprint A continue normalement dans le pipeline
+↓
+Taxonomy constate : DOMAIN_EXHAUSTED(2, 'faune')
+↓
+Canal D1 (à définir) : KRP reçoit le signal
+↓
+domain_states[2][faune] = DOMAIN_EXHAUSTED
+↓
+Blueprint A → ReadyBank
+↓
+CURRENT_KERNEL_RECEIVED
+↓
+nouveau Blueprint B
+↓
+KRP : Depth 2, prochain domaine ACTIF après Faune = Art
+↓
+fillRotation(2, 'art')
+```
+
+---
+
+# 18. Flow avec DEPTH_EXHAUSTED
+
+```
+Blueprint X : KRP → Depth 2 + Science (dernier domaine actif)
+↓
+Taxonomy consomme la dernière matière du dernier domaine actif de Depth 2
+↓
+Blueprint X continue normalement
+↓
+Taxonomy constate : DEPTH_EXHAUSTED(2)
+↓
+Canal D1 (à définir) : KRP reçoit le signal
+↓
+depth_state = DEPTH_EXHAUSTED_PENDING
+↓
+Blueprint X → ReadyBank
+↓
+CURRENT_KERNEL_RECEIVED
+↓
+nouveau Blueprint Y
+↓
+KRP : active_depth = 4, domain_states[4] = tous ACTIF
+↓
+fillRotation(4, 'geographie')
+```
+
+---
+
+# 19. Cas limites
+
+## 19.1 Premier passage (Taxonomy non initialisée)
+
+KRP écrit `depth + domain`. Le Blueprint attend la préparation Taxonomy. Aucun timeout côté KRP.
+
+## 19.2 Tous les domaines d'un Depth DOMAIN_EXHAUSTED
+
+Si tous les domaines d'un Depth reçoivent `DOMAIN_EXHAUSTED` sans que `DEPTH_EXHAUSTED` soit encore reçu :
+
+→ KRP ne peut pas sélectionner de domaine.
+→ KRP attend `DEPTH_EXHAUSTED` de Taxonomy.
+→ KRP ne passe pas au Depth suivant de sa propre initiative.
+
+Note : `DEPTH_EXHAUSTED` est l'autorité. KRP ne dérive pas `DEPTH_EXHAUSTED` depuis les `DOMAIN_EXHAUSTED` individuels.
+
+## 19.3 DEPTH_EXHAUSTED(10) — transition terminale
+
+**DÉCISION ENCORE OUVERTE (D2).**
+
+Que fait KRP après `DEPTH_EXHAUSTED` sur Depth 10 ?
+
+Options à trancher, sans créer aucun état silencieusement :
+
+- KRP s'arrête en état `IDLE` (attend recharge externe) ;
+- KRP recommence depuis Depth 2 (cycle infini) ;
+- KRP émet un signal ops et se met en pause.
+
+**Ne rien implémenter sans décision.**
+
+## 19.4 Blueprint actif existant au redémarrage
+
+La présence de `active_blueprint_identity` dans l'état persisté ne déclenche pas une nouvelle rotation.
+
+Le véritable déclencheur reste `CURRENT_KERNEL_RECEIVED`.
+
+## 19.5 Reprise après crash
+
+L'état est rechargé depuis `kernel_rotation_state_v2`.
+
+Aucun domaine n'est remis à `ACTIF` lors d'une reprise.
+Les `DOMAIN_EXHAUSTED` et `DEPTH_EXHAUSTED_PENDING` précédents sont préservés.
+
+---
+
+# 20. Persistance exacte
+
+Migrations additives — aucune colonne legacy supprimée dans cette série.
+
+## 20.1 `kernel_blueprint_runs`
+
+```
 blueprint_id      UUID PRIMARY KEY
 execution_state   VARCHAR  (CREATED_UNENGAGED | ENGAGED_IN_PIPELINE
                              | READY_BANK_RECEIVED | NOT_ENGAGED_PRODUCTION_ON_HOLD)
@@ -648,16 +805,16 @@ received_at       TIMESTAMP NULL
 updated_at        TIMESTAMP
 ```
 
-## 12.2 `kernel_rotation_state_v2`
+## 20.2 `kernel_rotation_state_v2`
 
 Une seule ligne active.
 
-```text
+```
 id
 active_depth                      SMALLINT NULL
-active_tour_id                    UUID NULL
-rotation_status                   VARCHAR  (TOUR_IN_PROGRESS | NOT_ENGAGED_PRODUCTION_ON_HOLD)
-tour_domain_states                JSON
+depth_state                       VARCHAR  (ROTATION_ACTIVE | DEPTH_EXHAUSTED_PENDING
+                                            | NOT_ENGAGED_PRODUCTION_ON_HOLD)
+domain_states                     JSON
 active_blueprint_identity         VARCHAR  NULL
 last_counted_blueprint_identity   VARCHAR  NULL
 lock_version                      INTEGER
@@ -665,36 +822,30 @@ created_at                        TIMESTAMP
 updated_at                        TIMESTAMP
 ```
 
-`tour_domain_states` :
+`domain_states` — format par Depth :
 
 ```json
 {
-  "states":         {"geographie":"ON","histoire":"ON",...},
-  "empty_progress": 0
+  "2": {
+    "geographie": "ACTIF",
+    "histoire":   "ACTIF",
+    "faune":      "DOMAIN_EXHAUSTED",
+    "art":        "ACTIF",
+    "sport":      "ACTIF",
+    "cinema":     "ACTIF",
+    "cuisine":    "ACTIF",
+    "science":    "ACTIF"
+  }
 }
 ```
 
-## 12.3 `kernel_depth_matrix`
+Note : le champ `tour_domain_states` existant (format ON/OFF) est le champ legacy à migrer vers ce format.
 
-Une ligne par Depth. Alimentée par M-07.
+## 20.3 `kernel_depth_domain_totals`
 
-```text
-depth                         SMALLINT PRIMARY KEY
-cycle_target                  INTEGER
-cycle_completed               INTEGER  DEFAULT 0
-empty_progress_current_tour   SMALLINT DEFAULT 0
-current_tour_id               UUID NULL
-created_at                    TIMESTAMP
-updated_at                    TIMESTAMP
+56 lignes (7 Depths × 8 Domaines) — traçabilité uniquement.
+
 ```
-
-Contraintes : `depth IN (2,4,6,7,8,9,10)`, `cycle_completed >= 0`, `empty_progress_current_tour BETWEEN 0 AND 8`.
-
-## 12.4 `kernel_depth_domain_totals`
-
-56 lignes initiales (7 Depths × 8 Domaines). Alimentée par M-08.
-
-```text
 depth                  SMALLINT
 domain_code            VARCHAR
 kernel_received_total  BIGINT   DEFAULT 0
@@ -703,9 +854,11 @@ updated_at             TIMESTAMP
 PRIMARY KEY (depth, domain_code)
 ```
 
-## 12.5 `kernel_current_kernel_receipts`
+`kernel_received_total` = compteur de traçabilité. **Non utilisé comme autorité de rotation.**
 
-```text
+## 20.4 `kernel_current_kernel_receipts`
+
+```
 blueprint_id  UUID PRIMARY KEY
 event_id      UUID UNIQUE
 depth         SMALLINT
@@ -715,9 +868,9 @@ received_at   TIMESTAMP
 
 Garantit l'idempotence de `CURRENT_KERNEL_RECEIVED`.
 
-## 12.6 `kernel_pipeline_outbox`
+## 20.5 `kernel_pipeline_outbox`
 
-```text
+```
 event_id       UUID PRIMARY KEY
 event_type     VARCHAR
 schema_version INTEGER
@@ -732,212 +885,238 @@ updated_at     TIMESTAMP
 
 ---
 
-# 13. Atomicité obligatoire
+# 21. Atomicité obligatoire
 
-## 13.1 Transition EMPTY
+## 21.1 Inscription `depth + domain`
+
+Dans une seule transaction :
+
+1. écrire `depth + domain` via `fillRotation()` ;
+2. enregistrer `active_blueprint_identity` dans `kernel_rotation_state_v2`.
+
+## 21.2 Traitement DOMAIN_EXHAUSTED
 
 Dans une seule transaction :
 
 1. verrouiller `kernel_rotation_state_v2` ;
-2. vérifier que le Domaine est `ON` ;
-3. le passer à `OFF` ;
-4. si Tour 8/8 : `cycle_completed[active_depth] += 1`, sélectionner prochain Depth, init nouveau Tour ;
-5. persister.
+2. vérifier que le domaine est `ACTIF` pour ce Depth ;
+3. passer à `DOMAIN_EXHAUSTED` ;
+4. persister.
 
-Signal `EMPTY` répété pour un Domaine déjà `OFF` : NO-OP.
+`DOMAIN_EXHAUSTED` répété pour un domaine déjà `DOMAIN_EXHAUSTED` → NO-OP.
 
-## 13.2 CURRENT_KERNEL_RECEIVED
+## 21.3 Traitement DEPTH_EXHAUSTED
+
+Dans une seule transaction :
+
+1. verrouiller `kernel_rotation_state_v2` ;
+2. passer `depth_state` à `DEPTH_EXHAUSTED_PENDING` ;
+3. persister.
+
+Au prochain `CURRENT_KERNEL_RECEIVED`, dans une seule transaction :
+
+4. avancer `active_depth` vers le prochain Depth du DepthCycle ;
+5. initialiser `domain_states[nouveau_depth]` = tous `ACTIF` ;
+6. passer `depth_state` à `ROTATION_ACTIVE`.
+
+## 21.4 CURRENT_KERNEL_RECEIVED
 
 Dans une seule transaction :
 
 1. tentative d'insertion du reçu par `blueprint_id` ;
-2. si existe déjà : aucun incrément ;
-3. sinon : `kernel_received_total[depth][domain] += 1`.
-
-## 13.3 Inscription depth + domain
-
-```text
-écrire depth + domain dans le Blueprint
-+
-enregistrer active_blueprint_identity dans kernel_rotation_state_v2
-```
+2. si existe → aucun incrément ;
+3. sinon → `kernel_received_total[depth][domain] += 1`.
 
 ---
 
-# 14. Reprise après interruption
+# 22. Idempotence
 
-Au redémarrage, KRP recharge l'état depuis `kernel_rotation_state_v2`.
-
-## 14.1 Blueprint actif existant
-
-La présence de `active_blueprint_identity` ne déclenche pas une nouvelle rotation.
-
-Le véritable déclencheur reste `CURRENT_KERNEL_RECEIVED`.
-
-## 14.2 Événement Outbox non traité
-
-L'idempotence de `kernel_current_kernel_receipts` garantit qu'aucun double incrément ne se produit lors du rejeu.
-
-## 14.3 Tour partiellement OFF
-
-L'état `tour_domain_states` est repris tel quel depuis `kernel_rotation_state_v2`.
-
-Aucun Domaine n'est remis à `ON` lors d'une reprise.
+| Opération | Garantie |
+|---|---|
+| `CURRENT_KERNEL_RECEIVED` | PK `blueprint_id` sur `kernel_current_kernel_receipts` |
+| `DOMAIN_EXHAUSTED` reçu | `DOMAIN_EXHAUSTED → DOMAIN_EXHAUSTED` = NO-OP |
+| `DEPTH_EXHAUSTED` reçu | `DEPTH_EXHAUSTED_PENDING → DEPTH_EXHAUSTED_PENDING` = NO-OP |
+| Reprise après crash | État rechargé depuis `kernel_rotation_state_v2` sans remise à zéro |
 
 ---
 
-# 15. États internes du Planner
+# 23. Informations relevant de 03_Taxonomy (contrat externe attendu)
 
-```text
-INITIALIZING_DEPTH
-↓
-SELECTING_DOMAIN
-↓
-WRITING_DEPTH_DOMAIN
-↓
-WAITING_TAXONOMY
-├── territoire → ROTATION_ASSIGNED   (KRP terminé — pipeline intellectuel commence)
-└── EMPTY      → APPLYING_EMPTY_TRANSITION
-                 ↓
-                 SELECTING_DOMAIN (même Blueprint)
-↓
-ROTATION_ASSIGNED → ENGAGED_IN_PIPELINE
-↓
-WAITING_CURRENT_KERNEL_RECEIVED
-↓
-CALCULATING_NEXT_POSITION
-├── Tour < 8/8 → SELECTING_DOMAIN (prochain Domaine ON)
-└── Tour = 8/8 → CLOSING_TOUR → INITIALIZING_NEXT_DEPTH
-                                  ou PRODUCTION_ON_HOLD
-```
+Les points suivants appartiennent à `03_Taxonomy` et ne doivent pas être inventés dans KRP :
+
+- cycle de vie exact des SubjectSlots (EMPTY → FILLED → EXHAUSTED) ;
+- cycle de vie exact des IdeaSlots (EMPTY → FILLED → ACTIVE → CONSUMED) ;
+- définition exacte d'un réservoir READY ;
+- nombre minimal d'idées valides permettant un sujet exploitable ;
+- traitement d'un sujet produisant zéro idée valide ;
+- passage d'un sous-domaine au suivant ;
+- condition exacte d'épuisement réel du Domaine ;
+- persistance des identifiants exacts SubjectSlot / IdeaSlot ;
+- contrat exact remplaçant l'actuel `confirmConsumed(depth, domain)` ;
+- canal technique exact D1 (transmission DOMAIN_EXHAUSTED / DEPTH_EXHAUSTED vers KRP) ;
+- reprise après restart / concurrence côté Taxonomy.
 
 ---
 
-# 16. Classes du périmètre
+# 24. Concepts UNDER_REVIEW réévalués
 
-## 16.1 Nouvelles classes
+## 24.1 AVAILABLE
 
-```text
-KernelPipelineOrchestrator
-KernelBlueprintFactory
-DepthNeedMatrix
-DepthTourState
-KernelBlueprintRunRepository
-KernelRotationStateRepository
-DepthNeedMatrixRepository
-CurrentKernelReceived
-ApplyCurrentKernelReceivedToRotation
-KernelPipelineOutboxRepository
-```
+**REJETÉ.**
 
-## 16.2 Classes modifiées
+Taxonomy ne doit pas envoyer un signal `AVAILABLE`. L'absence de signal d'épuisement signifie disponibilité.
 
-```text
-KernelBlueprint        — ajout du champ blueprint_id
-KernelRotationPlanner  — ajout des méthodes V2 (legacy DEPRECATED)
-TaxonomyProgressManager — retour null de peekNext() = signal EMPTY
-```
+## 24.2 `cycle_completed` / `CYCLE_TARGET` comme autorité de changement de Depth
 
-## 16.3 Hors périmètre (intacts)
+**SUPERSEDED par DEPTH_EXHAUSTED.**
 
-```text
-KernelCodeEngine            → spécification ultérieure
-Pipeline BankWorker complet → strictement intact
-```
+KRP ne change pas de Depth parce qu'un nombre arbitraire de Tours est atteint. Il change de Depth lorsque Taxonomy émet `DEPTH_EXHAUSTED`.
 
----
+`CYCLE_TARGET` et `cycle_completed` peuvent être conservés comme données de traçabilité si une décision officielle le justifie, mais ne constituent plus l'autorité de rotation.
 
-# 17. Éléments legacy supprimés du contrat V2
+`CYCLE_TARGET[10] = 100` n'est **pas** justifié par le numéro de niveau Solo Boss 100. Le numéro 100 du niveau ne définit aucun volume de production intellectuelle.
 
-Le code V2 ne doit plus utiliser :
+## 24.3 `kernel_target` comme autorité de rotation
 
-```text
-ALLOWED_DEPTHS = [4,6,7,8,9]
-DEPTH_TARGETS en noyaux (ancienne forme scalaire par Depth sans ventilation domaine)
-current_domain_index
-completed_domains
-last_rotation_identifier
-rotation_identifier
-remaining_kernels
-chooseDepth par déficit maximal
-advanceDomainIndex
-depth_position / domain_position
-WAITING_TAXONOMY_STATE
-```
+**REJETÉ comme autorité de rotation.**
 
-Note : `kernel_target`, `kernel_remaining`, `reservoir_status`, `AVAILABLE`, `TARGET_COMPLETE`,
-`RESERVOIR_EMPTY`, `SHORTFALL` ont été réintroduits par le Correctif v1.2 (voir §20–§24).
-Ils ne sont plus legacy — ils font partie du contrat de production en cours de spécification.
+La rotation KRP est pilotée par les signaux `DOMAIN_EXHAUSTED` et `DEPTH_EXHAUSTED`, non par un compte à rebours.
 
-Colonnes et méthodes legacy conservées physiquement pour le retour arrière.
+## 24.4 `kernel_remaining` comme autorité de rotation
 
-Marquées `DEPRECATED — NON UTILISÉES PAR KRP V2`.
+**REJETÉ comme autorité de rotation.**
 
-Suppression physique : patch séparé après validation terminale.
+`kernel_remaining = kernel_target - kernel_received` est mathématiquement correct. Il peut coexister comme donnée de reporting si une décision officielle le justifie, mais n'est pas un critère de sélection de domaine.
+
+## 24.5 Double condition de sélection (`kernel_remaining > 0 AND reservoir_status = AVAILABLE`)
+
+**REJETÉ.**
+
+La sélection repose uniquement sur : domaine `ACTIF` (non `DOMAIN_EXHAUSTED`) pour ce Depth.
+
+## 24.6 `DepthProductionState`
+
+**REJETÉ.**
+
+Structure remplacée par `active_depth + domain_states` dans `kernel_rotation_state_v2`.
+
+## 24.7 SHORTFALL / DEPTH_TARGET_COMPLETE / DEPTH_RESERVOIRS_EXHAUSTED_WITH_SHORTFALL
+
+**REJETÉ.**
+
+Un seul signal : `DEPTH_EXHAUSTED`. L'écart de production est un concept de reporting/observabilité, pas un état de rotation KRP.
 
 ---
 
-# 18. Règles absolues
+# 25. Décisions encore réellement ouvertes
+
+## D1 — Canal technique DOMAIN_EXHAUSTED / DEPTH_EXHAUSTED
+
+La forme exacte du canal entre Taxonomy et l'état KRP n'est pas définie.
+À spécifier dans `03_Taxonomy` avant implémentation.
+
+## D2 — DEPTH_EXHAUSTED(10) — transition terminale
+
+Que fait KRP après l'épuisement de Depth 10 ?
+Ne rien créer ou implémenter sans décision explicite.
+
+## D3 — KRP attend Taxonomy : gestion du temps
+
+Si Taxonomy tarde à préparer un bassin, KRP attend-il indéfiniment ?
+Y a-t-il un mécanisme de retry ou d'alerte côté KRP ?
+À définir en coordination avec `03_Taxonomy`.
+
+---
+
+# 26. Écarts code actuel ↔ nouvelle architecture
+
+## É1 — EMPTY loop (à supprimer)
+
+Ancien code : `planV2()` appelé plusieurs fois sur le même Blueprint dans `KernelPipelineOrchestrator`.
+Nouveau contrat : Blueprint write-once, boucle EMPTY éliminée.
+Le chemin `applyEmptyTransitionV2` + boucle `planV2` dans l'Orchestrateur doit être supprimé.
+
+## É2 — `cycle_completed` / `CYCLE_TARGET` comme autorité de Depth (à supersede)
+
+Actuel : `DepthNeedMatrix::nextRequiredDepth()` compare `cycle_completed` vs `CYCLE_TARGET`.
+Nouveau : autorité = `DEPTH_EXHAUSTED` de Taxonomy.
+À ne pas modifier avant décision D1.
+
+## É3 — `confirmConsumed()` non branché
+
+Implémenté dans `TaxonomyOrchestrator`, jamais appelé en V2.
+Le branchement dépend de la définition du canal D1.
+À traiter lors de `03_Taxonomy`. Ne pas corriger maintenant.
+
+## É4 — `DomainExhaustionChecker::isExhausted()` (LEGACY PULL)
+
+Mécanisme PULL existant dans `plan()` DEPRECATED. Non utilisé par V2.
+À conserver comme référence historique jusqu'à suppression physique autorisée.
+
+## É5 — Format `domain_states` dans `kernel_rotation_state_v2`
+
+Table actuelle : `tour_domain_states` JSON avec états `ON | OFF`.
+Nouveau format requis : `domain_states` par Depth (map `depth → domain → ACTIF | DOMAIN_EXHAUSTED`).
+Migration additive requise. Ne pas modifier maintenant.
+
+## É6 — `KernelRotationStateRepository` non utilisé par KRP
+
+KRP appelle `DB::table()` directement. Incohérence interne, non bloquante.
+À résoudre lors de la réécriture du code KRP.
+
+---
+
+# 27. Règles absolues (KRP-R)
 
 ## KRP-R01
 
-DepthNeedMatrix initialise `cycle_target[depth]` (constantes) et fournit `kernel_received_total[depth][domain]`. Elle ne porte pas les états ON/OFF.
+`depth` et `domain` sont write-once. `fillRotation()` ne peut être appelé qu'une seule fois sur un Blueprint donné.
 
 ## KRP-R02
 
-ReadyBank confirme les Blueprints réellement reçus.
+`overwriteRotation()` est interdit. Cette méthode n'existe pas et ne doit jamais être créée.
 
 ## KRP-R03
 
-Taxonomy fournit un territoire (`array`) ou `null` (EMPTY). Elle n'émet aucun signal AVAILABLE vers KRP.
+Taxonomy est seule autorité de l'épuisement. KRP ne calcule pas lui-même l'épuisement d'un bassin.
 
 ## KRP-R04
 
-KernelRotationPlanner combine ces informations et décide seul de la rotation.
+Le signal normal de Taxonomy est l'absence de signal. KRP tourne automatiquement.
 
 ## KRP-R05
 
-Un Blueprint est comptabilisé dès sa réception canonique par ReadyBank, même si des slots sont `FAIL`.
+`DOMAIN_EXHAUSTED` est prospectif. Le Blueprint courant reste valide. Le signal modifie uniquement la rotation future.
 
 ## KRP-R06
 
-Quarantine ne bloque jamais la rotation.
+`DEPTH_EXHAUSTED` est prospectif. Le Blueprint courant reste valide. Le signal modifie uniquement le Depth de la rotation future.
 
 ## KRP-R07
 
-À tout instant, un seul Blueprint peut être `CREATED_UNENGAGED` ou `ENGAGED_IN_PIPELINE`.
+Portée de `DOMAIN_EXHAUSTED` : `Depth + Domaine` exclusivement.
+`DOMAIN_EXHAUSTED(2, faune)` n'affecte pas Depth 4 / Faune.
 
 ## KRP-R08
 
-La transition `ON → OFF` d'un Domaine est idempotente.
+Aucun signal `AVAILABLE` n'existe.
 
 ## KRP-R09
 
-Le Depth change lorsque le Tour atteint `8/8`. `cycle_completed[active_depth] += 1` est déclenché à ce moment.
+À tout instant, un seul Blueprint peut être `CREATED_UNENGAGED` ou `ENGAGED_IN_PIPELINE`.
 
 ## KRP-R10
 
-KRP ne recommence jamais immédiatement un Tour du même Depth après fermeture.
+`Général` est exclu du DomainCycle.
 
 ## KRP-R11
 
-Après une production engagée ayant atteint ReadyBank,
-`CURRENT_KERNEL_RECEIVED` est le seul déclencheur autorisant
-la création du Blueprint suivant.
-
-Pendant qu'un Blueprint est encore `CREATED_UNENGAGED`,
-`EMPTY` déclenche immédiatement une nouvelle sélection
-Depth + Domaine dans le même Blueprint.
-
-`EMPTY` ne crée jamais un nouveau Blueprint.
-
-Taxonomy ne décide jamais du prochain Depth ou Domaine.
-Taxonomy fournit un territoire ou retourne EMPTY.
-KRP reste seul décideur de la sélection.
+`CURRENT_KERNEL_RECEIVED` est le seul déclencheur de la prochaine rotation.
+ReadyBank ne décide ni du Depth ni du Domaine.
 
 ## KRP-R12
 
-L'idempotence de `CURRENT_KERNEL_RECEIVED` est garantie par `kernel_current_kernel_receipts` (PK sur `blueprint_id`).
+L'idempotence de `CURRENT_KERNEL_RECEIVED` est garantie par `kernel_current_kernel_receipts` (PK `blueprint_id`).
 
 ## KRP-R13
 
@@ -945,11 +1124,11 @@ L'état de rotation est persistant dans `kernel_rotation_state_v2`.
 
 ## KRP-R14
 
-Toute comptabilisation est exécutée dans une transaction atomique.
+Toute modification de l'état de rotation est exécutée dans une transaction atomique.
 
 ## KRP-R15
 
-`Général` ne peut jamais être présent dans le DomainCycle.
+KRP ne passe pas au Depth suivant de sa propre initiative. `DEPTH_EXHAUSTED` de Taxonomy est requis.
 
 ## KRP-R16
 
@@ -957,387 +1136,93 @@ KRP n'écrit jamais `kernel_code`.
 
 ## KRP-R17
 
-`rotation_identifier` est supprimé. Aucun composant ne le produit ni ne le consomme dans V2.
+`rotation_identifier` est supprimé. Aucun composant ne le produit ni ne le consomme.
 
 ## KRP-R18
 
-Sur EMPTY, le même Blueprint est conservé. Aucun nouveau Blueprint n'est créé après un EMPTY.
+**SUPERSEDED.**
+Ancienne règle : "sur EMPTY, le même Blueprint est conservé et `depth + domain` remplacés."
+Remplacé par KRP-R01 (write-once) et KRP-R05 (DOMAIN_EXHAUSTED prospectif).
 
 ## KRP-R19
 
-DepthCycle officiel : `2 → 4 → 6 → 7 → 8 → 9 → 10`. Après Depth 10 : reprend à Depth 2.
+DepthCycle officiel : `2 → 4 → 6 → 7 → 8 → 9 → 10`.
 
-## KRP-R20 — PRIMAUTÉ DU BLUEPRINT
+## KRP-R20
 
-Toute itération de production commence obligatoirement par la création
-d'un `KernelBlueprint` canonique par `KernelBlueprintFactory`.
-
-`KernelRotationPlanner` reçoit toujours une enveloppe déjà créée.
-Il n'existe aucune situation où `planV2` s'exécute sans avoir reçu
-un `KernelBlueprint` en paramètre.
-
-L'ordre obligatoire est :
-
-```text
-KernelBlueprintFactory::create()
-↓
-Blueprint = CREATED_UNENGAGED
-↓
-KernelRotationPlanner::planV2($blueprint, $previousDomain)
-```
-
+Toute itération de production commence obligatoirement par `KernelBlueprintFactory::create()` puis `KernelRotationPlanner::planV2()`.
 Ces deux opérations ne peuvent pas être inversées.
 
-Après `CURRENT_KERNEL_RECEIVED` :
+## KRP-R21
 
-```text
-CURRENT_KERNEL_RECEIVED
-↓
-comptabilisation idempotente du Blueprint précédent
-↓
-KernelBlueprintFactory::create()   ← obligatoire avant planV2
-↓
-KernelRotationPlanner::planV2($newBlueprint, $previousDomain)
-```
+**KRP Tour Number ne détermine jamais le Taxonomy Subject Number ni le Taxonomy Idea Number.**
+Les 8 domaines partagent le cycle KRP mais leurs réservoirs Taxonomy progressent indépendamment.
 
-Sur `EMPTY` uniquement :
+## KRP-R22
 
-```text
-Taxonomy retourne null
-↓
-même Blueprint conservé   ← Factory N'EST PAS rappelée
-↓
-KRP remplace depth + domain dans ce même Blueprint
-```
+Le Blueprint attend la préparation Taxonomy. KRP ne saute pas vers un autre domaine pendant l'initialisation d'un bassin.
 
-Conséquences :
+## KRP-R23
 
-* `KernelRotationPlanner` ne crée jamais un `KernelBlueprint`.
-* `ProcessKernelPipelineOutbox` ne crée jamais un `KernelBlueprint` directement —
-  il délègue à `KernelPipelineOrchestrator` qui applique l'ordre Factory → planV2.
-* Même sur `PRODUCTION_ON_HOLD`, le Blueprint est créé avant que KRP constate
-  l'absence de besoin.
+Un Blueprint est comptabilisé dès sa réception canonique par ReadyBank, même si des slots sont `FAIL`.
+Quarantine ne bloque jamais la rotation.
 
-## KRP-023 — Compteur par couple
+## KRP-R24
 
-Chaque couple `Depth + Domaine` possède un objectif, un nombre reçu et un nombre restant.
-
-```text
-kernel_remaining = kernel_target - kernel_received
-```
-
-## KRP-024 — Décrémentation par ReadyBank
-
-Le compteur diminue uniquement lorsque ReadyBank confirme la réception canonique d'un noyau
-(`CURRENT_KERNEL_RECEIVED`).
-
-La création d'un Blueprint ne réduit jamais le compteur.
-
-## KRP-025 — Comptabilisation unique
-
-Un même `kernel_code` ne peut jamais être comptabilisé deux fois.
-
-## KRP-026 — Double condition de sélection
-
-Un domaine est sélectionnable uniquement si :
-
-```text
-kernel_remaining > 0
-AND
-reservoir_status = AVAILABLE
-```
-
-## KRP-027 — Objectif atteint
-
-Un domaine atteint son objectif lorsque `kernel_remaining = 0`.
-
-Il est retiré de la rotation, même si Taxonomy possède encore du contenu.
-
-## KRP-028 — Réservoir vide avant cible
-
-Un réservoir vide avec un compteur supérieur à zéro produit un `SHORTFALL`.
-
-Il ne constitue pas un objectif atteint.
-
-## KRP-029 — Complétude normale du Depth
-
-Un Depth est normalement complété lorsque tous les compteurs de ses domaines sont à zéro.
-
-```text
-DEPTH_TARGET_COMPLETE
-```
-
-## KRP-030 — État distinct d'épuisement incomplet
-
-L'épuisement de tous les réservoirs avec des compteurs non nuls produit :
-
-```text
-DEPTH_RESERVOIRS_EXHAUSTED_WITH_SHORTFALL
-```
-
-Ces deux états ne doivent jamais être confondus.
+KRP ne dérive pas `DEPTH_EXHAUSTED` depuis les `DOMAIN_EXHAUSTED` individuels.
+`DEPTH_EXHAUSTED` de Taxonomy est l'unique autorité de changement de Depth.
 
 ---
 
-# 19. Migrations
+# 28. Tests requis
 
-Ordre obligatoire, additives :
+## Rotation normale
 
-```text
-M-01  create_kernel_blueprint_runs
-M-02  create_kernel_rotation_state_v2
-M-03  create_kernel_depth_matrix
-M-04  create_kernel_depth_domain_totals
-M-05  create_kernel_current_kernel_receipts
-M-06  create_kernel_pipeline_outbox
-M-07  seed_depth_matrix         (7 lignes)
-M-08  seed_depth_domain_totals  (56 lignes)
-```
+- Tour complet 8 domaines, aucun signal Taxonomy : KRP avance automatiquement au bon domaine suivant.
+- Retour circulaire après Science → Géographie.
+- `Général` absent du DomainCycle.
 
-Aucune migration ne modifie :
-`question_groups`, `question_translations`, `taxonomy_progress`, `kernel_rotation_state` (legacy), tables BankWorker, Redis BankWorker.
+## DOMAIN_EXHAUSTED
 
-Aucun `DROP COLUMN` dans cette série.
+- Blueprint courant valide malgré `DOMAIN_EXHAUSTED` reçu simultanément.
+- Rotation suivante saute le domaine exhausted.
+- Portée limitée au Depth concerné (les autres Depths conservent le domaine `ACTIF`).
+- Idempotence : `DOMAIN_EXHAUSTED` reçu deux fois = NO-OP.
 
----
+## DEPTH_EXHAUSTED
 
-# 20. Compte à rebours par domaine
+- Blueprint courant valide malgré `DEPTH_EXHAUSTED` reçu.
+- `depth_state = DEPTH_EXHAUSTED_PENDING` après réception.
+- Au prochain `CURRENT_KERNEL_RECEIVED` : `active_depth` avancé, 8 domaines `ACTIF` initialisés.
+- Idempotence : `DEPTH_EXHAUSTED_PENDING → DEPTH_EXHAUSTED_PENDING` = NO-OP.
 
-*(Correctif v1.2 — UNDER_REVIEW)*
+## CURRENT_KERNEL_RECEIVED
 
-Le KernelRotationPlanner conserve, pour chaque couple `Depth + Domaine`, un compte à rebours distinct.
+- Idempotence via `kernel_current_kernel_receipts`.
+- Blueprint `FAIL` ne bloque pas la rotation.
+- `kernel_received_total[depth][domain]` incrémenté une seule fois par `blueprint_id`.
 
-Structure :
+## Progression indépendante des domaines
 
-```text
-kernel_target     — objectif officiel de noyaux pour ce couple
-kernel_received   — noyaux réellement reçus par ReadyBank
-kernel_remaining  — kernel_target - kernel_received
-```
+- Tour KRP 2 : `GÉ → Sujet1/Idée2` + `HI → Sujet2/Idée1` est valide.
+- Aucune synchronisation artificielle entre domaines.
 
-La décrémentation suit exactement le même canal que KRP-R02 :
+## Reprise
 
-```text
-Blueprint créé → Taxonomy → QuestionIntent → Phase 1 → Phase 2
-→ ReadyBank reçoit le noyau canonique
-→ CURRENT_KERNEL_RECEIVED
-→ KernelRotationPlanner : kernel_received + 1 / kernel_remaining - 1
-```
+- Redémarrage préserve `DOMAIN_EXHAUSTED` déjà reçus.
+- Aucun domaine remis à `ACTIF` au redémarrage.
+- `DEPTH_EXHAUSTED_PENDING` préservé au redémarrage.
 
-Le compteur ne diminue lors d'aucune étape antérieure à la réception canonique par ReadyBank.
+## Invariants éliminés
 
-Taxonomy communique en parallèle l'état de chaque réservoir :
-
-```text
-reservoir_status = AVAILABLE   — le domaine peut encore alimenter un Blueprint
-reservoir_status = EMPTY       — le réservoir ne contient plus d'unité exploitable
-```
+- Aucun test ne valide la boucle EMPTY (chemin supprimé).
+- Aucun test ne valide `overwriteRotation()` (interdit).
+- Aucun test ne valide un signal `AVAILABLE` (rejeté).
+- Aucun test ne valide `CYCLE_TARGET` comme critère de changement de Depth.
 
 ---
 
-# 21. DepthProductionState
-
-*(Correctif v1.2 — UNDER_REVIEW)*
-
-Structure conceptuelle conservée par KernelRotationPlanner pour chaque couple :
-
-```text
-depth
-domain
-kernel_target
-kernel_received
-kernel_remaining
-reservoir_status
-rotation_status
-last_received_kernel
-```
-
-Exemple :
-
-```text
-depth                = 4
-domain               = Histoire
-kernel_target        = 50
-kernel_received      = 37
-kernel_remaining     = 13
-reservoir_status     = AVAILABLE
-rotation_status      = SELECTABLE
-last_received_kernel = HI04...
-```
-
----
-
-# 22. États d'un couple Depth + Domaine
-
-*(Correctif v1.2 — UNDER_REVIEW)*
-
-```text
-PENDING           — le couple n'a pas encore été activé
-AVAILABLE         — kernel_remaining > 0 et reservoir AVAILABLE
-ACTIVE            — un Blueprint est actuellement produit pour ce couple
-TARGET_COMPLETE   — kernel_remaining = 0 (objectif atteint)
-RESERVOIR_EMPTY   — Taxonomy indique que le réservoir est épuisé
-SHORTFALL         — réservoir EMPTY alors que kernel_remaining > 0
-```
-
-Un domaine est sélectionnable uniquement si les deux conditions suivantes sont vraies :
-
-```text
-DOMAIN_SELECTABLE = kernel_remaining > 0 AND reservoir_status = AVAILABLE
-```
-
-Un domaine dont le compteur est à zéro est retiré de la rotation **même si** Taxonomy possède
-encore du contenu disponible pour ce couple. Le contenu excédentaire reste dans Taxonomy pour
-une décision architecturale future.
-
-Un domaine dont le réservoir est EMPTY **avant** d'atteindre sa cible produit un écart explicite :
-
-```text
-RESERVOIR_EMPTY_BEFORE_TARGET
-```
-
-Exemple d'écart :
-
-```text
-kernel_target    = 50
-kernel_received  = 43
-kernel_remaining = 7
-reservoir_status = EMPTY
-→ Domaine indisponible — Écart de production : 7 noyaux
-```
-
-Le KernelRotationPlanner conserve cet écart ; il ne l'efface pas et ne le comble pas par
-une autre source.
-
----
-
-# 23. Condition de complétude du Depth
-
-*(Correctif v1.2 — UNDER_REVIEW)*
-
-Deux états distincts, à ne jamais confondre :
-
-## Depth complété normalement
-
-```text
-tous les kernel_remaining = 0
-→ DEPTH_TARGET_COMPLETE
-```
-
-## Depth arrêté par épuisement des réservoirs
-
-```text
-tous les réservoirs = EMPTY
-+
-au moins un kernel_remaining > 0
-→ DEPTH_RESERVOIRS_EXHAUSTED_WITH_SHORTFALL
-```
-
-Dans ce second cas, le KernelRotationPlanner :
-
-* conserve les objectifs manquants par domaine ;
-* conserve le nombre total de noyaux manquants ;
-* ne déclare jamais une réussite normale ;
-* ne peut pas inventer les noyaux manquants.
-
----
-
-# 24. Mécanisme complet corrigé — 4 cas
-
-*(Correctif v1.2 — UNDER_REVIEW)*
-
-## Cas 1 — Domaines encore sélectionnables dans le Depth
-
-```text
-Profil exemple (Depth 4) :
-Géographie  remaining=0   AVAILABLE   → non sélectionnable (cible atteinte)
-Histoire    remaining=13  AVAILABLE   → sélectionnable
-Faune       remaining=0   EMPTY       → non sélectionnable
-Art         remaining=9   AVAILABLE   → sélectionnable
-```
-
-KRP conserve le Depth 4, poursuit le DomainCycle, ignore les domaines non sélectionnables,
-sélectionne le prochain domaine où la double condition est vraie.
-
-## Cas 2 — Réservoir vide avant la cible
-
-```text
-Cinéma  kernel_remaining=4  reservoir_status=EMPTY
-```
-
-KRP retire Cinéma de la rotation, conserve `kernel_remaining=4`,
-inscrit `RESERVOIR_EMPTY_BEFORE_TARGET`, poursuit avec le prochain domaine sélectionnable.
-
-## Cas 3 — Tous les compteurs à zéro
-
-```text
-Tous les kernel_remaining = 0
-→ DEPTH_TARGET_COMPLETE
-```
-
-KRP : ferme le Depth, avance vers le prochain Depth, réinitialise le DomainCycle,
-charge les objectifs du nouveau Depth, utilise l'état des réservoirs Taxonomy correspondants.
-
-## Cas 4 — Tous les réservoirs vides, certains compteurs > 0
-
-```text
-Tous les réservoirs = EMPTY
-Histoire remaining=3, Art remaining=2, Science remaining=4
-→ DEPTH_RESERVOIRS_EXHAUSTED_WITH_SHORTFALL
-```
-
-KRP conserve les objectifs manquants et les domaines concernés.
-Cette situation doit être traitée par la validation du mécanisme de production.
-Elle ne doit jamais être transformée silencieusement en réussite.
-
-## Algorithme complet corrigé
-
-```text
-1. Charger le Depth actif.
-
-2. Charger, pour chaque domaine :
-      kernel_target / kernel_received / kernel_remaining
-
-3. Recevoir de Taxonomy : état de chaque réservoir (AVAILABLE | EMPTY).
-
-4. Identifier les domaines sélectionnables :
-      kernel_remaining > 0 ET reservoir_status = AVAILABLE
-
-5. S'il existe un domaine sélectionnable :
-      poursuivre le DomainCycle
-      choisir le prochain domaine sélectionnable
-      créer un nouveau KernelBlueprint (via KernelBlueprintFactory)
-      écrire depth + domain
-      transmettre le contexte à Taxonomy
-
-6. Le Blueprint traverse le pipeline.
-
-7. ReadyBank reçoit le noyau canonique.
-
-8. ReadyBank transmet CURRENT_KERNEL_RECEIVED.
-
-9. KernelRotationPlanner :
-      incrémente kernel_received
-      décrémente kernel_remaining
-      empêche une seconde comptabilisation du même kernel_code.
-
-10. Taxonomy transmet l'état actualisé des réservoirs.
-
-11. KernelRotationPlanner recalcule les domaines sélectionnables.
-
-12. Si tous les compteurs sont à zéro :
-      DEPTH_TARGET_COMPLETE — passer au prochain Depth.
-
-13. Si tous les réservoirs sont vides mais certains compteurs > 0 :
-      DEPTH_RESERVOIRS_EXHAUSTED_WITH_SHORTFALL
-      conserver les écarts — ne pas déclarer une réussite normale.
-
-14. Sinon : sélectionner le prochain couple sélectionnable.
-```
-
----
-
-# Architecture Register
+# 29. Architecture Register — décisions KRP
 
 ## DEC-051 — Initialisation par DepthNeedMatrix
 
@@ -1349,7 +1234,7 @@ Elle ne doit jamais être transformée silencieusement en réussite.
 
 **Statut :** OFFICIAL
 
-Un Blueprint est comptabilisé dès sa réception canonique par ReadyBank, même si des slots sont `FAIL` ou en correction.
+Un Blueprint est comptabilisé dès sa réception canonique par ReadyBank, même si des slots sont `FAIL`.
 
 ---
 
@@ -1387,8 +1272,7 @@ Un Blueprint est comptabilisé dès sa réception canonique par ReadyBank, même
 
 **Statut :** OFFICIAL
 
-`KernelBlueprintFactory` crée le Blueprint avant l'entrée dans KRP.
-KRP reçoit un Blueprint vide et y inscrit uniquement `depth` et `domain`.
+`KernelBlueprintFactory` crée le Blueprint avant l'entrée dans KRP. KRP reçoit toujours une enveloppe déjà créée.
 
 ---
 
@@ -1396,33 +1280,31 @@ KRP reçoit un Blueprint vide et y inscrit uniquement `depth` et `domain`.
 
 **Statut :** OFFICIAL
 
-`blueprint_id` est un UUIDv7 (time-ordered) généré par `KernelBlueprintFactory`.
-`rotation_identifier` est supprimé.
-`kernel_code` ne sert pas d'identité de Blueprint.
+`blueprint_id` est un UUIDv7 généré par `KernelBlueprintFactory`. `rotation_identifier` est supprimé. `kernel_code` ne sert pas d'identité de Blueprint.
 
 ---
 
 ## DEC-060 — DepthNeedMatrix V2
 
-**Statut :** OFFICIAL
+**Statut :** OFFICIAL (traçabilité)
 
-DepthNeedMatrix porte : `DepthCycle [2,4,6,7,8,9,10]`, `cycle_target[depth]` (constantes), `cycle_completed[depth]`, `kernel_received_total[depth][domain]`. Elle ne porte pas les états ON/OFF des Domaines et ne prend aucune décision.
+`DepthNeedMatrix` porte `kernel_received_total[depth][domain]` comme données de traçabilité. `CYCLE_TARGET` et `cycle_completed` ne sont plus l'autorité de changement de Depth — remplacés par `DEPTH_EXHAUSTED` (DEC-083).
 
 ---
 
 ## DEC-061 — Tour de Depth ON/OFF
 
-**Statut :** OFFICIAL
+**Statut :** SUPERSEDED par DEC-082 + DEC-083
 
-8 Domaines ON au début de chaque Tour. Sur EMPTY : Domaine ON → OFF (idempotent). Tour terminé à 8 Domaines OFF.
+Le modèle Tour ON/OFF basé sur la boucle EMPTY est remplacé par `DOMAIN_EXHAUSTED` et `DEPTH_EXHAUSTED` prospectifs.
 
 ---
 
-## DEC-062 — Fermeture de Tour et bascule de Depth
+## DEC-062 — Fermeture Tour et bascule Depth via 8/8
 
-**Statut :** OFFICIAL
+**Statut :** SUPERSEDED par DEC-083
 
-Tour fermé à 8/8. `cycle_completed[active_depth] += 1`. Prochain Depth = premier Depth du DepthCycle pour lequel `cycle_completed < cycle_target`. KRP ne recommence jamais immédiatement le même Depth.
+Le changement de Depth via compteur 8/8 est remplacé par `DEPTH_EXHAUSTED` de Taxonomy.
 
 ---
 
@@ -1430,15 +1312,13 @@ Tour fermé à 8/8. `cycle_completed[active_depth] += 1`. Prochain Depth = premi
 
 **Statut :** OFFICIAL
 
-Seul déclencheur de la prochaine rotation. Canal = événement transactionnel avec Outbox. Listener = `ApplyCurrentKernelReceivedToRotation`. Idempotence = `kernel_current_kernel_receipts` (PK blueprint_id).
+Seul déclencheur de la prochaine rotation. Canal = événement transactionnel avec Outbox. Listener = `ApplyCurrentKernelReceivedToRotation`. Idempotence = `kernel_current_kernel_receipts` (PK `blueprint_id`).
 
 ---
 
 ## DEC-064 — Persistance dans kernel_rotation_state_v2
 
-**Statut :** OFFICIAL
-
-Nouvelle table `kernel_rotation_state_v2` (coexiste avec la table legacy DEPRECATED).
+**Statut :** OFFICIAL (format `domain_states` JSON à migrer vers structure par Depth)
 
 ---
 
@@ -1446,15 +1326,15 @@ Nouvelle table `kernel_rotation_state_v2` (coexiste avec la table legacy DEPRECA
 
 **Statut :** OFFICIAL
 
-DepthCycle = `2 → 4 → 6 → 7 → 8 → 9 → 10`. Après Depth 10 : reprend à Depth 2. ROTATION_COMPLETE = aucun Depth sous `cycle_target`.
+DepthCycle = `2 → 4 → 6 → 7 → 8 → 9 → 10`. Depth 10 intellectuellement valide.
 
 ---
 
 ## DEC-066 — Conservation du Blueprint sur EMPTY
 
-**Statut :** OFFICIAL
+**Statut :** SUPERSEDED par DEC-034 (write-once Blueprint) + DEC-082 (DOMAIN_EXHAUSTED prospectif)
 
-Sur EMPTY, le même Blueprint est conservé et réutilisé. Aucun nouveau Blueprint n'est créé après un EMPTY.
+L'ancienne logique EMPTY (même Blueprint réutilisé avec autre `depth + domain`) est incompatible avec le contrat write-once de `01_KernelBlueprint` v1.5.
 
 ---
 
@@ -1462,7 +1342,7 @@ Sur EMPTY, le même Blueprint est conservé et réutilisé. Aucun nouveau Bluepr
 
 **Statut :** OFFICIAL
 
-Quatre états techniques : `CREATED_UNENGAGED`, `ENGAGED_IN_PIPELINE`, `READY_BANK_RECEIVED`, `NOT_ENGAGED_PRODUCTION_ON_HOLD`. Distincts des slots du Blueprint.
+Quatre états : `CREATED_UNENGAGED`, `ENGAGED_IN_PIPELINE`, `READY_BANK_RECEIVED`, `NOT_ENGAGED_PRODUCTION_ON_HOLD`.
 
 ---
 
@@ -1470,57 +1350,122 @@ Quatre états techniques : `CREATED_UNENGAGED`, `ENGAGED_IN_PIPELINE`, `READY_BA
 
 **Statut :** OFFICIAL
 
-KRP n'écrit jamais `kernel_code`. `kernel_code = null` à la sortie de KRP.
+`KernelRotationPlanner.php` n'appelle jamais `KernelCodeEngine` directement. `KernelPipelineOrchestrator` coordonne les deux modules de façon distincte.
 
 ---
 
 ## DEC-078 — Compte à rebours par domaine
 
-**Version :** 1.0
-**Date :** 14 juillet 2026
-**Statut :** UNDER_REVIEW
+**Version :** 1.0 — **Date :** 14 juillet 2026
+**Statut :** REJECTED comme autorité de rotation
 
-KernelRotationPlanner conserve un compte à rebours distinct pour chaque couple `Depth + Domaine`.
-
-```text
-kernel_remaining = kernel_target - kernel_received
-```
+`kernel_remaining = kernel_target - kernel_received` est mathématiquement correct mais n'est pas un critère de sélection de domaine dans le contrat actuel. Peut coexister comme donnée de reporting si décidé séparément.
 
 ---
 
-## DEC-079 — ReadyBank décrémente le besoin de production
+## DEC-079 — ReadyBank décrémente le besoin
 
-**Version :** 1.0
-**Date :** 14 juillet 2026
-**Statut :** UNDER_REVIEW
+**Version :** 1.0 — **Date :** 14 juillet 2026
+**Statut :** PARTIELLEMENT RETENU (traçabilité)
 
-Le besoin restant diminue uniquement après `CURRENT_KERNEL_RECEIVED`.
-
-La création d'un Blueprint ne réduit jamais le compteur.
+`CURRENT_KERNEL_RECEIVED` est le seul déclencheur d'incrémentation de `kernel_received_total`. La création d'un Blueprint ne modifie jamais ce compteur. Principe de traçabilité conservé.
 
 ---
 
 ## DEC-080 — Taxonomy et compteur indépendants
 
-**Version :** 1.0
-**Date :** 14 juillet 2026
-**Statut :** UNDER_REVIEW
+**Version :** 1.0 — **Date :** 14 juillet 2026
+**Statut :** REJECTED
 
-Taxonomy indique la disponibilité réelle du réservoir (`reservoir_status`).
-
-KernelRotationPlanner indique le besoin restant de production (`kernel_remaining`).
-
-Un domaine est sélectionnable seulement lorsque le réservoir est `AVAILABLE`
-et que son besoin restant est supérieur à zéro.
+`reservoir_status (AVAILABLE | EMPTY)` comme signal vers KRP est remplacé par `DOMAIN_EXHAUSTED` et `DEPTH_EXHAUSTED`.
 
 ---
 
 ## DEC-081 — Shortfall explicite
 
-**Version :** 1.0
-**Date :** 14 juillet 2026
+**Version :** 1.0 — **Date :** 14 juillet 2026
+**Statut :** REJECTED
+
+`SHORTFALL` comme état KRP est remplacé par `DOMAIN_EXHAUSTED` et `DEPTH_EXHAUSTED`. L'écart de production est un concept de reporting/observabilité externe à KRP.
+
+---
+
+## DEC-082 — DOMAIN_EXHAUSTED prospectif
+
+**Version :** 1.0 — **Date :** 13 août 2026
 **Statut :** UNDER_REVIEW
 
-Un réservoir vide avant l'atteinte de la cible produit un écart explicite (`SHORTFALL`).
+`DOMAIN_EXHAUSTED(depth, domain)` : signal prospectif de Taxonomy vers KRP, émis après consommation exacte du Blueprint courant.
 
-Cet écart ne doit jamais être transformé silencieusement en objectif atteint.
+Le Blueprint déclencheur reste valide et continue normalement dans le pipeline.
+Le signal modifie uniquement la rotation future.
+Portée : `Depth + Domaine` exclusivement.
+Idempotent : deuxième réception du même signal = NO-OP.
+
+---
+
+## DEC-083 — DEPTH_EXHAUSTED prospectif
+
+**Version :** 1.0 — **Date :** 13 août 2026
+**Statut :** UNDER_REVIEW
+
+`DEPTH_EXHAUSTED(depth)` : signal prospectif de Taxonomy vers KRP, émis quand tous les bassins Domaines du Depth courant sont épuisés.
+
+Le Blueprint déclencheur reste valide et continue normalement.
+Au prochain `CURRENT_KERNEL_RECEIVED` : KRP avance vers le prochain Depth, tous les domaines du nouveau Depth sont réinitialisés `ACTIF`.
+Idempotent : `DEPTH_EXHAUSTED_PENDING → DEPTH_EXHAUSTED_PENDING` = NO-OP.
+
+---
+
+## DEC-084 — Indépendance rotation KRP ↔ progression Taxonomy
+
+**Version :** 1.0 — **Date :** 13 août 2026
+**Statut :** UNDER_REVIEW
+
+KRP Tour Number ne détermine jamais le Taxonomy Subject Number ni le Taxonomy Idea Number.
+Les 8 domaines partagent le cycle KRP mais leurs réservoirs Taxonomy progressent indépendamment.
+Aucune synchronisation artificielle entre les progressions de domaines n'est admise.
+
+---
+
+## DEC-085 — Deux flux distincts : informationnel et déclencheur
+
+**Version :** 1.0 — **Date :** 13 août 2026
+**Statut :** UNDER_REVIEW
+
+Flux informationnel : Taxonomy → signal d'épuisement → mise à jour de l'état KRP (immédiate, sans attendre ReadyBank).
+Flux déclencheur : `CURRENT_KERNEL_RECEIVED` → prochain Blueprint → rotation effective.
+Ces deux flux sont indépendants.
+
+---
+
+## DEC-086 — AVAILABLE rejeté
+
+**Version :** 1.0 — **Date :** 13 août 2026
+**Statut :** REJECTED
+
+Taxonomy ne doit pas envoyer un signal `AVAILABLE`. L'absence de signal d'épuisement signifie disponibilité implicite du domaine.
+
+---
+
+## DEC-087 — Canal technique d'épuisement non encore défini
+
+**Version :** 1.0 — **Date :** 13 août 2026
+**Statut :** UNDER_REVIEW (décision D1 ouverte)
+
+La forme exacte du canal entre Taxonomy et l'état KRP (`DOMAIN_EXHAUSTED`, `DEPTH_EXHAUSTED`) est à définir lors de la spécification de `03_Taxonomy`.
+
+Contraintes : Taxonomy ne modifie pas directement `kernel_rotation_state_v2`. KRP ne consulte pas les tables Taxonomy pour décider de l'épuisement.
+
+---
+
+## DEC-088 — CYCLE_TARGET / cycle_completed SUPERSEDED comme autorité de Depth
+
+**Version :** 1.0 — **Date :** 13 août 2026
+**Statut :** UNDER_REVIEW
+
+`CYCLE_TARGET` et `cycle_completed` ne sont plus l'autorité de décision de changement de Depth. `DEPTH_EXHAUSTED` de Taxonomy est l'autorité.
+
+`CYCLE_TARGET[10] = 100` n'est pas justifié par le numéro de niveau Solo Boss 100.
+
+Ces compteurs peuvent être conservés comme données de traçabilité si une décision officielle le justifie, mais sans rôle de rotation.

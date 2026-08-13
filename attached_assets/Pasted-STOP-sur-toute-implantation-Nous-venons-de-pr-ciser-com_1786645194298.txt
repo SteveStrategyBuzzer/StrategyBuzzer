@@ -1,0 +1,1513 @@
+STOP sur toute implantation.
+
+Nous venons de préciser complètement l'architecture KRP ↔ Taxonomy.
+
+Tu dois maintenant utiliser CE CONTRAT comme base de la RECONSTRUCTION COMPLÈTE de `02_KernelRotationPlanner`.
+
+IMPORTANT :
+
+* aucune modification de code maintenant ;
+* ne commence pas `03_Taxonomy` ;
+* ne commence pas VDI ;
+* ne commence pas Phase 1 ;
+* ne laisse pas le code actuel définir l'architecture ;
+* aucune logique ancienne EMPTY/AVAILABLE ne doit revenir implicitement ;
+* aucune hypothèse selon laquelle les 8 domaines avancent au même rythme intellectuel ;
+* aucune hypothèse selon laquelle chaque sujet possède obligatoirement 5 idées dominantes valides ;
+* toute information relevant réellement de Taxonomy doit être documentée comme contrat externe attendu, pas implantée dans KRP.
+
+---
+
+# 1 — PRINCIPE CENTRAL
+
+Nous sommes uniquement dans le pipeline de CRÉATION INTELLECTUELLE.
+
+Le KernelBlueprint est créé AVANT KRP.
+
+Flow :
+
+KernelBlueprintFactory
+↓
+Blueprint canonique vide
+↓
+KernelRotationPlanner
+↓
+écrit depth + domain UNE SEULE FOIS
+↓
+Taxonomy
+↕
+ValidationDominantIdeas
+↓
+QuestionIntent
+↓
+suite du pipeline intellectuel
+↓
+ReadyBank
+↓
+CURRENT_KERNEL_RECEIVED
+↓
+nouveau Blueprint
+↓
+KRP
+↓
+rotation suivante
+
+KRP écrit uniquement :
+
+* depth
+* domain
+
+Ces slots sont write-once.
+
+Le même Blueprint n'est jamais réaffecté à un autre domaine ou un autre Depth.
+
+`overwriteRotation()` est interdit.
+
+---
+
+# 2 — INITIALISATION KRP
+
+Au démarrage de la production intellectuelle :
+
+nouveau Blueprint
+↓
+KRP initialise :
+
+active_depth = 2
+
+puis :
+
+domain_position = premier domaine du DomainCycle
+
+DomainCycle officiel :
+
+1. Géographie
+2. Histoire
+3. Faune
+4. Art
+5. Sport
+6. Cinéma
+7. Cuisine
+8. Science
+
+`Général` n'est pas un domaine créateur.
+
+Depths intellectuellement supportés :
+
+2 → 4 → 6 → 7 → 8 → 9 → 10
+
+Depth 10 est intellectuellement valide.
+
+La restriction Solo Boss niveau 100 appartient au gameplay consommateur.
+
+Elle ne modifie pas la capacité intellectuelle de création de Taxonomy/KRP.
+
+---
+
+# 3 — ROTATION KRP NORMALE
+
+KRP possède son propre cycle de domaines.
+
+Taxonomy ne donne AUCUN signal pendant le fonctionnement normal.
+
+Exemple :
+
+Depth 2
+
+GE
+→ HI
+→ FA
+→ AR
+→ SP
+→ CI
+→ CU
+→ SC
+→ GE
+→ ...
+
+Après réception du noyau courant :
+
+ReadyBank
+↓
+CURRENT_KERNEL_RECEIVED
+↓
+nouveau Blueprint
+↓
+KRP avance au prochain domaine encore actif.
+
+IMPORTANT :
+
+KRP ne connaît PAS :
+
+* le numéro du sujet actif de chaque domaine ;
+* le numéro de l'idée dominante active ;
+* l'avancement interne des réservoirs Taxonomy.
+
+KRP tourne, c'est tout.
+
+---
+
+# 4 — ROTATION KRP ≠ PROGRESSION TAXONOMY
+
+C'est une règle fondamentale.
+
+Les 8 domaines partagent le cycle KRP, mais leurs réservoirs Taxonomy progressent INDÉPENDAMMENT.
+
+Il est INTERDIT d'implanter une logique du genre :
+
+TOUR 1
+→ Idea 1 pour les 8 domaines
+
+TOUR 2
+→ Idea 2 pour les 8 domaines
+
+TOUR 3
+→ Idea 3 pour les 8 domaines
+
+Ce n'est PAS le contrat.
+
+Exemple parfaitement valide :
+
+TOUR KRP 1 :
+
+GE → Sujet 1 / Idée 1
+HI → Sujet 1 / Idée 1
+FA → Sujet 1 / Idée 1
+AR → Sujet 1 / Idée 1
+SP → Sujet 1 / Idée 1
+CI → Sujet 1 / Idée 1
+CU → Sujet 1 / Idée 1
+SC → Sujet 1 / Idée 1
+
+Puis TOUR KRP 2 :
+
+GE → Sujet 1 / Idée 2
+HI → Sujet 2 / Idée 1
+FA → Sujet 1 / Idée 2
+AR → Sujet 1 / Idée 2
+SP → Sujet 2 / Idée 1
+CI → Sujet 1 / Idée 2
+CU → Sujet 1 / Idée 2
+SC → Sujet 1 / Idée 2
+
+Ceci est NORMAL.
+
+Chaque couple :
+
+Depth + Domaine
+
+possède son propre état Taxonomy persistant.
+
+Donc :
+
+Depth 2 + Géographie
+→ son propre sous-domaine actif
+→ son propre sujet actif
+→ ses propres IdeaSlots
+
+Depth 2 + Histoire
+→ son propre état indépendant
+
+Depth 2 + Faune
+→ son propre état indépendant
+
+etc.
+
+RÈGLE :
+
+KRP garantit la rotation entre les domaines encore actifs.
+
+Taxonomy garantit la progression intellectuelle indépendante de chaque bassin `Depth + Domaine`.
+
+---
+
+# 5 — TAXONOMY EST L'AUTORITÉ DE L'ÉPUISEMENT
+
+KRP ne calcule jamais lui-même la quantité intellectuelle restante.
+
+Taxonomy possède les réservoirs.
+
+Taxonomy est donc seule autorité pour déterminer :
+
+DOMAIN_EXHAUSTED
+
+et
+
+DEPTH_EXHAUSTED.
+
+En fonctionnement normal :
+
+Taxonomy ne dit rien.
+
+L'absence de signal signifie :
+
+continue normalement la rotation KRP.
+
+Il n'existe aucun signal `AVAILABLE` nécessaire pour chaque noyau.
+
+---
+
+# 6 — HIÉRARCHIE TAXONOMY
+
+Contrat externe attendu de Taxonomy :
+
+Depth
+↓
+Domaine
+↓
+Sous-domaine
+↓
+Sujet
+↓
+Idée Dominante
+
+Exemple intellectuellement correct :
+
+Depth 2
+↓
+Géographie
+↓
+Rocheuses
+↓
+Sujets possibles :
+
+* Hauteur
+* Superficie
+* Sommets
+* Lacs
+* Visiteurs
+* Parcs
+* Localisation
+* Longueur
+* Relief
+* Climat
+* etc.
+
+IMPORTANT :
+
+Le Sujet doit représenter une fragmentation intellectuelle du sous-domaine.
+
+Dans cet exemple, il ne faut pas automatiquement transformer :
+
+Canada
+États-Unis
+Alberta
+Colorado
+
+en sujets simplement parce qu'ils sont associés géographiquement aux Rocheuses.
+
+Exemple :
+
+Sous-domaine : Rocheuses
+Sujet : Parcs
+
+Idées dominantes possibles :
+
+* Banff
+* Jasper
+* Yellowstone
+* Yoho
+* Kootenay
+
+Donc :
+
+Sous-domaine
+≠ Sujet
+≠ Idée Dominante.
+
+Chaque niveau doit conserver sa responsabilité sémantique.
+
+---
+
+# 7 — SUBJECTSLOTS : CAPACITÉ STRUCTURELLE
+
+Pour un sous-domaine, Taxonomy possède jusqu'à :
+
+50 SubjectSlots
+
+structurels :
+
+SubjectSlot 01
+SubjectSlot 02
+...
+SubjectSlot 50
+
+IMPORTANT :
+
+50 = MAXIMUM.
+
+Il n'est PAS obligatoire de générer exactement 50 sujets exploitables.
+
+Exemple :
+
+46 sujets valides créés :
+
+SubjectSlot 01 → FILLED
+...
+SubjectSlot 46 → FILLED
+
+SubjectSlot 47 → EMPTY
+SubjectSlot 48 → EMPTY
+SubjectSlot 49 → EMPTY
+SubjectSlot 50 → EMPTY
+
+Les états des slots sont la SOURCE DE VÉRITÉ.
+
+Les nombres doivent être dérivés :
+
+subjects_created
+subjects_remaining
+subjects_exhausted
+subjects_empty
+
+Pas de compteur autonome pouvant diverger de l'état des slots.
+
+Exemple conceptuel :
+
+# subjects_created
+
+nombre de SubjectSlots réellement instanciés
+
+# subjects_remaining
+
+nombre de SubjectSlots créés mais pas EXHAUSTED
+
+# subjects_exhausted
+
+nombre de SubjectSlots EXHAUSTED
+
+# subjects_empty
+
+positions structurelles jamais remplies.
+
+Le détail exact sera verrouillé dans `03_Taxonomy`.
+
+---
+
+# 8 — IDEASLOTS : MAXIMUM 5, PAS OBLIGATOIREMENT 5 VALIDES
+
+Chaque SubjectSlot possède jusqu'à :
+
+5 IdeaSlots structurels.
+
+IdeaSlot 1
+IdeaSlot 2
+IdeaSlot 3
+IdeaSlot 4
+IdeaSlot 5
+
+ATTENTION :
+
+5 = CAPACITÉ MAXIMALE.
+
+Cela ne signifie PAS :
+
+chaque sujet doit obligatoirement produire 5 idées dominantes valides.
+
+Un sujet peut terminer sa préparation avec par exemple :
+
+IdeaSlot 1 → FILLED
+IdeaSlot 2 → FILLED
+IdeaSlot 3 → EMPTY
+IdeaSlot 4 → EMPTY
+IdeaSlot 5 → EMPTY
+
+si seulement 2 idées dominantes valides ont réellement été retenues selon le futur contrat Taxonomy/VDI.
+
+Donc un domaine peut être rendu plus rapidement au Sujet suivant qu'un autre domaine.
+
+C'est précisément pourquoi les progressions Taxonomy sont indépendantes.
+
+Cycle conceptuel d'un IdeaSlot exploitable :
+
+EMPTY
+↓
+FILLED
+↓
+ACTIVE
+↓
+CONSUMED
+
+Le traitement détaillé d'un candidat VDI FAIL appartient à :
+
+`03_Taxonomy`
+et
+`04_ValidationDominantIdeas`.
+
+KRP ne doit rien inventer à ce sujet.
+
+---
+
+# 9 — DEUX PHASES TAXONOMY : PRÉPARATION ET CONSOMMATION
+
+Taxonomy fonctionne en alternance :
+
+PRÉPARATION
+↓
+ÉTAT COMPLET
+↓
+CONSOMMATION
+↓
+PRÉPARATION DU SUJET SUIVANT
+↓
+ÉTAT COMPLET
+↓
+CONSOMMATION
+↓
+...
+
+Aucune donnée Taxonomy partiellement préparée ne doit être envoyée au Blueprint.
+
+---
+
+# 10 — PREMIER MOMENT DE PRÉPARATION COMPLÈTE
+
+Lors de la PREMIÈRE arrivée KRP sur un bassin `Depth + Domaine` qui n'est pas encore initialisé :
+
+Exemple :
+
+Depth 2
++
+Géographie
+
+Taxonomy doit préparer :
+
+1. le sous-domaine ;
+2. son réservoir de SubjectSlots ;
+3. identifier le premier SubjectSlot exploitable ;
+4. préparer complètement le réservoir d'IdeaSlots de CE premier sujet ;
+5. seulement ensuite ouvrir la consommation.
+
+Exemple :
+
+Depth 2
+↓
+Géographie
+↓
+Rocheuses
+↓
+SubjectBank créé
+↓
+Sujet actif : Parcs
+↓
+IdeaSlots préparés
+↓
+état du sujet = READY FOR CONSUMPTION
+↓
+seulement maintenant :
+subdomain_active
+subject_active
+dominant_idea_active
+peuvent être inscrits dans le Blueprint.
+
+IMPORTANT :
+
+« réservoir IdeaSlots complété » ne signifie PAS automatiquement :
+
+5 IdeaSlots FILLED.
+
+Cela signifie :
+
+les positions nécessaires ont été traitées selon le contrat Taxonomy/VDI et l'état du réservoir est déterminé.
+
+Certains slots peuvent être FILLED.
+D'autres peuvent rester EMPTY.
+
+Le futur contrat Taxonomy déterminera les critères exacts permettant de déclarer le sujet READY.
+
+Ne les invente pas dans KRP.
+
+---
+
+# 11 — LE BLUEPRINT ATTEND TAXONOMY, IL N'EST PAS RÉAFFECTÉ
+
+Lorsque KRP a écrit :
+
+depth + domain
+
+dans le Blueprint courant, cette attribution est définitive.
+
+Si Taxonomy doit initialiser son réservoir avant de pouvoir fournir ses trois valeurs :
+
+le Blueprint attend cette préparation Taxonomy.
+
+KRP ne :
+
+* saute pas vers un autre domaine ;
+* ne réécrit pas depth/domain ;
+* ne crée pas overwriteRotation();
+* ne réutilise pas le même Blueprint avec un autre couple.
+
+Taxonomy termine son état de préparation puis fournit :
+
+subdomain_active
+subject_active
+dominant_idea_active.
+
+---
+
+# 12 — PREMIÈRE ROTATION DES 8 DOMAINES
+
+Exemple Depth 2.
+
+Blueprint 1 :
+
+KRP → Géographie
+↓
+Taxonomy Géographie s'initialise si nécessaire
+↓
+Sous-domaine + SubjectBank + IdeaBank premier sujet
+↓
+Taxonomy fournit :
+Sous-domaine / Sujet / première idée exploitable
+↓
+IdeaSlot exact consommé.
+
+Blueprint suivant seulement après le retour normal ReadyBank.
+
+Blueprint 2 :
+
+KRP → Histoire
+↓
+Taxonomy Histoire possède son propre réservoir indépendant
+↓
+même logique d'initialisation.
+
+Puis :
+
+Blueprint 3 → Faune
+Blueprint 4 → Art
+Blueprint 5 → Sport
+Blueprint 6 → Cinéma
+Blueprint 7 → Cuisine
+Blueprint 8 → Science.
+
+Au terme de ce premier tour KRP, les réservoirs peuvent avoir des états différents.
+
+Ne jamais supposer qu'ils possèdent exactement le même nombre de sujets ou d'idées valides.
+
+---
+
+# 13 — RETOUR SUR UN DOMAINE DÉJÀ INITIALISÉ
+
+Si Taxonomy n'a envoyé aucun signal :
+
+après Science
+↓
+KRP revient à Géographie.
+
+Taxonomy ne recrée PAS :
+
+* le sous-domaine ;
+* le SubjectBank ;
+* le sujet actif ;
+* les idées déjà préparées.
+
+Elle recharge son état persistant.
+
+Exemple :
+
+Depth 2 / Géographie :
+
+Sous-domaine : Rocheuses
+Sujet actif : Parcs
+
+IdeaSlot 1 → CONSUMED
+IdeaSlot 2 → FILLED
+IdeaSlot 3 → FILLED
+IdeaSlot 4 → FILLED
+IdeaSlot 5 → EMPTY
+
+Alors Taxonomy utilise le prochain IdeaSlot FILLED :
+
+IdeaSlot 2 → ACTIVE
+↓
+écriture dans Blueprint
+↓
+IdeaSlot 2 → CONSUMED.
+
+Au prochain retour KRP sur Géographie, elle continue depuis SON propre curseur.
+
+---
+
+# 14 — DEUXIÈME MOMENT DE PRÉPARATION COMPLÈTE : CHANGEMENT DE SUJET
+
+Lorsque tous les IdeaSlots exploitables du sujet courant sont CONSUMED :
+
+SubjectSlot courant
+→ EXHAUSTED.
+
+Taxonomy connaît le prochain SubjectSlot exploitable.
+
+Mais elle ne doit PAS immédiatement transmettre ce nouveau sujet au Blueprint si son réservoir d'idées n'est pas encore préparé.
+
+Elle entre de nouveau en PRÉPARATION :
+
+SubjectSlot suivant
+↓
+préparation de son IdeaBank
+↓
+ValidationDominantIdeas des candidats
+↓
+état du réservoir déterminé
+↓
+READY FOR CONSUMPTION
+↓
+seulement ensuite :
+Sous-domaine / nouveau Sujet / première idée exploitable
+→ Blueprint.
+
+Donc les DEUX MOMENTS où Taxonomy exige un état complet avant consommation sont :
+
+MOMENT 1 :
+initialisation du sous-domaine + SubjectBank + IdeaBank du premier sujet.
+
+MOMENT 2 :
+chaque passage à un nouveau sujet → IdeaBank de ce nouveau sujet préparé avant toute transmission.
+
+---
+
+# 15 — PROGRESSION INDÉPENDANTE DES DOMAINES
+
+Exemple :
+
+TOUR KRP 2 :
+
+GE → Sujet 1 / Idée 2
+
+mais :
+
+HI → Sujet 2 / Idée 1
+
+peut être parfaitement correct.
+
+Pourquoi ?
+
+Parce que le Sujet 1 de Histoire pouvait ne contenir qu'une seule idée dominante exploitable.
+
+Après consommation :
+
+Sujet 1 Histoire → EXHAUSTED
+↓
+Taxonomy prépare Sujet 2
+↓
+Sujet 2 READY
+↓
+au prochain passage Histoire :
+Sujet 2 / Idée 1.
+
+Pendant ce temps :
+
+Géographie peut toujours être sur Sujet 1 / Idée 2.
+
+Donc :
+
+KRP Tour Number
+NE DÉTERMINE JAMAIS
+Taxonomy Subject Number
+ou
+Taxonomy Idea Number.
+
+Cette règle doit être explicitement inscrite afin d'éviter toute synchronisation artificielle entre domaines.
+
+---
+
+# 16 — CONSOMMATION EXACTE
+
+Taxonomy ne consomme PAS une idée simplement au `peekNext()`.
+
+Et elle ne doit PAS refaire une nouvelle recherche après avoir attribué le Blueprint.
+
+Il faut garantir l'identité exacte :
+
+# IdeaSlot sélectionné
+
+# IdeaSlot validé VDI
+
+# dominant_idea_active écrit au Blueprint
+
+IdeaSlot marqué CONSUMED.
+
+Séquence :
+
+Taxonomy possède un sujet READY
+↓
+sélectionne l'IdeaSlot exact FILLED
+↓
+IdeaSlot → ACTIVE
+↓
+écrit :
+
+subdomain_active
+subject_active
+dominant_idea_active
+
+dans le Blueprint
+↓
+cette écriture réussit
+↓
+CE MÊME IdeaSlot exact
+→ CONSUMED
+↓
+état du réservoir recalculé.
+
+L'ancien comportement :
+
+confirmConsumed(depth, domain)
+↓
+chercher à nouveau `first available idea`
+↓
+consommer cette nouvelle recherche
+
+n'est PAS conforme au futur contrat.
+
+Il existe un risque que :
+
+idée sélectionnée
+≠
+idée consommée.
+
+Cet écart doit être documenté pour `03_Taxonomy`.
+
+Ne corrige pas encore le code.
+
+---
+
+# 17 — LES DÉCOMPTES SONT DÉRIVÉS DES SLOTS
+
+Exemple Sujet Parcs :
+
+IdeaSlot 1 → CONSUMED
+IdeaSlot 2 → FILLED
+IdeaSlot 3 → FILLED
+IdeaSlot 4 → FILLED
+IdeaSlot 5 → EMPTY
+
+Alors :
+
+ideas_remaining = 3
+
+pas 4.
+
+On compte les idées réellement exploitables restantes.
+
+Puis :
+
+3
+→ 2
+→ 1
+→ 0.
+
+À zéro :
+
+Sujet → EXHAUSTED.
+
+Taxonomy passe alors au prochain SubjectSlot selon le mécanisme de préparation défini ci-dessus.
+
+Les compteurs ne sont jamais une deuxième source de vérité.
+
+SOURCE DE VÉRITÉ :
+
+état des slots persistants.
+
+Les nombres ne sont que des vues dérivées.
+
+---
+
+# 18 — ATTENTION AU MAXIMUM 50 × 5
+
+`50 SubjectSlots × 5 IdeaSlots`
+
+représente une CAPACITÉ STRUCTURELLE MAXIMALE de :
+
+250 positions d'idées
+
+pour le bloc de sujets du sous-domaine concerné.
+
+Cela ne signifie PAS :
+
+* 50 sujets obligatoires ;
+* 5 idées obligatoires par sujet ;
+* 250 noyaux obligatoires ;
+* 250 noyaux garantis ;
+* capacité totale définitive du Domaine pour toute sa durée de vie.
+
+La gestion du passage éventuel à un autre sous-domaine appartient à la future spécification `03_Taxonomy`.
+
+Ne déduis PAS `DOMAIN_EXHAUSTED` simplement parce qu'un seul sous-domaine a terminé ses SubjectSlots, sauf si la spécification Taxonomy démontre qu'il n'existe plus aucune matière/subdomain exploitable pour ce bassin.
+
+---
+
+# 19 — DOMAIN_EXHAUSTED
+
+Taxonomy est seule autorité capable de déterminer qu'un bassin :
+
+Depth + Domaine
+
+est réellement épuisé.
+
+`DOMAIN_EXHAUSTED(depth, domain)` signifie :
+
+« Le Blueprint courant reste valide.
+
+Après cette consommation exacte, Taxonomy sait que ce Domaine n'a plus de matière intellectuelle exploitable pour CE Depth.
+
+Ne m'attribue plus ce Domaine pour les prochains Blueprints de ce Depth. »
+
+Le signal est PROSPECTIF.
+
+Il ne modifie jamais le Blueprint courant.
+
+Exemple :
+
+Depth 2 / Faune
+→ DOMAIN_EXHAUSTED
+
+Alors KRP mémorise :
+
+Depth 2 / Faune = retiré de la rotation future.
+
+Mais :
+
+Depth 4 / Faune
+Depth 6 / Faune
+Depth 7 / Faune
+Depth 8 / Faune
+Depth 9 / Faune
+Depth 10 / Faune
+
+ne sont pas touchés.
+
+La portée est exclusivement :
+
+Depth + Domaine.
+
+---
+
+# 20 — ROTATION APRÈS DOMAIN_EXHAUSTED
+
+Avant :
+
+GE → HI → FA → AR → SP → CI → CU → SC.
+
+Taxonomy produit :
+
+DOMAIN_EXHAUSTED(2, FA).
+
+Le Blueprint courant continue normalement.
+
+Au prochain :
+
+ReadyBank
+↓
+CURRENT_KERNEL_RECEIVED
+↓
+nouveau Blueprint
+↓
+KRP
+
+la rotation devient :
+
+GE → HI → AR → SP → CI → CU → SC → GE → ...
+
+Même Depth.
+
+Aucun Blueprint réassigné.
+Aucune boucle EMPTY.
+Aucun overwrite.
+
+---
+
+# 21 — DEPTH_EXHAUSTED
+
+Taxonomy connaît l'état indépendant des 8 bassins :
+
+Depth courant + chacun des 8 Domaines.
+
+Lorsque tous sont réellement épuisés :
+
+DEPTH_EXHAUSTED(depth).
+
+Sémantique :
+
+« Le Blueprint courant reste valide.
+
+Après cette consommation, tous les bassins Domaines de ce Depth sont épuisés.
+
+Le prochain Blueprint doit appartenir au prochain Depth. »
+
+Exemple :
+
+Depth 2
+↓
+dernier bassin restant vient de s'épuiser
+↓
+DEPTH_EXHAUSTED(2)
+↓
+Blueprint courant continue normalement
+↓
+ReadyBank
+↓
+CURRENT_KERNEL_RECEIVED
+↓
+nouveau Blueprint
+↓
+KRP :
+Depth 4
++
+premier domaine de sa rotation.
+
+---
+
+# 22 — TRANSMISSION DU SIGNAL D'ÉPUISEMENT
+
+Taxonomy connaît l'épuisement immédiatement après consommation exacte.
+
+Le signal n'a donc pas besoin d'attendre ReadyBank.
+
+Distinguer deux flux :
+
+FLUX INFORMATIONNEL :
+
+Taxonomy
+↓
+consommation exacte
+↓
+détection éventuelle :
+DOMAIN_EXHAUSTED
+ou
+DEPTH_EXHAUSTED
+↓
+information immédiatement rendue disponible à la couche de rotation pour les prochains Blueprints.
+
+FLUX DE DÉCLENCHEMENT :
+
+Blueprint courant continue
+↓
+ReadyBank
+↓
+CURRENT_KERNEL_RECEIVED
+↓
+nouveau Blueprint
+↓
+KRP effectue réellement la prochaine rotation.
+
+Donc :
+
+Taxonomy
+= autorité de l'épuisement.
+
+KRP
+= autorité de la rotation.
+
+ReadyBank
+= déclencheur de la rotation suivante.
+
+Le canal technique exact entre Taxonomy et l'état KRP doit être spécifié avant implantation sans créer de second propriétaire.
+
+Taxonomy ne doit pas modifier arbitrairement la rotation elle-même.
+
+KRP ne doit pas inspecter les banques internes Taxonomy pour décider de leur épuisement.
+
+---
+
+# 23 — CURRENT_KERNEL_RECEIVED
+
+CURRENT_KERNEL_RECEIVED reste le déclencheur officiel du prochain Blueprint / prochaine rotation.
+
+Donc :
+
+Taxonomy peut mettre à jour l'information d'épuisement immédiatement
+↓
+le Blueprint courant continue
+↓
+ReadyBank
+↓
+CURRENT_KERNEL_RECEIVED
+↓
+nouveau Blueprint
+↓
+KRP consulte son état de rotation déjà mis à jour
+↓
+sélectionne prochain Depth + Domaine.
+
+---
+
+# 24 — ANCIENNE EMPTY LOOP : SUPERSEDED
+
+Ancienne logique :
+
+Taxonomy `peekNext() → null`
+↓
+KRP conserve le même Blueprint
+↓
+KRP remplace depth/domain
+↓
+réessaie
+
+= INTERDITE.
+
+DEC-066 / KRP-R18 doivent devenir SUPERSEDED.
+
+Conséquences :
+
+* aucun overwriteRotation();
+* aucune réécriture depth/domain;
+* aucun Blueprint réutilisé avec un autre couple;
+* aucune boucle EMPTY sur le même Blueprint;
+* write-once `01_KernelBlueprint v1.5` préservé.
+
+---
+
+# 25 — AVAILABLE : REJETÉ
+
+Taxonomy ne doit pas envoyer :
+
+AVAILABLE
+
+pendant le flux normal.
+
+# Aucun signal
+
+# aucune modification de la rotation
+
+KRP tourne normalement au prochain CURRENT_KERNEL_RECEIVED.
+
+Taxonomy parle uniquement lorsqu'un événement d'épuisement modifie la rotation FUTURE.
+
+---
+
+# 26 — SHORTFALL / kernel_target / kernel_remaining / DepthProductionState
+
+Ne promeus PAS automatiquement :
+
+* SHORTFALL;
+* DepthProductionState;
+* AVAILABLE;
+* double condition `kernel_remaining > 0 AND AVAILABLE`;
+* kernel_target comme autorité de rotation;
+* kernel_remaining comme autorité de rotation;
+* algorithme §20–24 actuel;
+* KRP-023→030;
+* DEC-078→081.
+
+La logique que nous venons de définir repose sur :
+
+rotation KRP normale
++
+progression Taxonomy indépendante
++
+DOMAIN_EXHAUSTED
++
+DEPTH_EXHAUSTED
++
+CURRENT_KERNEL_RECEIVED.
+
+Réévalue donc les concepts UNDER_REVIEW un à un.
+
+S'ils n'ont plus de responsabilité réelle, ils doivent être REJECTED ou SUPERSEDED selon leur historique.
+
+---
+
+# 27 — cycle_completed / CYCLE_TARGET
+
+Le code actuel utilise :
+
+cycle_completed
+vs
+CYCLE_TARGET
+
+pour déterminer combien de Tours produire avant de changer de Depth.
+
+Cette logique n'est PAS automatiquement compatible avec le nouveau contrat.
+
+Dans le contrat actuel :
+
+KRP ne change pas de Depth parce qu'un nombre arbitraire de Tours est atteint.
+
+Il change de Depth lorsque Taxonomy produit :
+
+DEPTH_EXHAUSTED.
+
+Donc :
+
+CYCLE_TARGET / cycle_completed
+
+# comme autorité du changement de Depth
+
+candidat à SUPERSEDED.
+
+Attention :
+
+`CYCLE_TARGET[10] = 100`
+
+n'est PAS justifié par le Solo Boss niveau 100.
+
+100 = numéro de niveau gameplay.
+
+Ce n'est pas un volume intellectuel de production.
+
+---
+
+# 28 — kernel_received
+
+`kernel_received` peut éventuellement rester une donnée de traçabilité/statistique si une décision officielle la justifie.
+
+Mais il ne doit PAS être utilisé automatiquement comme autorité de rotation.
+
+La rotation officielle repose sur :
+
+* DomainCycle;
+* retrait prospectif DOMAIN_EXHAUSTED;
+* changement prospectif DEPTH_EXHAUSTED;
+* CURRENT_KERNEL_RECEIVED comme déclencheur de l'action suivante.
+
+---
+
+# 29 — DEPTH 10
+
+Depth 10 est intellectuellement valide.
+
+Ne décide pas automatiquement maintenant ce qui se produit après :
+
+DEPTH_EXHAUSTED(10).
+
+Ne crée pas sans décision :
+
+* retour automatique Depth 2;
+* cycle infini;
+* recharge automatique;
+* nouvel état.
+
+Si le corpus OFFICIAL ne définit pas cette transition terminale, rapporte-la comme décision encore ouverte.
+
+---
+
+# 30 — RESPONSABILITÉS FINALES
+
+## KernelBlueprintFactory
+
+Crée une nouvelle enveloppe canonique vide.
+
+## KRP
+
+Connaît :
+
+* active_depth;
+* domain_position;
+* DomainCycle;
+* domaines retirés pour chaque Depth selon les signaux reçus.
+
+Fait :
+
+* écrit depth + domain UNE FOIS;
+* avance normalement au CURRENT_KERNEL_RECEIVED;
+* saute les domaines déjà DOMAIN_EXHAUSTED;
+* passe au prochain Depth après DEPTH_EXHAUSTED.
+
+Ne connaît pas :
+
+* SubjectSlot actif;
+* IdeaSlot actif;
+* nombre d'idées restant dans un sujet;
+* nombre de sujets restant;
+* état interne du réservoir Taxonomy.
+
+## Taxonomy
+
+Possède :
+
+* ses sous-domaines;
+* SubjectSlots;
+* IdeaSlots;
+* état indépendant de chaque bassin Depth + Domaine;
+* progression indépendante de chacun des 8 domaines.
+
+Fait :
+
+* prépare complètement l'état nécessaire avant transmission;
+* sélectionne subdomain/subject/dominant idea;
+* consomme l'IdeaSlot exact transmis;
+* dérive les décomptes depuis les slots;
+* prépare le sujet suivant avant sa première consommation;
+* détecte DOMAIN_EXHAUSTED;
+* détecte DEPTH_EXHAUSTED.
+
+## ValidationDominantIdeas
+
+Valide les idées candidates selon son contrat propre.
+
+Taxonomy ne considère pas une idée candidate comme exploitable avant son résultat conforme au contrat VDI.
+
+## ReadyBank
+
+Pertinent pour KRP :
+
+* reçoit le noyau courant;
+* produit/autorise CURRENT_KERNEL_RECEIVED selon son contrat.
+
+ReadyBank ne décide :
+
+* ni de DOMAIN_EXHAUSTED;
+* ni de DEPTH_EXHAUSTED;
+* ni du prochain domaine.
+
+---
+
+# 31 — SOURCES DE VÉRITÉ
+
+## Taxonomy
+
+SOURCE DE VÉRITÉ :
+
+états persistants des réservoirs / slots.
+
+Pas de compteur indépendant concurrent.
+
+Les compteurs sont dérivés.
+
+## KRP
+
+SOURCE DE VÉRITÉ :
+
+état persistant de rotation :
+
+* active_depth;
+* domain_position;
+* domaines retirés pour chaque Depth;
+* éventuel changement de Depth déjà demandé par Taxonomy mais appliqué au prochain CURRENT_KERNEL_RECEIVED.
+
+---
+
+# 32 — POINTS QUI APPARTIENNENT À 03_TAXONOMY ET NE DOIVENT PAS ÊTRE INVENTÉS DANS KRP
+
+La future spécification `03_Taxonomy` devra définir précisément :
+
+* cycle de vie des SubjectSlots;
+* cycle de vie des IdeaSlots;
+* définition exacte d'un réservoir READY;
+* nombre minimal d'idées dominantes valides permettant un sujet exploitable;
+* traitement d'un sujet produisant zéro idée valide;
+* génération/remplacement après VDI FAIL;
+* passage d'un sous-domaine au suivant;
+* condition exacte d'épuisement réel du Domaine;
+* persistance des identifiants exacts SubjectSlot / IdeaSlot;
+* contrat exact remplaçant l'actuel `confirmConsumed(depth, domain)`;
+* calcul dérivé des inventaires;
+* reprise après restart/concurrence.
+
+KRP ne doit rien décider à la place de Taxonomy sur ces points.
+
+---
+
+# 33 — OBJECTIF DE LA NOUVELLE SPEC KRP
+
+Réécris ENTIÈREMENT `02_KernelRotationPlanner.md` dans une nouvelle version.
+
+Pas de patch local.
+
+Reconstruire :
+
+Mission
+↓
+Responsabilités
+↓
+Interdictions
+↓
+Entrées
+↓
+Sorties
+↓
+Slots Blueprint
+↓
+Données internes
+↓
+DomainCycle
+↓
+Rotation normale
+↓
+Communication Taxonomy
+↓
+DOMAIN_EXHAUSTED
+↓
+DEPTH_EXHAUSTED
+↓
+Communication ReadyBank
+↓
+CURRENT_KERNEL_RECEIVED
+↓
+États
+↓
+Transitions
+↓
+Cas limites
+↓
+Persistance
+↓
+Idempotence
+↓
+Validation
+↓
+Tests
+↓
+Architecture 100 %
+
+Les informations internes Taxonomy ci-dessus doivent apparaître uniquement comme :
+
+CONTRAT EXTERNE ATTENDU DE TAXONOMY
+
+lorsqu'elles sont nécessaires pour expliquer pourquoi les signaux d'épuisement sont fiables.
+
+---
+
+# 34 — ARCHITECTURE REGISTER
+
+Avant toute nouvelle DEC :
+
+1. auditer le plus grand DEC existant;
+2. utiliser uniquement les prochains IDs après le plus grand;
+3. ne plus remplir les gaps historiques;
+4. ne supprimer aucune ancienne décision;
+5. toute décision remplacée devient SUPERSEDED;
+6. toute proposition refusée devient REJECTED;
+7. toute décision non encore validée reste UNDER_REVIEW.
+
+À auditer en particulier :
+
+* DEC-066 / KRP-R18 ancienne EMPTY loop;
+* CYCLE_TARGET / cycle_completed comme autorité de Depth;
+* AVAILABLE;
+* SHORTFALL;
+* kernel_target/kernel_remaining;
+* DepthProductionState;
+* DEC-078→081.
+
+---
+
+# 35 — RETOUR ATTENDU
+
+Retourne uniquement :
+
+02_KERNELROTATIONPLANNER — RECONSTRUCTION ARCHITECTURALE CORRIGÉE
+
+Version proposée:
+...
+
+Architecture reconstruite intégralement:
+PASS/FAIL
+
+Blueprint créé avant KRP:
+PASS/FAIL
+
+depth/domain write-once:
+PASS/FAIL
+
+Rotation KRP indépendante de progression Taxonomy:
+PASS/FAIL
+
+Synchronisation artificielle Sujet/Idée entre domaines:
+ABSENTE / PRÉSENTE
+
+Exemple TOUR 2 pouvant contenir:
+GE Sujet1/Idée2 + HI Sujet2/Idée1:
+PASS/FAIL
+
+Taxonomy normal signal:
+AUCUN
+
+AVAILABLE:
+REJETÉ / autre
+
+DOMAIN_EXHAUSTED:
+...
+
+Portée:
+Depth + Domaine uniquement
+
+DEPTH_EXHAUSTED:
+...
+
+CURRENT_KERNEL_RECEIVED:
+...
+
+Premier passage d'un domaine:
+Taxonomy prépare sous-domaine + SubjectBank + IdeaBank premier sujet avant transmission:
+PASS/FAIL
+
+Passage au sujet suivant:
+IdeaBank préparé avant transmission:
+PASS/FAIL
+
+5 idées obligatoires par sujet:
+NON
+
+5 IdeaSlots:
+CAPACITÉ MAXIMALE
+
+50 sujets obligatoires:
+NON
+
+50 SubjectSlots:
+CAPACITÉ MAXIMALE
+
+Compteurs autonomes Taxonomy:
+NON
+
+Compteurs dérivés des slots:
+OUI
+
+IdeaSlot exact sélectionné = validé = Blueprint = consommé:
+CONTRAT RETENU / autre
+
+confirmConsumed actuel:
+CONFORME / NON CONFORME
+
+Écart exact confirmConsumed:
+...
+
+Ancienne EMPTY loop:
+SUPERSEDED / autre
+
+overwriteRotation:
+INTERDIT
+
+SHORTFALL:
+...
+
+kernel_target:
+...
+
+kernel_remaining:
+...
+
+DepthProductionState:
+...
+
+cycle_completed/CYCLE_TARGET:
+...
+
+CYCLE_TARGET[10]=100 justifié par Boss 100:
+NON
+
+Décisions encore réellement ouvertes:
+...
+
+Écarts code actuel ↔ nouvelle architecture:
+...
+
+Nouveaux DEC UNDER_REVIEW:
+...
+
+DEC à SUPERSEDE:
+...
+
+Implémentation effectuée:
+NON
+
+VERDICT SPEC KRP:
+PRÊTE À REVIEW / INCOMPLÈTE
+
+Puis STOP.
+
+Aucun code.
+Aucun démarrage de `03_Taxonomy`.
