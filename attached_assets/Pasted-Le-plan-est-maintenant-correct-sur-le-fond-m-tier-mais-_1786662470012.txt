@@ -1,0 +1,281 @@
+Le plan est maintenant correct sur le fond métier, mais je ne lancerais pas encore l’implantation. Il reste un dernier garde-fou technique bloquant : la résolution pré-Factory peut devenir périmée avant applyRotation().
+
+Exemple possible :
+
+Processus A
+→ resolveNextRotation()
+→ Depth 2 / Géographie
+
+entre-temps :
+un autre traitement modifie RotationState
+
+Processus A
+→ Factory crée Blueprint
+→ applyRotation() utilise une résolution devenue obsolète
+
+Le single-active Blueprint protège contre deux Blueprints actifs simultanés, mais il ne suffit pas à garantir que le couple résolu est toujours valide au moment où il est écrit.
+
+Correction finale à envoyer à Replit
+#155 — GARDE DE CONCURRENCE FINAL AVANT IMPLANTATION
+
+Le plan métier est validé.
+
+Il reste un seul point bloquant d'implantation :
+garantir qu'une RotationResolution calculée avant la Factory
+ne puisse jamais devenir stale avant applyRotation().
+
+NE CODE PAS encore.
+
+==================================================
+1 — PROBLÈME
+==================================================
+
+Séquence actuelle proposée :
+
+resolveNextRotation()
+↓
+Factory::create()
+↓
+applyRotation(blueprint, resolution)
+
+Entre resolveNextRotation() et applyRotation(),
+RotationState pourrait être modifié par un autre traitement :
+
+- CURRENT_KERNEL_RECEIVED ;
+- receiveDomainExhausted() ;
+- receiveDepthExhausted() ;
+- autre worker concurrent.
+
+Il est interdit d'appliquer une RotationResolution
+qui ne correspond plus au RotationState ayant servi à la calculer.
+
+==================================================
+2 — GARANTIE OBLIGATOIRE
+==================================================
+
+La séquence :
+
+résolution
+→ gate
+→ création Blueprint
+→ application depth/domain
+→ mise à jour domain_position / active_depth
+
+doit être atomique par rapport au RotationState.
+
+Proposition privilégiée :
+
+BEGIN TRANSACTION
+
+  lock kernel_rotation_state_v2 FOR UPDATE
+
+  KRP resolveNextRotation()
+  sur CET état verrouillé
+
+  si NoRotation :
+      COMMIT
+      Factory NON appelée
+      return
+
+  Factory::create()
+  → Blueprint existe maintenant
+
+  KRP applyRotation()
+  → utilise exactement la résolution calculée sous le même lock
+  → fillRotation(depth, domain)
+  → écrit active_depth
+  → écrit domain_position
+  → écrit active_blueprint_identity
+
+COMMIT
+
+En cas d'exception à n'importe quelle étape :
+
+ROLLBACK COMPLET
+
+Ainsi :
+
+- aucun Blueprint orphelin ;
+- aucune résolution stale ;
+- aucun deuxième sélecteur ;
+- Blueprint existe toujours avant fillRotation ;
+- Factory ne connaît toujours pas KRP ;
+- KRP reste propriétaire de la sélection ;
+- orchestration reste propriétaire du gate/cycle.
+
+==================================================
+3 — INTERDICTION
+==================================================
+
+Ne fais PAS :
+
+resolveNextRotation()
+→ commit/release lock
+→ Factory
+→ applyRotation()
+
+sans validation de fraîcheur.
+
+Si tu préfères une stratégie optimistic lock,
+elle doit garantir le même résultat :
+
+- RotationResolution contient lock_version attendu ;
+- applyRotation vérifie exactement la même version ;
+- en cas de mismatch aucune rotation n'est appliquée ;
+- ET le Blueprint créé doit être rollbacké atomiquement.
+
+Donc un simple CAS après création du Blueprint,
+hors transaction englobante, est insuffisant.
+
+==================================================
+4 — ROTATIONRESOLUTION
+==================================================
+
+RotationResolution peut contenir :
+
+depth
+domain
+domain_position
+rotation_lock_version
+
+mais aucune nouvelle donnée métier.
+
+rotation_lock_version est une donnée technique de concurrence,
+pas une décision architecturale.
+
+==================================================
+5 — TESTS CONCURRENCE OBLIGATOIRES
+==================================================
+
+Ajouter :
+
+A.
+Deux orchestrations concurrentes sur le même RotationState
+→ une seule résolution effectivement appliquée
+→ un seul Blueprint canonique créé
+→ domain_position avancé une seule fois.
+
+B.
+receiveDomainExhausted() concurrent entre résolution et application
+→ impossible de committer une résolution stale.
+
+C.
+receiveDepthExhausted() concurrent
+→ aucune rotation appliquée sur un état devenu invalide.
+
+D.
+Exception après Factory::create() mais avant fillRotation()
+→ transaction rollback
+→ aucun Blueprint CREATED_UNENGAGED durable.
+
+E.
+Exception après fillRotation() mais avant update domain_position
+→ rollback complet
+→ aucun Blueprint partiellement engagé
+→ curseur inchangé.
+
+==================================================
+6 — NE PAS MODIFIER LE RESTE DU PLAN
+==================================================
+
+Conserver :
+
+domain_position = index du dernier domaine sélectionné
+
+nouveau Depth :
+domain_position = NULL
+
+premier domaine :
+geographie
+
+Taxonomy seule produit :
+DOMAIN_EXHAUSTED
+DEPTH_EXHAUSTED
+
+KRP applique seulement les signaux reçus.
+
+domain_states :
+7 × 8 états explicites pour nouvelle RotationState.
+
+CURRENT_KERNEL_RECEIVED :
+receipt + compteur + transition atomiques.
+
+PRODUCTION_ON_HOLD :
+état KRP uniquement.
+
+peekNext null :
+aucune interprétation KRP.
+
+==================================================
+7 — CLASSIFICATION
+==================================================
+
+Cette correction est :
+
+CONTRAINTE D'IMPLANTATION / CONCURRENCE
+
+Elle ne modifie pas 02_KernelRotationPlanner v3.2.
+
+Aucune nouvelle DEC nécessaire.
+
+==================================================
+8 — RETOUR ATTENDU
+==================================================
+
+Retourne uniquement :
+
+#155 — VALIDATION CONCURRENCE FINALE
+
+Résolution + Factory + applyRotation atomiques:
+OUI/NON
+
+RotationState verrouillé pendant résolution:
+OUI/NON
+
+Lock conservé jusqu'après applyRotation:
+OUI/NON
+
+Résolution stale applicable:
+NON/OUI
+
+Exception après Factory avant fillRotation:
+...
+
+Blueprint orphelin durable possible:
+NON/OUI
+
+Deux orchestrations concurrentes:
+...
+
+receiveDomainExhausted concurrent:
+...
+
+receiveDepthExhausted concurrent:
+...
+
+Blueprint créé avant fillRotation:
+OUI/NON
+
+Factory connaît KRP:
+NON/OUI
+
+Nouvelle DEC nécessaire:
+NON/OUI
+
+LOT A:
+PRÊT / ...
+
+LOT B:
+PRÊT / ...
+
+LOT C:
+BLOQUÉ PAR 03_TAXONOMY
+
+VERDICT:
+PRÊT À IMPLANTER / INCOMPLET
+
+Puis STOP.
+
+Aucun code.
+
+Si Replit confirme cette transaction englobante sans contradiction avec les mécanismes PostgreSQL existants, j’autoriserais ensuite l’implantation de LOT A + LOT B.
