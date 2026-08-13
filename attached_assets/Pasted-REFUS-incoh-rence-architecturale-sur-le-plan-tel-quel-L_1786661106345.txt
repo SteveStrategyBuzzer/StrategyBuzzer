@@ -1,0 +1,460 @@
+REFUS — incohérence architecturale sur le plan tel quel. La structure A/B/C est bonne, mais il reste des points à corriger avant la première ligne de code.
+
+Le plus important : dans B-4, Replit fait à nouveau de KRP un producteur de DEPTH_EXHAUSTED lorsqu’il constate que tous les domaines sont marqués épuisés. C’est contraire au contrat verrouillé : Taxonomy est l’unique autorité qui produit DOMAIN_EXHAUSTED et DEPTH_EXHAUSTED; KRP ne fait qu’enregistrer ces informations et exécuter la rotation future.
+
+Envoie-lui ceci :
+
+#155 — CORRECTION TERMINALE DU PLAN AVANT IMPLANTATION
+
+NE CODE PAS ENCORE.
+
+La structure LOT A / LOT B / LOT C est acceptée,
+mais plusieurs corrections restent obligatoires.
+
+==================================================
+1 — KRP NE PRODUIT JAMAIS DEPTH_EXHAUSTED
+==================================================
+
+B-4 contient encore une violation architecturale.
+
+Tu écris :
+
+si selectNextDomain() ne trouve plus aucun domaine ACTIF
+→ émettre/mémoriser DEPTH_EXHAUSTED(active_depth)
+
+INTERDIT.
+
+Producteur exclusif :
+
+DOMAIN_EXHAUSTED
+= Taxonomy
+
+DEPTH_EXHAUSTED
+= Taxonomy
+
+KRP ne déduit jamais DEPTH_EXHAUSTED de ses domain_states.
+
+Les domain_states KRP sont une mémoire des signaux reçus,
+pas une nouvelle autorité intellectuelle.
+
+Donc selectNextDomain() doit faire uniquement :
+
+active_depth
++
+domain_position
++
+DomainCycle
++
+domain_states reçus de Taxonomy
+↓
+chercher prochain domaine non DOMAIN_EXHAUSTED.
+
+Si aucun domaine n'est sélectionnable
+ET qu'aucun DEPTH_EXHAUSTED explicite de Taxonomy
+n'est mémorisé :
+
+→ INCOHÉRENCE D'ÉTAT
+→ aucune rotation
+→ aucun Blueprint
+→ erreur/invariant à remonter
+
+KRP ne fabrique surtout pas lui-même le signal manquant.
+
+==================================================
+2 — CHANGEMENT DE DEPTH = RESTART DU DOMAINCYCLE
+==================================================
+
+B-3 est incomplet.
+
+Lorsqu'un DEPTH_EXHAUSTED explicite est appliqué :
+
+Depth 2 → 4
+Depth 4 → 6
+etc.
+
+la rotation du NOUVEAU Depth doit recommencer au premier Domaine
+du DomainCycle.
+
+Exemple :
+
+Depth 2
+
+les domaines se sont épuisés progressivement.
+
+Le dernier domaine réellement consommé peut être :
+
+Art
+
+et non Science.
+
+Taxonomy signale :
+
+DEPTH_EXHAUSTED(2)
+
+Puis :
+
+CURRENT_KERNEL_RECEIVED
+→ active_depth = 4
+
+Le premier Blueprint du Depth 4 doit être :
+
+Depth 4 + PREMIER DOMAINE DU DOMAINCYCLE
+
+et NON :
+
+"prochain domaine après Art".
+
+Donc aucune position Domaine de l'ancien Depth
+ne doit contaminer le nouveau Depth.
+
+Le plan doit définir explicitement :
+
+transition Depth
+→ active_depth = nextDepth
+→ reset de la position Domaine pour ce nouveau Depth
+→ prochaine sélection = premier Domaine officiel du DomainCycle
+
+Ajouter un test obligatoire :
+
+dernier domaine Depth 2 = Art
++
+DEPTH_EXHAUSTED(2)
++
+CURRENT_KERNEL_RECEIVED
+→ premier domaine Depth 4 = premier Domaine du DomainCycle.
+
+==================================================
+3 — NE PAS CONFONDRE DOMAIN AVEC DOMAIN_CODE
+==================================================
+
+Le plan utilise :
+
+[GE, HI, FA, AR, SP, CI, CU, SC]
+
+comme valeurs de DomainCycle.
+
+Avant implantation, vérifie le contrat v3.2 et le Blueprint verrouillé.
+
+KRP écrit le slot :
+
+domain
+
+Il ne doit pas récupérer implicitement la responsabilité
+des codes utilisés plus tard pour kernel_code.
+
+Ne crée donc PAS une nouvelle représentation KRP simplement
+parce que GE/HI/etc. sont pratiques dans les exemples.
+
+Le plan doit identifier explicitement :
+
+- représentation canonique persistée de domain dans KRP ;
+- représentation écrite dans KernelBlueprint.domain ;
+- clé utilisée dans domain_states ;
+- mapping éventuel vers un domain_code ;
+- propriétaire de ce mapping.
+
+Il doit exister UNE représentation canonique KRP.
+
+Si GE/HI/etc. ne sont que des exemples abrégés :
+ne pas les utiliser comme nouvelle source de vérité.
+
+==================================================
+4 — CURRENT_KERNEL_RECEIVED DOIT ÊTRE ATOMIQUE
+==================================================
+
+B-3 doit être transactionnel.
+
+La séquence :
+
+déduplication blueprint_id
+↓
+insertion receipt
+↓
+kernel_received_total +1
+↓
+application éventuelle DEPTH_EXHAUSTED
+↓
+reset pending
+↓
+éventuel PRODUCTION_ON_HOLD
+
+doit constituer UNE opération atomique du point de vue persistant.
+
+Interdit :
+
+receipt enregistré
+↓
+crash
+↓
+kernel_received_total non incrémenté
+↓
+retry considéré déjà traité
+
+Cela casserait DEC-093.
+
+Donc garantir :
+
+BEGIN TRANSACTION
+↓
+lock/contrôle idempotence
+↓
+receipt
+↓
+compteur
+↓
+transition prospective éventuelle
+↓
+COMMIT
+
+En cas d'échec :
+ROLLBACK complet.
+
+Ajouter tests :
+
+- exception après receipt mais avant compteur
+  → aucun receipt durable et aucun compteur durable ;
+
+- deux traitements concurrents même blueprint_id
+  → exactement un incrément ;
+
+- DEPTH_EXHAUSTED(10) + réception concurrente
+  → exactement un compteur + une transition terminale.
+
+==================================================
+5 — VALIDATION DU DEPTH DU SIGNAL
+==================================================
+
+À la première réception valide de :
+
+receiveDepthExhausted(depth)
+
+le Depth doit être cohérent avec le bassin actuellement concerné.
+
+KRP ne doit pas accepter arbitrairement :
+
+active_depth = 4
+receiveDepthExhausted(8)
+
+comme futur signal stockable.
+
+Le plan doit définir la vérification d'invariant
+selon le contrat verrouillé et l'ordre garanti des événements.
+
+Même signal déjà mémorisé :
+→ idempotent.
+
+Signal contradictoire :
+→ erreur d'invariant.
+
+Ne crée pas une file de plusieurs Depths futurs.
+
+==================================================
+6 — MIGRATION domain_states : NE PAS INVENTER L'HISTORIQUE
+==================================================
+
+Le plan propose :
+
+backfill de tous les 7 × 8 couples à ACTIF.
+
+Attention :
+
+l'ancien état ON/OFF / EMPTY
+n'est PAS équivalent au nouveau contrat :
+
+ACTIF / DOMAIN_EXHAUSTED.
+
+Nous avons précisément refusé de déduire
+l'architecture nouvelle de l'ancien code.
+
+Donc ne transforme pas automatiquement un ancien état
+en vérité v3.2 sans justification.
+
+Avant migration, audite les données existantes :
+
+- nombre de rows kernel_rotation_state_v2 ;
+- active_depth actuel ;
+- tour_domain_states actuel ;
+- état de production réel ;
+- présence d'une production qu'il faut reprendre ;
+- possibilité ou non d'initialiser proprement le nouvel état.
+
+Retourne la stratégie de migration proposée :
+
+A — nouveau state v3.2 initialisé proprement
+ou
+B — conversion justifiée champ par champ
+
+mais ne suppose pas silencieusement :
+
+tout = ACTIF.
+
+Si une remise à zéro contrôlée du state KRP est nécessaire,
+elle doit être explicitement signalée avant implantation.
+
+==================================================
+7 — peekNext NULL RESTE SANS INTERPRÉTATION KRP
+==================================================
+
+Conserver la correction :
+
+peekNext() == null
+≠
+DOMAIN_EXHAUSTED
+
+et aussi :
+
+peekNext() == null
+≠
+DEPTH_EXHAUSTED.
+
+Le comportement réel de null appartient à 03_Taxonomy.
+
+LOT C ne doit jamais réintroduire une inférence KRP.
+
+==================================================
+8 — LOT B PEUT BIEN IMPLANTER LE RÉCEPTEUR
+==================================================
+
+Cette partie reste approuvée :
+
+KRP peut déjà avoir :
+
+receiveDomainExhausted(...)
+receiveDepthExhausted(...)
+
++
+domain_states
++
+mémorisation prospective du DEPTH_EXHAUSTED
++
+sélecteur de domaine v3.2
++
+transition CURRENT_KERNEL_RECEIVED
+
+sans brancher Taxonomy.
+
+Mais les tests doivent injecter explicitement les signaux.
+
+Ils ne doivent pas demander au sélecteur KRP
+de les fabriquer lui-même.
+
+==================================================
+9 — TEST CLÉ DE SÉPARATION DES AUTORITÉS
+==================================================
+
+Ajouter obligatoirement :
+
+domain_states[2] =
+tous DOMAIN_EXHAUSTED
+
+pending_depth_exhausted_depth = NULL
+
+appel sélection prochaine rotation
+→ PAS de DEPTH_EXHAUSTED auto-créé
+→ PAS de changement de Depth
+→ PAS de Blueprint
+→ invariant/refus explicite.
+
+Puis :
+
+receiveDepthExhausted(2)
++
+CURRENT_KERNEL_RECEIVED
+→ active_depth = 4
+→ reset DomainCycle
+→ premier Domaine du Depth 4.
+
+Cela prouve :
+
+Taxonomy décide l'épuisement.
+KRP applique la rotation.
+
+==================================================
+10 — RETOUR ATTENDU
+==================================================
+
+Retourne uniquement :
+
+#155 — PLAN TERMINAL KRP v3.2
+
+KRP produit DOMAIN_EXHAUSTED:
+NON / OUI
+
+KRP produit DEPTH_EXHAUSTED:
+NON / OUI
+
+Producteur exclusif des deux signaux:
+...
+
+Tous domaines DOMAIN_EXHAUSTED sans signal DEPTH_EXHAUSTED:
+...
+
+Changement de Depth reset DomainCycle:
+OUI/NON
+
+Premier domaine après changement Depth:
+...
+
+Représentation canonique domain dans KRP:
+...
+
+Représentation Blueprint.domain:
+...
+
+GE/HI/etc utilisés comme:
+CANONIQUE / ABRÉVIATION / autre
+
+Propriétaire domain_code:
+...
+
+CURRENT_KERNEL_RECEIVED transactionnel:
+OUI/NON
+
+Receipt + compteur + transition atomiques:
+OUI/NON
+
+Concurrence même blueprint_id:
+...
+
+Signal DEPTH_EXHAUSTED incohérent:
+...
+
+Migration domain_states legacy:
+...
+
+Backfill ACTIF automatique sans audit:
+NON/OUI
+
+peekNext null interprété par KRP:
+NON/OUI
+
+LOT A:
+PRÊT / ...
+
+LOT B:
+PRÊT / ...
+
+LOT C:
+BLOQUÉ PAR 03_TAXONOMY / ...
+
+Décision architecturale nouvelle nécessaire:
+OUI/NON
+Si OUI:
+...
+
+Implémentation:
+NON
+
+VERDICT:
+PLAN PRÊT À IMPLANTER / INCOMPLET
+
+Puis STOP.
+
+Aucun code.
+
+Après ce retour, si ces points sont conformes, LOT A + LOT B pourront réellement être autorisés. Le point le plus important à ne plus laisser bouger est :
+
+Taxonomy = autorité de l'épuisement
+KRP      = autorité de la rotation
+
+Le fait que KRP puisse voir huit DOMAIN_EXHAUSTED ne lui donne pas le droit de créer lui-même DEPTH_EXHAUSTED. Ce serait une deuxième source d’autorité.
