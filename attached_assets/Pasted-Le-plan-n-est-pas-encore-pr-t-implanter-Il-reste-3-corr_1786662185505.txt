@@ -1,0 +1,334 @@
+Le plan n’est pas encore prêt à implanter. Il reste 3 corrections bloquantes et une correction de classification.
+
+1. BLOQUANT — domain_position = 0 ferait partir sur Histoire
+
+Le plan définit :
+
+domain_position = 0
+
+puis :
+
+for offset = 1..8
+candidate = DomainCycle[(domain_position + offset) % 8]
+
+Avec :
+
+0 = geographie
+
+le premier candidat devient :
+
+index 1 = histoire
+
+alors que le contrat exige :
+
+nouveau Depth
+→ Géographie
+
+Il faut choisir une seule sémantique du curseur. La plus propre :
+
+domain_position
+= position du DERNIER domaine sélectionné
+
+Donc à l’initialisation d’un nouveau Depth :
+
+domain_position = -1
+
+et :
+
+(-1 + 1) % 8 = 0
+→ geographie
+
+Ou utiliser une représentation équivalente explicite. Mais 0 + offset 1 est faux.
+
+2. BLOQUANT — le gate est encore insuffisant avant la Factory
+
+B-4 dit :
+
+tous domaines DOMAIN_EXHAUSTED
++
+pas de DEPTH_EXHAUSTED
+→ invariant
+→ aucun Blueprint
+
+Mais selectNextDomain() est appelé par planV2() après :
+
+KernelBlueprintFactory::create()
+
+Donc dans ce scénario, le Blueprint existe déjà lorsque KRP découvre qu’aucune rotation valide n’est possible.
+
+C’est exactement le Blueprint orphelin que nous avons interdit.
+
+Le gate orchestration doit donc vérifier qu’une prochaine position KRP est réellement disponible avant d’appeler la Factory, pas uniquement vérifier :
+
+depth_state != PRODUCTION_ON_HOLD
+
+Contrat :
+
+CURRENT_KERNEL_RECEIVED
+↓
+orchestration demande à KRP :
+prochaine rotation disponible ?
+↓
+NON
+→ Factory non appelée
+
+OUI
+→ Factory
+→ Blueprint
+→ KRP écrit le couple déjà déterminé
+
+KRP reste propriétaire de la décision. L’orchestrateur ne calcule pas lui-même le domaine.
+
+3. BLOQUANT — domain_states = {} n’est pas conforme au modèle annoncé
+
+Le plan propose pour une nouvelle ligne :
+
+{}
+
+puis affirme que receiveDomainExhausted() remplira progressivement la structure.
+
+Mais le contrat v3.2 décrit des états par :
+
+Depth
+→ Domaine
+→ ACTIF | DOMAIN_EXHAUSTED
+
+Et le sélecteur tente de lire :
+
+domain_states[depth][candidate]
+
+Avec {}, soit :
+
+on obtient des clés absentes ;
+soit on introduit implicitement la règle « absence = ACTIF ».
+
+Cette nouvelle règle n’a jamais été définie.
+
+Pour une nouvelle RotationState v3.2, initialise proprement les 7 × 8 couples :
+
+2  → 8 domaines ACTIF
+4  → 8 domaines ACTIF
+6  → 8 domaines ACTIF
+7  → 8 domaines ACTIF
+8  → 8 domaines ACTIF
+9  → 8 domaines ACTIF
+10 → 8 domaines ACTIF
+
+Cela ne signifie pas qu’on peut backfiller aveuglément les anciennes rows : l’audit A-0 des données existantes reste requis.
+
+4. La stratégie de migration A/B n’est pas une nouvelle décision architecturale
+
+Cette conclusion :
+
+Décision architecturale nouvelle nécessaire : OUI
+— stratégie de migration domain_states
+
+est mal classifiée.
+
+L’architecture est déjà verrouillée :
+
+état cible = domain_states v3.2
+
+Déterminer si les données historiques permettent :
+
+conversion sûre
+
+ou nécessitent :
+
+réinitialisation contrôlée
+
+est une décision de migration/implantation, pas une nouvelle décision métier KRP.
+
+Une nouvelle DEC ne serait nécessaire que si la migration obligeait à modifier le contrat verrouillé.
+
+À envoyer à Replit
+#155 — DERNIER CORRECTIF AVANT AUTORISATION D'IMPLANTATION
+
+NE CODE PAS ENCORE.
+
+4 corrections finales.
+
+1 — DOMAIN_POSITION
+
+Le plan actuel contient un off-by-one.
+
+Si DomainCycle[0] = geographie et selectNextDomain()
+commence avec offset=1, alors domain_position=0 donne histoire.
+
+Définir une seule sémantique du curseur.
+
+Proposition :
+
+domain_position
+= index du DERNIER domaine effectivement sélectionné.
+
+À l'initialisation d'un nouveau Depth :
+
+domain_position = -1
+
+Puis :
+
+next = (-1 + 1) % 8
+→ index 0
+→ geographie.
+
+Après sélection de geographie :
+domain_position = 0.
+
+Après sélection histoire :
+domain_position = 1.
+
+etc.
+
+Ajouter tests :
+- initial Depth 2 → geographie
+- transition Depth 2→4 → geographie
+- dernier domaine ancien Depth = art → nouveau Depth commence quand même geographie.
+
+2 — GATE AVANT FACTORY DOIT GARANTIR UNE ROTATION POSSIBLE
+
+Le gate ne peut pas vérifier uniquement :
+
+depth_state != PRODUCTION_ON_HOLD.
+
+Il doit également garantir qu'une prochaine position KRP
+est réellement disponible AVANT KernelBlueprintFactory::create().
+
+Sinon :
+
+Factory
+→ Blueprint créé
+→ planV2()
+→ selectNextDomain échoue
+→ Blueprint orphelin
+
+ce qui est interdit.
+
+KRP reste propriétaire de la sélection.
+
+L'orchestration doit demander à KRP une résolution/readiness
+de prochaine rotation AVANT Factory.
+
+Séquence :
+
+orchestration
+→ KRP resolveNextRotation/readNextRotationAvailability
+→ si aucune position valide :
+   Factory NON appelée
+→ sinon :
+   Factory
+   → Blueprint
+   → KRP applique depth+domain write-once.
+
+Ne crée pas deux moteurs de sélection.
+
+La sélection pré-Factor et fillRotation doivent utiliser
+le même résultat canonique de rotation.
+
+3 — DOMAIN_STATES INITIAL NE PEUT PAS ÊTRE {}
+
+Pour une NOUVELLE RotationState v3.2 :
+
+initialiser explicitement :
+
+7 Depths × 8 Domaines
+→ ACTIF.
+
+Ne crée pas implicitement :
+
+absence de clé = ACTIF
+
+car cette règle n'appartient pas au contrat.
+
+Pour les rows historiques existantes :
+
+NE PAS backfiller automatiquement ACTIF.
+
+Conserver A-0 :
+
+audit réel
+→ conversion justifiée
+OU
+→ réinitialisation contrôlée.
+
+Avant toute réinitialisation, vérifier également :
+
+- aucun Blueprint actif ;
+- aucun noyau en cours dont la rotation doit être conservée ;
+- aucun outbox CURRENT_KERNEL_RECEIVED non traité.
+
+Ne jamais reset un state KRP vivant uniquement parce que
+l'ancien JSON est difficile à convertir.
+
+4 — CLASSIFICATION MIGRATION
+
+"Stratégie A/B domain_states"
+n'est PAS une nouvelle décision architecturale KRP.
+
+Architecture v3.2 est déjà verrouillée.
+
+Classer :
+
+DÉCISION D'IMPLANTATION / MIGRATION
+
+Une nouvelle DEC n'est requise que si l'audit démontre qu'il faut
+modifier le contrat KRP verrouillé.
+
+RETOUR ATTENDU :
+
+#155 — PLAN FINAL VALIDABLE
+
+Sémantique domain_position:
+...
+
+Valeur initiale nouveau Depth:
+...
+
+Initial Depth 2 sélectionne geographie:
+PASS/FAIL
+
+Après DEPTH_EXHAUSTED(2), premier domaine Depth 4:
+...
+
+Gate vérifie prochaine rotation avant Factory:
+OUI/NON
+
+Sélecteur dupliqué:
+NON/OUI
+
+Blueprint possible avant échec selectNextDomain:
+NON/OUI
+
+Nouvelle RotationState domain_states initialisée 7×8 ACTIF:
+OUI/NON
+
+Anciennes rows backfill automatique:
+NON/OUI
+
+Audit état actif avant reset:
+OUI/NON
+
+Stratégie A/B classée:
+IMPLANTATION/MIGRATION / ARCHITECTURE
+
+Nouvelle DEC nécessaire:
+NON / autre
+
+LOT A:
+PRÊT / ...
+
+LOT B:
+PRÊT / ...
+
+LOT C:
+BLOQUÉ PAR 03_TAXONOMY / ...
+
+Implémentation:
+NON
+
+VERDICT:
+PRÊT À IMPLANTER / INCOMPLET
+
+Puis STOP.
+
+Après ces corrections, je m’attends à pouvoir autoriser réellement LOT A + LOT B sans rouvrir la spécification KRP.
