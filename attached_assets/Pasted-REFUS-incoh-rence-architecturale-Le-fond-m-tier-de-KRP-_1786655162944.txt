@@ -1,0 +1,518 @@
+REFUS — incohérence architecturale.
+
+Le fond métier de KRP v3.1 est maintenant cohérent, mais je vois 3 anomalies structurelles qui empêchent encore le verrouillage. Elles sont importantes parce qu’elles touchent directement la Constitution et l’Architecture Register.
+
+1. DEPTH_EXHAUSTED_PENDING a été inventé comme état
+
+Nous avons décidé :
+
+Taxonomy
+→ DEPTH_EXHAUSTED(10)
+→ information mémorisée prospectivement
+→ Blueprint courant continue
+→ CURRENT_KERNEL_RECEIVED
+→ PRODUCTION_ON_HOLD
+
+Mais nous n’avons jamais décidé de créer un état officiel :
+
+DEPTH_EXHAUSTED_PENDING
+
+Replit a transformé le caractère « prospectif » du signal en nouvel état KRP.
+
+Ce n’est pas nécessaire.
+
+Le signal peut être persisté comme information de transition future sans créer un troisième état métier.
+
+Le modèle reste :
+
+production normale
+↓
+DEPTH_EXHAUSTED(10) reçu et mémorisé
+↓
+Blueprint courant continue
+
+CURRENT_KERNEL_RECEIVED
+↓
+PRODUCTION_ON_HOLD
+
+Donc DEPTH_EXHAUSTED_PENDING doit être retiré comme état officiel, sauf décision explicite de notre part.
+
+2. Le gate ne doit PAS appartenir à KernelBlueprintFactory
+
+Replit écrit :
+
+« gate obligatoire sur KernelBlueprintFactory »
+
+C'est une mauvaise frontière de responsabilité.
+
+La Factory a une seule responsabilité :
+
+créer un KernelBlueprint
+
+Elle ne doit pas connaître :
+
+KRP
+Depth
+Taxonomy
+PRODUCTION_ON_HOLD
+
+Le gate appartient à l'orchestration du cycle.
+
+Séquence terminale correcte :
+
+ReadyBank
+↓
+CURRENT_KERNEL_RECEIVED
+↓
+KRP applique l'information DEPTH_EXHAUSTED(10)
+↓
+KRP indique :
+PRODUCTION_ON_HOLD
+↓
+Orchestration constate :
+aucune prochaine rotation disponible
+↓
+STOP
+↓
+KernelBlueprintFactory N'EST PAS APPELÉE
+
+Si une rotation existe :
+
+CURRENT_KERNEL_RECEIVED
+↓
+KRP confirme qu'une prochaine position existe
+↓
+Orchestration
+↓
+KernelBlueprintFactory
+↓
+nouveau Blueprint
+↓
+KRP écrit depth + domain
+
+Cela préserve parfaitement :
+
+Blueprint créé avant que KRP lui écrive depth/domain
+
+tout en empêchant un Blueprint orphelin.
+
+3. Le Register utilise un statut interdit : PARTIELLEMENT RETENU
+
+C'est la plus grosse anomalie.
+
+Notre Architecture Register autorise exclusivement :
+
+DRAFT
+UNDER_REVIEW
+OFFICIAL
+SUPERSEDED
+REJECTED
+
+Il n'existe pas :
+
+PARTIELLEMENT RETENU
+
+Donc ceci est interdit :
+
+DEC-079 : PARTIELLEMENT RETENU
+
+Et le même problème existe conceptuellement avec :
+
+DEC-065 :
+OFFICIAL
+mais certaines clauses sont supersedées
+
+Une décision permanente possède un seul statut.
+
+On ne peut pas conserver une moitié OFFICIAL et superseder l'autre moitié.
+
+La solution correcte est de superseder l'ancienne décision entière et réénoncer ce qui reste valide dans une nouvelle décision propre.
+
+Pour DEC-079 :
+
+DEC-079
+→ SUPERSEDED
+
+Puis nouvelle DEC :
+
+CURRENT_KERNEL_RECEIVED est le seul événement
+qui incrémente kernel_received_total.
+
+La création d'un Blueprint
+n'incrémente jamais kernel_received_total.
+
+Pour DEC-065 :
+
+DEC-065
+→ SUPERSEDED
+
+Puis nouvelle DEC qui réénonce exclusivement le DepthCycle conservé :
+
+DepthCycle intellectuel :
+
+2 → 4 → 6 → 7 → 8 → 9 → 10
+
+Et DEC-092 porte séparément :
+
+DEPTH_EXHAUSTED(10)
+→ PRODUCTION_ON_HOLD
+→ aucun retour automatique à Depth 2
+
+C'est beaucoup plus propre :
+
+UNE DÉCISION
+=
+UN OBJET
+=
+UN STATUT
+Bloc exact à transmettre à Replit
+STOP — NE VERROUILLE PAS v3.1.
+
+Le fond architectural KRP est accepté, mais trois corrections
+constitutionnelles restent obligatoires.
+
+Aucun code.
+Aucun 03_Taxonomy.
+Aucun enregistrement central tant que cette correction n'est pas relue.
+
+==================================================
+1 — SUPPRIMER DEPTH_EXHAUSTED_PENDING COMME ÉTAT MÉTIER
+==================================================
+
+DEPTH_EXHAUSTED_PENDING n'a jamais été décidé comme état officiel KRP.
+
+Ne transforme pas le caractère prospectif du signal
+DEPTH_EXHAUSTED en nouveau statut métier.
+
+Contrat :
+
+Taxonomy
+→ DEPTH_EXHAUSTED(10)
+→ information persistée pour la transition future
+→ Blueprint courant continue normalement
+→ CURRENT_KERNEL_RECEIVED
+→ KRP applique la transition
+→ PRODUCTION_ON_HOLD
+
+États métier retenus pour cette transition :
+
+production normale
+→
+PRODUCTION_ON_HOLD
+
+Le mécanisme physique permettant de mémoriser le signal avant
+CURRENT_KERNEL_RECEIVED est un détail de persistance/implantation.
+
+Ne lui donne pas automatiquement le statut architectural
+DEPTH_EXHAUSTED_PENDING.
+
+Corriger toutes les occurrences dans v3.1.
+
+==================================================
+2 — CORRIGER LE GATE DE CRÉATION DU BLUEPRINT
+==================================================
+
+La phrase :
+
+"gate obligatoire sur KernelBlueprintFactory"
+
+est architecturalement incorrecte.
+
+KernelBlueprintFactory n'est PAS propriétaire du cycle de production.
+
+Sa responsabilité reste uniquement :
+
+créer un KernelBlueprint canonique lorsque l'orchestration lui demande.
+
+La Factory ne doit connaître ni :
+
+- KRP ;
+- Taxonomy ;
+- DEPTH_EXHAUSTED ;
+- PRODUCTION_ON_HOLD ;
+- prochaine position.
+
+Le gate appartient à l'ORCHESTRATION DU CYCLE.
+
+Séquence terminale :
+
+Taxonomy
+→ DEPTH_EXHAUSTED(10) mémorisé
+
+Blueprint courant
+→ pipeline normal
+→ ReadyBank
+→ CURRENT_KERNEL_RECEIVED
+→ KRP applique la transition terminale
+→ PRODUCTION_ON_HOLD
+→ orchestration constate :
+aucune prochaine rotation disponible
+→ STOP
+→ KernelBlueprintFactory N'EST PAS APPELÉE
+
+Séquence normale :
+
+CURRENT_KERNEL_RECEIVED
+→ KRP détermine qu'une prochaine position existe
+→ orchestration autorise nouveau cycle
+→ KernelBlueprintFactory
+→ nouveau Blueprint
+→ KRP écrit depth + domain write-once
+
+Cela ne change PAS la règle :
+
+Blueprint existe AVANT que KRP écrive depth/domain.
+
+Cela ajoute seulement un gate orchestration AVANT l'appel de la Factory.
+
+==================================================
+3 — STATUTS ARCHITECTURE REGISTER : NORMALISATION OBLIGATOIRE
+==================================================
+
+Les seuls statuts autorisés sont :
+
+DRAFT
+UNDER_REVIEW
+OFFICIAL
+SUPERSEDED
+REJECTED
+
+"PARTIELLEMENT RETENU" est INTERDIT.
+
+Une DEC possède un seul statut.
+
+Une DEC ne peut pas être :
+
+OFFICIAL pour certaines clauses
+et
+SUPERSEDED pour d'autres clauses.
+
+==================================================
+4 — DEC-079
+==================================================
+
+DEC-079 contient ancien contenu + principe encore utile.
+
+Ne pas utiliser PARTIELLEMENT RETENU.
+
+DEC-079 doit devenir :
+
+SUPERSEDED
+
+Créer une nouvelle DEC avec le prochain ID réellement libre
+après nouvel audit du Register.
+
+Cette nouvelle décision doit contenir UNIQUEMENT :
+
+CURRENT_KERNEL_RECEIVED
+est le seul événement qui incrémente kernel_received_total.
+
+La création d'un KernelBlueprint
+ne modifie jamais kernel_received_total.
+
+Ne rajoute aucune ancienne logique ReadyBank/Taxonomy.
+
+==================================================
+5 — DEC-065
+==================================================
+
+DEC-065 contient :
+
+- DepthCycle encore valide ;
+- retour Depth 10 → Depth 2 désormais rejeté ;
+- ancienne définition PRODUCTION_ON_HOLD liée à cycle_target,
+  désormais rejetée.
+
+DEC-065 ne peut donc pas rester OFFICIAL partiellement.
+
+Statut final :
+
+DEC-065
+→ SUPERSEDED
+
+Créer une nouvelle DEC avec le prochain ID réellement libre
+pour réénoncer exclusivement :
+
+DepthCycle intellectuel officiel :
+
+2 → 4 → 6 → 7 → 8 → 9 → 10
+
+Cette nouvelle DEC devient la source canonique du DepthCycle.
+
+DEC-092 reste la décision distincte concernant :
+
+DEPTH_EXHAUSTED(10)
+→ PRODUCTION_ON_HOLD
+→ aucun retour automatique Depth 2.
+
+Donc :
+
+DepthCycle
+= une DEC
+
+Transition terminale Depth 10
+= une autre DEC
+
+==================================================
+6 — DEC-061
+==================================================
+
+DEC-061 peut bien être :
+
+SUPERSEDED
+
+par le nouveau modèle DOMAIN_EXHAUSTED / DEPTH_EXHAUSTED,
+à condition que le DomainCycle officiel reste explicitement
+réénoncé dans la nouvelle architecture.
+
+Pas de statut partiel.
+
+==================================================
+7 — STATUTS AVANT VERROUILLAGE
+==================================================
+
+Toutes les nouvelles décisions ACCEPTÉES dans cette révision restent :
+
+UNDER_REVIEW
+
+tant que nous n'avons pas explicitement déclaré
+02_KernelRotationPlanner VERROUILLÉ.
+
+Les propositions définitivement refusées restent :
+
+REJECTED.
+
+Lors du verrouillage final :
+
+les nouvelles décisions retenues
+→ OFFICIAL
+
+les décisions remplacées
+→ SUPERSEDED
+
+les propositions refusées
+→ REJECTED.
+
+==================================================
+8 — NE PAS TOUCHER AU RESTE
+==================================================
+
+Préserver intégralement :
+
+- 8 Domaines créateurs ;
+- Général exclu ;
+- DepthCycle 2→4→6→7→8→9→10 ;
+- rotation KRP indépendante de Taxonomy ;
+- progression Taxonomy indépendante par Depth + Domaine ;
+- aucun AVAILABLE ;
+- DOMAIN_EXHAUSTED prospectif ;
+- DEPTH_EXHAUSTED prospectif ;
+- CURRENT_KERNEL_RECEIVED comme déclencheur ;
+- 50 SubjectSlots MAXIMUM ;
+- 5 IdeaSlots MAXIMUM ;
+- préparation complète Taxonomy avant consommation ;
+- IdeaSlot exact sélectionné = validé = Blueprint = consommé ;
+- confirmConsumed actuel NON CONFORME ;
+- aucune EMPTY loop ;
+- aucun overwriteRotation ;
+- aucun retour automatique Depth 10 → Depth 2 ;
+- PRODUCTION_ON_HOLD terminal ;
+- aucune reprise automatique.
+
+==================================================
+9 — VERSION
+==================================================
+
+Produire :
+
+02_KernelRotationPlanner.md v3.2
+UNDER_REVIEW
+
+Réécrire les sections affectées proprement.
+
+Ne pas faire seulement des annotations contradictoires.
+
+==================================================
+10 — RETOUR ATTENDU
+==================================================
+
+Retourne uniquement :
+
+02_KRP — AUDIT TERMINAL v3.2
+
+Version:
+...
+
+DEPTH_EXHAUSTED_PENDING état métier:
+ABSENT / PRÉSENT
+
+Mémorisation prospective du signal:
+PRÉSENTE / ABSENTE
+
+PRODUCTION_ON_HOLD:
+...
+
+Gate propriétaire:
+ORCHESTRATION / autre
+
+KernelBlueprintFactory connaît KRP state:
+NON / OUI
+
+Factory appelée en PRODUCTION_ON_HOLD:
+NON / OUI
+
+Blueprint créé avant fillRotation:
+OUI / NON
+
+DEC-065:
+SUPERSEDED / autre
+
+Nouvelle DEC DepthCycle:
+...
+
+DEC-079:
+SUPERSEDED / autre
+
+Nouvelle DEC kernel_received_total:
+...
+
+Statut non normalisé présent:
+AUCUN / ...
+
+DEC-061:
+...
+
+DEC-082→092:
+...
+
+Nouveaux DEC ajoutés:
+...
+
+Toutes décisions acceptées non encore verrouillées:
+UNDER_REVIEW / autre
+
+Décisions REJECTED:
+...
+
+Décisions architecturales ouvertes:
+AUCUNE / ...
+
+Architecture:
+100 % / autre
+
+Contrat:
+100 % / autre
+
+Implémentation:
+NON
+
+VERDICT:
+PRÊTE À VERROUILLER / INCOMPLÈTE
+
+Puis STOP.
+
+Aucun code.
+Aucun registre central.
+Aucun 03_Taxonomy.
+
+Après ce v3.2, si ces trois anomalies sont réellement éliminées, on pourra faire le verrouillage formel de 02_KernelRotationPlanner et synchroniser ensuite l’Architecture Register, avant tout audit de code.

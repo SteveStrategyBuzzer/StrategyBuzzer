@@ -1,9 +1,9 @@
 # STRATEGYBUZZER — MÉCANISME EXACT DU KERNELROTATIONPLANNER
 
-**Version :** 3.1
+**Version :** 3.2
 **Date :** 13 août 2026
 **Statut :** UNDER_REVIEW
-**Remplace :** version 2.1 intégralement (v3.0 → v3.1 : D1 résolu, D2 tranché, D3 retiré du périmètre KRP, 9 corrections de cohérence)
+**Remplace :** version 2.1 intégralement (v3.0 → v3.2 : D1 résolu, D2 tranché, D3 retiré du périmètre KRP, 3 corrections constitutionnelles)
 **Aucune implémentation pendant cette phase.**
 
 ---
@@ -472,7 +472,7 @@ premier domaine : Géographie
 
 ## 11.4 Idempotence
 
-`DEPTH_EXHAUSTED` reçu alors que `depth_state = DEPTH_EXHAUSTED_PENDING` → NO-OP.
+`DEPTH_EXHAUSTED` reçu alors qu'un signal `DEPTH_EXHAUSTED` est déjà mémorisé → NO-OP.
 
 ---
 
@@ -591,7 +591,7 @@ Quarantine ne bloque jamais la rotation.
 ```
 active_depth      : int (2, 4, 6, 7, 8, 9, ou 10)
 domain_states     : map depth → map domain → ACTIF | DOMAIN_EXHAUSTED
-depth_state       : ROTATION_ACTIVE | DEPTH_EXHAUSTED_PENDING | PRODUCTION_ON_HOLD
+depth_state       : ROTATION_ACTIVE | PRODUCTION_ON_HOLD
 ```
 
 ## 14.2 Transitions
@@ -606,11 +606,12 @@ domain_states[depth][domain] : ACTIF → DOMAIN_EXHAUSTED
 **DEPTH_EXHAUSTED reçu :**
 
 ```
-depth_state : ROTATION_ACTIVE → DEPTH_EXHAUSTED_PENDING
-(idempotent : DEPTH_EXHAUSTED_PENDING → DEPTH_EXHAUSTED_PENDING = NO-OP)
+le signal DEPTH_EXHAUSTED est mémorisé prospectivement
+(mécanisme de persistance = détail d'implantation)
+(idempotent : signal DEPTH_EXHAUSTED déjà mémorisé → NO-OP)
 ```
 
-**Au prochain CURRENT_KERNEL_RECEIVED si DEPTH_EXHAUSTED_PENDING et prochain Depth disponible :**
+**Au prochain CURRENT_KERNEL_RECEIVED si le signal DEPTH_EXHAUSTED est mémorisé et qu'un prochain Depth est disponible :**
 
 ```
 active_depth = prochain Depth du DepthCycle
@@ -618,7 +619,7 @@ domain_states[nouveau_depth] = tous ACTIF
 depth_state = ROTATION_ACTIVE
 ```
 
-**Au prochain CURRENT_KERNEL_RECEIVED si DEPTH_EXHAUSTED_PENDING sur Depth 10 (aucun Depth suivant) :**
+**Au prochain CURRENT_KERNEL_RECEIVED si le signal DEPTH_EXHAUSTED est mémorisé pour Depth 10 (aucun Depth suivant) :**
 
 ```
 depth_state = PRODUCTION_ON_HOLD
@@ -737,7 +738,7 @@ Taxonomy constate : DEPTH_EXHAUSTED(2)
 ↓
 Canal D1 (à définir) : KRP reçoit le signal
 ↓
-depth_state = DEPTH_EXHAUSTED_PENDING
+signal DEPTH_EXHAUSTED(2) mémorisé prospectivement (détail d'implantation)
 ↓
 Blueprint X → ReadyBank
 ↓
@@ -779,7 +780,7 @@ dernière consommation Taxonomy valide sur Depth 10
 ↓
 DEPTH_EXHAUSTED(10)
 ↓
-KRP mémorise : depth_state = DEPTH_EXHAUSTED_PENDING
+signal mémorisé prospectivement (mécanisme de persistance = détail d'implantation)
 ↓
 Blueprint courant continue normalement
 ↓
@@ -787,12 +788,13 @@ ReadyBank
 ↓
 CURRENT_KERNEL_RECEIVED
 ↓
-KRP consulte : DEPTH_EXHAUSTED_PENDING + aucun Depth suivant
+KRP constate : signal DEPTH_EXHAUSTED mémorisé + aucun Depth suivant
 ↓
 depth_state = PRODUCTION_ON_HOLD
 ↓
-AUCUNE prochaine rotation
-AUCUN Blueprint créé
+Orchestration constate : aucune prochaine rotation disponible
+↓
+STOP — KernelBlueprintFactory N'EST PAS APPELÉE
 ```
 
 **Interdictions absolues après DEPTH_EXHAUSTED(10) :**
@@ -804,7 +806,35 @@ AUCUN Blueprint créé
 
 **Garantie anti-Blueprint orphelin :**
 
-Le système connaît l'état `PRODUCTION_ON_HOLD` avant tout `CURRENT_KERNEL_RECEIVED` terminal. Si `depth_state = PRODUCTION_ON_HOLD`, `KernelBlueprintFactory` ne crée aucune nouvelle enveloppe canonique. La séquence interdite :
+Le gate de production appartient à l'**orchestration du cycle**, pas à `KernelBlueprintFactory`. `KernelBlueprintFactory` n'a qu'une seule responsabilité : créer une enveloppe canonique lorsque l'orchestration le lui demande. Elle ne connaît pas KRP, Taxonomy, `PRODUCTION_ON_HOLD`, ni la prochaine position de rotation.
+
+Séquence ordinaire :
+
+```
+CURRENT_KERNEL_RECEIVED
+↓
+KRP détermine qu'une prochaine position existe
+↓
+Orchestration autorise un nouveau cycle
+↓
+KernelBlueprintFactory — nouveau Blueprint créé
+↓
+KRP écrit depth + domain write-once
+```
+
+Séquence terminale :
+
+```
+CURRENT_KERNEL_RECEIVED
+↓
+KRP applique la transition terminale → depth_state = PRODUCTION_ON_HOLD
+↓
+Orchestration constate : aucune prochaine rotation disponible
+↓
+STOP — KernelBlueprintFactory N'EST PAS APPELÉE
+```
+
+La séquence interdite :
 
 ```
 CURRENT_KERNEL_RECEIVED
@@ -816,7 +846,7 @@ KRP découvre ensuite PRODUCTION_ON_HOLD
 Blueprint vide / orphelin
 ```
 
-est architecturalement impossible. Le mécanisme exact du gate orchestration est un détail d'implantation — la garantie est obligatoire.
+est architecturalement impossible — le gate orchestration précède toujours l'appel à la Factory.
 
 **Sortie de PRODUCTION_ON_HOLD :**
 
@@ -833,7 +863,7 @@ Le véritable déclencheur reste `CURRENT_KERNEL_RECEIVED`.
 L'état est rechargé depuis `kernel_rotation_state_v2`.
 
 Aucun domaine n'est remis à `ACTIF` lors d'une reprise.
-Les `DOMAIN_EXHAUSTED` et `DEPTH_EXHAUSTED_PENDING` précédents sont préservés.
+Les `DOMAIN_EXHAUSTED` précédents sont préservés. La mémorisation du signal `DEPTH_EXHAUSTED` est préservée.
 
 ---
 
@@ -862,8 +892,7 @@ Une seule ligne active.
 ```
 id
 active_depth                      SMALLINT NULL
-depth_state                       VARCHAR  (ROTATION_ACTIVE | DEPTH_EXHAUSTED_PENDING
-                                            | PRODUCTION_ON_HOLD)
+depth_state                       VARCHAR  (ROTATION_ACTIVE | PRODUCTION_ON_HOLD)
 domain_states                     JSON
 active_blueprint_identity         VARCHAR  NULL
 last_counted_blueprint_identity   VARCHAR  NULL
@@ -960,7 +989,7 @@ Dans une seule transaction :
 Dans une seule transaction :
 
 1. verrouiller `kernel_rotation_state_v2` ;
-2. passer `depth_state` à `DEPTH_EXHAUSTED_PENDING` ;
+2. mémoriser le signal `DEPTH_EXHAUSTED` (mécanisme de persistance = détail d'implantation) ;
 3. persister.
 
 Au prochain `CURRENT_KERNEL_RECEIVED` si prochain Depth disponible, dans une seule transaction :
@@ -991,7 +1020,7 @@ Dans une seule transaction :
 |---|---|
 | `CURRENT_KERNEL_RECEIVED` | PK `blueprint_id` sur `kernel_current_kernel_receipts` |
 | `DOMAIN_EXHAUSTED` reçu | `DOMAIN_EXHAUSTED → DOMAIN_EXHAUSTED` = NO-OP |
-| `DEPTH_EXHAUSTED` reçu | `DEPTH_EXHAUSTED_PENDING → DEPTH_EXHAUSTED_PENDING` = NO-OP |
+| `DEPTH_EXHAUSTED` reçu | signal déjà mémorisé → NO-OP |
 | Reprise après crash | État rechargé depuis `kernel_rotation_state_v2` sans remise à zéro |
 
 ---
@@ -1230,7 +1259,7 @@ KRP ne dérive pas `DEPTH_EXHAUSTED` depuis les `DOMAIN_EXHAUSTED` individuels.
 
 ## KRP-R25
 
-Si `depth_state = PRODUCTION_ON_HOLD`, aucune nouvelle rotation n'est produite et aucun nouveau Blueprint n'est créé. La création intellectuelle est suspendue jusqu'à décision architecturale explicite.
+Si `depth_state = PRODUCTION_ON_HOLD`, l'orchestration ne déclenche aucun nouveau cycle de production : `KernelBlueprintFactory` n'est pas appelée. La Factory ne connaît pas `PRODUCTION_ON_HOLD`. La création intellectuelle est suspendue jusqu'à décision architecturale explicite.
 
 ---
 
@@ -1252,9 +1281,9 @@ Si `depth_state = PRODUCTION_ON_HOLD`, aucune nouvelle rotation n'est produite e
 ## DEPTH_EXHAUSTED
 
 - Blueprint courant valide malgré `DEPTH_EXHAUSTED` reçu.
-- `depth_state = DEPTH_EXHAUSTED_PENDING` après réception.
+- Le signal `DEPTH_EXHAUSTED` est mémorisé prospectivement (mécanisme de persistance = détail d'implantation).
 - Au prochain `CURRENT_KERNEL_RECEIVED` : `active_depth` avancé, 8 domaines `ACTIF` initialisés.
-- Idempotence : `DEPTH_EXHAUSTED_PENDING → DEPTH_EXHAUSTED_PENDING` = NO-OP.
+- Idempotence : signal `DEPTH_EXHAUSTED` déjà mémorisé → NO-OP.
 
 ## CURRENT_KERNEL_RECEIVED
 
@@ -1271,7 +1300,7 @@ Si `depth_state = PRODUCTION_ON_HOLD`, aucune nouvelle rotation n'est produite e
 
 - Redémarrage préserve `DOMAIN_EXHAUSTED` déjà reçus.
 - Aucun domaine remis à `ACTIF` au redémarrage.
-- `DEPTH_EXHAUSTED_PENDING` préservé au redémarrage.
+- La mémorisation du signal `DEPTH_EXHAUSTED` est préservée au redémarrage.
 
 ## Invariants éliminés
 
@@ -1282,9 +1311,9 @@ Si `depth_state = PRODUCTION_ON_HOLD`, aucune nouvelle rotation n'est produite e
 
 ## PRODUCTION_ON_HOLD
 
-- `DEPTH_EXHAUSTED(10)` reçu → `depth_state = DEPTH_EXHAUSTED_PENDING`.
+- `DEPTH_EXHAUSTED(10)` reçu → signal mémorisé prospectivement (détail d'implantation).
 - Au `CURRENT_KERNEL_RECEIVED` suivant (Depth 10, aucun Depth suivant) : `depth_state = PRODUCTION_ON_HOLD`.
-- Aucun Blueprint créé après entrée en `PRODUCTION_ON_HOLD`.
+- L'orchestration constate `PRODUCTION_ON_HOLD` et n'appelle pas `KernelBlueprintFactory`.
 - Idempotence : `PRODUCTION_ON_HOLD → PRODUCTION_ON_HOLD` = NO-OP.
 - Aucun retour automatique à Depth 2.
 
@@ -1392,14 +1421,7 @@ Seul déclencheur de la prochaine rotation. Canal = événement transactionnel a
 
 ## DEC-065 — DepthCycle complet incluant Depth 2 et Depth 10
 
-**Statut :** OFFICIAL (DepthCycle intact — deux clauses du registre v2.0 partiellement supersedées, voir note ci-dessous)
-
-DepthCycle = `2 → 4 → 6 → 7 → 8 → 9 → 10`. Depth 10 intellectuellement valide.
-
-Note de cohérence registre : la version v2.0 de DEC-065 dans le registre central contient deux clauses désormais obsolètes :
-- « Après Depth 10 : reprend à Depth 2 » → **SUPERSEDED par DEC-092** (transition terminale = PRODUCTION_ON_HOLD, aucun retour automatique) ;
-- « PRODUCTION_ON_HOLD = aucun Depth sous `cycle_target` » → **SUPERSEDED par DEC-088 + DEC-092** (`cycle_target` rejeté comme autorité ; PRODUCTION_ON_HOLD déclenché par DEPTH_EXHAUSTED(10)).
-Le DepthCycle lui-même (`2 → 4 → 6 → 7 → 8 → 9 → 10`) reste OFFICIAL inchangé.
+**Statut :** SUPERSEDED par DEC-094
 
 ---
 
@@ -1439,9 +1461,7 @@ Quatre états : `CREATED_UNENGAGED`, `ENGAGED_IN_PIPELINE`, `READY_BANK_RECEIVED
 ## DEC-079 — ReadyBank décrémente le besoin
 
 **Version :** 1.0 — **Date :** 14 juillet 2026
-**Statut :** PARTIELLEMENT RETENU (traçabilité)
-
-`CURRENT_KERNEL_RECEIVED` est le seul déclencheur d'incrémentation de `kernel_received_total`. La création d'un Blueprint ne modifie jamais ce compteur. Principe de traçabilité conservé.
+**Statut :** SUPERSEDED par DEC-093
 
 ---
 
@@ -1492,7 +1512,7 @@ Rotation déterministe, circulaire, continue tant qu'aucun signal prospectif d'�
 
 Le Blueprint déclencheur reste valide et continue normalement.
 Au prochain `CURRENT_KERNEL_RECEIVED` : KRP avance vers le prochain Depth, tous les domaines du nouveau Depth sont réinitialisés `ACTIF`.
-Idempotent : `DEPTH_EXHAUSTED_PENDING → DEPTH_EXHAUSTED_PENDING` = NO-OP.
+Idempotent : signal `DEPTH_EXHAUSTED` déjà mémorisé → NO-OP.
 
 ---
 
@@ -1585,10 +1605,32 @@ La sélection du prochain domaine repose uniquement sur : domaine `ACTIF` (non `
 
 Après `DEPTH_EXHAUSTED(10)` : `depth_state = PRODUCTION_ON_HOLD`. Aucun retour automatique à Depth 2. Aucun état `IDLE` distinct. Aucun Blueprint créé après entrée en `PRODUCTION_ON_HOLD`.
 
-Séquence : Blueprint courant reste VALIDE → `DEPTH_EXHAUSTED(10)` → `DEPTH_EXHAUSTED_PENDING` → au prochain `CURRENT_KERNEL_RECEIVED` (aucun Depth suivant) → `PRODUCTION_ON_HOLD`.
+Séquence : Blueprint courant reste VALIDE → `DEPTH_EXHAUSTED(10)` → signal mémorisé prospectivement → au prochain `CURRENT_KERNEL_RECEIVED` (aucun Depth suivant) → `PRODUCTION_ON_HOLD`.
 
-Garantie obligatoire : si `depth_state = PRODUCTION_ON_HOLD`, `KernelBlueprintFactory` ne crée aucune nouvelle enveloppe canonique. Le mécanisme exact du gate orchestration est un détail d'implantation.
+Garantie obligatoire : si `depth_state = PRODUCTION_ON_HOLD`, l'orchestration n'appelle pas `KernelBlueprintFactory`. La Factory ne connaît pas `PRODUCTION_ON_HOLD`. Le gate appartient à l'orchestration du cycle.
 
 Sortie de `PRODUCTION_ON_HOLD` : non définie dans ce contrat. Une décision architecturale distincte la définira si le projet en a besoin.
 
 Idempotent : `PRODUCTION_ON_HOLD → PRODUCTION_ON_HOLD` = NO-OP.
+
+---
+
+## DEC-093 — CURRENT_KERNEL_RECEIVED seul incrémenteur de kernel_received_total
+
+**Version :** 1.0 — **Date :** 13 août 2026
+**Statut :** UNDER_REVIEW
+
+`CURRENT_KERNEL_RECEIVED` est le seul événement qui incrémente `kernel_received_total[depth][domain]`.
+La création d'un `KernelBlueprint` ne modifie jamais `kernel_received_total`.
+
+---
+
+## DEC-094 — DepthCycle intellectuel officiel
+
+**Version :** 1.0 — **Date :** 13 août 2026
+**Statut :** UNDER_REVIEW
+
+DepthCycle intellectuel : `2 → 4 → 6 → 7 → 8 → 9 → 10`. Depth 10 intellectuellement valide.
+8 domaines de création : Géographie, Histoire, Faune, Art, Sport, Cinéma, Cuisine, Science.
+`Général` exclu de la création intellectuelle.
+La transition après Depth 10 est définie séparément par DEC-092.
