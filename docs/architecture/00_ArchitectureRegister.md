@@ -197,10 +197,10 @@ Ancienne décision — remplacée par DEC-064 (kernel_rotation_state_v2).
 
 **Version :** 1.0
 **Date :** 14 juillet 2026
-**Statut :** SUPERSEDED par DEC-065
+**Statut :** SUPERSEDED par DEC-094
 **Module :** `02_KernelRotationPlanner.md`
 
-Ancienne décision — remplacée par DEC-065 (DepthCycle complet incluant Depth 10).
+Ancienne décision — remplacée par DEC-094 (DepthCycle intellectuel officiel v3.2).
 
 ---
 
@@ -233,10 +233,10 @@ KRP reçoit un Blueprint vide et y inscrit uniquement `depth` et `domain`.
 
 **Version :** 2.0
 **Date :** 28 juillet 2026
-**Statut :** OFFICIAL
+**Statut :** OFFICIAL (traçabilité)
 **Module :** `02_KernelRotationPlanner.md`
 
-DepthNeedMatrix porte : DepthCycle `[2,4,6,7,8,9,10]`, `cycle_target[depth]` (constantes), `cycle_completed[depth]`, `kernel_received_total[depth][domain]`. Elle ne porte pas les états ON/OFF des Domaines et ne prend aucune décision.
+`DepthNeedMatrix` porte `kernel_received_total[depth][domain]` comme données de traçabilité. `CYCLE_TARGET` et `cycle_completed` ne sont plus l'autorité de changement de Depth — remplacés par `DEPTH_EXHAUSTED` (DEC-083).
 
 ---
 
@@ -244,10 +244,10 @@ DepthNeedMatrix porte : DepthCycle `[2,4,6,7,8,9,10]`, `cycle_target[depth]` (co
 
 **Version :** 2.0
 **Date :** 28 juillet 2026
-**Statut :** OFFICIAL
+**Statut :** SUPERSEDED par DEC-082 + DEC-083
 **Module :** `02_KernelRotationPlanner.md`
 
-8 Domaines ON au début de chaque Tour. Sur EMPTY : Domaine ON → OFF (idempotent). Tour terminé à 8 Domaines OFF.
+Ancienne décision — le modèle Tour ON/OFF basé sur la boucle EMPTY est remplacé par `DOMAIN_EXHAUSTED` et `DEPTH_EXHAUSTED` prospectifs (DEC-082, DEC-083).
 
 ---
 
@@ -255,10 +255,10 @@ DepthNeedMatrix porte : DepthCycle `[2,4,6,7,8,9,10]`, `cycle_target[depth]` (co
 
 **Version :** 2.0
 **Date :** 28 juillet 2026
-**Statut :** OFFICIAL
+**Statut :** SUPERSEDED par DEC-083
 **Module :** `02_KernelRotationPlanner.md`
 
-Tour fermé à 8/8. `cycle_completed[active_depth] += 1`. Prochain Depth = premier Depth du DepthCycle pour lequel `cycle_completed < cycle_target`. KRP ne recommence jamais immédiatement le même Depth.
+Ancienne décision — le changement de Depth via compteur 8/8 est remplacé par `DEPTH_EXHAUSTED` de Taxonomy (DEC-083).
 
 ---
 
@@ -288,10 +288,10 @@ Nouvelle table `kernel_rotation_state_v2` (coexiste avec la table legacy DEPRECA
 
 **Version :** 2.0
 **Date :** 28 juillet 2026
-**Statut :** OFFICIAL
+**Statut :** SUPERSEDED par DEC-094
 **Module :** `02_KernelRotationPlanner.md`
 
-DepthCycle = `2 → 4 → 6 → 7 → 8 → 9 → 10`. Après Depth 10 : reprend à Depth 2. PRODUCTION_ON_HOLD = aucun Depth sous `cycle_target`.
+Ancienne décision — remplacée par DEC-094 (DepthCycle intellectuel officiel). La transition terminale après Depth 10 est définie par DEC-092.
 
 ---
 
@@ -299,10 +299,10 @@ DepthCycle = `2 → 4 → 6 → 7 → 8 → 9 → 10`. Après Depth 10 : reprend
 
 **Version :** 2.0
 **Date :** 28 juillet 2026
-**Statut :** OFFICIAL
+**Statut :** SUPERSEDED par DEC-034 + DEC-082
 **Module :** `02_KernelRotationPlanner.md`
 
-Sur EMPTY, le même Blueprint est conservé et réutilisé. Aucun nouveau Blueprint n'est créé après un EMPTY.
+Ancienne décision — l'ancienne logique EMPTY (même Blueprint réutilisé avec autre `depth + domain`) est incompatible avec le contrat write-once de `01_KernelBlueprint` v1.5 (DEC-034) et le modèle `DOMAIN_EXHAUSTED` prospectif (DEC-082).
 
 ---
 
@@ -325,6 +325,198 @@ Quatre états techniques : `CREATED_UNENGAGED`, `ENGAGED_IN_PIPELINE`, `READY_BA
 **Module :** `02_KernelRotationPlanner.md`
 
 KRP n'écrit jamais `kernel_code`. `kernel_code = null` à la sortie de KRP.
+
+---
+
+## DEC-079 — ReadyBank décrémente le besoin
+
+**Version :** 1.0
+**Date :** 14 juillet 2026
+**Statut :** SUPERSEDED par DEC-093
+**Module :** `02_KernelRotationPlanner.md`
+
+Ancienne décision — remplacée par DEC-093 (`CURRENT_KERNEL_RECEIVED` seul incrémenteur de `kernel_received_total`).
+
+---
+
+## DEC-082 — DOMAIN_EXHAUSTED prospectif
+
+**Version :** 1.0
+**Date :** 13 août 2026
+**Statut :** OFFICIAL
+**Module :** `02_KernelRotationPlanner.md`
+
+`DOMAIN_EXHAUSTED(depth, domain)` : signal prospectif de Taxonomy vers KRP, émis après consommation exacte du Blueprint courant.
+
+Le Blueprint déclencheur reste valide et continue normalement dans le pipeline.
+Le signal modifie uniquement la rotation future.
+Portée : `Depth + Domaine` exclusivement.
+Idempotent : deuxième réception du même signal = NO-OP.
+
+DomainCycle officiel (réénoncé) : 8 domaines de création — Géographie, Histoire, Faune, Art, Sport, Cinéma, Cuisine, Science. `Général` est exclu de la création intellectuelle.
+L'absence de signal d'épuisement signifie disponibilité implicite — aucun signal `AVAILABLE` requis.
+Rotation déterministe, circulaire, continue tant qu'aucun signal prospectif d'épuisement ne retire un domaine de la rotation active.
+
+---
+
+## DEC-083 — DEPTH_EXHAUSTED prospectif
+
+**Version :** 1.0
+**Date :** 13 août 2026
+**Statut :** OFFICIAL
+**Module :** `02_KernelRotationPlanner.md`
+
+`DEPTH_EXHAUSTED(depth)` : signal prospectif de Taxonomy vers KRP, émis quand tous les bassins Domaines du Depth courant sont épuisés.
+
+Le Blueprint déclencheur reste valide et continue normalement.
+Au prochain `CURRENT_KERNEL_RECEIVED` : KRP avance vers le prochain Depth, tous les domaines du nouveau Depth sont réinitialisés `ACTIF`.
+Idempotent : signal `DEPTH_EXHAUSTED` déjà mémorisé → NO-OP.
+
+---
+
+## DEC-084 — Indépendance rotation KRP ↔ progression Taxonomy
+
+**Version :** 1.0
+**Date :** 13 août 2026
+**Statut :** OFFICIAL
+**Module :** `02_KernelRotationPlanner.md`
+
+KRP Tour Number ne détermine jamais le Taxonomy Subject Number ni le Taxonomy Idea Number.
+Les 8 domaines partagent le cycle KRP mais leurs réservoirs Taxonomy progressent indépendamment.
+Aucune synchronisation artificielle entre les progressions de domaines n'est admise.
+
+---
+
+## DEC-085 — Deux flux distincts : informationnel et déclencheur
+
+**Version :** 1.0
+**Date :** 13 août 2026
+**Statut :** OFFICIAL
+**Module :** `02_KernelRotationPlanner.md`
+
+Flux informationnel : Taxonomy → signal d'épuisement → mise à jour de l'état KRP (immédiate, sans attendre ReadyBank).
+Flux déclencheur : `CURRENT_KERNEL_RECEIVED` → prochain Blueprint → rotation effective.
+Ces deux flux sont indépendants.
+
+---
+
+## DEC-086 — AVAILABLE rejeté
+
+**Version :** 1.0
+**Date :** 13 août 2026
+**Statut :** REJECTED
+**Module :** `02_KernelRotationPlanner.md`
+
+Taxonomy ne doit pas envoyer un signal `AVAILABLE`. L'absence de signal d'épuisement signifie disponibilité implicite du domaine.
+
+---
+
+## DEC-087 — Canal d'épuisement : contrat sémantique résolu, transport = détail d'implantation
+
+**Version :** 1.1
+**Date :** 13 août 2026
+**Statut :** OFFICIAL
+**Module :** `02_KernelRotationPlanner.md`
+
+Contrat sémantique complet (D1 résolu) : QUI produit = Taxonomy ; QUI possède la rotation = KRP ; QUI transporte = Orchestration ; QUAND disponible = immédiatement après consommation exacte ; QUAND influence un Blueprint = au prochain `CURRENT_KERNEL_RECEIVED`.
+
+Le transport physique exact (retour enrichi / Outbox / événement / table intermédiaire) est un détail d'implantation soumis aux garanties d'ordre, d'atomicité, d'idempotence et de persistance. Ce choix sera arrêté lors de l'audit d'implantation.
+
+Contraintes inchangées : Taxonomy ne modifie pas directement `kernel_rotation_state_v2`. KRP ne consulte pas les tables Taxonomy pour décider de l'épuisement.
+
+---
+
+## DEC-088 — Remplacement de CYCLE_TARGET / cycle_completed comme autorité de changement de Depth par DEPTH_EXHAUSTED
+
+**Version :** 1.1
+**Date :** 13 août 2026
+**Statut :** OFFICIAL
+**Module :** `02_KernelRotationPlanner.md`
+
+`CYCLE_TARGET` et `cycle_completed` sont rejetés comme autorité de décision de changement de Depth. `DEPTH_EXHAUSTED` de Taxonomy est l'autorité. Si ces compteurs deviennent utiles pour du reporting, une décision future les réintroduira avec un propriétaire clair.
+
+`CYCLE_TARGET[10] = 100` n'est pas justifié par le numéro de niveau Solo Boss 100. Le numéro du niveau de gameplay ne définit aucun volume de production intellectuelle.
+
+---
+
+## DEC-089 — SHORTFALL et états dérivés : REJECTED
+
+**Version :** 1.0
+**Date :** 13 août 2026
+**Statut :** REJECTED
+**Module :** `02_KernelRotationPlanner.md`
+
+`SHORTFALL`, `DEPTH_TARGET_COMPLETE` et `DEPTH_RESERVOIRS_EXHAUSTED_WITH_SHORTFALL` sont rejetés comme états ou signaux KRP. Un seul signal d'épuisement existe : `DEPTH_EXHAUSTED`. L'écart de production éventuel est un concept de reporting/observabilité externe à KRP, sans propriétaire actuel.
+
+---
+
+## DEC-090 — DepthProductionState : REJECTED
+
+**Version :** 1.0
+**Date :** 13 août 2026
+**Statut :** REJECTED
+**Module :** `02_KernelRotationPlanner.md`
+
+`DepthProductionState` est rejeté. La structure est remplacée par `active_depth + domain_states` dans `kernel_rotation_state_v2`. Aucune autre responsabilité indépendante n'a été démontrée.
+
+---
+
+## DEC-091 — Double condition de sélection (kernel_remaining > 0 AND reservoir_status = AVAILABLE) : REJECTED
+
+**Version :** 1.0
+**Date :** 13 août 2026
+**Statut :** REJECTED
+**Module :** `02_KernelRotationPlanner.md`
+
+La sélection du prochain domaine repose uniquement sur : domaine `ACTIF` (non `DOMAIN_EXHAUSTED`) pour ce Depth. La double condition `kernel_remaining > 0 AND reservoir_status = AVAILABLE` est rejetée. `kernel_remaining` est rejeté comme critère de sélection (DEC-078). `AVAILABLE` est rejeté comme signal (DEC-086).
+
+---
+
+## DEC-092 — Transition terminale DEPTH_EXHAUSTED(10) → PRODUCTION_ON_HOLD
+
+**Version :** 1.0
+**Date :** 13 août 2026
+**Statut :** OFFICIAL
+**Module :** `02_KernelRotationPlanner.md`
+
+Après `DEPTH_EXHAUSTED(10)` : `depth_state = PRODUCTION_ON_HOLD`. Aucun retour automatique à Depth 2. Aucun état `IDLE` distinct. Aucun Blueprint créé après entrée en `PRODUCTION_ON_HOLD`.
+
+Séquence : Blueprint courant reste VALIDE → `DEPTH_EXHAUSTED(10)` → signal mémorisé prospectivement → au prochain `CURRENT_KERNEL_RECEIVED` (aucun Depth suivant) → `PRODUCTION_ON_HOLD`.
+
+Garantie : si `depth_state = PRODUCTION_ON_HOLD`, l'orchestration n'appelle pas `KernelBlueprintFactory`. La Factory ne connaît pas `PRODUCTION_ON_HOLD`. Le gate appartient à l'orchestration du cycle.
+
+Sortie de `PRODUCTION_ON_HOLD` : non définie dans ce contrat. Une décision architecturale distincte la définira si le projet en a besoin.
+
+Idempotent : `PRODUCTION_ON_HOLD → PRODUCTION_ON_HOLD` = NO-OP.
+
+---
+
+## DEC-093 — CURRENT_KERNEL_RECEIVED seul incrémenteur de kernel_received_total
+
+**Version :** 1.0
+**Date :** 13 août 2026
+**Statut :** OFFICIAL
+**Module :** `02_KernelRotationPlanner.md`
+
+`CURRENT_KERNEL_RECEIVED` est le seul événement qui incrémente `kernel_received_total[depth][domain]`.
+La création d'un `KernelBlueprint` ne modifie jamais `kernel_received_total`.
+
+---
+
+## DEC-094 — DepthCycle intellectuel officiel
+
+**Version :** 1.0
+**Date :** 13 août 2026
+**Statut :** OFFICIAL
+**Module :** `02_KernelRotationPlanner.md`
+
+DepthCycle : `2 → 4 → 6 → 7 → 8 → 9 → 10`.
+
+Après Depth 10 : la transition terminale est définie exclusivement par DEC-092 (`PRODUCTION_ON_HOLD`). Aucun retour automatique à Depth 2.
+
+Rotation des domaines : voir DEC-082.
+
+Remplace : DEC-065.
 
 ---
 
