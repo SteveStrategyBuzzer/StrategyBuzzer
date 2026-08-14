@@ -24,15 +24,13 @@ use RuntimeException;
  *   │  registerActiveBlueprintIdentity(blueprint.id, state)                   │
  *   └── COMMIT ───────────────────────────────────────────────────────────────┘
  *
- *   ┌── EMPTY LOOP (legacy SUPERSEDED — LOT C supprimera cette boucle) ──────┐
- *   │  currentDepth  = resolution.depth                                       │
- *   │  currentDomain = resolution.domain                                      │
- *   │  while true:                                                            │
- *   │    territory = peekNext(currentDepth, currentDomain)                    │
- *   │    if null → applyEmptyAndGetNext → null ? PRODUCTION_ON_HOLD : continue│
- *   │    else → applyRotation + fillTaxonomy + engage + assignKernelCode      │
- *   │            → STATUS_ROTATION_ASSIGNED                                   │
- *   └────────────────────────────────────────────────────────────────────────┘
+ *   peekNext(depth, domain)
+ *   ├── territory non null → applyRotation + fillTaxonomy + engage + assignKernelCode
+ *   │                       → STATUS_ROTATION_ASSIGNED
+ *   └── null              → CONTAINMENT (EMPTY SUPERSEDED)
+ *                            Blueprint supprimé, état restauré, RuntimeException explicite.
+ *                            Aucune inférence DOMAIN_EXHAUSTED.
+ *                            Aucune réaffectation du Blueprint à un autre domaine.
  *
  * ═══════════════════════════════════════════════════════════════════════════════
  * RÈGLES CLÉS
@@ -42,35 +40,50 @@ use RuntimeException;
  *   KRP-R11  EMPTY ne crée jamais un nouveau Blueprint.
  *   KRP-R20  Factory appelée une seule fois, avant toute logique KRP.
  *   DEC-079  Gate : si NoRotation → aucun Blueprint créé.
+ *   DEC-087  KRP ne produit JAMAIS DOMAIN_EXHAUSTED.
  *
- * Ce que cet orchestrateur NE fait PAS :
- *   - N'appelle pas confirmConsumed (BLOCKER 2).
- *   - N'exécute pas les Phases (BLOCKER 2).
- *   - ⛔ N'invoque jamais KLD / KEY_STRUCTURE / IdeaSlotLoader (SUPERSEDED).
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * EMPTY LOOP — SUPERSEDED (2026-08-14)
+ * ═══════════════════════════════════════════════════════════════════════════════
+ *
+ * La boucle EMPTY précédente (applyEmptyAndGetNext) est DÉSACTIVÉE.
+ *
+ * Raison : peekNext() == null ≠ DOMAIN_EXHAUSTED.
+ *   - Taxonomy est le seul émetteur de DOMAIN_EXHAUSTED (DEC-087).
+ *   - Interpréter null comme épuisement crée une inférence non autorisée.
+ *   - Avancer le domaine sur le même Blueprint viole le write-once si
+ *     applyRotation a déjà été appelé, ou produit une divergence
+ *     Blueprint.domain ≠ domaine de travail Taxonomy avant applyRotation.
+ *
+ * Comportement temporaire si peekNext() == null :
+ *   - Blueprint supprimé (pas d'orphelin).
+ *   - active_blueprint_identity réinitialisé en DB.
+ *   - RuntimeException explicite avec context.
+ *
+ * Ce comportement sera remplacé lors du branchement Taxonomy → KRP (LOT C),
+ * quand 03_Taxonomy sera spécifié.
  */
 final class KernelPipelineOrchestrator
 {
-    private const RUNS_TABLE     = 'kernel_blueprint_runs';
-    private const MAX_EMPTY_LOOP = 16;
+    private const RUNS_TABLE   = 'kernel_blueprint_runs';
+    private const STATE_TABLE  = 'kernel_rotation_state_v2';
 
     /**
-     * Blueprint engagé — KRP a écrit depth + domain, Taxonomy a fourni le
-     * territoire, Blueprint = ENGAGED_IN_PIPELINE.
+     * Blueprint engagé — KRP a écrit depth + domain, Taxonomy a fourni le territoire.
      */
     public const STATUS_ROTATION_ASSIGNED  = 'ROTATION_ASSIGNED';
 
     /**
      * Aucun besoin de Depth actif, ou transition de Depth en attente.
-     * Aucun Blueprint n'est engagé. blueprint peut être null (V3) ou orphelin
-     * pré-engagement (edge case EMPTY → tour complet).
+     * Aucun Blueprint engagé.
      */
     public const STATUS_PRODUCTION_ON_HOLD = 'PRODUCTION_ON_HOLD';
 
     public function __construct(
-        private readonly KernelBlueprintFactory     $factory,
-        private readonly KernelRotationPlanner      $planner,
-        private readonly TaxonomyNavigatorInterface $taxonomy,
-        private readonly KernelCodeEngine           $kernelCodeEngine,
+        private readonly KernelBlueprintFactory       $factory,
+        private readonly KernelRotationPlanner        $planner,
+        private readonly TaxonomyNavigatorInterface   $taxonomy,
+        private readonly KernelCodeEngine             $kernelCodeEngine,
     ) {}
 
     /**
@@ -83,7 +96,7 @@ final class KernelPipelineOrchestrator
      *     blueprint: KernelBlueprint|null
      * }
      *
-     * @throws RuntimeException STOP si la garde anti-boucle EMPTY est déclenchée.
+     * @throws RuntimeException CONTAINMENT si peekNext() retourne null (EMPTY SUPERSEDED).
      */
     public function run(?string $previousDomain = null): array
     {
@@ -92,12 +105,11 @@ final class KernelPipelineOrchestrator
 
         // ── Étape 1 : transaction atomique gate + Factory + enregistrement ────
         DB::transaction(function () use (&$blueprint, &$resolution) {
-            $state      = DB::table('kernel_rotation_state_v2')->lockForUpdate()->first();
+            $state      = DB::table(self::STATE_TABLE)->lockForUpdate()->first();
             $resolution = $this->planner->resolveNextRotation($state);
 
             if ($resolution->isNoRotation()) {
-                // Gate : aucun Blueprint créé (DEC-079)
-                return;
+                return; // Pas de Blueprint créé (DEC-079)
             }
 
             $blueprint = $this->factory->create();
@@ -105,67 +117,72 @@ final class KernelPipelineOrchestrator
         });
 
         if ($blueprint === null) {
-            // PRODUCTION_ON_HOLD ou PENDING_DEPTH_TRANSITION
             return ['status' => self::STATUS_PRODUCTION_ON_HOLD, 'blueprint' => null];
         }
 
-        // ── Étape 2 : EMPTY loop (legacy SUPERSEDED — LOT C supprimera ceci) ─
-        // La sélection initiale du domaine vient de resolveNextRotation (domain_states).
-        // Si peekNext retourne null, on avance via tour_domain_states (legacy).
-        // fillRotation est appelé UNE SEULE FOIS via applyRotation, après territoire confirmé.
-        $currentDepth  = $resolution->depth;
-        $currentDomain = $resolution->domain;
-        $emptyCount    = 0;
+        // ── Étape 2 : tentative de territoire Taxonomy ────────────────────────
+        $depth  = $resolution->depth;
+        $domain = $resolution->domain;
 
-        while (true) {
-            if ($emptyCount >= self::MAX_EMPTY_LOOP) {
-                throw new RuntimeException(
-                    '[KernelPipelineOrchestrator] STOP — boucle EMPTY infinie détectée '
-                    . "après {$emptyCount} itérations."
-                );
-            }
+        $territory = $this->taxonomy->peekNext($depth, $domain);
 
-            $territory = $this->taxonomy->peekNext($currentDepth, $currentDomain);
-
-            if ($territory === null) {
-                // ── EMPTY : avancer le DomainCycle via mécanisme legacy ───────
-                [$currentDepth, $currentDomain] = $this->planner->applyEmptyAndGetNext(
-                    $currentDepth,
-                    $currentDomain,
-                );
-
-                if ($currentDomain === null) {
-                    // Tour complet → PRODUCTION_ON_HOLD
-                    return ['status' => self::STATUS_PRODUCTION_ON_HOLD, 'blueprint' => $blueprint];
-                }
-
-                $emptyCount++;
-                continue;
-            }
-
-            // ── Territoire confirmé — rotation finale ─────────────────────────
-            $domainCycle    = DepthTourState::DOMAIN_CYCLE;
-            $domainPosition = (int) array_search($currentDomain, $domainCycle, true);
-
-            // Write-once fillRotation via applyRotation (KRP-R01)
-            $this->planner->applyRotation($blueprint, $currentDepth, $currentDomain, $domainPosition);
-
-            $blueprint->fillTaxonomy(
-                $territory['sub_domain']                                          ?? '',
-                $territory['subject']                                             ?? '',
-                $territory['dominant_idea'] ?? $territory['dominant_idea_active'] ?? '',
+        if ($territory === null) {
+            // ── CONTAINMENT EMPTY SUPERSEDED ─────────────────────────────────
+            // peekNext() == null ne signifie pas DOMAIN_EXHAUSTED (DEC-087).
+            // Aucune inférence d'épuisement, aucune réaffectation de domaine.
+            // Supprimer le Blueprint pour éviter un orphelin qui bloquerait
+            // le prochain cycle (Factory::create guard CREATED_UNENGAGED).
+            $this->cleanupBlueprint($blueprint->blueprint_id);
+            throw new RuntimeException(
+                '[KRP CONTAINMENT] peekNext() a retourné null pour '
+                . "depth={$depth}, domain={$domain}. "
+                . 'EMPTY loop désactivée jusqu\'à spécification de 03_Taxonomy. '
+                . 'Blueprint supprimé. Aucune inférence DOMAIN_EXHAUSTED effectuée (DEC-087).'
             );
-
-            $this->engageBlueprint($blueprint);
-            $this->kernelCodeEngine->assignKernelCode($blueprint);
-
-            return ['status' => self::STATUS_ROTATION_ASSIGNED, 'blueprint' => $blueprint];
         }
+
+        // ── Étape 3 : rotation finale (write-once KRP-R01) ────────────────────
+        $domainCycle    = DepthTourState::DOMAIN_CYCLE;
+        $domainPosition = (int) array_search($domain, $domainCycle, true);
+
+        $this->planner->applyRotation($blueprint, $depth, $domain, $domainPosition);
+
+        $blueprint->fillTaxonomy(
+            $territory['sub_domain']                                          ?? '',
+            $territory['subject']                                             ?? '',
+            $territory['dominant_idea'] ?? $territory['dominant_idea_active'] ?? '',
+        );
+
+        $this->engageBlueprint($blueprint);
+        $this->kernelCodeEngine->assignKernelCode($blueprint);
+
+        return ['status' => self::STATUS_ROTATION_ASSIGNED, 'blueprint' => $blueprint];
     }
 
     // =========================================================================
     // Helpers privés
     // =========================================================================
+
+    /**
+     * Supprime un Blueprint CREATED_UNENGAGED et réinitialise active_blueprint_identity.
+     *
+     * Appelé UNIQUEMENT dans le path CONTAINMENT (peekNext == null).
+     * Garantit qu'aucun orphelin ne bloque le prochain Factory::create().
+     */
+    private function cleanupBlueprint(string $blueprintId): void
+    {
+        DB::table(self::RUNS_TABLE)
+            ->where('blueprint_id', $blueprintId)
+            ->where('execution_state', 'CREATED_UNENGAGED')
+            ->delete();
+
+        DB::table(self::STATE_TABLE)
+            ->whereNotNull('id')
+            ->update([
+                'active_blueprint_identity' => null,
+                'updated_at'                => now(),
+            ]);
+    }
 
     private function engageBlueprint(KernelBlueprint $blueprint): void
     {

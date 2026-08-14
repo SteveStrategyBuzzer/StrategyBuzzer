@@ -58,7 +58,7 @@ use RuntimeException;
  *            NULL = non démarré → prochain domaine = 'geographie' (index 0).
  *   DEC-093  Dans receiveKernelReceivedV2 : compteur AVANT vérification transition.
  */
-final class KernelRotationPlanner
+class KernelRotationPlanner
 {
     // =========================================================================
     // Tables
@@ -437,7 +437,7 @@ final class KernelRotationPlanner
      *   3. Mise à jour last_counted_blueprint_identity
      *   4. Vérification transition pending_depth_exhausted_depth → applyDepthTransition
      *
-     * En production, déléguer à ApplyCurrentKernelReceivedToRotation.
+     * Chemin production : ProcessKernelPipelineOutbox → receiveKernelReceivedV2 (DEC-093).
      */
     public function receiveKernelReceivedV2(string $blueprintId, int $depth, string $domain): void
     {

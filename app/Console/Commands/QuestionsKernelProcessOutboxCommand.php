@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use App\Services\QuestionBank\KernelCodeEngine;
 use App\Services\QuestionBank\Rotation\KernelBlueprintFactory;
 use App\Services\QuestionBank\Rotation\KernelPipelineOrchestrator;
 use App\Services\QuestionBank\Rotation\KernelPipelineOutboxRepository;
 use App\Services\QuestionBank\Rotation\KernelRotationPlanner;
-use App\Services\QuestionBank\Rotation\Listeners\ApplyCurrentKernelReceivedToRotation;
 use App\Services\QuestionBank\Rotation\ProcessKernelPipelineOutbox;
 use App\Services\QuestionBank\Taxonomy\TaxonomyBankRepository;
 use App\Services\QuestionBank\Taxonomy\TaxonomyGeminiClient;
@@ -22,7 +22,7 @@ use Illuminate\Console\Command;
  * Traite les événements CURRENT_KERNEL_RECEIVED en attente dans kernel_pipeline_outbox.
  *
  * Pour chaque événement :
- *   1. Comptabilisation idempotente (ApplyCurrentKernelReceivedToRotation::applyCount)
+ *   1. Comptabilisation idempotente (KernelRotationPlanner::receiveKernelReceivedV2 — DEC-093)
  *   2. Déclenchement du Blueprint suivant (KernelPipelineOrchestrator::run)
  *   3. Marquage processed_at UNIQUEMENT après succès complet
  *
@@ -127,16 +127,15 @@ class QuestionsKernelProcessOutboxCommand extends Command
             new ValidationDominantIdeas(),
         );
 
-        // ⏸ confirmConsumed NON branché — BLOCKER ARCHITECTURAL (audit 2026-08-11) :
-        // la condition officielle autorisant la consommation Taxonomy n'est pas définie.
-        $listener = new ApplyCurrentKernelReceivedToRotation();
+        $planner = new KernelRotationPlanner();
 
         $orchestrator = new KernelPipelineOrchestrator(
             new KernelBlueprintFactory(),
-            new KernelRotationPlanner(),
+            $planner,
             $taxonomy,
+            new KernelCodeEngine(),
         );
 
-        return new ProcessKernelPipelineOutbox($listener, $orchestrator, $outboxRepo);
+        return new ProcessKernelPipelineOutbox($planner, $orchestrator, $outboxRepo);
     }
 }

@@ -11,20 +11,18 @@ use Illuminate\Support\Facades\DB;
 /**
  * ApplyCurrentKernelReceivedToRotation — listener de l'événement CURRENT_KERNEL_RECEIVED.
  *
- * Responsabilités (DEC-063) :
- *   - Vérifier l'idempotence via kernel_current_kernel_receipts (PK blueprint_id)
- *   - Si non comptabilisé : insérer le reçu + incrémenter
- *     kernel_received_total[depth][domain]
- *   - Marquer l'événement Outbox comme traité
+ * @deprecated applyCount() — DÉSACTIVÉ du chemin production Outbox (2026-08-14).
  *
- * ⏸ RACCORDEMENT B (Taxonomy.confirmConsumed) : NON branché.
- *   BLOCKER ARCHITECTURAL (audit 2026-08-11) — la décision officielle définissant
- *   QUELLE issue du noyau autorise la consommation Taxonomy n'existe pas encore.
- *   Il est INTERDIT de déduire « réception = consommation » (DEC-052 ne couvre que
- *   la comptabilisation rotation, pas la consommation des idées Taxonomy).
+ * L'implémentation canonique CURRENT_KERNEL_RECEIVED est désormais :
+ *   ProcessKernelPipelineOutbox → KernelRotationPlanner::receiveKernelReceivedV2()
  *
- * Tout est exécuté dans une transaction atomique.
- * Rejouable : un événement déjà comptabilisé ne produit aucun second incrément.
+ * Ce fichier est conservé pour deux raisons :
+ *   1. handle() — point d'entrée direct (hors Outbox). Non branché à un EventServiceProvider
+ *      connu à ce jour. Si un branchement futur est nécessaire, migrer vers
+ *      receiveKernelReceivedV2 et supprimer cette classe.
+ *   2. Tests ApplyCurrentKernelReceivedToRotationTest — encore GREEN pour référence V2.
+ *
+ * NE PAS réintégrer applyCount() dans le chemin Outbox (DEC-093).
  */
 final class ApplyCurrentKernelReceivedToRotation
 {

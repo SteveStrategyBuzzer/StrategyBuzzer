@@ -1,0 +1,422 @@
+❌ PAS FINI.
+
+Le rapport montre que LOT A+B n’est pas encore conforme, malgré les 106 tests verts. Il y a deux blockers immédiats.
+
+1. #157 est obligatoire, pas une tâche proposée
+
+Le chemin production actuel fait encore :
+
+CURRENT_KERNEL_RECEIVED
+↓
+ApplyCurrentKernelReceivedToRotation::applyCount()
+
+et ne passe pas par le nouveau :
+
+KernelRotationPlanner::receiveKernelReceivedV2()
+
+Donc actuellement :
+
+Taxonomy → DEPTH_EXHAUSTED(4)
+↓
+pending_depth_exhausted_depth = 4
+↓
+ReadyBank → CURRENT_KERNEL_RECEIVED
+↓
+ancien listener incrémente le compteur
+↓
+MAIS pending reste 4
+↓
+Depth ne passe jamais à 6
+
+C’est un écart direct avec KRP v3.2. #157 doit être corrigé avant #158 ou #159.
+
+Et je privilégie clairement :
+
+ProcessKernelPipelineOutbox
+↓
+KernelRotationPlanner::receiveKernelReceivedV2(...)
+
+plutôt que copier la nouvelle logique KRP dans ApplyCurrentKernelReceivedToRotation.
+
+Sinon nous recréons deux implémentations de CURRENT_KERNEL_RECEIVED.
+
+2. Le nouveau applyEmptyAndGetNext() est très suspect
+
+Replit dit :
+
+EMPTY loop via applyEmptyAndGetNext sans appel à fillRotation dans la boucle.
+
+Ça peut violer directement le Blueprint write-once.
+
+Exemple :
+
+Blueprint
+depth  = 2
+domain = geographie
+
+Taxonomy retourne null.
+
+Si applyEmptyAndGetNext() fait ensuite :
+
+KRP → histoire
+
+sans réécrire le Blueprint, puis Taxonomy travaille sur Histoire, on obtient potentiellement :
+
+Blueprint.domain = geographie
+
+mais
+
+subdomain_active
+subject_active
+dominant_idea_active
+= matière provenant de histoire
+
+Inacceptable.
+
+Le fait de ne plus appeler fillRotation() évite la LogicException, mais ne rend pas la boucle EMPTY conforme. Il peut simplement masquer l’incohérence.
+
+Avant tout autre patch, Replit doit démontrer exactement ce que fait ce chemin.
+
+#159 est mal formulée
+
+Replit affirme :
+
+crash après INSERT Blueprint mais avant registerActiveBlueprintIdentity → Blueprint durable.
+
+Mais si l’INSERT Blueprint et registerActiveBlueprintIdentity sont réellement dans la même transaction PostgreSQL non commitée, un crash avant le COMMIT doit provoquer le rollback lorsque la connexion disparaît.
+
+Donc le bon test n’est pas d’inventer immédiatement :
+
+auto-recovery
+ou
+commande Artisan
+
+Il faut d’abord prouver :
+
+exception/crash simulé
+après Factory::create()
+avant applyRotation/register
+↓
+ROLLBACK
+↓
+0 Blueprint durable
+
+Si un CREATED_UNENGAGED reste réellement après ce test, alors la transaction englobante promise dans #155 n’est pas réellement englobante.
+
+Demande maintenant ceci à Replit
+STOP.
+
+Ne lance ni #158 ni #159.
+
+LOT A+B ne peut pas encore être déclaré 100 % conforme.
+
+Deux vérifications/corrections bloquantes doivent être faites.
+
+==================================================
+#157 — CURRENT_KERNEL_RECEIVED : UNE SEULE IMPLÉMENTATION
+==================================================
+
+Tu as identifié que le chemin production utilise encore :
+
+ApplyCurrentKernelReceivedToRotation::applyCount()
+
+et contourne :
+
+KernelRotationPlanner::receiveKernelReceivedV2()
+
+C'est BLOQUANT.
+
+Le contrat v3.2 exige que CURRENT_KERNEL_RECEIVED exécute
+atomiquement :
+
+1. idempotence blueprint_id ;
+2. receipt ;
+3. kernel_received_total +1 ;
+4. lecture pending_depth_exhausted_depth ;
+5. éventuelle transition Depth ;
+6. éventuel PRODUCTION_ON_HOLD.
+
+Il doit exister :
+
+UNE RESPONSABILITÉ
+=
+UN PROPRIÉTAIRE
+=
+UNE IMPLÉMENTATION ACTIVE.
+
+Solution privilégiée :
+
+ProcessKernelPipelineOutbox
+↓
+KernelRotationPlanner::receiveKernelReceivedV2(event)
+
+Ne duplique PAS la transition pending dans
+ApplyCurrentKernelReceivedToRotation.
+
+Si receiveKernelReceivedV2 devient l'implémentation canonique,
+l'ancien listener doit :
+
+- être supprimé ;
+ou
+- perdre toute responsabilité métier et être retiré du chemin actif.
+
+Audite ses autres callers avant suppression.
+
+Test obligatoire :
+
+pending_depth_exhausted_depth = 4
++
+CURRENT_KERNEL_RECEIVED du dernier Blueprint Depth 4
+↓
+receipt exactement une fois
+↓
+kernel_received_total +1 exactement une fois
+↓
+active_depth = 6
+↓
+domain_position = NULL
+↓
+pending = NULL.
+
+Et :
+
+pending = 10
++
+CURRENT_KERNEL_RECEIVED
+↓
+compteur +1
+↓
+PRODUCTION_ON_HOLD.
+
+==================================================
+BLOCKER SUPPLÉMENTAIRE — APPLYEMPTYANDGETNEXT
+==================================================
+
+Tu as créé/conservé :
+
+applyEmptyAndGetNext()
+
+dans le chemin actif.
+
+Avant de continuer, audite EXACTEMENT son comportement.
+
+Rappel constitutionnel :
+
+Blueprint.depth
+et
+Blueprint.domain
+
+sont write-once.
+
+Si le Blueprint courant contient :
+
+depth=2
+domain=geographie
+
+aucune boucle EMPTY ne peut ensuite faire travailler Taxonomy sur :
+
+histoire
+
+pour ce MÊME Blueprint.
+
+Interdit :
+
+Blueprint.domain = geographie
++
+Taxonomy appelée avec histoire
++
+taxonomy slots Histoire écrits dans ce Blueprint.
+
+Le fait de ne plus appeler fillRotation()
+ne rend PAS cette situation conforme.
+
+Retourne le call flow exact actuel :
+
+Blueprint créé
+↓
+applyRotation
+↓
+Taxonomy.peekNext
+↓
+null
+↓
+applyEmptyAndGetNext
+↓
+QUEL depth/domain est utilisé ensuite ?
+↓
+QUEL domain reste dans Blueprint ?
+↓
+QUEL domain est envoyé à Taxonomy au tour de boucle suivant ?
+
+Si le domaine Taxonomy peut diverger de Blueprint.domain :
+
+VERDICT = INCOHÉRENCE ARCHITECTURALE BLOQUANTE.
+
+Dans ce cas, NE cherche pas à réparer la boucle EMPTY
+en changeant de domaine sur le même Blueprint.
+
+La boucle EMPTY est SUPERSEDED.
+
+Comme 03_Taxonomy n'est pas encore implantée,
+le comportement temporaire doit être un containment sûr,
+sans interpréter null comme épuisement.
+
+Propose le mécanisme temporaire le plus petit permettant :
+
+peekNext() == null
+→ aucune inférence DOMAIN_EXHAUSTED
+→ aucune réaffectation du Blueprint
+→ aucune taxonomy d'un autre domaine
+→ aucun Blueprint durable orphelin
+→ erreur explicite / rollback sûr.
+
+Ne crée aucune nouvelle règle métier.
+
+==================================================
+TRANSACTION CRASH — VÉRIFICATION AVANT #159
+==================================================
+
+Ne crée pas encore de mécanisme de recovery.
+
+Teste d'abord la transaction réellement implantée :
+
+BEGIN
+↓
+lock RotationState
+↓
+resolve
+↓
+Factory::create()
+↓
+SIMULER EXCEPTION
+avant applyRotation/register
+↓
+ROLLBACK
+
+Puis vérifier DB :
+
+Blueprint CREATED_UNENGAGED durable = 0
+
+Si 0 :
+#159 telle que formulée est INUTILE/REJETÉE.
+
+Si 1 :
+la transaction englobante n'est PAS réellement correcte
+et il faut corriger l'implantation, pas inventer un recovery
+pour masquer le problème.
+
+Faire aussi :
+
+Factory::create()
+↓
+fillRotation()
+↓
+SIMULER EXCEPTION
+avant update curseur
+↓
+ROLLBACK
+
+Puis vérifier :
+
+Blueprint durable = 0
+RotationState inchangé.
+
+==================================================
+TESTS
+==================================================
+
+Les 106 tests GREEN ne suffisent pas encore.
+
+Rapporte également :
+
+- quels fichiers de tests V1/V2 ont été remplacés par des
+  "stubs SUPERSEDED" ;
+- nombre exact de tests réellement supprimés ;
+- justification architecturale pour chacun ;
+- couverture V3 qui remplace chaque responsabilité supprimée.
+
+Un fichier stub vide ne compte pas comme validation.
+
+==================================================
+RETOUR ATTENDU
+==================================================
+
+Retourne uniquement :
+
+#156 — CORRECTIF POST-IMPLANTATION KRP
+
+CURRENT_KERNEL_RECEIVED production appelle:
+...
+
+Implémentation canonique CKR:
+...
+
+Ancien listener ApplyCurrentKernelReceivedToRotation:
+ACTIF / SUPPRIMÉ / AUTRE
+
+pending Depth réellement appliqué en production:
+PASS/FAIL
+
+Compteur exactly-once + transition atomique:
+PASS/FAIL
+
+applyEmptyAndGetNext actif:
+OUI/NON
+
+Après null, Blueprint.domain:
+...
+
+Après null, domaine envoyé au prochain Taxonomy.peekNext:
+...
+
+Divergence possible Blueprint.domain / Taxonomy domain:
+OUI/NON
+
+EMPTY temporaire conforme au write-once:
+PASS/FAIL
+
+Test rollback après Factory:
+PASS/FAIL
+
+Blueprint durable après rollback:
+0 / autre
+
+Test rollback après fillRotation:
+PASS/FAIL
+
+RotationState après rollback:
+INCHANGÉ / autre
+
+#159 nécessaire:
+OUI/NON
+Justification:
+...
+
+Tests réellement exécutés:
+...
+
+Tests supprimés:
+...
+
+Stubs SUPERSEDED:
+...
+
+LOT A conforme:
+PASS/FAIL
+
+LOT B conforme:
+PASS/FAIL
+
+Écarts autonomes KRP restant:
+...
+
+VERDICT:
+PRÊT POUR CLEANUP #158 / CORRECTION REQUISE
+
+Puis STOP.
+
+Ne lance pas #158.
+Ne commence pas LOT C.
+Ne commence pas 03_Taxonomy.
+
+Je ne lancerais donc pas #158 maintenant. D’abord, on ferme #157 et on vérifie que le nouveau mécanisme EMPTY n’a pas simplement remplacé une exception write-once par une corruption logique du Blueprint. C’est le dernier endroit où Replit peut encore faire dévier KRP tout en gardant ses tests verts.

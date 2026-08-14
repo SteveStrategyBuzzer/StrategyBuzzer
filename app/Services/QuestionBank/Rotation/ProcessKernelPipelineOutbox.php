@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Services\QuestionBank\Rotation;
 
 use App\Services\QuestionBank\Rotation\Events\CurrentKernelReceived;
-use App\Services\QuestionBank\Rotation\Listeners\ApplyCurrentKernelReceivedToRotation;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Throwable;
@@ -13,42 +12,53 @@ use Throwable;
 /**
  * ProcessKernelPipelineOutbox — processeur de l'Outbox du pipeline Kernel.
  *
- * Responsabilités (DEC-063, Section 5 du contrat d'audit) :
- *   1. Sélectionner les événements CURRENT_KERNEL_RECEIVED non traités.
- *   2. Verrouiller un événement (lockForUpdate) pour éviter deux traitements simultanés.
- *   3. Reconstruire CurrentKernelReceived depuis le payload JSON.
- *   4. Appeler ApplyCurrentKernelReceivedToRotation::applyCount() — comptabilisation idempotente.
- *   5. Appeler KernelPipelineOrchestrator::run() — déclenche le Blueprint suivant.
- *   6. Marquer l'événement traité (processed_at) UNIQUEMENT après les deux succès.
- *   7. En cas d'exception : conserver l'événement non traité, incrémenter attempt_count, sauver last_error.
- *   8. Permettre le rejeu (processed_at NULL + attempt_count < MAX_ATTEMPTS).
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * IMPLÉMENTATION CANONIQUE CURRENT_KERNEL_RECEIVED (V3.2 — 2026-08-14)
+ * ═══════════════════════════════════════════════════════════════════════════════
  *
- * RÈGLE KRP-R11 :
- *   Après une production engagée ayant atteint ReadyBank, CURRENT_KERNEL_RECEIVED
- *   est le seul déclencheur autorisant la création du Blueprint suivant.
- *   Ce processeur est le composant qui exécute ce déclenchement.
+ * Séquence pour chaque événement CURRENT_KERNEL_RECEIVED :
+ *   1. Sélectionner les événements non traités (attempt_count < MAX_ATTEMPTS).
+ *   2. Verrou optimiste (incrémenter attempt_count) — évite traitement parallèle.
+ *   3. Reconstruire CurrentKernelReceived depuis le payload JSON.
+ *   4. KernelRotationPlanner::receiveKernelReceivedV2() — source unique de vérité :
+ *        a. idempotence blueprint_id
+ *        b. receipt INSERT
+ *        c. kernel_received_total +1
+ *        d. lecture pending_depth_exhausted_depth
+ *        e. éventuelle transition Depth (applyDepthTransition)
+ *        f. éventuel depth_state = PRODUCTION_ON_HOLD
+ *   5. KernelPipelineOrchestrator::run() — déclenche le Blueprint suivant.
+ *   6. Marquer processed_at UNIQUEMENT après succès complet.
+ *   7. En cas d'exception : conserver non traité, sauver last_error, laisser rejouable.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * UNE RESPONSABILITÉ = UN PROPRIÉTAIRE = UNE IMPLÉMENTATION (DEC-093)
+ * ═══════════════════════════════════════════════════════════════════════════════
+ *
+ * ApplyCurrentKernelReceivedToRotation::applyCount() est DÉSACTIVÉ de ce chemin
+ * (marqué @deprecated). Toute la logique métier CKR vit dans receiveKernelReceivedV2.
  *
  * Interdictions :
- *   - N'appelle aucun composant BankWorker.
+ *   - N'appelle jamais applyCount() (chemin V2 désactivé — DEC-093).
  *   - Ne crée jamais de Blueprint sans passer par KernelBlueprintFactory (via Orchestrator).
- *   - Ne modifie jamais la logique de comptabilisation (→ ApplyCurrentKernelReceivedToRotation).
+ *   - N'invoque aucun composant BankWorker.
  */
 final class ProcessKernelPipelineOutbox
 {
-    private const OUTBOX_TABLE    = 'kernel_pipeline_outbox';
-    private const EVENT_TYPE      = 'CURRENT_KERNEL_RECEIVED';
-    private const MAX_ATTEMPTS    = 5;
-    private const DEFAULT_BATCH   = 10;
+    private const OUTBOX_TABLE  = 'kernel_pipeline_outbox';
+    private const EVENT_TYPE    = 'CURRENT_KERNEL_RECEIVED';
+    private const MAX_ATTEMPTS  = 5;
+    private const DEFAULT_BATCH = 10;
 
-    public const OUTCOME_PROCESSED          = 'PROCESSED';
-    public const OUTCOME_NO_OP              = 'NO_OP';
-    public const OUTCOME_ERROR              = 'ERROR';
-    public const OUTCOME_ALREADY_PROCESSED  = 'ALREADY_PROCESSED';
+    public const OUTCOME_PROCESSED         = 'PROCESSED';
+    public const OUTCOME_NO_OP             = 'NO_OP';
+    public const OUTCOME_ERROR             = 'ERROR';
+    public const OUTCOME_ALREADY_PROCESSED = 'ALREADY_PROCESSED';
 
     public function __construct(
-        private readonly ApplyCurrentKernelReceivedToRotation $listener,
-        private readonly KernelPipelineOrchestrator           $orchestrator,
-        private readonly KernelPipelineOutboxRepository       $outboxRepo,
+        private readonly KernelRotationPlanner        $planner,
+        private readonly KernelPipelineOrchestrator   $orchestrator,
+        private readonly KernelPipelineOutboxRepository $outboxRepo,
     ) {}
 
     /**
@@ -67,11 +77,9 @@ final class ProcessKernelPipelineOutbox
         $results = [];
 
         foreach ($pending as $row) {
-            // Filtrer les événements ayant déjà atteint la limite de tentatives
             if ((int) $row->attempt_count >= self::MAX_ATTEMPTS) {
                 continue;
             }
-
             $results[] = $this->processOne($row);
         }
 
@@ -82,41 +90,37 @@ final class ProcessKernelPipelineOutbox
      * Traite un seul événement Outbox.
      *
      * Séquence :
-     *   1. Incrémenter attempt_count en début de traitement (verrou optimiste)
-     *   2. Reconstruire l'événement
-     *   3. applyCount() — comptabilisation idempotente
-     *   4. orchestrator::run() — Blueprint suivant
+     *   1. Incrémenter attempt_count (verrou optimiste)
+     *   2. Reconstruire l'événement depuis payload
+     *   3. planner->receiveKernelReceivedV2() — CKR canonique (idempotence + compteur + transition)
+     *   4. orchestrator->run() — Blueprint suivant
      *   5. Marquer processed_at (succès total)
-     *   6. En cas d'erreur : sauver last_error (attempt_count déjà incrémenté)
+     *   6. En cas d'erreur : sauver last_error
      *
      * @return array{event_id: string, outcome: string, orchestrator_status?: string, error?: string}
      */
     private function processOne(object $row): array
     {
-        // ── Vérification avant traitement ─────────────────────────────────────
         if ($row->processed_at !== null) {
             return ['event_id' => $row->event_id, 'outcome' => self::OUTCOME_ALREADY_PROCESSED];
         }
 
-        // ── Verrou optimiste : incrémenter attempt_count immédiatement ─────────
-        // Cela agit comme un verrou léger. En cas de crash après cet incrément,
-        // l'événement reste rejouable (attempt_count < MAX_ATTEMPTS).
+        // ── Verrou optimiste : incrémenter attempt_count ───────────────────────
         $incremented = DB::table(self::OUTBOX_TABLE)
             ->where('event_id', $row->event_id)
             ->whereNull('processed_at')
-            ->where('attempt_count', (int) $row->attempt_count) // vérifie qu'aucun autre worker n'a commencé
+            ->where('attempt_count', (int) $row->attempt_count)
             ->update([
                 'attempt_count' => (int) $row->attempt_count + 1,
                 'updated_at'    => now(),
             ]);
 
         if ($incremented === 0) {
-            // Un autre worker a pris cet événement entre la lecture et l'incrément
             return ['event_id' => $row->event_id, 'outcome' => self::OUTCOME_NO_OP];
         }
 
         try {
-            // ── 1. Reconstruire l'événement depuis le payload ─────────────────
+            // ── 1. Reconstruire l'événement ───────────────────────────────────
             $payload = json_decode((string) $row->payload, true);
 
             if (! is_array($payload)) {
@@ -127,11 +131,16 @@ final class ProcessKernelPipelineOutbox
 
             $event = CurrentKernelReceived::fromPayload($payload);
 
-            // ── 2. Comptabilisation idempotente ───────────────────────────────
-            $this->listener->applyCount($event);
+            // ── 2. CKR canonique (DEC-093) — source unique de vérité ─────────
+            // Atomiquement : idempotence → receipt → compteur → pending check → transition
+            $this->planner->receiveKernelReceivedV2(
+                $event->blueprintId,
+                $event->depth,
+                $event->domain,
+            );
 
-            // ── 3. Déclencher le Blueprint suivant (KRP-R11) ──────────────────
-            $orchResult = $this->orchestrator->run($event->domain);
+            // ── 3. Blueprint suivant (KRP-R11) ────────────────────────────────
+            $orchResult = $this->orchestrator->run();
 
             Log::info('[ProcessKernelPipelineOutbox] Événement traité.', [
                 'event_id'            => $row->event_id,
@@ -139,7 +148,7 @@ final class ProcessKernelPipelineOutbox
                 'orchestrator_status' => $orchResult['status'],
             ]);
 
-            // ── 4. Marquer traité UNIQUEMENT après succès complet ─────────────
+            // ── 4. Marquer traité UNIQUEMENT après succès total ───────────────
             DB::table(self::OUTBOX_TABLE)
                 ->where('event_id', $row->event_id)
                 ->update([
@@ -154,7 +163,6 @@ final class ProcessKernelPipelineOutbox
             ];
 
         } catch (Throwable $e) {
-            // ── Conserver l'erreur pour rejeu — attempt_count déjà incrémenté ─
             DB::table(self::OUTBOX_TABLE)
                 ->where('event_id', $row->event_id)
                 ->update([

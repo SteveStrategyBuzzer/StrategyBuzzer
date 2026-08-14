@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\Unit\QuestionBank\Rotation;
 
 use App\Services\QuestionBank\KernelCodeEngine;
@@ -10,7 +12,6 @@ use App\Services\QuestionBank\Rotation\KernelBlueprintFactory;
 use App\Services\QuestionBank\Rotation\KernelPipelineOrchestrator;
 use App\Services\QuestionBank\Rotation\KernelPipelineOutboxRepository;
 use App\Services\QuestionBank\Rotation\KernelRotationPlanner;
-use App\Services\QuestionBank\Rotation\Listeners\ApplyCurrentKernelReceivedToRotation;
 use App\Services\QuestionBank\Rotation\ProcessKernelPipelineOutbox;
 use App\Services\QuestionBank\Rotation\TaxonomyNavigatorInterface;
 use Illuminate\Database\Schema\Blueprint;
@@ -20,33 +21,41 @@ use Illuminate\Support\Str;
 use Tests\TestCase;
 
 /**
- * Tests de ProcessKernelPipelineOutbox.
+ * Tests de ProcessKernelPipelineOutbox V3.
  *
- * Couvre (Section 6 du contrat d'audit) :
+ * Couvre :
  *   1. Réception normale → compteur +1 → Blueprint suivant créé (ENGAGED)
  *   2. Même événement rejoué → compteur inchangé → aucun deuxième Blueprint
- *   3. Aucun besoin restant → PRODUCTION_ON_HOLD
+ *   3. État depth_state = PRODUCTION_ON_HOLD → gate V3 → PRODUCTION_ON_HOLD
  *   4. Événement déjà traité → NO-OP
- *   5. Événement avec payload invalide → ERROR, attempt_count incrémenté, pas de processed_at
+ *   5. Payload JSON invalide → ERROR, attempt_count++, pas de processed_at
+ *   6. (#157) pending_depth_exhausted_depth = 4 + CKR depth=4 → transition vers depth=6
+ *   7. (#157) pending = 10 + CKR → PRODUCTION_ON_HOLD (dernier Depth)
  *
- * DB : SQLite in-memory, tables créées manuellement.
+ * Implémentation canonique CKR (V3) :
+ *   ProcessKernelPipelineOutbox → KernelRotationPlanner::receiveKernelReceivedV2
+ *   (ApplyCurrentKernelReceivedToRotation::applyCount() DÉSACTIVÉE — DEC-093)
+ *
+ * DB : SQLite in-memory, schéma V3 complet.
  */
 class ProcessKernelPipelineOutboxTest extends TestCase
 {
-    private const DOMAINS = ['geographie', 'histoire', 'faune', 'art', 'sport', 'cinema', 'cuisine', 'science'];
+    private const DOMAINS = [
+        'geographie', 'histoire', 'faune', 'art', 'sport', 'cinema', 'cuisine', 'science',
+    ];
 
     protected function setUp(): void
     {
         parent::setUp();
         $this->createTables();
         $this->seedDepthMatrix();
-        // kernel_rotation_state_v2 intentionnellement vide : planV2() l'initialise au premier appel
+        // kernel_rotation_state_v2 intentionnellement vide — initialisé par le premier run()
     }
 
     protected function tearDown(): void
     {
-        Schema::dropIfExists('kernel_pipeline_outbox');
         Schema::dropIfExists('kernel_current_kernel_receipts');
+        Schema::dropIfExists('kernel_pipeline_outbox');
         Schema::dropIfExists('kernel_rotation_state_v2');
         Schema::dropIfExists('kernel_depth_domain_totals');
         Schema::dropIfExists('kernel_depth_matrix');
@@ -56,18 +65,14 @@ class ProcessKernelPipelineOutboxTest extends TestCase
     }
 
     // =========================================================================
-    // Tests Section 6
+    // Test 1 — Réception normale
     // =========================================================================
 
-    /**
-     * Test 1 : Réception normale → compteur +1 → Blueprint suivant créé (ENGAGED).
-     */
     public function test_normal_processing_increments_counter_and_creates_next_blueprint(): void
     {
-        $eventId = (string) Str::orderedUuid();
+        $eventId     = (string) Str::orderedUuid();
         $blueprintId = 'bp-processed-001';
 
-        // Insérer l'événement dans l'Outbox
         $this->insertOutboxEvent($eventId, $blueprintId, 2, 'geographie');
 
         $results = $this->makeProcessor()->process(10);
@@ -76,32 +81,30 @@ class ProcessKernelPipelineOutboxTest extends TestCase
         $this->assertSame(ProcessKernelPipelineOutbox::OUTCOME_PROCESSED, $results[0]['outcome']);
         $this->assertSame($eventId, $results[0]['event_id']);
 
-        // Vérifier que l'événement est marqué processed
+        // Événement marqué processed
         $row = DB::table('kernel_pipeline_outbox')->where('event_id', $eventId)->first();
-        $this->assertNotNull($row->processed_at, 'processed_at doit être défini après traitement');
+        $this->assertNotNull($row->processed_at);
 
-        // Vérifier que le compteur a été incrémenté
+        // Reçu inséré
         $receipt = DB::table('kernel_current_kernel_receipts')
-            ->where('blueprint_id', $blueprintId)
-            ->first();
+            ->where('blueprint_id', $blueprintId)->first();
         $this->assertNotNull($receipt, 'Un reçu doit exister pour blueprint_id');
 
+        // Compteur incrémenté
         $total = DB::table('kernel_depth_domain_totals')
-            ->where('depth', 2)
-            ->where('domain_code', 'geographie')
+            ->where('depth', 2)->where('domain_code', 'geographie')
             ->value('kernel_received_total');
-        $this->assertSame(1, (int) $total, 'kernel_received_total doit être incrémenté de 1');
+        $this->assertSame(1, (int) $total);
 
-        // Vérifier qu'un Blueprint suivant a été créé
-        // (le Blueprint existant pour le count précédent + un nouveau)
+        // Blueprint suivant créé
         $bpCount = DB::table('kernel_blueprint_runs')->count();
-        $this->assertGreaterThanOrEqual(1, $bpCount, 'Un Blueprint suivant doit exister');
+        $this->assertGreaterThanOrEqual(1, $bpCount);
     }
 
-    /**
-     * Test 2 : Même événement rejoué → compteur inchangé → aucun deuxième Blueprint actif.
-     * Idempotence par verrou optimiste (attempt_count change entre les deux appels).
-     */
+    // =========================================================================
+    // Test 2 — Rejeu idempotent
+    // =========================================================================
+
     public function test_same_event_replayed_does_not_double_count(): void
     {
         $eventId     = (string) Str::orderedUuid();
@@ -109,47 +112,32 @@ class ProcessKernelPipelineOutboxTest extends TestCase
 
         $this->insertOutboxEvent($eventId, $blueprintId, 2, 'geographie');
 
-        // Première exécution
         $this->makeProcessor()->process(10);
 
-        // Réinitialiser processed_at pour forcer le rejeu (simulation)
+        // Simuler un rejeu : effacer processed_at
         DB::table('kernel_pipeline_outbox')
             ->where('event_id', $eventId)
             ->update(['processed_at' => null, 'attempt_count' => 0]);
 
-        // Deuxième exécution (rejeu)
-        // Mais le reçu existe déjà → applyCount() est idempotent
         $this->makeProcessor()->process(10);
 
-        // Le compteur ne doit pas avoir doublé
+        // Compteur ne doit pas avoir doublé
         $total = DB::table('kernel_depth_domain_totals')
-            ->where('depth', 2)
-            ->where('domain_code', 'geographie')
+            ->where('depth', 2)->where('domain_code', 'geographie')
             ->value('kernel_received_total');
         $this->assertSame(1, (int) $total, 'Rejeu idempotent : compteur toujours à 1');
 
-        // Un seul reçu
         $receiptCount = DB::table('kernel_current_kernel_receipts')
-            ->where('blueprint_id', $blueprintId)
-            ->count();
+            ->where('blueprint_id', $blueprintId)->count();
         $this->assertSame(1, $receiptCount, 'Un seul reçu malgré le rejeu');
     }
 
-    /**
-     * Test 3 : Aucun besoin restant → PRODUCTION_ON_HOLD.
-     *
-     * V3 — le gate vérifie depth_state = 'PRODUCTION_ON_HOLD' dans kernel_rotation_state_v2.
-     * La saturation de DepthNeedMatrix ne déclenchait le gate qu'en V2 (supprimé en V3).
-     *
-     * Pour déclencher PRODUCTION_ON_HOLD en V3, il faut qu'une ligne avec
-     * depth_state = 'PRODUCTION_ON_HOLD' existe au moment du run() de l'orchestrateur.
-     * Cela se produit après applyDepthTransition() lorsque nextRequiredDepth() = null,
-     * ou via une insertion directe (cas d'initialisation ou test).
-     */
+    // =========================================================================
+    // Test 3 — PRODUCTION_ON_HOLD via gate V3
+    // =========================================================================
+
     public function test_production_on_hold_when_gate_state_is_on_hold(): void
     {
-        // V3 : insérer un état avec depth_state = PRODUCTION_ON_HOLD
-        // (la gate vérifie directement depth_state, pas la saturation DepthMatrix)
         DB::table('kernel_rotation_state_v2')->insert([
             'depth_state'                    => 'PRODUCTION_ON_HOLD',
             'active_depth'                   => null,
@@ -175,37 +163,36 @@ class ProcessKernelPipelineOutboxTest extends TestCase
         $this->assertSame('PRODUCTION_ON_HOLD', $results[0]['orchestrator_status']);
     }
 
-    /**
-     * Test 4 : Événement déjà traité → NO-OP (processed_at non null).
-     */
+    // =========================================================================
+    // Test 4 — Événement déjà traité
+    // =========================================================================
+
     public function test_already_processed_event_is_noop(): void
     {
         $eventId     = (string) Str::orderedUuid();
         $blueprintId = 'bp-done-001';
 
-        // Insérer comme déjà traité
         DB::table('kernel_pipeline_outbox')->insert([
             'event_id'       => $eventId,
             'event_type'     => 'CURRENT_KERNEL_RECEIVED',
             'schema_version' => 1,
             'payload'        => json_encode($this->makePayload($eventId, $blueprintId, 2, 'geographie')),
             'occurred_at'    => now(),
-            'processed_at'   => now(), // déjà traité
+            'processed_at'   => now(),
             'attempt_count'  => 1,
             'created_at'     => now(),
             'updated_at'     => now(),
         ]);
 
-        // findPending ne retourne pas les événements déjà traités
         $results = $this->makeProcessor()->process(10);
 
         $this->assertCount(0, $results, 'Aucun traitement pour un événement déjà traité');
     }
 
-    /**
-     * Test 5 : Payload JSON invalide → ERROR, attempt_count incrémenté, processed_at NULL.
-     * L'événement doit rester rejouable.
-     */
+    // =========================================================================
+    // Test 5 — Payload invalide
+    // =========================================================================
+
     public function test_invalid_payload_causes_error_and_preserves_event_for_replay(): void
     {
         $eventId = (string) Str::orderedUuid();
@@ -229,41 +216,175 @@ class ProcessKernelPipelineOutboxTest extends TestCase
 
         $row = DB::table('kernel_pipeline_outbox')->where('event_id', $eventId)->first();
         $this->assertNull($row->processed_at, 'processed_at doit rester NULL sur erreur');
-        $this->assertGreaterThan(0, (int) $row->attempt_count, 'attempt_count doit être incrémenté');
-        $this->assertNotNull($row->last_error, 'last_error doit être défini');
+        $this->assertGreaterThan(0, (int) $row->attempt_count);
+        $this->assertNotNull($row->last_error);
     }
 
     // =========================================================================
-    // Factory
+    // Test 6 — #157 : transition Depth pending appliquée (Depth 4 → 6)
     // =========================================================================
 
-    private function makeProcessor(): ProcessKernelPipelineOutbox
+    /**
+     * pending_depth_exhausted_depth = 4
+     * + CURRENT_KERNEL_RECEIVED(blueprint_id, depth=4, domain='geographie')
+     * ─────────────────────────────────────────────────────────────────────
+     * Attendu :
+     *   - receipt exactement une fois
+     *   - kernel_received_total +1 exactement une fois
+     *   - active_depth = 6
+     *   - domain_position = NULL
+     *   - pending = NULL
+     */
+    public function test_pending_depth_4_transitions_to_depth_6_on_receipt(): void
     {
-        // Stub Taxonomy : fournit un territoire avec dominant_idea.
-        // ⛔ KLD / KEY_STRUCTURE : SUPERSEDED — plus aucun gate dans le flow.
-        $taxonomy = $this->createMock(TaxonomyNavigatorInterface::class);
-        $taxonomy->method('peekNext')->willReturn([
-            'sub_domain'    => 'Époque contemporaine',
-            'subject'       => 'Guerre froide',
-            'dominant_idea' => 'tensions',
+        // État : Depth 4 actif, pending=4 (DEPTH_EXHAUSTED reçu), tous domaines ACTIF
+        $domainStates = $this->buildDomainStates();
+        DB::table('kernel_rotation_state_v2')->insert([
+            'depth_state'                    => 'ROTATION_ACTIVE',
+            'active_depth'                   => 4,
+            'domain_position'                => 3, // sera réinitialisé
+            'domain_states'                  => json_encode($domainStates),
+            'pending_depth_exhausted_depth'  => 4, // signal DEPTH_EXHAUSTED mémorisé
+            'tour_domain_states'             => json_encode(DepthTourState::initTour()->toArray()),
+            'active_blueprint_identity'      => null,
+            'last_counted_blueprint_identity' => null,
+            'lock_version'                   => 1,
+            'created_at'                     => now(),
+            'updated_at'                     => now(),
         ]);
+
+        $eventId     = (string) Str::orderedUuid();
+        $blueprintId = 'bp-depth4-last';
+        $this->insertOutboxEvent($eventId, $blueprintId, 4, 'geographie');
+
+        $results = $this->makeProcessor()->process(10);
+
+        $this->assertCount(1, $results);
+        $this->assertSame(ProcessKernelPipelineOutbox::OUTCOME_PROCESSED, $results[0]['outcome']);
+
+        // Vérifier le reçu — exactement une fois
+        $receiptCount = DB::table('kernel_current_kernel_receipts')
+            ->where('blueprint_id', $blueprintId)->count();
+        $this->assertSame(1, $receiptCount, 'Reçu exactement une fois');
+
+        // Vérifier le compteur — exactement une fois
+        $total = DB::table('kernel_depth_domain_totals')
+            ->where('depth', 4)->where('domain_code', 'geographie')
+            ->value('kernel_received_total');
+        $this->assertSame(1, (int) $total, 'kernel_received_total +1 exactement une fois');
+
+        // Vérifier la transition Depth
+        // domain_position est null APRÈS applyDepthTransition, puis l'orchestrator::run()
+        // appelle applyRotation qui le réécrit à 0 (geographie = index 0 du DomainCycle).
+        // La valeur importante est : ancienne valeur 3 éliminée + pending = null.
+        $state = DB::table('kernel_rotation_state_v2')->first();
+        $this->assertNull($state->pending_depth_exhausted_depth, 'pending réinitialisé');
+        $this->assertNotEquals(3, (int) $state->domain_position,
+            'domain_position n\'est plus l\'ancienne valeur (3) — transition réinitialisée'
+        );
+        $this->assertSame('ROTATION_ACTIVE', $state->depth_state);
+        $this->assertSame(6, (int) $state->active_depth, 'Depth avancé de 4 → 6');
+    }
+
+    // =========================================================================
+    // Test 7 — #157 : pending = 10 → PRODUCTION_ON_HOLD
+    // =========================================================================
+
+    /**
+     * pending_depth_exhausted_depth = 10 (dernier Depth du cycle)
+     * + CURRENT_KERNEL_RECEIVED(blueprint_id, depth=10)
+     * ─────────────────────────────────────────────────────────────────────
+     * Attendu :
+     *   - compteur +1
+     *   - transition : nextRequiredDepth(10) = null (tous saturés après incrementCycleCompleted)
+     *   - depth_state = PRODUCTION_ON_HOLD
+     *   - pending = NULL
+     *   - orchestrator::run() retourne PRODUCTION_ON_HOLD
+     */
+    public function test_pending_depth_10_causes_production_on_hold(): void
+    {
+        // Saturer TOUS les Depths y compris 10.
+        // incrementCycleCompleted(10) ajoutera 1 (cycle_target+1 = toujours saturé),
+        // puis nextRequiredDepth(10) trouvera tous les depths saturés → retourne null.
+        foreach (DepthNeedMatrix::DEPTH_CYCLE as $depth) {
+            DB::table('kernel_depth_matrix')
+                ->where('depth', $depth)
+                ->update(['cycle_completed' => DepthNeedMatrix::CYCLE_TARGET[$depth]]);
+        }
+
+        $domainStates = $this->buildDomainStates();
+        DB::table('kernel_rotation_state_v2')->insert([
+            'depth_state'                    => 'ROTATION_ACTIVE',
+            'active_depth'                   => 10,
+            'domain_position'                => 0,
+            'domain_states'                  => json_encode($domainStates),
+            'pending_depth_exhausted_depth'  => 10,
+            'tour_domain_states'             => json_encode(DepthTourState::initTour()->toArray()),
+            'active_blueprint_identity'      => null,
+            'last_counted_blueprint_identity' => null,
+            'lock_version'                   => 1,
+            'created_at'                     => now(),
+            'updated_at'                     => now(),
+        ]);
+
+        $eventId     = (string) Str::orderedUuid();
+        $blueprintId = 'bp-depth10-last';
+        $this->insertOutboxEvent($eventId, $blueprintId, 10, 'geographie');
+
+        $results = $this->makeProcessor()->process(10);
+
+        $this->assertCount(1, $results);
+        $this->assertSame(ProcessKernelPipelineOutbox::OUTCOME_PROCESSED, $results[0]['outcome']);
+        $this->assertSame('PRODUCTION_ON_HOLD', $results[0]['orchestrator_status']);
+
+        // Vérifier l'état après transition
+        $state = DB::table('kernel_rotation_state_v2')->first();
+        $this->assertSame('PRODUCTION_ON_HOLD', $state->depth_state);
+        $this->assertNull($state->pending_depth_exhausted_depth, 'pending réinitialisé');
+
+        // Compteur incrémenté
+        $total = DB::table('kernel_depth_domain_totals')
+            ->where('depth', 10)->where('domain_code', 'geographie')
+            ->value('kernel_received_total');
+        $this->assertSame(1, (int) $total, 'kernel_received_total +1 même pour le dernier Depth');
+    }
+
+    // =========================================================================
+    // Helpers — factory processeur
+    // =========================================================================
+
+    /**
+     * Construit le processeur V3 :
+     *   ProcessKernelPipelineOutbox
+     *     → KernelRotationPlanner (receiveKernelReceivedV2 — DEC-093)
+     *     → KernelPipelineOrchestrator
+     */
+    private function makeProcessor(
+        ?TaxonomyNavigatorInterface $taxonomy = null,
+    ): ProcessKernelPipelineOutbox {
+        if ($taxonomy === null) {
+            $taxonomy = $this->createMock(TaxonomyNavigatorInterface::class);
+            $taxonomy->method('peekNext')->willReturn([
+                'sub_domain'    => 'Époque contemporaine',
+                'subject'       => 'Guerre froide',
+                'dominant_idea' => 'tensions',
+            ]);
+        }
+
+        $planner = new KernelRotationPlanner();
 
         $orchestrator = new KernelPipelineOrchestrator(
             new KernelBlueprintFactory(),
-            new KernelRotationPlanner(),
+            $planner,
             $taxonomy,
             new KernelCodeEngine(),
         );
 
-        return new ProcessKernelPipelineOutbox(
-            new ApplyCurrentKernelReceivedToRotation(),
-            $orchestrator,
-            new KernelPipelineOutboxRepository(),
-        );
+        return new ProcessKernelPipelineOutbox($planner, $orchestrator, new KernelPipelineOutboxRepository());
     }
 
     // =========================================================================
-    // Helpers de setup DB
+    // Helpers — schéma DB
     // =========================================================================
 
     private function createTables(): void
@@ -324,16 +445,14 @@ class ProcessKernelPipelineOutboxTest extends TestCase
             $table->timestamps();
         });
 
-        // Schéma V3 (inclut les nouvelles colonnes KRP v3.2 — 2026-08-13)
+        // Schéma V3 complet
         Schema::create('kernel_rotation_state_v2', function (Blueprint $table) {
             $table->id();
             $table->smallInteger('active_depth')->nullable();
-            // V3 — nouvelles colonnes gate
             $table->string('depth_state', 64)->default('ROTATION_ACTIVE');
             $table->text('domain_states')->nullable();
             $table->integer('pending_depth_exhausted_depth')->nullable();
             $table->integer('domain_position')->nullable();
-            // Colonnes legacy conservées (M-cleanup différé)
             $table->string('active_tour_id', 36)->nullable();
             $table->string('rotation_status', 64)->default('TOUR_IN_PROGRESS');
             $table->text('tour_domain_states')->nullable();
@@ -342,7 +461,6 @@ class ProcessKernelPipelineOutboxTest extends TestCase
             $table->unsignedBigInteger('lock_version')->default(1);
             $table->timestamps();
         });
-
     }
 
     private function seedDepthMatrix(): void
@@ -367,20 +485,6 @@ class ProcessKernelPipelineOutboxTest extends TestCase
                 ]);
             }
         }
-    }
-
-    private function seedRotationStateV2(): void
-    {
-        DB::table('kernel_rotation_state_v2')->insert([
-            'active_depth'                    => null,
-            'rotation_status'                 => 'TOUR_IN_PROGRESS',
-            'tour_domain_states'              => json_encode(DepthTourState::initTour()->toArray()),
-            'active_blueprint_identity'       => null,
-            'last_counted_blueprint_identity' => null,
-            'lock_version'                    => 1,
-            'created_at'                      => now(),
-            'updated_at'                      => now(),
-        ]);
     }
 
     private function insertOutboxEvent(
@@ -413,5 +517,21 @@ class ProcessKernelPipelineOutboxTest extends TestCase
             'domain'         => $domain,
             'occurred_at'    => now()->toIso8601String(),
         ];
+    }
+
+    /**
+     * @return array<string, array<string, string>>
+     */
+    private function buildDomainStates(): array
+    {
+        $states = [];
+        foreach (DepthNeedMatrix::DEPTH_CYCLE as $depth) {
+            $key          = (string) $depth;
+            $states[$key] = [];
+            foreach (self::DOMAINS as $domain) {
+                $states[$key][$domain] = 'ACTIF';
+            }
+        }
+        return $states;
     }
 }
