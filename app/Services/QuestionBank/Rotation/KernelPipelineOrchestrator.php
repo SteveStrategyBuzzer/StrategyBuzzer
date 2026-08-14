@@ -6,100 +6,64 @@ namespace App\Services\QuestionBank\Rotation;
 
 use App\Services\QuestionBank\KernelBlueprint;
 use App\Services\QuestionBank\KernelCodeEngine;
-use App\Services\QuestionBank\Rotation\TaxonomyNavigatorInterface;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
 /**
- * KernelPipelineOrchestrator — chef d'orchestre du KRP.
+ * KernelPipelineOrchestrator — chef d'orchestre du KRP (02_KernelRotationPlanner v3.2).
  *
- * ═══════════════════════════════════════════════════════════════════════════
- * PÉRIMÈTRE STRICTEMENT KRP (02_KernelRotationPlanner)
- * ═══════════════════════════════════════════════════════════════════════════
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * FLOW CANONIQUE V3 (VERROUILLÉ 2026-08-13)
+ * ═══════════════════════════════════════════════════════════════════════════════
  *
- * FLOW CANONIQUE (verrouillé 2026-08-11 — KLD / KEY_STRUCTURE SUPERSEDED,
- * responsabilités absorbées par ValidationDominantIdeas dans Taxonomy) :
+ *   ┌── BEGIN TRANSACTION (FOR UPDATE) ───────────────────────────────────────┐
+ *   │  state = SELECT … FOR UPDATE                                            │
+ *   │  resolution = resolveNextRotation(state)                                │
+ *   │  if NoRotation → COMMIT, retour STATUS_PRODUCTION_ON_HOLD (sans bp)     │
+ *   │  blueprint = Factory::create()                                          │
+ *   │  registerActiveBlueprintIdentity(blueprint.id, state)                   │
+ *   └── COMMIT ───────────────────────────────────────────────────────────────┘
  *
- *   CRÉATION DU KERNELBLUEPRINT (Factory — AVANT KRP, jamais PAR KRP)
- *     → KernelRotationPlanner (depth + domain)
- *     → Taxonomy ↕ ValidationDominantIdeas (sous-domaine, sujet, idée dominante VALIDÉE)
- *     → QuestionIntent / KernelCodeEngine (05_QuestionIntent — VERROUILLÉ)
- *         ✓ construit et verrouille kernel_code DD-DO-SUB-SUJ-IDE-VVVV
- *         ✓ écrit dans kernel_blueprint_runs.kernel_code (atomique)
- *         ✓ idempotent, immuable, concurrent-safe
- *     → Phase 1 → Validation Phase 1 → Phase 2 → Validation Phase 2
- *         ⏸ BLOCKER ARCHITECTURAL — la définition officielle des Phases et leur
- *           correspondance (ou non) avec les commandes existantes n'est pas établie.
- *     → ReadyBank
- *         ⏸ BLOCKER ARCHITECTURAL — la condition officielle d'« acceptation »
- *           (réception canonique) n'est pas définie en termes d'états du noyau.
- *     → Taxonomy.confirmConsumed() idempotent
- *         (NON branché — dépend du BLOCKER ReadyBank ; réception ≠ consommation)
- *     → CURRENT_KERNEL_RECEIVED → CRÉATION DU BLUEPRINT SUIVANT → KRP.
+ *   ┌── EMPTY LOOP (legacy SUPERSEDED — LOT C supprimera cette boucle) ──────┐
+ *   │  currentDepth  = resolution.depth                                       │
+ *   │  currentDomain = resolution.domain                                      │
+ *   │  while true:                                                            │
+ *   │    territory = peekNext(currentDepth, currentDomain)                    │
+ *   │    if null → applyEmptyAndGetNext → null ? PRODUCTION_ON_HOLD : continue│
+ *   │    else → applyRotation + fillTaxonomy + engage + assignKernelCode      │
+ *   │            → STATUS_ROTATION_ASSIGNED                                   │
+ *   └────────────────────────────────────────────────────────────────────────┘
  *
- * Ce que cet orchestrateur fait :
- *   1. Demander la création du Blueprint à KernelBlueprintFactory
- *   2. Transmettre le Blueprint à KRP (planV2) → obtient depth + domain
- *   3. Transmettre depth + domain à Taxonomy (peekNext)
- *   4. Sur EMPTY (null) : applyEmptyTransitionV2 → planV2 → peekNext (boucle)
- *   5. Sur TERRITORY_PROVIDED : fillTaxonomy → engagement → ROTATION_ASSIGNED
- *   6. Sur aucun Depth disponible : retourner PRODUCTION_ON_HOLD
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * RÈGLES CLÉS
+ * ═══════════════════════════════════════════════════════════════════════════════
+ *
+ *   KRP-R01  fillRotation = write-once ; appel unique dans applyRotation().
+ *   KRP-R11  EMPTY ne crée jamais un nouveau Blueprint.
+ *   KRP-R20  Factory appelée une seule fois, avant toute logique KRP.
+ *   DEC-079  Gate : si NoRotation → aucun Blueprint créé.
  *
  * Ce que cet orchestrateur NE fait PAS :
- *   - N'exécute pas les Phases (aucune correspondance officielle établie — BLOCKER 2)
- *   - N'appelle pas confirmConsumed()
- *   - ⛔ N'invoque JAMAIS KLD / KEY_STRUCTURE / IdeaSlotLoader (SUPERSEDED)
- *
- * ═══════════════════════════════════════════════════════════════════════════
- * CONTRATS D'ENTRÉE / SORTIE
- * ═══════════════════════════════════════════════════════════════════════════
- *
- * TaxonomyInputPort (peekNext) :
- *   Entrée  : depth (int), domain (string)
- *   Sortie  : array{sub_domain, subject, ...} | null
- *   null    = signal EMPTY — ce Domaine × Depth est épuisé
- *
- * Résultats de run() :
- *   ROTATION_ASSIGNED   — Blueprint avec depth + domain + slots Taxonomy écrits
- *                          ET kernel_code attribué par KernelCodeEngine.
- *   PRODUCTION_ON_HOLD  — DepthNeedMatrix a atteint toutes ses cibles.
- *                          Aucun Blueprint n'est engagé.
- *
- * ═══════════════════════════════════════════════════════════════════════════
- * RÈGLE KRP-R11 (DEC-R11)
- * ═══════════════════════════════════════════════════════════════════════════
- *
- * Après une production engagée ayant atteint ReadyBank,
- * CURRENT_KERNEL_RECEIVED est le seul déclencheur autorisant
- * la création du Blueprint suivant.
- *
- * Pendant qu'un Blueprint est encore CREATED_UNENGAGED,
- * EMPTY déclenche immédiatement une nouvelle sélection
- * Depth + Domaine dans le même Blueprint.
- *
- * EMPTY ne crée jamais un nouveau Blueprint.
- * Taxonomy ne décide jamais du prochain Depth ou Domaine.
- * KRP reste seul décideur de la sélection.
+ *   - N'appelle pas confirmConsumed (BLOCKER 2).
+ *   - N'exécute pas les Phases (BLOCKER 2).
+ *   - ⛔ N'invoque jamais KLD / KEY_STRUCTURE / IdeaSlotLoader (SUPERSEDED).
  */
 final class KernelPipelineOrchestrator
 {
     private const RUNS_TABLE     = 'kernel_blueprint_runs';
-    private const MAX_EMPTY_LOOP = 16; // garde-fou anti-boucle infinie
-
-    // =========================================================================
-    // Statuts de retour de run()
-    // =========================================================================
+    private const MAX_EMPTY_LOOP = 16;
 
     /**
-     * Blueprint engagé — KRP a écrit depth + domain,
-     * Taxonomy a fourni le territoire, Blueprint = ENGAGED_IN_PIPELINE.
-     *
-     * ⏸ La suite du pipeline (Phases, ReadyBank) est en attente
-     * des décisions métier officielles (BLOCKERS ARCHITECTURAUX).
+     * Blueprint engagé — KRP a écrit depth + domain, Taxonomy a fourni le
+     * territoire, Blueprint = ENGAGED_IN_PIPELINE.
      */
-    public const STATUS_ROTATION_ASSIGNED = 'ROTATION_ASSIGNED';
+    public const STATUS_ROTATION_ASSIGNED  = 'ROTATION_ASSIGNED';
 
-    /** Aucun besoin de Depth actif — DepthNeedMatrix a atteint toutes ses cibles. */
+    /**
+     * Aucun besoin de Depth actif, ou transition de Depth en attente.
+     * Aucun Blueprint n'est engagé. blueprint peut être null (V3) ou orphelin
+     * pré-engagement (edge case EMPTY → tour complet).
+     */
     public const STATUS_PRODUCTION_ON_HOLD = 'PRODUCTION_ON_HOLD';
 
     public function __construct(
@@ -110,27 +74,48 @@ final class KernelPipelineOrchestrator
     ) {}
 
     /**
-     * Exécute un cycle KRP complet : Factory → KRP → Taxonomy → ROTATION_ASSIGNED.
+     * Exécute un cycle KRP complet.
      *
-     * @param  string|null  $previousDomain  Domaine du Blueprint précédent.
+     * @param  string|null  $previousDomain  Ignoré en V3 (sélection via domain_states).
      *
      * @return array{
      *     status:    string,
-     *     blueprint: KernelBlueprint
+     *     blueprint: KernelBlueprint|null
      * }
      *
-     * @throws RuntimeException STOP si la garde anti-boucle est déclenchée.
+     * @throws RuntimeException STOP si la garde anti-boucle EMPTY est déclenchée.
      */
     public function run(?string $previousDomain = null): array
     {
-        $blueprint = $this->factory->create();
-        $result    = $this->planner->planV2($blueprint, $previousDomain);
+        $blueprint  = null;
+        $resolution = null;
 
-        if ($result === KernelRotationPlanner::RESULT_PRODUCTION_ON_HOLD) {
-            return ['status' => self::STATUS_PRODUCTION_ON_HOLD, 'blueprint' => $blueprint];
+        // ── Étape 1 : transaction atomique gate + Factory + enregistrement ────
+        DB::transaction(function () use (&$blueprint, &$resolution) {
+            $state      = DB::table('kernel_rotation_state_v2')->lockForUpdate()->first();
+            $resolution = $this->planner->resolveNextRotation($state);
+
+            if ($resolution->isNoRotation()) {
+                // Gate : aucun Blueprint créé (DEC-079)
+                return;
+            }
+
+            $blueprint = $this->factory->create();
+            $this->planner->registerActiveBlueprintIdentity($blueprint->blueprint_id, $state);
+        });
+
+        if ($blueprint === null) {
+            // PRODUCTION_ON_HOLD ou PENDING_DEPTH_TRANSITION
+            return ['status' => self::STATUS_PRODUCTION_ON_HOLD, 'blueprint' => null];
         }
 
-        $emptyCount = 0;
+        // ── Étape 2 : EMPTY loop (legacy SUPERSEDED — LOT C supprimera ceci) ─
+        // La sélection initiale du domaine vient de resolveNextRotation (domain_states).
+        // Si peekNext retourne null, on avance via tour_domain_states (legacy).
+        // fillRotation est appelé UNE SEULE FOIS via applyRotation, après territoire confirmé.
+        $currentDepth  = $resolution->depth;
+        $currentDomain = $resolution->domain;
+        $emptyCount    = 0;
 
         while (true) {
             if ($emptyCount >= self::MAX_EMPTY_LOOP) {
@@ -140,49 +125,41 @@ final class KernelPipelineOrchestrator
                 );
             }
 
-            // ── TaxonomyInputPort : peekNext ──────────────────────────────────
-            $territory = $this->taxonomy->peekNext(
-                (int) $blueprint->depth,
-                (string) $blueprint->domain
-            );
+            $territory = $this->taxonomy->peekNext($currentDepth, $currentDomain);
 
             if ($territory === null) {
-                // ── EMPTY — ce Domaine × Depth est épuisé ────────────────────
-                // RÈGLE KRP-R11 : EMPTY → nouvelle sélection Depth+Domaine dans
-                // le MÊME Blueprint. EMPTY ne crée jamais un nouveau Blueprint.
-                $emptyDomain = (string) $blueprint->domain;
+                // ── EMPTY : avancer le DomainCycle via mécanisme legacy ───────
+                [$currentDepth, $currentDomain] = $this->planner->applyEmptyAndGetNext(
+                    $currentDepth,
+                    $currentDomain,
+                );
 
-                $this->planner->applyEmptyTransitionV2($emptyDomain);
-                $emptyCount++;
-
-                $result = $this->planner->planV2($blueprint, $emptyDomain);
-
-                if ($result === KernelRotationPlanner::RESULT_PRODUCTION_ON_HOLD) {
+                if ($currentDomain === null) {
+                    // Tour complet → PRODUCTION_ON_HOLD
                     return ['status' => self::STATUS_PRODUCTION_ON_HOLD, 'blueprint' => $blueprint];
                 }
 
+                $emptyCount++;
                 continue;
             }
 
-            // ── TERRITORY_PROVIDED — KRP a terminé sa responsabilité ──────────
-            // 1. Écrire les slots Taxonomy sur le DTO.
+            // ── Territoire confirmé — rotation finale ─────────────────────────
+            $domainCycle    = DepthTourState::DOMAIN_CYCLE;
+            $domainPosition = (int) array_search($currentDomain, $domainCycle, true);
+
+            // Write-once fillRotation via applyRotation (KRP-R01)
+            $this->planner->applyRotation($blueprint, $currentDepth, $currentDomain, $domainPosition);
+
             $blueprint->fillTaxonomy(
-                $territory['sub_domain']                                        ?? '',
-                $territory['subject']                                           ?? '',
+                $territory['sub_domain']                                          ?? '',
+                $territory['subject']                                             ?? '',
                 $territory['dominant_idea'] ?? $territory['dominant_idea_active'] ?? '',
             );
 
-            // 2. Engager le Blueprint en DB (état ENGAGED_IN_PIPELINE).
             $this->engageBlueprint($blueprint);
-
-            // 3. QuestionIntent / KernelCodeEngine — attribution du kernel_code.
-            //    Atomique, idempotent, immuable (05_QuestionIntent — DEC-069..077).
             $this->kernelCodeEngine->assignKernelCode($blueprint);
 
-            return [
-                'status'    => self::STATUS_ROTATION_ASSIGNED,
-                'blueprint' => $blueprint,
-            ];
+            return ['status' => self::STATUS_ROTATION_ASSIGNED, 'blueprint' => $blueprint];
         }
     }
 

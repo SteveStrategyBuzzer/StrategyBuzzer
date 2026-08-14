@@ -1,10 +1,13 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\Unit\QuestionBank\Rotation;
 
 use App\Services\QuestionBank\KernelBlueprint;
 use App\Services\QuestionBank\KernelCodeEngine;
 use App\Services\QuestionBank\Rotation\DepthNeedMatrix;
+use App\Services\QuestionBank\Rotation\DepthTourState;
 use App\Services\QuestionBank\Rotation\KernelBlueprintFactory;
 use App\Services\QuestionBank\Rotation\KernelPipelineOrchestrator;
 use App\Services\QuestionBank\Rotation\KernelRotationPlanner;
@@ -15,28 +18,31 @@ use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 /**
- * Tests de KernelPipelineOrchestrator — PÉRIMÈTRE KRP UNIQUEMENT.
+ * Tests de KernelPipelineOrchestrator V3 (02_KernelRotationPlanner v3.2).
  *
- * Couvre exclusivement les responsabilités de 02_KernelRotationPlanner :
- *   - Création du Blueprint (Factory)
- *   - Sélection Depth + Domaine (KRP planV2)
- *   - Boucle EMPTY : applyEmptyTransitionV2 + planV2 + Taxonomy
- *   - TERRITORY_PROVIDED → ROTATION_ASSIGNED (fillTaxonomy + engagement)
- *   - PRODUCTION_ON_HOLD
+ * Couvre exclusivement les responsabilités de l'orchestrateur :
+ *   - Gate : aucun Blueprint créé si NoRotation (PRODUCTION_ON_HOLD ou PENDING)
+ *   - Factory appelée exactement une fois (KRP-R20)
+ *   - fillRotation write-once via applyRotation (KRP-R01)
+ *   - EMPTY loop : Blueprint réutilisé (KRP-R11), même blueprint_id
+ *   - TERRITORY_PROVIDED → ROTATION_ASSIGNED
+ *   - PRODUCTION_ON_HOLD via depth_state (V3 gate)
+ *   - PRODUCTION_ON_HOLD via EMPTY tour complet (legacy)
  *   - Guard : Factory bloque si Blueprint actif existe
  *
  * Hors périmètre :
- *   - KernelCodeEngine assignKernelCode : testé indépendamment dans KernelCodeEngineTest.
- *     Dans ce test, KernelCodeEngine est réel (besoin de la table kernel_code_sequences).
- *   - Phases / ReadyBank / confirmConsumed : ⏸ BLOCKERS ARCHITECTURAUX (contrats manquants)
- *   - ⛔ KLD / KEY_STRUCTURE / IdeaSlotLoader : SUPERSEDED — retirés du flow
+ *   - KernelCodeEngine : testé dans KernelCodeEngineTest
+ *   - Phases / ReadyBank / confirmConsumed : BLOCKERS ARCHITECTURAUX
+ *   - ⛔ planV2 / applyEmptyTransitionV2 : SUPPRIMÉS en V3
  *
- * DB : SQLite in-memory, tables créées manuellement.
+ * DB : SQLite in-memory avec schéma V3.
  */
 class KernelPipelineOrchestratorTest extends TestCase
 {
     /** Domaines officiels du DomainCycle. */
-    private const DOMAINS = ['geographie', 'histoire', 'faune', 'art', 'sport', 'cinema', 'cuisine', 'science'];
+    private const DOMAINS = [
+        'geographie', 'histoire', 'faune', 'art', 'sport', 'cinema', 'cuisine', 'science',
+    ];
 
     protected function setUp(): void
     {
@@ -61,11 +67,14 @@ class KernelPipelineOrchestratorTest extends TestCase
             $table->primary(['depth', 'domain_code']);
         });
 
+        // Schéma V3 complet (nouvelles colonnes incluses)
         Schema::create('kernel_rotation_state_v2', function (Blueprint $table) {
             $table->id();
             $table->smallInteger('active_depth')->nullable();
-            $table->string('active_tour_id', 36)->nullable();
-            $table->string('rotation_status', 64)->default('TOUR_IN_PROGRESS');
+            $table->string('depth_state', 64)->default('ROTATION_ACTIVE');
+            $table->text('domain_states')->nullable();
+            $table->integer('pending_depth_exhausted_depth')->nullable();
+            $table->integer('domain_position')->nullable();
             $table->text('tour_domain_states')->nullable();
             $table->string('active_blueprint_identity', 36)->nullable();
             $table->string('last_counted_blueprint_identity', 36)->nullable();
@@ -90,7 +99,7 @@ class KernelPipelineOrchestratorTest extends TestCase
             $table->primary(['depth', 'domain_code']);
         });
 
-        // Seed tous les Depths du cycle avec cycle_target > 0
+        // Seed : tous les Depths du cycle avec cycle_target > 0
         foreach (DepthNeedMatrix::DEPTH_CYCLE as $depth) {
             DB::table('kernel_depth_matrix')->insert([
                 'depth'           => $depth,
@@ -136,30 +145,42 @@ class KernelPipelineOrchestratorTest extends TestCase
         );
     }
 
-    /** Retourne les états {domain → ON|OFF} depuis kernel_rotation_state_v2. */
+    /** Retourne les états {domain → ON|OFF} depuis tour_domain_states en DB. */
     private function getTourStates(): array
     {
         $row = DB::table('kernel_rotation_state_v2')->first();
         if ($row === null) {
             return [];
         }
-        $decoded = json_decode($row->tour_domain_states, true);
+        $decoded = json_decode((string) $row->tour_domain_states, true);
         return $decoded['states'] ?? $decoded ?? [];
     }
 
+    /** Insère un état V3 avec depth_state = PRODUCTION_ON_HOLD. */
+    private function insertProductionOnHoldState(): void
+    {
+        DB::table('kernel_rotation_state_v2')->insert([
+            'depth_state'                    => 'PRODUCTION_ON_HOLD',
+            'active_depth'                   => null,
+            'domain_position'                => null,
+            'domain_states'                  => null,
+            'pending_depth_exhausted_depth'  => null,
+            'tour_domain_states'             => null,
+            'active_blueprint_identity'      => null,
+            'last_counted_blueprint_identity' => null,
+            'lock_version'                   => 1,
+            'created_at'                     => now(),
+            'updated_at'                     => now(),
+        ]);
+    }
+
     // =========================================================================
-    // Tests KRP — responsabilités propres
+    // Tests : ROTATION_ASSIGNED (flux nominal)
     // =========================================================================
 
     /**
      * Quand Taxonomy fournit un territoire, l'orchestrateur retourne ROTATION_ASSIGNED.
-     * Le Blueprint est ENGAGED_IN_PIPELINE en DB avec depth et domain écrits.
-     *
-     * Contrat de sortie KRP :
-     *   status = ROTATION_ASSIGNED
-     *   blueprint.blueprint_id non null
-     *   blueprint.depth non null
-     *   blueprint.domain non null
+     * Le Blueprint est ENGAGED_IN_PIPELINE en DB avec depth + domain écrits.
      */
     public function test_rotation_assigned_when_taxonomy_returns_territory(): void
     {
@@ -170,7 +191,7 @@ class KernelPipelineOrchestratorTest extends TestCase
             'dominant_idea' => 'La Magna Carta limite le pouvoir royal',
         ]);
 
-        $result = $this->makeOrchestrator($taxonomy)->run(null);
+        $result = $this->makeOrchestrator($taxonomy)->run();
 
         $this->assertSame(KernelPipelineOrchestrator::STATUS_ROTATION_ASSIGNED, $result['status']);
         $this->assertInstanceOf(KernelBlueprint::class, $result['blueprint']);
@@ -188,15 +209,81 @@ class KernelPipelineOrchestratorTest extends TestCase
     }
 
     /**
-     * Quand TaxonomyProgressManager::peekNext() retourne null (EMPTY),
-     * l'orchestrateur appelle applyEmptyTransitionV2 et relance planV2.
-     *
-     * Preuves :
-     *   - tour_domain_states en DB montre exactement 1 domaine OFF
-     *   - peekNext appelé exactement 2 fois
-     *   - même Blueprint réutilisé (RÈGLE KRP-R11)
+     * Depth=2 et domain='geographie' sont les valeurs initiales (INIT_PROPRE).
      */
-    public function test_empty_taxonomy_triggers_apply_empty_transition_v2(): void
+    public function test_initial_rotation_selects_depth_2_and_geographie(): void
+    {
+        $taxonomy = $this->createMock(TaxonomyNavigatorInterface::class);
+        $taxonomy->method('peekNext')->willReturn([
+            'sub_domain' => 'X', 'subject' => 'Y', 'dominant_idea' => 'Z',
+        ]);
+
+        $result = $this->makeOrchestrator($taxonomy)->run();
+
+        $this->assertSame(2, $result['blueprint']->depth);
+        $this->assertSame('geographie', $result['blueprint']->domain);
+    }
+
+    /**
+     * KRP écrit depth + domain dans le Blueprint et en DB.
+     * kernel_code est écrit par KernelCodeEngine (PAS par KRP).
+     */
+    public function test_krp_writes_depth_and_domain_kernel_code_engine_writes_kernel_code(): void
+    {
+        $taxonomy = $this->createMock(TaxonomyNavigatorInterface::class);
+        $taxonomy->method('peekNext')->willReturn([
+            'sub_domain'    => 'Espace',
+            'subject'       => 'La Lune',
+            'dominant_idea' => 'La Lune provoque les marées terrestres',
+        ]);
+
+        $result    = $this->makeOrchestrator($taxonomy)->run();
+        $blueprint = $result['blueprint'];
+
+        $this->assertNotNull($blueprint->depth,  'KRP écrit depth');
+        $this->assertNotNull($blueprint->domain, 'KRP écrit domain');
+
+        $row = DB::table('kernel_blueprint_runs')
+            ->where('blueprint_id', $blueprint->blueprint_id)
+            ->first();
+
+        $this->assertNotNull($row->depth,        'KRP persiste depth en DB');
+        $this->assertNotNull($row->domain_code,  'KRP persiste domain_code en DB');
+        $this->assertNotNull($row->kernel_code,  'KernelCodeEngine persiste kernel_code');
+        $this->assertMatchesRegularExpression(
+            KernelCodeEngine::FORMAT_REGEX,
+            (string) $row->kernel_code,
+            'kernel_code respecte le format DD-DO-SUB-SUJ-IDE-VVVV'
+        );
+    }
+
+    /**
+     * applyRotation persiste active_depth + domain_position dans l'état V2.
+     */
+    public function test_apply_rotation_persists_domain_position_in_state(): void
+    {
+        $taxonomy = $this->createMock(TaxonomyNavigatorInterface::class);
+        $taxonomy->method('peekNext')->willReturn([
+            'sub_domain' => 'X', 'subject' => 'Y', 'dominant_idea' => 'Z',
+        ]);
+
+        $this->makeOrchestrator($taxonomy)->run();
+
+        $state = DB::table('kernel_rotation_state_v2')->first();
+        $this->assertNotNull($state, 'État V3 doit exister après un run()');
+        $this->assertSame(2, (int) $state->active_depth, 'active_depth = 2 (premier Depth)');
+        $this->assertSame(0, (int) $state->domain_position, 'domain_position = 0 (geographie)');
+    }
+
+    // =========================================================================
+    // Tests : EMPTY loop (legacy SUPERSEDED — conservé jusqu'à LOT C)
+    // =========================================================================
+
+    /**
+     * EMPTY : peekNext retourne null une fois puis un territoire.
+     * Résultat : ROTATION_ASSIGNED, peekNext appelé 2 fois, 1 domaine OFF en tour.
+     */
+    public function test_empty_taxonomy_cycles_domain_and_returns_rotation_assigned(): void
     {
         $callCount = 0;
         $taxonomy  = $this->createMock(TaxonomyNavigatorInterface::class);
@@ -206,28 +293,22 @@ class KernelPipelineOrchestratorTest extends TestCase
                 if ($callCount === 1) {
                     return null; // EMPTY
                 }
-                return [
-                    'sub_domain'    => 'Moyen Âge',
-                    'subject'       => 'La Magna Carta',
-                    'dominant_idea' => 'La Magna Carta limite le pouvoir royal',
-                ];
+                return ['sub_domain' => 'X', 'subject' => 'Y', 'dominant_idea' => 'Z'];
             });
 
-        $result = $this->makeOrchestrator($taxonomy)->run(null);
+        $result = $this->makeOrchestrator($taxonomy)->run();
 
         $this->assertSame(KernelPipelineOrchestrator::STATUS_ROTATION_ASSIGNED, $result['status']);
-        $this->assertSame(2, $callCount, 'peekNext doit avoir été appelé exactement 2 fois');
+        $this->assertSame(2, $callCount, 'peekNext appelé exactement 2 fois (1 EMPTY + 1 territoire)');
 
         $tourStates = $this->getTourStates();
         $this->assertNotEmpty($tourStates, 'tour_domain_states doit être présent en DB');
-
         $offCount = count(array_filter($tourStates, fn($s) => $s === 'OFF'));
-        $this->assertSame(1, $offCount, 'Exactement 1 domaine doit être OFF après un signal EMPTY');
+        $this->assertSame(1, $offCount, 'Exactement 1 domaine OFF après 1 signal EMPTY');
     }
 
     /**
-     * EMPTY réutilise le même Blueprint — aucun nouveau Blueprint créé.
-     * RÈGLE KRP-R11.
+     * EMPTY : le même Blueprint est réutilisé — aucun nouveau Blueprint créé (KRP-R11).
      */
     public function test_empty_reuses_same_blueprint(): void
     {
@@ -239,58 +320,174 @@ class KernelPipelineOrchestratorTest extends TestCase
                 return $callCount === 1 ? null : ['sub_domain' => 'X', 'subject' => 'Y', 'dominant_idea' => 'Z'];
             });
 
-        $result = $this->makeOrchestrator($taxonomy)->run(null);
+        $result = $this->makeOrchestrator($taxonomy)->run();
 
         $this->assertSame(KernelPipelineOrchestrator::STATUS_ROTATION_ASSIGNED, $result['status']);
-
-        // Un seul Blueprint en DB
-        $count = DB::table('kernel_blueprint_runs')->count();
-        $this->assertSame(1, $count, 'EMPTY ne doit pas créer un nouveau Blueprint');
+        $this->assertSame(1, (int) DB::table('kernel_blueprint_runs')->count(),
+            'EMPTY ne crée pas de nouveau Blueprint (KRP-R11)'
+        );
     }
 
     /**
-     * PRODUCTION_ON_HOLD quand tous les Depths ont atteint leur cible.
+     * Factory appelée exactement une fois, même avec 3 EMPTYs consécutifs (KRP-R20).
      */
-    public function test_production_on_hold_when_all_depths_completed(): void
+    public function test_factory_called_exactly_once_even_with_multiple_empties(): void
     {
+        $callCount = 0;
+        $taxonomy  = $this->createMock(TaxonomyNavigatorInterface::class);
+        $taxonomy->method('peekNext')
+            ->willReturnCallback(function () use (&$callCount) {
+                $callCount++;
+                return $callCount <= 3 ? null : ['sub_domain' => 'X', 'subject' => 'Y', 'dominant_idea' => 'Z'];
+            });
+
+        $result = $this->makeOrchestrator($taxonomy)->run();
+
+        $this->assertSame(KernelPipelineOrchestrator::STATUS_ROTATION_ASSIGNED, $result['status']);
+        $this->assertSame(1, (int) DB::table('kernel_blueprint_runs')->count(),
+            'Factory doit être appelée exactement une fois — KRP-R20'
+        );
+        $this->assertSame(4, $callCount,
+            'peekNext appelé 4 fois (3 EMPTY + 1 territoire)'
+        );
+    }
+
+    /**
+     * fillRotation est appelé UNE SEULE FOIS même avec EMPTY (KRP-R01).
+     *
+     * Preuve : blueprint retourné a depth + domain définis, pas de LogicException.
+     */
+    public function test_fill_rotation_called_once_even_after_empty(): void
+    {
+        $callCount = 0;
+        $taxonomy  = $this->createMock(TaxonomyNavigatorInterface::class);
+        $taxonomy->method('peekNext')
+            ->willReturnCallback(function () use (&$callCount) {
+                $callCount++;
+                return $callCount === 1 ? null : ['sub_domain' => 'X', 'subject' => 'Y', 'dominant_idea' => 'Z'];
+            });
+
+        // Doit passer sans LogicException (pas de double fillRotation)
+        $result = $this->makeOrchestrator($taxonomy)->run();
+
+        $this->assertNotNull($result['blueprint']->depth,  'depth défini après EMPTY');
+        $this->assertNotNull($result['blueprint']->domain, 'domain défini après EMPTY');
+        $this->assertSame(KernelPipelineOrchestrator::STATUS_ROTATION_ASSIGNED, $result['status']);
+    }
+
+    /**
+     * Le même blueprint_id est préservé à travers plusieurs EMPTYs.
+     */
+    public function test_same_blueprint_id_preserved_through_multiple_empties(): void
+    {
+        $callCount = 0;
+        $taxonomy  = $this->createMock(TaxonomyNavigatorInterface::class);
+        $taxonomy->method('peekNext')
+            ->willReturnCallback(function () use (&$callCount) {
+                $callCount++;
+                return $callCount <= 3 ? null : ['sub_domain' => 'X', 'subject' => 'Y', 'dominant_idea' => 'Z'];
+            });
+
+        $result = $this->makeOrchestrator($taxonomy)->run();
+
+        $allBlueprints = DB::table('kernel_blueprint_runs')->get();
+        $this->assertCount(1, $allBlueprints, 'Un seul Blueprint en DB après 3 EMPTYs');
+        $this->assertSame(
+            $result['blueprint']->blueprint_id,
+            $allBlueprints->first()->blueprint_id,
+            'blueprint_id retourné = celui créé par Factory'
+        );
+    }
+
+    /**
+     * PRODUCTION_ON_HOLD quand EMPTY tour complet (8/8 domaines épuisés via legacy).
+     */
+    public function test_production_on_hold_when_empty_tour_complete(): void
+    {
+        // Saturer tous les Depths : cycle_completed = cycle_target
         foreach (DepthNeedMatrix::DEPTH_CYCLE as $depth) {
             DB::table('kernel_depth_matrix')
                 ->where('depth', $depth)
                 ->update(['cycle_completed' => DepthNeedMatrix::CYCLE_TARGET[$depth]]);
         }
 
-        $taxonomy = $this->createMock(TaxonomyNavigatorInterface::class);
-        $result   = $this->makeOrchestrator($taxonomy)->run(null);
-
-        $this->assertSame(KernelPipelineOrchestrator::STATUS_PRODUCTION_ON_HOLD, $result['status']);
-    }
-
-    /**
-     * PRODUCTION_ON_HOLD → Blueprint classé NOT_ENGAGED_PRODUCTION_ON_HOLD en DB.
-     */
-    public function test_blueprint_state_is_not_engaged_when_on_hold(): void
-    {
-        foreach (DepthNeedMatrix::DEPTH_CYCLE as $depth) {
-            DB::table('kernel_depth_matrix')
-                ->where('depth', $depth)
-                ->update(['cycle_completed' => DepthNeedMatrix::CYCLE_TARGET[$depth]]);
+        // Injecter un état avec Tour déjà à 7/8 (7 domaines OFF, 1 ON)
+        // Pour déclencher le Tour complet sur le premier EMPTY
+        $tourState = DepthTourState::initTour();
+        $domains   = DepthTourState::DOMAIN_CYCLE;
+        for ($i = 0; $i < 7; $i++) {
+            $tourState = $tourState->applyEmpty($domains[$i]);
         }
 
+        DB::table('kernel_rotation_state_v2')->insert([
+            'depth_state'                    => 'ROTATION_ACTIVE',
+            'active_depth'                   => 2,
+            'domain_position'                => null,
+            'domain_states'                  => null,
+            'pending_depth_exhausted_depth'  => null,
+            'tour_domain_states'             => json_encode($tourState->toArray()),
+            'active_blueprint_identity'      => null,
+            'last_counted_blueprint_identity' => null,
+            'lock_version'                   => 1,
+            'created_at'                     => now(),
+            'updated_at'                     => now(),
+        ]);
+
         $taxonomy = $this->createMock(TaxonomyNavigatorInterface::class);
-        $result   = $this->makeOrchestrator($taxonomy)->run(null);
+        $taxonomy->method('peekNext')->willReturn(null); // Toujours EMPTY
+
+        $result = $this->makeOrchestrator($taxonomy)->run();
 
         $this->assertSame(KernelPipelineOrchestrator::STATUS_PRODUCTION_ON_HOLD, $result['status']);
+    }
 
-        $run = DB::table('kernel_blueprint_runs')
-            ->where('blueprint_id', $result['blueprint']->blueprint_id)
-            ->first();
-        $this->assertNotNull($run);
-        $this->assertSame('NOT_ENGAGED_PRODUCTION_ON_HOLD', $run->execution_state);
+    // =========================================================================
+    // Tests : Gate V3 (PRODUCTION_ON_HOLD sans Blueprint créé)
+    // =========================================================================
+
+    /**
+     * V3 Gate : si depth_state = PRODUCTION_ON_HOLD → aucun Blueprint créé.
+     * Résultat : STATUS_PRODUCTION_ON_HOLD, blueprint = null.
+     */
+    public function test_gate_returns_production_on_hold_without_creating_blueprint(): void
+    {
+        $this->insertProductionOnHoldState();
+
+        $taxonomy = $this->createMock(TaxonomyNavigatorInterface::class);
+        $taxonomy->expects($this->never())->method('peekNext'); // peekNext ne doit pas être appelé
+
+        $result = $this->makeOrchestrator($taxonomy)->run();
+
+        $this->assertSame(KernelPipelineOrchestrator::STATUS_PRODUCTION_ON_HOLD, $result['status']);
+        $this->assertNull($result['blueprint'], 'V3 Gate : aucun Blueprint créé si PRODUCTION_ON_HOLD');
+        $this->assertSame(0, (int) DB::table('kernel_blueprint_runs')->count(),
+            'Factory ne doit pas être appelée quand le gate bloque'
+        );
     }
 
     /**
-     * KernelBlueprintFactory lève une RuntimeException si un Blueprint actif
-     * existe déjà — l'orchestrateur ne crée pas deux Blueprints simultanément.
+     * V3 Gate : PRODUCTION_ON_HOLD sans ligne d'état N'EST PAS déclenchée.
+     * (INIT_PROPRE = premier appel → RotationAvailable{depth=2, domain='geographie'})
+     */
+    public function test_gate_does_not_block_on_init_propre(): void
+    {
+        $taxonomy = $this->createMock(TaxonomyNavigatorInterface::class);
+        $taxonomy->method('peekNext')->willReturn([
+            'sub_domain' => 'X', 'subject' => 'Y', 'dominant_idea' => 'Z',
+        ]);
+
+        $result = $this->makeOrchestrator($taxonomy)->run();
+
+        $this->assertSame(KernelPipelineOrchestrator::STATUS_ROTATION_ASSIGNED, $result['status']);
+    }
+
+    // =========================================================================
+    // Tests : Single-active guard (Factory)
+    // =========================================================================
+
+    /**
+     * Factory lève RuntimeException si un Blueprint actif existe déjà.
+     * L'orchestrateur ne crée pas deux Blueprints simultanément.
      */
     public function test_factory_stops_if_active_blueprint_exists(): void
     {
@@ -306,226 +503,78 @@ class KernelPipelineOrchestratorTest extends TestCase
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessageMatches('/Blueprint actif existe déjà/');
 
-        $this->makeOrchestrator($taxonomy)->run(null);
+        $this->makeOrchestrator($taxonomy)->run();
     }
 
     // =========================================================================
-    // Tests KRP-R20 — Primauté du Blueprint
+    // Tests : État V3 après run réussi
     // =========================================================================
 
     /**
-     * KRP-R20 : Factory appelée exactement une fois, même avec plusieurs EMPTYs.
-     *
-     * Preuve comportementale : exactement 1 ligne dans kernel_blueprint_runs
-     * après run(), quelle que soit la profondeur de la boucle EMPTY.
+     * Après un run() réussi, active_blueprint_identity est écrit dans l'état V2.
      */
-    public function test_factory_called_exactly_once_even_with_multiple_empties(): void
+    public function test_state_has_active_blueprint_identity_after_run(): void
     {
-        // 3 appels EMPTY consécutifs, puis un territoire
-        $callCount = 0;
-        $taxonomy  = $this->createMock(TaxonomyNavigatorInterface::class);
-        $taxonomy->method('peekNext')
-            ->willReturnCallback(function () use (&$callCount) {
-                $callCount++;
-                if ($callCount <= 3) {
-                    return null; // EMPTY
-                }
-                return ['sub_domain' => 'X', 'subject' => 'Y', 'dominant_idea' => 'Z'];
-            });
+        $taxonomy = $this->createMock(TaxonomyNavigatorInterface::class);
+        $taxonomy->method('peekNext')->willReturn([
+            'sub_domain' => 'X', 'subject' => 'Y', 'dominant_idea' => 'Z',
+        ]);
 
-        $this->makeOrchestrator($taxonomy)->run(null);
+        $result = $this->makeOrchestrator($taxonomy)->run();
 
-        $count = DB::table('kernel_blueprint_runs')->count();
-        $this->assertSame(1, $count,
-            'Factory doit être appelée exactement une fois — KRP-R20'
-        );
-        $this->assertSame(4, $callCount,
-            'peekNext doit avoir été appelé 4 fois (3 EMPTY + 1 territoire)'
-        );
-    }
-
-    /**
-     * KRP-R20 : blueprint_id identique à travers plusieurs EMPTYs.
-     *
-     * Le même Blueprint (même blueprint_id) est réutilisé lors de chaque
-     * itération EMPTY. Aucun nouveau Blueprint n'est créé entre les EMPTYs.
-     */
-    public function test_same_blueprint_id_preserved_through_multiple_empties(): void
-    {
-        $callCount = 0;
-        $taxonomy  = $this->createMock(TaxonomyNavigatorInterface::class);
-        $taxonomy->method('peekNext')
-            ->willReturnCallback(function () use (&$callCount) {
-                $callCount++;
-                return $callCount <= 3 ? null : ['sub_domain' => 'X', 'subject' => 'Y', 'dominant_idea' => 'Z'];
-            });
-
-        $result = $this->makeOrchestrator($taxonomy)->run(null);
-
-        // Un seul Blueprint en DB
-        $allBlueprints = DB::table('kernel_blueprint_runs')->get();
-        $this->assertCount(1, $allBlueprints,
-            'Après 3 EMPTYs, exactement 1 Blueprint doit exister en DB — KRP-R20'
-        );
-
-        // Son blueprint_id correspond à ce que run() a retourné
+        $state = DB::table('kernel_rotation_state_v2')->first();
+        $this->assertNotNull($state);
         $this->assertSame(
             $result['blueprint']->blueprint_id,
-            $allBlueprints->first()->blueprint_id,
-            'Le blueprint_id retourné doit correspondre au Blueprint créé par Factory — KRP-R20'
+            $state->active_blueprint_identity
         );
     }
 
     /**
-     * KRP-R20 : planV2 reçoit le Blueprint créé par Factory.
-     *
-     * Preuve comportementale :
-     *   - le blueprint_id présent en DB avant engagement correspond à celui
-     *     que planV2 aurait dû recevoir (le seul créé par Factory)
-     *   - après run(), ce blueprint_id est dans kernel_blueprint_runs avec
-     *     state ENGAGED_IN_PIPELINE (preuve que planV2 a bien travaillé dessus)
+     * Après un run() réussi, domain_states sont initialisés (56 paires ACTIF).
      */
-    public function test_planv2_receives_the_blueprint_created_by_factory(): void
+    public function test_state_has_domain_states_initialized_after_first_run(): void
     {
         $taxonomy = $this->createMock(TaxonomyNavigatorInterface::class);
         $taxonomy->method('peekNext')->willReturn([
-            'sub_domain'    => 'Univers',
-            'subject'       => 'Big Bang',
-            'dominant_idea' => 'Le Big Bang marque l\'origine de l\'expansion de l\'Univers',
+            'sub_domain' => 'X', 'subject' => 'Y', 'dominant_idea' => 'Z',
         ]);
 
-        $result = $this->makeOrchestrator($taxonomy)->run(null);
+        $this->makeOrchestrator($taxonomy)->run();
 
-        // Le Blueprint retourné existe en DB avec l'état final d'engagement
-        $row = DB::table('kernel_blueprint_runs')
-            ->where('blueprint_id', $result['blueprint']->blueprint_id)
-            ->first();
+        $state        = DB::table('kernel_rotation_state_v2')->first();
+        $domainStates = json_decode((string) $state->domain_states, true);
 
-        $this->assertNotNull($row,
-            'Le Blueprint créé par Factory doit exister en DB — KRP-R20'
-        );
-        $this->assertSame('ENGAGED_IN_PIPELINE', $row->execution_state,
-            'planV2 a bien travaillé sur le Blueprint créé par Factory — KRP-R20'
-        );
-        $this->assertNotNull($row->depth,
-            'KRP a écrit depth sur le Blueprint reçu de Factory — KRP-R20'
-        );
-        $this->assertNotNull($row->domain_code,
-            'KRP a écrit domain sur le Blueprint reçu de Factory — KRP-R20'
-        );
+        $this->assertIsArray($domainStates);
+        $this->assertCount(7, $domainStates, '7 Depths dans domain_states');
 
-        // Aucun autre Blueprint ne doit exister
-        $this->assertSame(1, (int) DB::table('kernel_blueprint_runs')->count(),
-            'Factory est appelée exactement une fois — KRP-R20'
-        );
-    }
-
-    /**
-     * KRP-R20 : le système de types PHP garantit que KRP ne peut pas
-     * s'exécuter sans recevoir une instance de KernelBlueprint.
-     *
-     * Preuve architecturale via ReflectionMethod :
-     *   KernelRotationPlanner::planV2() déclare KernelBlueprint comme
-     *   premier paramètre obligatoire → impossible d'appeler planV2 sans Blueprint.
-     */
-    public function test_krp_type_system_enforces_blueprint_parameter(): void
-    {
-        $ref    = new \ReflectionMethod(KernelRotationPlanner::class, 'planV2');
-        $params = $ref->getParameters();
-
-        $this->assertNotEmpty($params, 'planV2 doit avoir au moins un paramètre');
-
-        $firstParam = $params[0];
-        $this->assertSame('blueprint', $firstParam->getName(),
-            "Le premier paramètre de planV2 doit s'appeler 'blueprint' — KRP-R20"
-        );
-        $this->assertFalse($firstParam->isOptional(),
-            'Le paramètre blueprint doit être obligatoire — KRP-R20'
-        );
-
-        $type = $firstParam->getType();
-        $this->assertNotNull($type, 'Le paramètre blueprint doit être typé — KRP-R20');
-        $this->assertSame(KernelBlueprint::class, (string) $type,
-            'Le type doit être KernelBlueprint — KRP-R20'
-        );
-    }
-
-    /**
-     * KRP-R20 + KRP-R18 : PRODUCTION_ON_HOLD — le Blueprint est créé avant
-     * que KRP constate l'absence de besoin.
-     *
-     * L'ordre imposé est maintenu même lorsqu'aucune production n'est requise :
-     *   Factory → Blueprint CREATED_UNENGAGED → planV2 → PRODUCTION_ON_HOLD
-     */
-    public function test_production_on_hold_blueprint_exists_before_hold_detected(): void
-    {
         foreach (DepthNeedMatrix::DEPTH_CYCLE as $depth) {
-            DB::table('kernel_depth_matrix')
-                ->where('depth', $depth)
-                ->update(['cycle_completed' => DepthNeedMatrix::CYCLE_TARGET[$depth]]);
+            $depthKey = (string) $depth;
+            $this->assertArrayHasKey($depthKey, $domainStates);
+            $this->assertCount(8, $domainStates[$depthKey], "8 domaines pour Depth {$depth}");
+            foreach (self::DOMAINS as $domain) {
+                $this->assertSame(
+                    'ACTIF',
+                    $domainStates[$depthKey][$domain],
+                    "domain_states[{$depth}][{$domain}] doit être ACTIF"
+                );
+            }
         }
-
-        $taxonomy = $this->createMock(TaxonomyNavigatorInterface::class);
-        // peekNext ne doit jamais être appelé — planV2 retourne PRODUCTION_ON_HOLD
-        $taxonomy->expects($this->never())->method('peekNext');
-
-        $result = $this->makeOrchestrator($taxonomy)->run(null);
-
-        $this->assertSame(KernelPipelineOrchestrator::STATUS_PRODUCTION_ON_HOLD, $result['status']);
-
-        // Le Blueprint doit exister en DB — Factory a bien été appelée avant planV2
-        $row = DB::table('kernel_blueprint_runs')
-            ->where('blueprint_id', $result['blueprint']->blueprint_id)
-            ->first();
-        $this->assertNotNull($row,
-            'Factory doit être appelée avant que KRP détecte PRODUCTION_ON_HOLD — KRP-R20'
-        );
-        $this->assertSame('NOT_ENGAGED_PRODUCTION_ON_HOLD', $row->execution_state,
-            'Blueprint marqué NOT_ENGAGED_PRODUCTION_ON_HOLD après détection par planV2 — KRP-R20'
-        );
     }
 
     /**
-     * KRP écrit uniquement depth + domain dans le Blueprint.
-     * Les champs Taxonomy (subdomain, subject) sont écrits après TERRITORY_PROVIDED.
-     * kernel_code est écrit par KernelCodeEngine (05_QuestionIntent), PAS par KRP.
-     * L'orchestrateur appelle KernelCodeEngine après fillTaxonomy — le code final doit donc
-     * être présent et conforme au format DD-DO-SUB-SUJ-IDE-VVVV.
+     * Après un run() réussi, depth_state = ROTATION_ACTIVE.
      */
-    public function test_krp_writes_only_depth_and_domain(): void
+    public function test_state_depth_state_is_rotation_active_after_run(): void
     {
         $taxonomy = $this->createMock(TaxonomyNavigatorInterface::class);
         $taxonomy->method('peekNext')->willReturn([
-            'sub_domain'    => 'Espace',
-            'subject'       => 'La Lune',
-            'dominant_idea' => 'La Lune provoque les marées terrestres',
+            'sub_domain' => 'X', 'subject' => 'Y', 'dominant_idea' => 'Z',
         ]);
 
-        $result    = $this->makeOrchestrator($taxonomy)->run(null);
-        $blueprint = $result['blueprint'];
+        $this->makeOrchestrator($taxonomy)->run();
 
-        $this->assertNotNull($blueprint->depth, 'depth doit être écrit par KRP');
-        $this->assertNotNull($blueprint->domain, 'domain doit être écrit par KRP');
-
-        // Vérifier en DB que depth + domain_code sont présents (écrits par KRP)
-        $row = DB::table('kernel_blueprint_runs')
-            ->where('blueprint_id', $blueprint->blueprint_id)
-            ->first();
-        $this->assertNotNull($row->depth,       'KRP écrit depth en DB');
-        $this->assertNotNull($row->domain_code, 'KRP écrit domain_code en DB');
-
-        // kernel_code écrit par KernelCodeEngine (PAS par KRP) — doit être présent et conforme
-        $this->assertNotNull($row->kernel_code,
-            'KernelCodeEngine (05_QuestionIntent) doit avoir écrit kernel_code après KRP'
-        );
-        $this->assertMatchesRegularExpression(
-            \App\Services\QuestionBank\KernelCodeEngine::FORMAT_REGEX,
-            (string) $row->kernel_code,
-            'kernel_code doit respecter le format DD-DO-SUB-SUJ-IDE-VVVV'
-        );
-        // Confirmer que kernel_code correspond au Blueprint en mémoire
-        $this->assertSame($blueprint->kernel_code, $row->kernel_code,
-            'kernel_code en DB et en mémoire doivent être identiques'
-        );
+        $state = DB::table('kernel_rotation_state_v2')->first();
+        $this->assertSame('ROTATION_ACTIVE', $state->depth_state);
     }
 }

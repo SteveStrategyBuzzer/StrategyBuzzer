@@ -144,18 +144,4 @@ final class KernelBlueprintRunRepository
         return $value !== null ? (string) $value : null;
     }
 
-    /**
-     * Passe un Blueprint de CREATED_UNENGAGED → NOT_ENGAGED_PRODUCTION_ON_HOLD.
-     * Appelé lorsque aucun Depth ne requiert de production.
-     */
-    public function markOnHold(string $blueprintId): void
-    {
-        DB::table(self::TABLE)
-            ->where('blueprint_id', $blueprintId)
-            ->whereIn('execution_state', ['CREATED_UNENGAGED'])
-            ->update([
-                'execution_state' => 'NOT_ENGAGED_PRODUCTION_ON_HOLD',
-                'updated_at'      => now(),
-            ]);
-    }
 }

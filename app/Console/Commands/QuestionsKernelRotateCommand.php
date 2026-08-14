@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use App\Services\QuestionBank\KernelCodeEngine;
 use App\Services\QuestionBank\Rotation\KernelBlueprintFactory;
 use App\Services\QuestionBank\Rotation\KernelPipelineOrchestrator;
 use App\Services\QuestionBank\Rotation\KernelRotationPlanner;
@@ -17,50 +18,42 @@ use RuntimeException;
 /**
  * questions:kernel:rotate
  *
- * Point d'entrée V2 pour déclencher une rotation Kernel.
+ * Point d'entrée V3 pour déclencher une rotation Kernel.
  *
  * Ce que cette commande fait :
- *   1. Instancie KernelBlueprintFactory + KernelRotationPlanner V2 + TaxonomyOrchestrator
+ *   1. Instancie KernelBlueprintFactory + KernelRotationPlanner V3 + TaxonomyOrchestrator
  *   2. Appelle KernelPipelineOrchestrator::run()
- *   3. Affiche le statut résultant (ENGAGED | PRODUCTION_ON_HOLD)
+ *   3. Affiche le statut résultant (ROTATION_ASSIGNED | PRODUCTION_ON_HOLD)
  *
  * Ce que cette commande NE fait PAS :
  *   - Ne touche pas au pipeline BankWorker
- *   - N'appelle pas plan() ni initialize() (interface legacy DEPRECATED)
+ *   - N'appelle pas initialize() ni plan() (interface legacy SUPPRIMÉE en V3)
  *   - Ne génère pas de contenu (→ questions:kernel:fill-content)
  *   - Ne traduit pas
  */
 class QuestionsKernelRotateCommand extends Command
 {
     protected $signature = 'questions:kernel:rotate
-        {--previous-domain= : Domaine du Blueprint précédent (pour avancement du DomainCycle)}
-        {--dry-run          : Afficher l\'état actuel sans créer de Blueprint}';
+        {--dry-run : Afficher l\'état actuel sans créer de Blueprint}';
 
-    protected $description = 'V2 — Déclenche une rotation Kernel via KernelPipelineOrchestrator (KernelBlueprintFactory + KRP V2 + Taxonomy).';
+    protected $description = 'V3 — Déclenche une rotation Kernel via KernelPipelineOrchestrator (gate V3.2 + Taxonomy).';
 
     public function handle(
         KernelBlueprintFactory $factory,
         KernelRotationPlanner  $planner,
+        KernelCodeEngine       $codeEngine,
     ): int {
         $taxonomy = new TaxonomyOrchestrator(
             new TaxonomyBankRepository(),
             new TaxonomyGeminiClient(),
             new ValidationDominantIdeas(),
         );
-        $previousDomain = $this->option('previous-domain') ?: null;
-        $dryRun         = (bool) $this->option('dry-run');
+        $dryRun = (bool) $this->option('dry-run');
 
         $this->line('');
         $this->line('╔══════════════════════════════════════════════════════════════════╗');
-        $this->line('║   ROTATION V2 — KernelPipelineOrchestrator                     ║');
+        $this->line('║   ROTATION V3 — KernelPipelineOrchestrator (KRP v3.2)          ║');
         $this->line('╚══════════════════════════════════════════════════════════════════╝');
-        $this->line('');
-
-        if ($previousDomain !== null) {
-            $this->line("  Domaine précédent : <fg=cyan>{$previousDomain}</>");
-        } else {
-            $this->line('  Domaine précédent : <fg=yellow>non fourni</> (premier appel ou reprise)');
-        }
         $this->line('');
 
         if ($dryRun) {
@@ -69,10 +62,10 @@ class QuestionsKernelRotateCommand extends Command
             return self::SUCCESS;
         }
 
-        $orchestrator = new KernelPipelineOrchestrator($factory, $planner, $taxonomy);
+        $orchestrator = new KernelPipelineOrchestrator($factory, $planner, $taxonomy, $codeEngine);
 
         try {
-            $result = $orchestrator->run($previousDomain);
+            $result = $orchestrator->run();
         } catch (RuntimeException $e) {
             $this->error($e->getMessage());
             return self::FAILURE;
@@ -81,10 +74,10 @@ class QuestionsKernelRotateCommand extends Command
         $status    = $result['status'];
         $blueprint = $result['blueprint'];
 
-        $this->line("  Statut       : <fg=cyan;options=bold>{$status}</>");
-        $this->line("  blueprint_id : {$blueprint->blueprint_id}");
+        $this->line("  Statut : <fg=cyan;options=bold>{$status}</>");
 
-        if ($status === KernelPipelineOrchestrator::STATUS_ROTATION_ASSIGNED) {
+        if ($status === KernelPipelineOrchestrator::STATUS_ROTATION_ASSIGNED && $blueprint !== null) {
+            $this->line("  blueprint_id : {$blueprint->blueprint_id}");
             $this->line("  depth        : {$blueprint->depth}");
             $this->line("  domain       : {$blueprint->domain}");
             $this->line("  subdomain    : " . ($blueprint->subdomain_active ?? '<fg=yellow>non rempli</>'));
@@ -92,14 +85,14 @@ class QuestionsKernelRotateCommand extends Command
             $this->line("  idée dom.    : " . ($blueprint->dominant_idea_active ?? '<fg=yellow>non rempli</>'));
             $this->line('');
             $this->info('✅  Blueprint ENGAGED_IN_PIPELINE — pipeline Kernel peut continuer.');
-        } elseif ($status === 'PRODUCTION_ON_HOLD') {
+        } elseif ($status === KernelPipelineOrchestrator::STATUS_PRODUCTION_ON_HOLD) {
             $this->line('');
             $this->warn('⏸  PRODUCTION_ON_HOLD — aucun Depth ne requiert de production actuellement.');
-            $this->line('  Blueprint classé NOT_ENGAGED_PRODUCTION_ON_HOLD.');
+            $this->line('  Aucun Blueprint engagé.');
         }
 
         $this->line('');
 
-        return $status === 'ENGAGED' ? self::SUCCESS : self::SUCCESS;
+        return self::SUCCESS;
     }
 }

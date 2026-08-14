@@ -1,4 +1,8 @@
 <?php
+// @deprecated LEGACY — Architecture V1 SUPERSEDED.
+// DomainExhaustionChecker (PULL) remplacé par PUSH (Taxonomy → receiveDomainExhausted).
+// Conservé uniquement parce que TaxonomyOrchestrator l'implémente encore.
+// Suppression physique : après refactoring TaxonomyOrchestrator (hors périmètre LOT A/B).
 
 declare(strict_types=1);
 

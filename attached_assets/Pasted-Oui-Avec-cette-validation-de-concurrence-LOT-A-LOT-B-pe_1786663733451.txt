@@ -1,0 +1,751 @@
+Oui. Avec cette validation de concurrence, LOT A + LOT B peuvent maintenant être autorisés à l’implantation.
+
+La frontière doit rester stricte :
+
+LOT A + LOT B
+→ IMPLANTATION AUTORISÉE
+
+LOT C
+→ INTERDIT
+→ attend 03_Taxonomy
+
+Envoie maintenant ceci à Replit :
+
+#156 — IMPLANTER KRP v3.2 — LOT A + LOT B UNIQUEMENT
+
+AUTORISATION D'IMPLANTATION.
+
+Source de vérité :
+
+02_KernelRotationPlanner.md
+Version 3.2
+Statut : VERROUILLÉ
+
+Architecture Register :
+SYNCHRONISÉ
+
+Audit code :
+#154 TERMINÉ
+
+Plan d'implantation :
+#155 VALIDÉ
+
+IMPORTANT :
+
+Tu peux maintenant IMPLANTER :
+
+LOT A
++
+LOT B
+
+Tu ne dois PAS implanter LOT C.
+
+Ne commence pas 03_Taxonomy.
+
+Ne modifie aucune spécification verrouillée.
+
+Ne crée aucune nouvelle décision métier.
+
+==================================================
+OBJECTIF TERMINAL DE CETTE IMPLANTATION
+==================================================
+
+Amener le côté KRP autonome au maximum de conformité possible
+avec v3.2 avant 03_Taxonomy.
+
+À la fin :
+
+- rotation KRP v3.2 active ;
+- persistance KRP v3.2 active ;
+- gate pré-Factory actif ;
+- aucune résolution stale ;
+- DOMAIN_EXHAUSTED récepteur actif ;
+- DEPTH_EXHAUSTED récepteur actif ;
+- sélecteur domain_states actif ;
+- CURRENT_KERNEL_RECEIVED conforme et atomique ;
+- PRODUCTION_ON_HOLD conforme ;
+- legacy autonome supprimé ;
+- EMPTY loop ancienne temporairement conservée uniquement
+  parce que son remplacement producteur Taxonomy appartient à LOT C.
+
+==================================================
+ÉTAPE 0 — AUDIT DONNÉES AVANT MIGRATION
+==================================================
+
+AVANT toute migration :
+
+audite les données réelles de kernel_rotation_state_v2.
+
+Vérifier au minimum :
+
+- nombre de rows ;
+- rotation_status ;
+- active_depth ;
+- active_blueprint_identity ;
+- lock_version ;
+- tour_domain_states ;
+- Blueprints CREATED_UNENGAGED actifs ;
+- Blueprints ENGAGED_IN_PIPELINE actifs ;
+- événements CURRENT_KERNEL_RECEIVED non traités dans Outbox.
+
+Ne reset rien automatiquement.
+
+Retour interne obligatoire avant migration :
+
+MIGRATION_STATE_STRATEGY =
+INIT_PROPRE
+ou
+CONVERSION_JUSTIFIÉE
+ou
+STOP_INCOHÉRENCE
+
+Si STOP_INCOHÉRENCE :
+arrête l'implantation et rapporte les données qui empêchent
+une migration sûre.
+
+==================================================
+LOT A — IMPLANTER
+==================================================
+
+A-1 — GATE UNIQUE + TRANSACTION ENGLOBANTE
+
+KernelPipelineOrchestrator est propriétaire du cycle/gate.
+
+Séquence obligatoire :
+
+BEGIN TRANSACTION
+
+SELECT kernel_rotation_state_v2
+FOR UPDATE
+
+KRP::resolveNextRotation()
+sur l'état verrouillé
+
+si NoRotation :
+    COMMIT
+    Factory NON appelée
+    return
+
+KernelBlueprintFactory::create()
+dans la même transaction
+
+KRP::applyRotation(blueprint, resolution)
+
+COMMIT
+
+Exception :
+ROLLBACK complet.
+
+Le lock RotationState reste détenu depuis resolveNextRotation()
+jusqu'après applyRotation().
+
+ProcessKernelPipelineOutbox ne possède PAS de deuxième gate.
+
+==================================================
+A-2 — PRODUCTION_ON_HOLD
+==================================================
+
+Supprimer toute sortie automatique de PRODUCTION_ON_HOLD.
+
+PRODUCTION_ON_HOLD appartient uniquement à KRP.
+
+Si depth_state = PRODUCTION_ON_HOLD :
+
+resolveNextRotation()
+→ NoRotation(PRODUCTION_ON_HOLD)
+
+Factory non appelée.
+
+Aucune reprise automatique.
+
+==================================================
+A-3 — SUPPRIMER PRODUCTION_ON_HOLD DU BLUEPRINT
+==================================================
+
+Supprimer le chemin actif :
+
+kernel_blueprint_runs.execution_state =
+NOT_ENGAGED_PRODUCTION_ON_HOLD
+
+Supprimer writers/readers runtime devenus obsolètes.
+
+Ne supprime pas les données historiques existantes.
+
+01_KernelBlueprint v1.5 ne doit pas être modifié.
+
+==================================================
+A-4 — depth_state
+==================================================
+
+Migration additive :
+
+ADD depth_state
+
+Backfill :
+
+TOUR_IN_PROGRESS
+→ ROTATION_ACTIVE
+
+NOT_ENGAGED_PRODUCTION_ON_HOLD
+→ PRODUCTION_ON_HOLD
+
+Basculer tous les readers/writers actifs vers depth_state.
+
+NE DROP rotation_status qu'après :
+
+- tests GREEN ;
+- zéro reader ;
+- zéro writer confirmé.
+
+Migration cleanup distincte.
+
+==================================================
+A-5 — active_tour_id
+==================================================
+
+Retirer d'abord tous les callers.
+
+DROP uniquement après zéro caller confirmé.
+
+==================================================
+A-6 — REPOSITORY CANONIQUE
+==================================================
+
+KernelRotationStateRepository devient l'unique accès runtime
+à kernel_rotation_state_v2.
+
+Supprimer les DB::table() directs dans le chemin KRP actif.
+
+Le Repository doit supporter les opérations transactionnelles
+avec row lock FOR UPDATE.
+
+==================================================
+A-7 — LEGACY AUTONOME
+==================================================
+
+Supprimer :
+
+- plan() legacy ;
+- initialize() legacy ;
+- buildDepthNeedMatrix() legacy ;
+- chooseDepth() legacy ;
+- loadDomains() legacy ;
+- ALLOWED_DEPTHS legacy ;
+- DEPTH_TARGETS legacy ;
+- DomainExhaustionChecker PULL.
+
+Aucun consommateur officiel futur du PULL.
+
+Corriger les commentaires DEC obsolètes.
+
+==================================================
+LOT B — IMPLANTER
+==================================================
+
+B-1 — DOMAIN_POSITION
+==================================================
+
+Ajouter :
+
+domain_position SMALLINT NULL
+
+Sémantique :
+
+index du DERNIER domaine effectivement sélectionné.
+
+NULL =
+aucun domaine encore sélectionné pour le Depth courant.
+
+DomainCycle canonique KRP :
+
+0 geographie
+1 histoire
+2 faune
+3 art
+4 sport
+5 cinema
+6 cuisine
+7 science
+
+Initialisation nouveau Depth :
+
+domain_position = NULL
+
+Donc premier domaine :
+
+geographie.
+
+==================================================
+B-2 — DOMAIN_STATES
+==================================================
+
+Ajouter :
+
+domain_states JSONB
+
+Pour toute NOUVELLE RotationState v3.2 :
+
+initialiser explicitement les 56 couples :
+
+7 Depths
+×
+8 Domaines
+
+à :
+
+ACTIF
+
+Aucune règle implicite :
+
+clé absente = ACTIF
+
+Pour les anciennes rows :
+appliquer uniquement la stratégie validée à l'ÉTAPE 0.
+
+==================================================
+B-3 — receiveDomainExhausted()
+==================================================
+
+Implanter :
+
+receiveDomainExhausted(depth, domain)
+
+Taxonomy n'est PAS encore branchée.
+
+Cette méthode est testée directement.
+
+Validations :
+
+depth valide
+domain slug valide
+
+Même couple déjà DOMAIN_EXHAUSTED :
+NO-OP idempotent.
+
+Sinon :
+
+domain_states[depth][domain]
+→ DOMAIN_EXHAUSTED
+
+Transaction + lock Repository.
+
+Ne touche aucun autre Depth/Domaine.
+
+Ne produit jamais DEPTH_EXHAUSTED.
+
+==================================================
+B-4 — receiveDepthExhausted()
+==================================================
+
+Ajouter :
+
+pending_depth_exhausted_depth INT NULL
+
+Implanter :
+
+receiveDepthExhausted(depth)
+
+Taxonomy n'est PAS encore branchée.
+
+Validation :
+
+depth appartient au DepthCycle.
+
+depth reçu doit correspondre au active_depth cohérent.
+
+pending null :
+→ mémoriser depth
+
+pending == depth :
+→ NO-OP idempotent
+
+pending différent :
+→ exception invariant
+
+Aucune file de Depth futurs.
+
+Aucune transition immédiate de depth_state.
+
+==================================================
+B-5 — SÉLECTEUR DOMAINCYCLE v3.2
+==================================================
+
+Implanter un seul sélecteur canonique.
+
+Il utilise :
+
+active_depth
+domain_position
+DomainCycle
+domain_states
+
+Il saute les Domaines :
+
+DOMAIN_EXHAUSTED
+
+Il ne connaît :
+
+ni SubjectSlot
+ni IdeaSlot
+ni Taxonomy internals.
+
+Si tous les Domaines sont DOMAIN_EXHAUSTED
+mais aucun pending DEPTH_EXHAUSTED explicite n'existe :
+
+→ INCOHÉRENCE D'ÉTAT
+→ aucune rotation
+→ aucune Factory
+→ aucun Blueprint
+→ KRP ne crée PAS DEPTH_EXHAUSTED.
+
+Taxonomy reste l'unique producteur du signal.
+
+==================================================
+B-6 — resolveNextRotation()
+==================================================
+
+Implanter :
+
+resolveNextRotation()
+
+retour :
+
+RotationAvailable
+ou
+NoRotation
+
+RotationAvailable contient uniquement :
+
+depth
+domain
+domain_position
+
+Pas de nouvelle donnée métier.
+
+Cette résolution se fait sous le lock transactionnel
+englobant de l'orchestrateur.
+
+==================================================
+B-7 — applyRotation()
+==================================================
+
+Implanter :
+
+applyRotation(blueprint, RotationResolution)
+
+Aucun recalcul.
+
+Doit utiliser exactement la résolution produite sous le même lock.
+
+Écrit :
+
+Blueprint.fillRotation(depth, domain)
+
+puis état KRP :
+
+active_depth
+domain_position
+active_blueprint_identity
+
+Write-once Blueprint préservé.
+
+==================================================
+B-8 — CURRENT_KERNEL_RECEIVED
+==================================================
+
+receiveKernelReceivedV2 doit être entièrement transactionnel :
+
+BEGIN
+
+déduplication blueprint_id
+
+si déjà reçu :
+    NO-OP complet
+
+INSERT receipt
+
+kernel_received_total +1
+pour le couple du Blueprint reçu
+
+TOUJOURS avant transition prospective.
+
+Puis :
+
+pending null
+→ aucune transition Depth
+
+pending ∈ 2,4,6,7,8,9
+→ active_depth = prochain Depth
+→ domain_position = NULL
+→ pending = NULL
+
+pending = 10
+→ depth_state = PRODUCTION_ON_HOLD
+→ pending = NULL
+
+COMMIT
+
+Exception :
+ROLLBACK complet.
+
+DEC-093 doit être respectée sans exception.
+
+==================================================
+B-9 — CHANGEMENT DE DEPTH
+==================================================
+
+À chaque changement :
+
+active_depth = nextDepth
+domain_position = NULL
+
+Ainsi :
+
+Depth 2 → 4
+→ premier domaine = geographie
+
+même si le dernier domaine du Depth 2 était :
+
+art
+sport
+science
+ou autre.
+
+==================================================
+INTERDICTIONS ABSOLUES
+==================================================
+
+Ne pas implanter :
+
+- émission réelle Taxonomy DOMAIN_EXHAUSTED ;
+- émission réelle Taxonomy DEPTH_EXHAUSTED ;
+- consommation IdeaSlot ;
+- nouveau confirmConsumed ;
+- interprétation peekNext(null) ;
+- suppression définitive EMPTY loop ;
+- suppression tour_domain_states tant qu'EMPTY loop l'utilise ;
+- 03_Taxonomy.
+
+peekNext(null)
+≠ DOMAIN_EXHAUSTED
+
+peekNext(null)
+≠ DEPTH_EXHAUSTED
+
+==================================================
+EMPTY LOOP — ÉTAT TEMPORAIRE
+==================================================
+
+La boucle EMPTY est architecture SUPERSEDED.
+
+Elle reste temporairement uniquement pour ne pas casser
+le runtime avant LOT C.
+
+Elle ne doit PAS être étendue.
+
+Aucune nouvelle logique ne doit dépendre d'elle.
+
+Aucun nouveau test métier v3.2 ne doit considérer EMPTY
+comme architecture correcte.
+
+LOT C la supprimera atomiquement lors du branchement Taxonomy.
+
+==================================================
+TESTS OBLIGATOIRES
+==================================================
+
+Tester au minimum :
+
+1. Initial Depth 2 → geographie.
+
+2. geographie consommé →
+   prochain domaine histoire.
+
+3. DOMAIN_EXHAUSTED faune →
+   rotation saute faune.
+
+4. DOMAIN_EXHAUSTED scope Depth+Domaine seulement.
+
+5. KRP ne produit jamais DOMAIN_EXHAUSTED.
+
+6. KRP ne produit jamais DEPTH_EXHAUSTED.
+
+7. Tous domaines exhausted sans pending signal →
+   invariant, aucune Factory.
+
+8. receiveDepthExhausted idempotent.
+
+9. receiveDepthExhausted contradictoire →
+   invariant.
+
+10. CURRENT_KERNEL_RECEIVED :
+    exactly-once compteur.
+
+11. Receipt + compteur + transition :
+    atomiques.
+
+12. Exception après receipt :
+    rollback complet.
+
+13. Exception après Factory avant fillRotation :
+    aucun Blueprint durable.
+
+14. Exception après fillRotation avant update curseur :
+    rollback complet.
+
+15. Deux orchestrations concurrentes :
+    un seul Blueprint canonique,
+    une seule rotation appliquée.
+
+16. receiveDomainExhausted concurrent :
+    aucune résolution stale.
+
+17. receiveDepthExhausted concurrent :
+    aucune résolution stale.
+
+18. Depth 2→4 :
+    domain_position reset NULL,
+    premier domaine geographie.
+
+19. Depth 10 exhausted + CKR :
+    PRODUCTION_ON_HOLD.
+
+20. PRODUCTION_ON_HOLD :
+    Factory zéro appel.
+
+21. Factory ne connaît pas KRP.
+
+22. Blueprint créé avant fillRotation.
+
+23. domain_states nouvelle row :
+    exactement 56 couples ACTIF.
+
+24. Restart :
+    pending_depth_exhausted_depth persiste.
+
+25. Aucun caller runtime des legacy supprimés.
+
+==================================================
+APRÈS IMPLANTATION
+==================================================
+
+Exécute :
+
+- tests unitaires KRP ;
+- tests orchestration ;
+- tests Blueprint impactés ;
+- tests migrations ;
+- tests idempotence ;
+- tests concurrence PostgreSQL réelle si disponibles ;
+- suite QuestionBank pertinente.
+
+Ne modifie pas un test pour le rendre GREEN
+si son échec révèle une incohérence avec v3.2.
+
+==================================================
+RETOUR ATTENDU
+==================================================
+
+Retourne uniquement :
+
+#156 — IMPLANTATION KRP v3.2 LOT A+B
+
+Audit données pré-migration:
+...
+
+Stratégie migration choisie:
+...
+
+Fichiers modifiés:
+...
+
+Migrations créées:
+...
+
+Legacy supprimé:
+...
+
+Gate pré-Factory:
+PASS/FAIL
+
+Transaction resolve→Factory→apply:
+PASS/FAIL
+
+Rotation stale possible:
+OUI/NON
+
+depth_state:
+PASS/FAIL
+
+domain_position:
+PASS/FAIL
+
+domain_states:
+PASS/FAIL
+
+56 couples ACTIF nouvelle row:
+PASS/FAIL
+
+receiveDomainExhausted:
+PASS/FAIL
+
+receiveDepthExhausted:
+PASS/FAIL
+
+KRP produit DOMAIN_EXHAUSTED:
+NON/OUI
+
+KRP produit DEPTH_EXHAUSTED:
+NON/OUI
+
+CURRENT_KERNEL_RECEIVED atomique:
+PASS/FAIL
+
+kernel_received_total exactly-once:
+PASS/FAIL
+
+Depth transition reset DomainCycle:
+PASS/FAIL
+
+Depth 10 → PRODUCTION_ON_HOLD:
+PASS/FAIL
+
+Blueprint PRODUCTION_ON_HOLD:
+ABSENT / PRÉSENT
+
+EMPTY loop:
+TEMPORAIRE LEGACY / autre
+
+Tests GREEN:
+...
+
+Tests supprimés car architecture superseded:
+...
+
+Tests encore bloqués par LOT C:
+...
+
+Écarts KRP v3.2 autonomes restant:
+...
+
+Écarts dépendants 03_Taxonomy:
+...
+
+Implémentation LOT A:
+100 % / autre
+
+Implémentation LOT B:
+100 % / autre
+
+Validation LOT A+B:
+100 % / autre
+
+VERDICT:
+LOT A+B CONFORMES / INCOMPLET
+
+Puis STOP.
+
+Ne commence pas LOT C.
+Ne commence pas 03_Taxonomy.
+
+À ce stade, on passe officiellement de la conception à l’implantation KRP. Le prochain contrôle ne portera plus sur de nouvelles idées d’architecture : il faudra vérifier que le code produit correspond exactement à v3.2 et que Replit n’a pas réintroduit une responsabilité Taxonomy dans KRP.

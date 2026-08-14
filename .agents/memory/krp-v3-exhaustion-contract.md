@@ -7,7 +7,7 @@ description: État final verrouillé de 02_KernelRotationPlanner v3.2 — décis
 
 **Fichier :** `docs/architecture/02_KernelRotationPlanner.md`
 **Date de verrouillage :** 13 août 2026
-**Architecture 100 % / Contrat 100 % / Implémentation 0 % / Validation 0 %**
+**Architecture 100 % / Contrat 100 % / Implémentation LOT A+B 100 % / Validation 106 tests GREEN**
 
 ## Décisions OFFICIAL (nouvelles, issues de v3.x)
 
@@ -45,8 +45,36 @@ DEC-066 (superseded par DEC-034+082), DEC-079 (superseded par DEC-093)
 ## Séquence de suite obligatoire
 
 1. ✅ 02_KernelRotationPlanner v3.2 VERROUILLÉ
-2. → 00_ArchitectureRegister synchronisé (DEC-061, 065, 066, 079 → SUPERSEDED ; DEC-082→094 ajoutés OFFICIAL/REJECTED)
-3. → Audit du code KRP existant (écarts code ↔ spec v3.2 documentés)
-4. → Implantation
-5. → Validation terminale
-6. → 03_Taxonomy (SEULEMENT après)
+2. ✅ 00_ArchitectureRegister synchronisé (DEC-061, 065, 066, 079 → SUPERSEDED ; DEC-082→094 ajoutés OFFICIAL/REJECTED)
+3. ✅ Audit du code KRP existant (écarts code ↔ spec v3.2 documentés — task #154)
+4. ✅ Implantation LOT A+B (4 migrations Neon, KernelRotationPlanner V3, KernelPipelineOrchestrator V3, 106 tests GREEN)
+5. → Validation terminale (tests E2E, smoke test en prod)
+6. → LOT C — Wiring Taxonomy → KRP (receiveDomainExhausted / receiveDepthExhausted) — INTERDIT jusqu'à spec 03_Taxonomy
+
+## État de l'implémentation LOT A+B (2026-08-13)
+
+### Migrations appliquées sur Neon
+
+- `2026_08_13_000001` — ADD `depth_state VARCHAR(64) DEFAULT 'ROTATION_ACTIVE'`
+- `2026_08_13_000002` — ADD `domain_states JSONB NULLABLE`
+- `2026_08_13_000003` — ADD `pending_depth_exhausted_depth INT NULLABLE`
+- `2026_08_13_000004` — ADD `domain_position SMALLINT NULLABLE`
+- M-cleanup (DROP `rotation_status`, `active_tour_id`) — DIFFÉRÉ
+
+### Fichiers clés
+
+- `app/Services/QuestionBank/Rotation/KernelRotationPlanner.php` — V3 complète
+- `app/Services/QuestionBank/Rotation/KernelPipelineOrchestrator.php` — V3 (gate + EMPTY legacy)
+- `app/Services/QuestionBank/Rotation/RotationResolution.php` — DTO value object
+- `app/Services/QuestionBank/Rotation/KernelBlueprintRunRepository.php` — markOnHold() supprimé
+- `tests/Unit/QuestionBank/Rotation/KernelRotationPlannerV3Test.php` — 25 tests
+- `tests/Unit/QuestionBank/Rotation/KernelPipelineOrchestratorTest.php` — 16 tests
+- `tests/Unit/QuestionBank/Rotation/KernelRotationPlannerV2Test.php` — SUPERSEDED stub
+- `tests/Unit/QuestionBank/Rotation/KernelRotationPlannerTest.php` — SUPERSEDED stub (V1)
+
+### Gap critique à ne pas oublier (LOT C)
+
+`ApplyCurrentKernelReceivedToRotation::applyCount()` gère receipt + counter directement
+(PAS via `KernelRotationPlanner::receiveKernelReceivedV2`). Conséquence : la vérification
+`pending_depth_exhausted_depth` n'est PAS déclenchée automatiquement par le flux Outbox.
+Le branchement complet requiert LOT C (spec 03_Taxonomy préalable obligatoire).

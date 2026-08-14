@@ -137,16 +137,32 @@ class ProcessKernelPipelineOutboxTest extends TestCase
 
     /**
      * Test 3 : Aucun besoin restant → PRODUCTION_ON_HOLD.
-     * Tous les Depths ont atteint leur cible → l'orchestrateur retourne PRODUCTION_ON_HOLD.
+     *
+     * V3 — le gate vérifie depth_state = 'PRODUCTION_ON_HOLD' dans kernel_rotation_state_v2.
+     * La saturation de DepthNeedMatrix ne déclenchait le gate qu'en V2 (supprimé en V3).
+     *
+     * Pour déclencher PRODUCTION_ON_HOLD en V3, il faut qu'une ligne avec
+     * depth_state = 'PRODUCTION_ON_HOLD' existe au moment du run() de l'orchestrateur.
+     * Cela se produit après applyDepthTransition() lorsque nextRequiredDepth() = null,
+     * ou via une insertion directe (cas d'initialisation ou test).
      */
-    public function test_production_on_hold_when_all_depths_completed(): void
+    public function test_production_on_hold_when_gate_state_is_on_hold(): void
     {
-        // Marquer tous les Depths comme complétés
-        foreach (DepthNeedMatrix::DEPTH_CYCLE as $depth) {
-            DB::table('kernel_depth_matrix')
-                ->where('depth', $depth)
-                ->update(['cycle_completed' => DepthNeedMatrix::CYCLE_TARGET[$depth]]);
-        }
+        // V3 : insérer un état avec depth_state = PRODUCTION_ON_HOLD
+        // (la gate vérifie directement depth_state, pas la saturation DepthMatrix)
+        DB::table('kernel_rotation_state_v2')->insert([
+            'depth_state'                    => 'PRODUCTION_ON_HOLD',
+            'active_depth'                   => null,
+            'domain_position'                => null,
+            'domain_states'                  => null,
+            'pending_depth_exhausted_depth'  => null,
+            'tour_domain_states'             => null,
+            'active_blueprint_identity'      => null,
+            'last_counted_blueprint_identity' => null,
+            'lock_version'                   => 1,
+            'created_at'                     => now(),
+            'updated_at'                     => now(),
+        ]);
 
         $eventId     = (string) Str::orderedUuid();
         $blueprintId = 'bp-onhold-001';
@@ -308,9 +324,16 @@ class ProcessKernelPipelineOutboxTest extends TestCase
             $table->timestamps();
         });
 
+        // Schéma V3 (inclut les nouvelles colonnes KRP v3.2 — 2026-08-13)
         Schema::create('kernel_rotation_state_v2', function (Blueprint $table) {
             $table->id();
             $table->smallInteger('active_depth')->nullable();
+            // V3 — nouvelles colonnes gate
+            $table->string('depth_state', 64)->default('ROTATION_ACTIVE');
+            $table->text('domain_states')->nullable();
+            $table->integer('pending_depth_exhausted_depth')->nullable();
+            $table->integer('domain_position')->nullable();
+            // Colonnes legacy conservées (M-cleanup différé)
             $table->string('active_tour_id', 36)->nullable();
             $table->string('rotation_status', 64)->default('TOUR_IN_PROGRESS');
             $table->text('tour_domain_states')->nullable();
