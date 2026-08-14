@@ -1,0 +1,423 @@
+La reconstruction est utile, mais je ne la valide pas encore comme base propre pour rédiger 03_Taxonomy.md. Elle contient plusieurs glissements qu’il faut corriger maintenant, avant qu’ils deviennent du contrat.
+
+1. ValidationDominantIdeas ne doit pas être absorbé par Taxonomy
+
+Le rapport met dans les responsabilités Taxonomy :
+
+« Validation des idées dominantes — 18 règles individuelles + diversité collective »
+
+C’est une dérive.
+
+La roadmap officielle est :
+
+03_Taxonomy
+↓
+04_ValidationDominantIdeas
+
+Donc Taxonomy peut :
+
+générer/préparer des candidats
+↓
+les présenter au contrat de ValidationDominantIdeas
+↓
+recevoir PASS/FAIL ou résultat défini
+↓
+construire son réservoir exploitable
+
+Mais Taxonomy ne possède pas les 18 règles de validation.
+
+Ces règles appartiennent à 04_ValidationDominantIdeas.
+
+Pour 03_Taxonomy, nous devons seulement définir le contrat d’échange avec le module suivant, sans rédiger sa logique interne.
+
+2. Toute la section « Hiérarchie cognitive — 7 variantes » est hors sujet
+
+Le bloc :
+
+qcm_recognition
+qcm_reasoning
+qcm_deceptive_trap
+tf_recognition_true
+...
+
+n’appartient pas à Taxonomy.
+
+Taxonomy travaille sur :
+
+Depth
+↓
+Domain
+↓
+Subdomain
+↓
+Subject
+↓
+Dominant Idea
+
+Les 7 cognitifs appartiennent aux étapes de création de questions plus loin dans le pipeline.
+
+Ils doivent être retirés de la reconstruction Taxonomy.
+
+Même chose pour :
+
+recognition à tous les Depths, reasoning à partir de Depth 4, etc.
+
+Ce n’est pas un contrat de 03_Taxonomy.
+
+3. Il y a une contradiction majeure sur CONSUMED
+
+Le rapport dit à un endroit :
+
+confirmConsumed() est déclenché après acceptance ReadyBank.
+
+Puis plus loin :
+
+CONSUMED = atteint après que l’écriture dans Blueprint a réussi.
+
+Les deux ne peuvent pas être vrais.
+
+Et notre architecture actuelle avait précisément séparé :
+
+Taxonomy sélectionne l'IdeaSlot exact
+↓
+IdeaSlot devient celui porté par le Blueprint
+↓
+le noyau traverse le pipeline
+↓
+ReadyBank confirme CURRENT_KERNEL_RECEIVED
+↓
+consommation Taxonomy confirmée
+
+Donc l’écriture dans dominant_idea_active ne peut pas automatiquement signifier CONSUMED.
+
+Il nous faut probablement distinguer conceptuellement :
+
+FILLED
+↓
+ACTIVE / RESERVED
+↓
+porté par le Blueprint
+↓
+...
+↓
+confirmation terminale
+↓
+CONSUMED
+
+Les noms exacts seront décidés dans 03_Taxonomy, mais surtout : ne verrouillons pas CONSUMED = fillTaxonomy réussi.
+
+C’est un des sujets centraux à spécifier.
+
+4. Les éléments issus de l’implémentation ne doivent pas devenir automatiquement contractuels
+
+Le rapport mentionne :
+
+taxonomy_subject_bank
+taxonomy_dominant_idea_bank
+TaxonomyConfig
+TaxonomyGeminiClient
+TaxonomyOrchestrator
+MAX_SUBDOMAINS_PER_DOMAIN = 20
+MAX_*_GENERATION_ATTEMPTS = 3
+
+Cela peut être utile plus tard pendant l’audit du code, mais pas comme source du contrat à cette étape, sauf si chaque élément est déjà explicitement OFFICIAL dans un document verrouillé ou dans l’Architecture Register.
+
+En particulier :
+
+MAX_SUBDOMAINS_PER_DOMAIN = 20
+
+Je ne veux pas le voir entrer dans 03_Taxonomy simplement parce qu’une constante existe.
+
+Même chose pour :
+
+3 tentatives Gemini
+
+Ça ressemble à une politique technique actuelle, pas à une règle métier déjà verrouillée.
+
+Il faut pour chacun répondre :
+
+OFFICIAL dans Register/spec verrouillée
+→ conserver
+
+
+seulement présent dans ancien code/doc technique
+→ ne pas utiliser comme contrat
+5. peekNext() et confirmConsumed() ne doivent pas être sacralisés par leur nom actuel
+
+Nous savons que Taxonomy doit conceptuellement fournir :
+
+prochain territoire exploitable
+
+et plus tard recevoir :
+
+confirmation exacte de consommation
+
+Mais justement, l’actuel :
+
+confirmConsumed(depth, domain)
+
+est déjà identifié comme défectueux parce qu’il ne transporte pas l’identité exacte de l’IdeaSlot.
+
+Donc le nom/API actuel ne doit pas être présenté comme interface officielle héritée.
+
+La spécification doit partir du besoin :
+
+SELECT exact Taxonomy unit
+↓
+conserver son identité
+↓
+écrire cette même unité dans Blueprint
+↓
+confirmer plus tard cette même identité
+
+Puis seulement nous définirons le contrat/API approprié.
+
+6. Le transport des signaux n’est PAS une décision manquante pour verrouiller Taxonomy
+
+La liste indique :
+
+« Transport physique exact du canal d’épuisement »
+
+comme décision manquante.
+
+Non.
+
+DEC-087 dit déjà que c’est un détail d’implantation.
+
+Pour verrouiller l’architecture, nous devons savoir :
+
+qui produit ?
+Taxonomy
+
+
+quoi ?
+DOMAIN_EXHAUSTED / DEPTH_EXHAUSTED
+
+
+quand ?
+après constat réel correspondant
+
+
+portée ?
+prospective
+
+
+quand KRP agit ?
+au prochain CURRENT_KERNEL_RECEIVED
+
+
+garanties ?
+ordre / persistance / idempotence / atomicité appropriée
+
+Que ce soit ensuite :
+
+Outbox
+event
+return object
+table
+
+ne doit pas bloquer 03_Taxonomy.
+
+Donc le point 10 doit sortir des décisions architecturales manquantes.
+
+7. IMPASSE-KRP-001 ne doit pas être attribuée automatiquement à Taxonomy
+
+La bonne formulation est :
+
+IMPASSE-KRP-001
+=
+frontière inter-module
+KRP → Orchestration → Taxonomy
+
+03_Taxonomy doit nous permettre de déterminer :
+
+quel état Taxonomy possède lorsqu’elle commence le travail ;
+ce qui se passe si sa préparation échoue ;
+ce qui est retryable ou non ;
+quand le Blueprint peut être considéré engagé ;
+quelle information Taxonomy peut retourner à l’orchestration.
+
+Mais il ne faut pas présupposer :
+
+« Taxonomy doit récupérer l’orphelin ».
+
+La responsabilité finale pourrait appartenir à l’orchestration ou découler d’un contrat commun. Nous déciderons après avoir spécifié les états Taxonomy.
+
+Donc les vraies questions de 03_Taxonomy
+
+Après nettoyage, je ramènerais l’agenda à ceci :
+
+1. Structure exacte du bassin Depth + Domain
+
+
+2. Cycle Subdomain
+   - création
+   - sélection
+   - actif
+   - épuisement
+   - suivant
+   - Domain réellement épuisé
+
+
+3. Structure SubjectBank
+   - max ou cible ?
+   - lifecycle SubjectSlot
+   - critères exploitables
+   - passage au suivant
+
+
+4. Structure IdeaBank
+   - max 5 confirmé
+   - lifecycle exact IdeaSlot
+   - EMPTY
+   - candidat
+   - validé
+   - actif/réservé
+   - consommé
+
+
+5. Contrat avec 04_ValidationDominantIdeas
+   - ce que Taxonomy lui soumet
+   - ce qu'elle récupère
+   - sans définir les règles VDI elles-mêmes
+
+
+6. Identité permanente
+   SubjectSlot ID
+   IdeaSlot ID
+   sélection exacte
+   confirmation exacte
+
+
+7. Readiness
+   Quand un Subject devient exploitable ?
+   Zéro idée valide ?
+   1 idée valide ?
+   faut-il un minimum ?
+
+
+8. Sélection
+   Comment Taxonomy choisit exactement
+   subdomain + subject + idea ?
+
+
+9. Moment d'écriture Blueprint
+
+
+10. Moment exact de consommation réelle
+
+
+11. Retour dans le même bassin
+    reprise du state persistant
+
+
+12. DOMAIN_EXHAUSTED
+
+
+13. DEPTH_EXHAUSTED
+
+
+14. erreurs/retry/reprise Taxonomy
+
+
+15. IMPASSE-KRP-001
+    à résoudre seulement après définition des états précédents
+
+
+16. persistance/idempotence
+Ce que je demanderais maintenant à Replit
+
+Pas encore 03_Taxonomy.md v1.0. D’abord un nettoyage de reconstruction :
+
+#160B — NETTOYAGE DE LA RECONSTRUCTION 03_TAXONOMY
+
+
+Entrées certaines:
+...
+
+
+Sorties certaines:
+...
+
+
+Slots Blueprint possédés:
+...
+
+
+Données/réservoirs certains:
+...
+
+
+Contrat sémantique de sélection:
+...
+
+
+Contrat sémantique de confirmation de consommation:
+...
+
+
+Moment de consommation actuellement certain:
+...
+
+
+Points encore inconnus sur consommation:
+...
+
+
+Relation avec 04_ValidationDominantIdeas:
+...
+
+
+Lifecycle Subdomain connu:
+...
+
+
+Lifecycle SubjectSlot connu:
+...
+
+
+Lifecycle IdeaSlot connu:
+...
+
+
+Readiness connue:
+...
+
+
+DOMAIN_EXHAUSTED certain:
+...
+
+
+DEPTH_EXHAUSTED certain:
+...
+
+
+Éléments provenant seulement du code/legacy:
+...
+
+
+Éléments OFFICIAL réellement réutilisables:
+...
+
+
+IMPASSE-KRP-001:
+...
+
+
+Décisions TAXONOMY réellement manquantes:
+1.
+2.
+...
+
+
+Code modifié:
+NON
+
+
+VERDICT:
+BASE PROPRE POUR SPEC 03 / ENCORE CONTAMINÉE
+
+
+Puis STOP.
+
+Une fois ce nettoyage fait, on pourra commencer la vraie spécification 03_Taxonomy v1.0 sans traîner avec nous l’ancien code ni les responsabilités de 04_ValidationDominantIdeas.
