@@ -471,6 +471,11 @@ class KernelPipelineOrchestratorTest extends TestCase
      *
      * Aucune classe finale mockée — erreur DB réelle provoquée par le schéma de test.
      * KernelRotationPlanner reste final.
+     *
+     * ⚠ LIMITE DE CE TEST : SQLite in-memory, schéma volontairement incomplet.
+     * Ce test prouve la propriété transactionnelle (atomicité du ROLLBACK).
+     * Il ne remplace PAS la validation PostgreSQL réelle (concurrence, locks FOR UPDATE,
+     * isolation de niveau READ COMMITTED / REPEATABLE READ) exigée avant validation terminale.
      */
     public function test_exception_inside_transaction_leaves_zero_durable_blueprints(): void
     {

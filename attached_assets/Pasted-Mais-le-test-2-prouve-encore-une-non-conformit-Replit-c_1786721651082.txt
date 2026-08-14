@@ -1,0 +1,327 @@
+Mais le test 2 prouve encore une non-conformité
+
+Replit confirme lui-même :
+
+transaction KRP
+→ COMMIT
+
+puis
+
+Taxonomy.peekNext()
+→ exception
+
+résultat :
+Blueprint CREATED_UNENGAGED durable
+
+Donc il existe toujours :
+
+Blueprint créé
+↓
+rotation inscrite
+↓
+COMMIT
+↓
+Taxonomy échoue
+↓
+Blueprint canonique reste actif
+
+et potentiellement :
+
+prochain cycle
+↓
+Factory
+↓
+single-active guard
+↓
+REFUS
+
+Il ne faut surtout pas que Replit décide lui-même comment résoudre ça, car nous arrivons précisément à la frontière avec 03_Taxonomy.
+
+La bonne réponse est donc maintenant de nommer cette impasse, pas d’inventer un recovery.
+
+À envoyer à Replit
+STOP SUR CE POINT.
+
+Le rétablissement de `final class KernelRotationPlanner` est conforme.
+
+La modification du code de production uniquement pour faciliter
+un mock est maintenant corrigée.
+
+Cependant ton Test 2 révèle une vraie frontière architecturale :
+
+transaction KRP
+→ resolve
+→ Factory
+→ fillRotation / state KRP
+→ COMMIT
+
+puis
+
+Taxonomy.peekNext()
+→ exception
+
+→ Blueprint CREATED_UNENGAGED durable.
+
+==================================================
+RÈGLE ARCHITECTURE FIGÉE
+==================================================
+
+Tu n'as PAS l'autorisation de résoudre ce problème en inventant :
+
+- auto-recovery ;
+- cleanup automatique ;
+- nouvel execution_state ;
+- nouvelle transition Blueprint ;
+- retry Taxonomy ;
+- suppression automatique du Blueprint ;
+- timeout ;
+- nouvelle transaction compensatoire métier ;
+- commande Artisan comme comportement normal ;
+- nouveau signal ;
+- modification du single-active guard.
+
+Pourquoi :
+
+la résolution de ce cas touche la frontière :
+
+KernelBlueprint
+→ KRP
+→ Taxonomy
+
+et le comportement de Taxonomy après réception d'un Blueprint
+appartient au futur contrat 03_Taxonomy.
+
+==================================================
+NOMMER L'IMPASSE
+==================================================
+
+Enregistre explicitement :
+
+IMPASSE-KRP-001
+
+Type :
+FRONTIÈRE INTER-MODULE
+
+Modules concernés :
+01_KernelBlueprint
+02_KernelRotationPlanner
+03_Taxonomy
+
+Situation :
+
+KRP a correctement créé et rempli le Blueprint
+et committé sa responsabilité.
+
+Taxonomy est ensuite appelée.
+
+Si Taxonomy échoue avant de remplir ses slots,
+le Blueprint canonique peut rester :
+
+CREATED_UNENGAGED
+
+ou dans l'état exact actuellement observé.
+
+Conséquence :
+
+le single-active guard peut empêcher la création
+du Blueprint suivant.
+
+Ce qui manque :
+
+le contrat officiel de 03_Taxonomy doit définir
+le comportement lorsque Taxonomy ne peut pas poursuivre
+après qu'un Blueprint KRP valide existe.
+
+Code inventé pour résoudre cette impasse :
+NON.
+
+Décision architecturale prise :
+NON.
+
+LOT C commencé :
+NON.
+
+==================================================
+IMPORTANT — NE PAS RECLASSER L'ERREUR
+==================================================
+
+Ne dis pas :
+
+"hors scope donc acceptable".
+
+La bonne formulation est :
+
+"impasse inter-module identifiée,
+non résoluble dans 02_KRP sans inventer le contrat 03_Taxonomy".
+
+KRP ne doit pas absorber une responsabilité Taxonomy.
+
+==================================================
+TEST 1
+==================================================
+
+Conserver la preuve :
+
+exception AVANT COMMIT KRP
+→ rollback complet
+→ 0 Blueprint durable.
+
+Mais ajoute clairement que le test SQLite avec schéma volontairement
+incomplet est un test de rollback transactionnel technique.
+
+Il ne remplace pas la validation PostgreSQL réelle de concurrence
+et transaction qui sera exigée avant validation terminale.
+
+==================================================
+CYCLE_TARGET
+==================================================
+
+Il reste également à fermer le RED FLAG précédent.
+
+Retourne le scan exact du code ACTIF pour :
+
+nextRequiredDepth
+incrementCycleCompleted
+cycle_target
+cycle_completed
+
+Pour chacun :
+
+- fichier ;
+- méthode ;
+- caller runtime ;
+- caller test ;
+- statut :
+  ACTIF
+  LEGACY NON APPELÉ
+  TEST SEULEMENT.
+
+DEPTH_EXHAUSTED(10) + CURRENT_KERNEL_RECEIVED
+doit atteindre PRODUCTION_ON_HOLD
+SANS aucune saturation DepthMatrix.
+
+Si ce test dépend encore de cycle_target/cycle_completed :
+
+LOT B = FAIL.
+
+==================================================
+NETTOYAGE CODE AUTONOME
+==================================================
+
+Audite également :
+
+ApplyCurrentKernelReceivedToRotation
+applyEmptyAndGetNext
+
+Si zéro caller runtime :
+
+SUPPRIMER.
+
+Ne conserve pas du code métier SUPERSEDED simplement avec @deprecated.
+
+Même règle pour les fichiers tests V1/V2 vides :
+
+si aucun contenu réel :
+SUPPRIMER.
+
+==================================================
+RETOUR ATTENDU
+==================================================
+
+#156 — ÉTAT FINAL AVANT CLEANUP
+
+KernelRotationPlanner final:
+PASS/FAIL
+
+Rollback avant COMMIT:
+PASS/FAIL
+
+Blueprint durable après rollback avant COMMIT:
+...
+
+IMPASSE-KRP-001 enregistrée:
+OUI/NON
+
+Cause:
+...
+
+Solution inventée:
+NON/OUI
+
+Décision requise de 03_Taxonomy:
+OUI/NON
+
+nextRequiredDepth runtime:
+...
+
+incrementCycleCompleted runtime:
+...
+
+cycle_target autorité runtime:
+OUI/NON
+
+cycle_completed autorité runtime:
+OUI/NON
+
+DEPTH_EXHAUSTED(10)+CKR sans saturation matrix:
+PASS/FAIL
+
+ApplyCurrentKernelReceivedToRotation callers:
+...
+
+ApplyCurrentKernelReceivedToRotation:
+SUPPRIMÉ / CONSERVÉ + justification
+
+applyEmptyAndGetNext callers:
+...
+
+applyEmptyAndGetNext:
+SUPPRIMÉ / CONSERVÉ + justification
+
+Stubs tests V1/V2:
+SUPPRIMÉS / autre
+
+Tests PostgreSQL réels encore requis:
+...
+
+Écarts autonomes KRP restants:
+...
+
+Impasses dépendantes de 03_Taxonomy:
+...
+
+#158 autorisable:
+OUI/NON
+
+Puis STOP.
+
+Aucune nouvelle architecture.
+Aucun LOT C.
+Aucun 03_Taxonomy.
+Où nous en sommes
+
+Le comportement attendu de Replit doit désormais être systématique :
+
+Spécification figée
+        ↓
+Je peux l'implanter ?
+        ↓
+OUI → je code exactement le contrat
+        ↓
+NON
+        ↓
+Je nomme l'IMPASSE
+        ↓
+STOP sur cette dépendance
+
+et jamais :
+
+Je rencontre un problème
+        ↓
+j'invente un mécanisme
+        ↓
+je l'ajoute au code
+        ↓
+je déclare les tests verts
+
+C’est précisément cette discipline qui empêchera maintenant Replit de faire dériver StrategyBuzzer pendant l’implantation.

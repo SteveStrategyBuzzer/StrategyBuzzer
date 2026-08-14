@@ -31,11 +31,6 @@ use RuntimeException;
  *     Écrit depth + domain dans le Blueprint (fillRotation — write-once).
  *     Persiste active_depth + domain_position dans l'état V2.
  *
- *   applyEmptyAndGetNext(int $emptyDepth, string $emptyDomain) : array
- *     ⚠ LEGACY SUPERSEDED — conservé jusqu'à LOT C (branchement Taxonomy → KRP).
- *     Avance le DomainCycle via tour_domain_states (DepthTourState).
- *     Retourne [int $newDepth, ?string $newDomain] ; null = PRODUCTION_ON_HOLD.
- *
  *   receiveDomainExhausted(int $depth, string $domain) : void
  *     Reçoit le signal DOMAIN_EXHAUSTED de Taxonomy (LOT C → produit en V4).
  *     Marque domain_states[depth][domain] = DOMAIN_EXHAUSTED (idempotent).
@@ -74,7 +69,7 @@ final class KernelRotationPlanner
     /** Résultat de resolveNextRotation : rotation disponible. */
     public const RESULT_ROTATION_ASSIGNED  = 'ROTATION_ASSIGNED';
 
-    /** Résultat de resolveNextRotation / applyEmptyAndGetNext : aucun besoin actif. */
+    /** Résultat de resolveNextRotation : aucun besoin actif. */
     public const RESULT_PRODUCTION_ON_HOLD = 'PRODUCTION_ON_HOLD';
 
     // =========================================================================
@@ -232,86 +227,6 @@ final class KernelRotationPlanner
             'domain_position' => $domainPosition,
             'updated_at'      => now(),
         ]);
-    }
-
-    // =========================================================================
-    // V3 — EMPTY loop (legacy SUPERSEDED — conservée jusqu'à LOT C)
-    // =========================================================================
-
-    /**
-     * Applique un signal EMPTY sur un Domaine et retourne le prochain [depth, domain].
-     *
-     * ⚠ Architecture SUPERSEDED — LOT C supprimera cette méthode lors du branchement
-     * des signaux Taxonomy → KRP (receiveDomainExhausted / receiveDepthExhausted).
-     *
-     * Mécanisme legacy (DepthTourState / tour_domain_states) :
-     *   - Domaine ON → OFF dans le tour courant.
-     *   - Tour 8/8 : cycle_completed++ → prochain Depth (ou PRODUCTION_ON_HOLD).
-     *   - Tour incomplet : retourne le prochain Domaine ON.
-     *
-     * @return array{0: int, 1: string|null}
-     *   [newDepth, newDomain] — $newDomain === null = PRODUCTION_ON_HOLD.
-     */
-    public function applyEmptyAndGetNext(int $emptyDepth, string $emptyDomain): array
-    {
-        $result = [$emptyDepth, null];
-
-        DB::transaction(function () use ($emptyDepth, $emptyDomain, &$result) {
-            $state = DB::table(self::STATE_TABLE_V2)->lockForUpdate()->first();
-
-            if ($state === null) {
-                throw new RuntimeException(
-                    '[KRP] STOP — applyEmptyAndGetNext appelé sans état V2 initialisé.'
-                );
-            }
-
-            $tourData  = json_decode((string) ($state->tour_domain_states ?? '{}'), true);
-            $tourState = $this->makeTourState($tourData);
-
-            $newTourState = $tourState->applyEmpty($emptyDomain);
-
-            if ($newTourState->isTourComplete()) {
-                // ── Tour 8/8 → avancer au Depth suivant ──────────────────────
-                $depthMatrix = new DepthNeedMatrix();
-                $depthMatrix->incrementCycleCompleted($emptyDepth);
-                $nextDepth = $depthMatrix->nextRequiredDepth($emptyDepth);
-
-                if ($nextDepth === null) {
-                    // Tous les Depths saturés → PRODUCTION_ON_HOLD
-                    DB::table(self::STATE_TABLE_V2)->whereNotNull('id')->update([
-                        'depth_state'        => 'PRODUCTION_ON_HOLD',
-                        'tour_domain_states' => json_encode($newTourState->toArray()),
-                        'lock_version'       => (int) $state->lock_version + 1,
-                        'updated_at'         => now(),
-                    ]);
-                    $result = [$emptyDepth, null];
-                } else {
-                    $freshTour  = DepthTourState::initTour();
-                    $nextDomain = $freshTour->getNextOnDomain(null); // 'geographie'
-
-                    DB::table(self::STATE_TABLE_V2)->whereNotNull('id')->update([
-                        'active_depth'       => $nextDepth,
-                        'depth_state'        => 'ROTATION_ACTIVE',
-                        'tour_domain_states' => json_encode($freshTour->toArray()),
-                        'lock_version'       => (int) $state->lock_version + 1,
-                        'updated_at'         => now(),
-                    ]);
-                    $result = [$nextDepth, $nextDomain];
-                }
-            } else {
-                // ── Tour encore en cours → prochain Domaine ON ────────────────
-                $nextDomain = $newTourState->getNextOnDomain($emptyDomain);
-
-                DB::table(self::STATE_TABLE_V2)->whereNotNull('id')->update([
-                    'tour_domain_states' => json_encode($newTourState->toArray()),
-                    'lock_version'       => (int) $state->lock_version + 1,
-                    'updated_at'         => now(),
-                ]);
-                $result = [$emptyDepth, $nextDomain];
-            }
-        });
-
-        return $result;
     }
 
     // =========================================================================
