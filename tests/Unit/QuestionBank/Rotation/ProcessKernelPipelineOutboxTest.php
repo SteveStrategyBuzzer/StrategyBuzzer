@@ -448,8 +448,6 @@ class ProcessKernelPipelineOutboxTest extends TestCase
             $table->text('domain_states')->nullable();
             $table->integer('pending_depth_exhausted_depth')->nullable();
             $table->integer('domain_position')->nullable();
-            $table->string('active_tour_id', 36)->nullable();
-            $table->string('rotation_status', 64)->default('TOUR_IN_PROGRESS');
             $table->text('tour_domain_states')->nullable();
             $table->string('active_blueprint_identity', 36)->nullable();
             $table->string('last_counted_blueprint_identity', 36)->nullable();

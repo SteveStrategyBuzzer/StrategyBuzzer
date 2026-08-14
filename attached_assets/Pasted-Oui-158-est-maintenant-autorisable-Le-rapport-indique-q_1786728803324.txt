@@ -1,0 +1,427 @@
+Oui. #158 est maintenant autorisable. Le rapport indique que LOT A+B sont conformes, que DepthCycle pilote directement les transitions, et que les deux colonnes visées par #158 ont zéro lecteur/writer runtime.
+
+Mais #158 doit rester strictement un cleanup de schéma. Il ne doit surtout pas devenir une occasion de « nettoyer » d’autres éléments ou de modifier l’architecture.
+
+Envoie ceci à Replit :
+
+#158 — CLEANUP CIBLÉ DES COLONNES LEGACY KRP
+
+AUTORISATION D'IMPLANTATION.
+
+Source de vérité :
+
+02_KernelRotationPlanner.md v3.2
+VERROUILLÉ
+
+État préalable confirmé :
+
+LOT A : PASS
+LOT B : PASS
+
+IMPASSE-KRP-001 :
+CONSERVÉE
+NON RÉSOLUE
+DÉPEND DE 03_TAXONOMY
+
+KRP-GAP-IMPLEMENTATION-002 :
+CORRIGÉ
+
+==================================================
+RÈGLE ABSOLUE — NE PAS ÉLARGIR #158
+==================================================
+
+#158 autorise UNIQUEMENT le cleanup de :
+
+kernel_rotation_state_v2.rotation_status
+
+kernel_rotation_state_v2.active_tour_id
+
+RIEN D'AUTRE.
+
+Tu n'as PAS l'autorisation de supprimer dans cette tâche :
+
+- cycle_target ;
+- cycle_completed ;
+- current_tour_id ;
+- empty_progress_current_tour ;
+- tour_domain_states ;
+- DepthNeedMatrix ;
+- DepthNeedMatrixRepository ;
+- autres colonnes ;
+- autres tables.
+
+Même si certains éléments semblent legacy.
+
+Pourquoi :
+
+#158 a été audité et autorisé uniquement pour :
+
+rotation_status
+active_tour_id.
+
+Toute autre suppression nécessite son propre audit
+et son autorisation explicite.
+
+==================================================
+1 — ARCHITECTURE FIGÉE
+==================================================
+
+Tu ne changes aucune règle KRP.
+
+Tu codes avec ce qui est déjà figé.
+
+Tu ne modifies pas :
+
+- DepthCycle ;
+- DomainCycle ;
+- domain_position ;
+- domain_states ;
+- depth_state ;
+- pending_depth_exhausted_depth ;
+- CURRENT_KERNEL_RECEIVED ;
+- receiveDomainExhausted ;
+- receiveDepthExhausted ;
+- resolveNextRotation ;
+- applyRotation ;
+- PRODUCTION_ON_HOLD ;
+- KernelBlueprint ;
+- Taxonomy.
+
+Aucune nouvelle DEC.
+
+Aucune nouvelle règle métier.
+
+Si tu rencontres une impossibilité :
+
+NOMME UNE IMPASSE.
+
+Ne contourne rien.
+
+==================================================
+2 — SCAN FINAL AVANT DROP
+==================================================
+
+Avant d'appliquer la migration, refaire un scan repository complet
+pour les DEUX colonnes :
+
+rotation_status
+active_tour_id
+
+Pour chacune, confirmer :
+
+readers runtime = 0
+writers runtime = 0
+CLI = 0
+listeners = 0
+jobs/workers = 0
+tests actifs = 0
+seeders = 0
+factories = 0
+repositories = 0
+commands = 0
+
+Les anciennes migrations historiques peuvent naturellement
+contenir leur définition originale.
+
+NE modifie PAS une ancienne migration déjà appliquée.
+
+Si un caller actif est découvert :
+
+STOP.
+
+Retourner :
+
+IMPASSE-158-001
+ou
+GAP-158-001
+
+selon qu'il manque une décision ou qu'il s'agit simplement
+d'un code legacy à corriger.
+
+Ne DROP pas la colonne avant résolution.
+
+==================================================
+3 — MIGRATION CLEANUP
+==================================================
+
+Créer UNE nouvelle migration de cleanup.
+
+Exemple de responsabilité :
+
+drop_rotation_status_and_active_tour_id_from_kernel_rotation_state_v2
+
+Elle doit retirer uniquement :
+
+rotation_status
+active_tour_id
+
+de :
+
+kernel_rotation_state_v2.
+
+Ne réécris pas les migrations historiques.
+
+Ne reset aucune donnée KRP.
+
+Ne reconstruis pas RotationState.
+
+Ne change aucune valeur de :
+
+depth_state
+domain_states
+pending_depth_exhausted_depth
+domain_position
+active_depth
+active_blueprint_identity
+lock_version.
+
+==================================================
+4 — TEST SCHEMAS
+==================================================
+
+Mettre à jour uniquement les schémas de tests
+qui créent encore artificiellement :
+
+rotation_status
+active_tour_id.
+
+Le rapport précédent identifie notamment :
+
+KernelMigrationSchemaTest
+ProcessKernelPipelineOutboxTest
+SeededBankRotationBlueprintTest
+
+Retirer seulement ces deux colonnes de leurs setups.
+
+Ne change pas la logique métier des tests
+pour les faire passer.
+
+==================================================
+5 — VALIDATION APRÈS MIGRATION
+==================================================
+
+Vérifier que :
+
+Schema::hasColumn(
+  'kernel_rotation_state_v2',
+  'rotation_status'
+)
+= false
+
+Schema::hasColumn(
+  'kernel_rotation_state_v2',
+  'active_tour_id'
+)
+= false
+
+Et que les colonnes KRP v3.2 existent toujours :
+
+depth_state
+domain_states
+pending_depth_exhausted_depth
+domain_position
+active_depth
+active_blueprint_identity
+lock_version
+
+selon le schéma réellement verrouillé/implanté.
+
+==================================================
+6 — TESTS OBLIGATOIRES
+==================================================
+
+Après cleanup :
+
+exécuter au minimum :
+
+- KernelRotationPlannerV3Test
+- KernelPipelineOrchestratorTest
+- ProcessKernelPipelineOutboxTest
+- KernelMigrationSchemaTest
+- SeededBankRotationBlueprintTest
+- tests Blueprint impactés
+- suite Rotation complète
+- suite QuestionBank pertinente
+
+Puis vérifier explicitement encore :
+
+2→4 PASS
+4→6 PASS
+6→7 PASS
+7→8 PASS
+8→9 PASS
+9→10 PASS
+10→PRODUCTION_ON_HOLD PASS
+
+sans cycle_target/cycle_completed comme autorité.
+
+==================================================
+7 — NE PAS TOUCHER À IMPASSE-KRP-001
+==================================================
+
+IMPASSE-KRP-001 reste ouverte :
+
+KRP commit correctement son Blueprint
+↓
+Taxonomy est appelée
+↓
+si Taxonomy échoue
+↓
+le contrat de reprise inter-module reste à définir.
+
+Dans #158 :
+
+NE PAS :
+
+- créer recovery ;
+- supprimer automatiquement Blueprint ;
+- ajouter nouvel état ;
+- changer single-active guard ;
+- modifier Taxonomy ;
+- modifier orchestration pour inventer une reprise ;
+- commencer LOT C.
+
+Cette impasse reste simplement documentée.
+
+==================================================
+8 — VALIDATION POSTGRESQL RÉELLE
+==================================================
+
+Après #158, ne déclare pas encore KRP terminalement validé
+uniquement sur la base des tests SQLite.
+
+Nous devons encore obtenir la validation PostgreSQL réelle
+des invariants critiques déjà figés :
+
+- FOR UPDATE ;
+- concurrence entre deux orchestrations ;
+- exactement un Blueprint ;
+- exactly-once CURRENT_KERNEL_RECEIVED ;
+- rollback transactionnel ;
+- concurrence receiveDomainExhausted ;
+- concurrence receiveDepthExhausted.
+
+Pour #158 lui-même, ne crée aucune nouvelle architecture
+pour ces tests.
+
+Retourne simplement ce qui a réellement été exécuté
+sur PostgreSQL/Neon et ce qui reste à valider.
+
+==================================================
+9 — RETOUR ATTENDU
+==================================================
+
+Retourne uniquement :
+
+#158 — CLEANUP KRP LEGACY COLUMNS
+
+Scan rotation_status avant DROP:
+
+Readers runtime:
+...
+
+Writers runtime:
+...
+
+Tests actifs:
+...
+
+Autres callers:
+...
+
+Scan active_tour_id avant DROP:
+
+Readers runtime:
+...
+
+Writers runtime:
+...
+
+Tests actifs:
+...
+
+Autres callers:
+...
+
+Migration créée:
+...
+
+rotation_status supprimée:
+PASS/FAIL
+
+active_tour_id supprimée:
+PASS/FAIL
+
+Autres colonnes supprimées:
+AUCUNE / ...
+
+Données KRP reset:
+NON/OUI
+
+Architecture modifiée:
+NON/OUI
+
+Nouvelle règle métier:
+NON/OUI
+
+Nouvelle DEC:
+NON/OUI
+
+Tests schemas mis à jour:
+...
+
+Tests exécutés:
+...
+
+Tests GREEN:
+...
+
+DepthCycle 2→4→6→7→8→9→10:
+PASS/FAIL
+
+Depth10→PRODUCTION_ON_HOLD:
+PASS/FAIL
+
+cycle_target autorité KRP:
+NON/OUI
+
+cycle_completed autorité KRP:
+NON/OUI
+
+IMPASSE-KRP-001:
+CONSERVÉE / autre
+
+Tests PostgreSQL réels exécutés:
+...
+
+Tests PostgreSQL encore requis:
+...
+
+Écarts autonomes KRP restant:
+...
+
+#158:
+PASS/FAIL
+
+VERDICT:
+CLEANUP CONFORME / CORRECTION REQUISE
+
+Puis STOP.
+
+Ne commence pas LOT C.
+Ne commence pas 03_Taxonomy.
+Après #158
+
+La séquence correcte sera :
+
+#158 cleanup
+↓
+validation du schéma
+↓
+suite KRP GREEN
+↓
+validation PostgreSQL réelle
+↓
+bilan terminal de 02_KernelRotationPlanner
+
+Et seulement à ce bilan terminal, on décidera comment classer IMPASSE-KRP-001 par rapport à la fermeture officielle de KRP. On ne doit pas laisser cette impasse nous forcer à inventer Taxonomy prématurément.

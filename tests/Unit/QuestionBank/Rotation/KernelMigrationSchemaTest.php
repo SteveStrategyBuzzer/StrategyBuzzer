@@ -222,8 +222,6 @@ class KernelMigrationSchemaTest extends TestCase
         Schema::create('kernel_rotation_state_v2', function (Blueprint $table) {
             $table->id();
             $table->smallInteger('active_depth')->nullable();
-            $table->string('active_tour_id', 36)->nullable();
-            $table->string('rotation_status', 64)->default('TOUR_IN_PROGRESS');
             $table->text('tour_domain_states')->nullable();
             $table->string('active_blueprint_identity', 36)->nullable();
             $table->string('last_counted_blueprint_identity', 36)->nullable();
