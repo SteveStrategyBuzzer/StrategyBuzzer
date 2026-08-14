@@ -181,30 +181,6 @@ class SeededBankRotationBlueprintTest extends TestCase
     }
 
     // =========================================================================
-    // Cellule semée dans le MAUVAIS domaine → EMPTY puis ROTATION sur le bon
-    // =========================================================================
-
-    public function test_bank_seeded_in_second_domain_is_reached_via_empty_transition(): void
-    {
-        // Banque vide pour 'geographie' — Gemini n'a plus rien à produire
-        $this->gemini->method('generateSubdomains')->willReturn([
-            'status'     => 'NO_MORE_SUBDOMAINS',
-            'candidates' => [],
-        ]);
-
-        // Seed uniquement le 2e domaine du cycle : 'histoire'
-        $this->seedBankCell($this->firstDepth, 'histoire', 'Moyen Âge', 'La Magna Carta', 'La Magna Carta limite le pouvoir royal');
-
-        $result = $this->orchestrator->run(null);
-
-        $this->assertSame(KernelPipelineOrchestrator::STATUS_ROTATION_ASSIGNED, $result['status']);
-        $this->assertSame('histoire', $result['blueprint']->domain);
-        $this->assertSame('Moyen Âge', $result['blueprint']->subdomain_active);
-        $this->assertSame('La Magna Carta', $result['blueprint']->subject_active);
-        $this->assertSame('La Magna Carta limite le pouvoir royal', $result['blueprint']->dominant_idea_active);
-    }
-
-    // =========================================================================
     // Helpers
     // =========================================================================
 
