@@ -1,0 +1,154 @@
+La suite officielle est maintenant :
+
+01_KernelBlueprint
+✅ implanté
+
+
+02_KernelRotationPlanner
+✅ implanté
+Validation terminale globale reportée
+
+
+↓
+03_Taxonomy
+PHASE DE SPÉCIFICATION
+
+Et surtout : aucun code Taxonomy maintenant. On repart selon ta méthode :
+
+Constitution Cognitive
+↓
+Architecture Register
+↓
+01_KernelBlueprint verrouillé
+↓
+02_KernelRotationPlanner verrouillé + implanté
+↓
+IMPASSE-KRP-001
+↓
+03_Taxonomy
+↓
+spécification complète
+↓
+Architecture Register
+↓
+VERROUILLAGE
+↓
+seulement ensuite audit du code Taxonomy
+Première demande à Replit
+
+Je commencerais par lui faire reconstruire l’existant documentaire uniquement, sans regarder le code comme source d’architecture :
+
+==================================================
+
+
+Contrats hérités de KernelBlueprint:
+...
+
+
+Contrats hérités de KRP:
+...
+
+
+Responsabilités Taxonomy déjà certaines:
+...
+
+
+Interdictions déjà certaines:
+...
+
+
+Hiérarchie cognitive:
+...
+
+
+Structure SubjectSlots:
+...
+
+
+Structure IdeaSlots:
+...
+
+
+Règles de préparation déjà certaines:
+...
+
+
+Invariant identité de consommation:
+...
+
+
+Autorité DOMAIN_EXHAUSTED:
+...
+
+
+Autorité DEPTH_EXHAUSTED:
+...
+
+
+Progression Subdomain connue:
+COMPLÈTE / PARTIELLE / INCONNUE
+Détails:
+...
+
+
+Progression Subject connue:
+COMPLÈTE / PARTIELLE / INCONNUE
+Détails:
+...
+
+
+Progression Idea connue:
+COMPLÈTE / PARTIELLE / INCONNUE
+Détails:
+...
+
+
+Lifecycle SubjectSlot connu:
+...
+
+
+Lifecycle IdeaSlot connu:
+...
+
+
+IMPASSE-KRP-001 impacte Taxonomy:
+OUI/NON
+Pourquoi:
+...
+
+
+Décisions déjà OFFICIAL pertinentes:
+...
+
+
+Décisions encore manquantes pour verrouiller Taxonomy:
+...
+
+
+Impasses de spécification:
+...
+
+
+Code modifié:
+NON
+
+
+Implémentation commencée:
+NON
+
+
+VERDICT:
+RECONSTRUCTION SUFFISANTE POUR COMMENCER SPEC 03
+/
+INFORMATIONS MANQUANTES
+
+
+Puis STOP.
+
+
+Aucun code.
+Aucune migration.
+Aucun patch.
+Aucun audit du code comme source d'architecture.
+
+Après ce retour, nous commençons réellement la rédaction de 03_Taxonomy.md v1.0, section par section, jusqu’à atteindre 100 % et le verrouiller.
