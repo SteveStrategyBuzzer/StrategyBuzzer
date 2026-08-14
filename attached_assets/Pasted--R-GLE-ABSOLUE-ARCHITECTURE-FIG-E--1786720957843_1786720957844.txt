@@ -1,0 +1,267 @@
+==================================================
+RÈGLE ABSOLUE — ARCHITECTURE FIGÉE
+==================================================
+
+02_KernelRotationPlanner v3.2 est VERROUILLÉ.
+
+Cela signifie que tu n'as PLUS l'autorisation de modifier,
+réinterpréter, simplifier, compléter ou contourner son architecture.
+
+À partir de maintenant :
+
+LA SPEC FIGÉE PILOTE LE CODE.
+
+LE CODE NE PILOTE JAMAIS LA SPEC.
+
+Tu dois coder exactement l'architecture déjà décidée.
+
+==================================================
+CE QUE TU AS LE DROIT DE FAIRE
+==================================================
+
+Tu peux :
+
+- corriger le code pour le rendre conforme à KRP v3.2 ;
+- supprimer du code legacy explicitement SUPERSEDED ;
+- créer les migrations nécessaires pour atteindre l'état persistant
+  déjà défini ;
+- adapter les tests à l'architecture verrouillée ;
+- ajouter les tests nécessaires pour prouver les invariants verrouillés ;
+- choisir un détail purement technique d'implantation lorsque
+  plusieurs implémentations respectent exactement le même contrat ;
+- signaler une impossibilité technique ou une contradiction réelle.
+
+==================================================
+CE QUE TU N'AS PAS LE DROIT DE FAIRE
+==================================================
+
+Tu ne peux PAS :
+
+- changer une responsabilité ;
+- déplacer une responsabilité vers un autre module ;
+- créer une nouvelle responsabilité ;
+- créer un nouvel état métier ;
+- créer un nouveau signal métier ;
+- créer une nouvelle transition métier ;
+- changer le propriétaire d'une donnée ;
+- changer le propriétaire d'un signal ;
+- changer le DomainCycle ;
+- changer le DepthCycle ;
+- modifier la règle write-once du Blueprint ;
+- modifier CURRENT_KERNEL_RECEIVED ;
+- modifier la signification de DOMAIN_EXHAUSTED ;
+- modifier la signification de DEPTH_EXHAUSTED ;
+- faire produire un signal Taxonomy par KRP ;
+- réintroduire AVAILABLE ;
+- réintroduire SHORTFALL ;
+- réintroduire CYCLE_TARGET comme autorité ;
+- réintroduire cycle_completed comme autorité ;
+- réintroduire EMPTY comme mécanisme métier ;
+- réattribuer un Blueprint ;
+- créer overwriteRotation ;
+- interpréter peekNext(null) comme une information métier ;
+- créer une reprise automatique depuis PRODUCTION_ON_HOLD ;
+- modifier 01_KernelBlueprint ;
+- modifier 02_KernelRotationPlanner ;
+- commencer 03_Taxonomy ;
+- inventer une nouvelle DEC pour faciliter l'implantation ;
+- modifier une classe, une interface ou une frontière architecturale
+  uniquement pour faciliter un test.
+
+==================================================
+UNE IMPASSE NE DONNE JAMAIS LE DROIT DE CHANGER L'ARCHITECTURE
+==================================================
+
+Si pendant l'implantation tu rencontres une situation où :
+
+- le contrat verrouillé semble techniquement impossible ;
+- deux règles verrouillées semblent contradictoires ;
+- une donnée nécessaire n'existe pas ;
+- une migration historique ne peut pas être faite sans hypothèse ;
+- un test exige de violer le contrat ;
+- le code existant ne permet pas de respecter la frontière ;
+- une opération transactionnelle ne peut pas être garantie ;
+- un comportement dépend de 03_Taxonomy qui n'est pas encore spécifié ;
+- tu dois inventer une nouvelle règle pour continuer ;
+
+ALORS :
+
+STOP SUR CETTE IMPASSE.
+
+Tu ne corriges PAS l'architecture.
+
+Tu ne choisis PAS un comportement "raisonnable".
+
+Tu ne crées PAS un workaround métier.
+
+Tu retournes explicitement :
+
+IMPASSE-001
+Type :
+...
+
+Fichier / mécanisme concerné :
+...
+
+Contrat verrouillé concerné :
+...
+
+Ce que le code actuel permet :
+...
+
+Ce que le contrat exige :
+...
+
+Pourquoi les deux ne peuvent pas être conciliés actuellement :
+...
+
+Ce qui manque pour continuer :
+...
+
+Dépend de :
+KRP / Taxonomy / Blueprint / migration / orchestration / autre
+
+Impact si on continue sans décision :
+...
+
+Code modifié sur cette impasse :
+NON
+
+Puis tu continues uniquement les autres corrections
+qui ne dépendent PAS de cette impasse.
+
+==================================================
+RÈGLE DU VIDE
+==================================================
+
+Si une information métier manque :
+
+NE PAS INFÉRER.
+
+Si une règle est ambiguë :
+
+NE PAS CHOISIR.
+
+Si une contradiction apparaît :
+
+NE PAS CONTOURNER.
+
+Si une responsabilité n'est pas définie :
+
+NE PAS L'INVENTER.
+
+Dans chacun de ces cas :
+
+NOMMER L'IMPASSE.
+
+==================================================
+DIFFÉRENCE ENTRE CHOIX TECHNIQUE ET CHOIX ARCHITECTURAL
+==================================================
+
+CHOIX TECHNIQUE AUTORISÉ :
+
+Exemple :
+utiliser SELECT FOR UPDATE pour garantir l'atomicité déjà exigée.
+
+Le résultat métier reste identique.
+→ autorisé.
+
+CHOIX ARCHITECTURAL INTERDIT :
+
+Exemple :
+ajouter un état RECOVERY_PENDING parce qu'un crash est difficile
+à gérer.
+
+Cela modifie le contrat.
+→ interdit.
+
+Autre exemple :
+
+utiliser un DTO RotationResolution
+pour transporter une sélection déjà définie
+→ technique, autorisé.
+
+Faire de RotationResolution une nouvelle source de vérité persistante
+→ architectural, interdit sans décision.
+
+==================================================
+RÈGLE SUR LES TESTS
+==================================================
+
+Un test ne peut jamais devenir une justification
+pour modifier l'architecture.
+
+Si un test est incompatible avec la spec verrouillée :
+
+- vérifier si le test représente une architecture SUPERSEDED ;
+- si oui, le supprimer ou le réécrire ;
+- si non, signaler l'impasse.
+
+INTERDIT :
+
+modifier le code de production uniquement pour rendre un mock possible.
+
+INTERDIT notamment :
+
+retirer final d'une classe
+uniquement parce que PHPUnit ne sait pas la mocker.
+
+==================================================
+RÈGLE SUR LE LEGACY
+==================================================
+
+Le legacy ne devient jamais une exigence parce qu'il existe.
+
+Pour chaque ancien mécanisme :
+
+si compatible et encore requis par la spec :
+→ conserver.
+
+si SUPERSEDED et zéro caller nécessaire :
+→ supprimer.
+
+si temporairement nécessaire jusqu'à LOT C :
+→ isoler strictement,
+→ ne pas l'étendre,
+→ ne pas en faire dépendre le nouveau KRP.
+
+==================================================
+RÈGLE SUR LOT C
+==================================================
+
+LOT C reste INTERDIT.
+
+Donc aucune implantation actuelle ne peut :
+
+- modifier Taxonomy pour produire les nouveaux signaux ;
+- décider comment Taxonomy détecte réellement l'épuisement ;
+- modifier confirmConsumed ;
+- définir le comportement final de peekNext(null) ;
+- consommer les SubjectSlots/IdeaSlots ;
+- commencer 03_Taxonomy.
+
+Si LOT A/B nécessite réellement l'un de ces éléments :
+
+IMPASSE
+→ la nommer
+→ ne pas l'inventer.
+
+==================================================
+PRINCIPE FINAL
+==================================================
+
+Ton travail n'est plus :
+
+"trouver une architecture qui fait fonctionner le code".
+
+Ton travail est :
+
+"faire fonctionner le code EXACTEMENT selon l'architecture verrouillée".
+
+Si ce n'est pas possible :
+
+TU LE DIS.
+
+TU NOMMES L'IMPASSE.
+
+TU NE CHANGES PAS LE CONTRAT.

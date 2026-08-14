@@ -58,7 +58,7 @@ use RuntimeException;
  *            NULL = non démarré → prochain domaine = 'geographie' (index 0).
  *   DEC-093  Dans receiveKernelReceivedV2 : compteur AVANT vérification transition.
  */
-class KernelRotationPlanner
+final class KernelRotationPlanner
 {
     // =========================================================================
     // Tables

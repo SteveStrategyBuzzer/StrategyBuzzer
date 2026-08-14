@@ -455,100 +455,88 @@ class KernelPipelineOrchestratorTest extends TestCase
     }
 
     // =========================================================================
-    // Tests : Rollback transaction (#159 vérification)
+    // Tests : Rollback transaction (vérification #159)
     // =========================================================================
 
     /**
-     * Exception DANS la transaction (après Factory::create, avant COMMIT)
+     * Exception DANS la transaction (schéma état V2 incomplet → DB error réelle)
      * → ROLLBACK complet → 0 Blueprints durables.
      *
-     * Preuve : KernelRotationPlanner::registerActiveBlueprintIdentity() est mocké pour
-     * lever une exception DANS le lambda DB::transaction(). Le rollback doit annuler
-     * l'INSERT kernel_blueprint_runs effectué par Factory::create().
+     * Mécanisme : kernel_rotation_state_v2 est recréé avec seulement la colonne `id`.
+     * resolveNextRotation(null) → RotationAvailable (état vide = INIT_PROPRE).
+     * factory::create() → INSERT kernel_blueprint_runs ✅ (dans la transaction).
+     * registerActiveBlueprintIdentity() → tente INSERT avec toutes ses colonnes
+     *   → SQLite : "table has no column named depth_state" → DB exception réelle
+     *   → Laravel DB::transaction() → ROLLBACK → annule l'INSERT kernel_blueprint_runs.
+     *
+     * Aucune classe finale mockée — erreur DB réelle provoquée par le schéma de test.
+     * KernelRotationPlanner reste final.
      */
     public function test_exception_inside_transaction_leaves_zero_durable_blueprints(): void
     {
+        // Recréer kernel_rotation_state_v2 avec un schéma délibérément incomplet
+        // (seulement `id`) pour provoquer une vraie erreur DB dans la transaction.
+        Schema::dropIfExists('kernel_rotation_state_v2');
+        Schema::create('kernel_rotation_state_v2', function (Blueprint $table) {
+            $table->id(); // seulement id — toutes les colonnes métier absentes
+        });
+
         $taxonomy = $this->createMock(TaxonomyNavigatorInterface::class);
-        // peekNext ne doit jamais être appelé — l'exception surgit avant
-
-        // Mocker KernelRotationPlanner pour lancer dans registerActiveBlueprintIdentity
-        $planner = $this->getMockBuilder(KernelRotationPlanner::class)
-            ->onlyMethods(['registerActiveBlueprintIdentity'])
-            ->getMock();
-        $planner->method('registerActiveBlueprintIdentity')
-            ->willThrowException(new RuntimeException('SIMULATED CRASH inside transaction'));
-
-        $orchestrator = new KernelPipelineOrchestrator(
-            new KernelBlueprintFactory(),
-            $planner,
-            $taxonomy,
-            new KernelCodeEngine(),
-        );
+        // peekNext ne sera jamais appelé — l'exception survient avant, dans la transaction
 
         try {
-            $orchestrator->run();
-        } catch (RuntimeException $e) {
-            $this->assertStringContainsString('SIMULATED CRASH', $e->getMessage());
+            $this->makeOrchestrator($taxonomy)->run();
+        } catch (\Throwable) {
+            // DB exception attendue (colonne manquante) — propagée hors de DB::transaction()
         }
 
         $this->assertSame(0, (int) DB::table('kernel_blueprint_runs')->count(),
-            'ROLLBACK transactionnel : 0 Blueprints durables après exception dans la transaction'
-        );
-
-        $this->assertSame(0, (int) DB::table('kernel_rotation_state_v2')->count(),
-            'ROLLBACK transactionnel : état V2 non persisté'
+            'ROLLBACK transactionnel : 0 Blueprints durables. '
+            . "L'INSERT kernel_blueprint_runs (Factory::create) a bien été annulé "
+            . "avec le reste de la transaction."
         );
     }
 
     /**
-     * Exception APRÈS la transaction (applyRotation hors transaction)
-     * → Blueprint CREATED_UNENGAGED reste en DB.
+     * Exception APRÈS la transaction (peekNext throw, hors transaction)
+     * → Blueprint CREATED_UNENGAGED reste en DB (orphelin post-COMMIT).
      *
-     * Ce test documente le risque orphelin post-COMMIT :
-     * l'orchestre commit Factory::create + registerActiveBlueprintIdentity,
-     * puis appelle applyRotation hors transaction. Une exception là laisse
-     * un Blueprint CREATED_UNENGAGED durable.
+     * La transaction gate commit Blueprint + état avant peekNext.
+     * Si peekNext lève une exception (hors transaction), Blueprint reste CREATED_UNENGAGED.
      *
-     * VERDICT : #159 telle que formulée (recovery automatique) = INUTILE/REJETÉE.
-     * Le vrai correctif est de placer applyRotation dans une transaction séparée
-     * qui supprime le Blueprint en cas d'échec — hors scope LOT A+B.
+     * TaxonomyNavigatorInterface est une interface → mock autorisé.
+     * Aucune classe finale modifiée.
+     *
+     * VERDICT #159 : la transaction gate EST correcte (0 Blueprint si crash dedans).
+     * L'orphelin post-COMMIT est réel mais documenté — hors scope LOT A+B.
      */
     public function test_exception_after_transaction_leaves_blueprint_created_unengaged(): void
     {
-        // Mocker applyRotation pour lancer APRÈS le COMMIT de la transaction gate
-        $planner = $this->getMockBuilder(KernelRotationPlanner::class)
-            ->onlyMethods(['applyRotation'])
-            ->getMock();
-        $planner->method('applyRotation')
-            ->willThrowException(new RuntimeException('SIMULATED CRASH after commit'));
-
+        // Taxonomy throw APRÈS le COMMIT de la transaction gate
+        // (peekNext est appelé HORS de DB::transaction dans l'orchestrateur)
         $taxonomy = $this->createMock(TaxonomyNavigatorInterface::class);
-        $taxonomy->method('peekNext')->willReturn([
-            'sub_domain' => 'X', 'subject' => 'Y', 'dominant_idea' => 'Z',
-        ]);
-
-        $orchestrator = new KernelPipelineOrchestrator(
-            new KernelBlueprintFactory(),
-            $planner,
-            $taxonomy,
-            new KernelCodeEngine(),
-        );
+        $taxonomy->method('peekNext')
+            ->willThrowException(new RuntimeException('SIMULATED CRASH after commit — peekNext'));
 
         try {
-            $orchestrator->run();
+            $this->makeOrchestrator($taxonomy)->run();
         } catch (RuntimeException $e) {
             $this->assertStringContainsString('SIMULATED CRASH after commit', $e->getMessage());
         }
 
-        // Blueprint durable = 1 CREATED_UNENGAGED (orphelin post-COMMIT attendu)
+        // Transaction gate a commité → Blueprint est durable
         $bpCount = (int) DB::table('kernel_blueprint_runs')->count();
         $this->assertSame(1, $bpCount,
-            'Post-COMMIT : Blueprint CREATED_UNENGAGED durable (orphelin documenté — hors scope LOT A+B)'
+            'Post-COMMIT : Blueprint CREATED_UNENGAGED durable. '
+            . 'La transaction gate a commité avant peekNext.'
         );
 
         $bp = DB::table('kernel_blueprint_runs')->first();
-        $this->assertSame('CREATED_UNENGAGED', $bp->execution_state,
-            "État attendu : CREATED_UNENGAGED — le Blueprint n'a pas été engagé"
-        );
+        $this->assertSame('CREATED_UNENGAGED', $bp->execution_state);
+
+        // L'état V2 est également commité (active_blueprint_identity présent)
+        $state = DB::table('kernel_rotation_state_v2')->first();
+        $this->assertNotNull($state);
+        $this->assertSame($bp->blueprint_id, $state->active_blueprint_identity);
     }
 }
