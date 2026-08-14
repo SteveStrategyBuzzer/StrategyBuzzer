@@ -1,0 +1,181 @@
+Je ne valide pas encore le verdict KRP AUTONOME TERMINALEMENT VALIDÉ.
+
+Les corrections métier sont bonnes, mais plusieurs tests PostgreSQL ne prouvent pas encore exactement les invariants demandés.
+
+Ce qui est validé
+test EMPTY V2 supprimé : conforme ;
+DepthCycle figé utilisé : conforme ;
+Depth 10 → PRODUCTION_ON_HOLD sans saturation matrix : conforme ;
+IMPASSE-KRP-001 conservée sans invention : conforme ;
+PostgreSQL/Neon a réellement été utilisé : oui.
+Ce qui bloque encore
+
+1. T-PG-03 ne prouve pas encore l'exactly-once du vrai CKR concurrent.
+
+Le rapport dit :
+
+UNIQUE(blueprint_id) rejette le deuxième INSERT.
+
+Ce n'est pas suffisant. Deux vrais appels concurrents à :
+
+KernelRotationPlanner::receiveKernelReceivedV2()
+
+doivent produire :
+
+1 succès métier
++
+1 NO-OP idempotent
++
+0 PDOException exposée
++
+1 receipt
++
+kernel_received_total +1 exactement une fois
+
+Sinon il existe encore une race :
+
+Worker A vérifie absence receipt
+Worker B vérifie absence receipt
+A INSERT
+B INSERT
+→ UNIQUE violation
+
+La contrainte DB protège les données, mais elle ne prouve pas que l'API KRP est idempotente sous concurrence.
+
+2. T-PG-06 et T-PG-07 doivent être de vrais appels concurrents.
+
+« Deux appels identiques » ne suffit pas s'ils sont séquentiels.
+
+Il faut deux connexions/processus réellement simultanés contre Neon.
+
+3. T-PG-08 ne teste pas le vrai chemin KRP.
+
+Le rapport dit essentiellement :
+
+SAVEPOINT
+→ INSERTs manuels
+→ ROLLBACK TO SAVEPOINT
+
+Ça prouve PostgreSQL.
+
+Ça ne prouve pas :
+
+KernelPipelineOrchestrator
+→ FOR UPDATE
+→ resolveNextRotation
+→ Factory::create
+→ applyRotation
+→ erreur
+→ rollback
+
+Le test terminal doit passer par le code réel.
+
+4. T-PG-09 n'est pas le test “rollback après fillRotation”.
+
+T-PG-09 fait :
+
+transaction KRP
+→ COMMIT
+→ Taxonomy
+→ exception
+→ Blueprint durable
+
+C'est une excellente preuve réelle de IMPASSE-KRP-001.
+
+Mais ce n'est pas :
+
+fillRotation
+→ erreur AVANT COMMIT KRP
+→ rollback
+
+Les deux tests sont différents.
+
+Donne ceci à Replit
+#159B — VALIDATION POSTGRESQL KRP STRICTE
+receiveDomainExhausted deux workers réels:
+PASS/FAIL
+
+
+receiveDepthExhausted deux workers réels:
+PASS/FAIL
+
+
+Signal Depth contradictoire:
+PASS/FAIL
+
+
+Deux orchestrations réellement concurrentes:
+PASS/FAIL
+
+
+FOR UPDATE contention observée:
+PASS/FAIL
+
+
+Résolution stale possible:
+NON/OUI
+
+
+Blueprints finaux:
+...
+
+
+domain_position avancé:
+...
+
+
+Rollback vrai chemin après Factory:
+PASS/FAIL
+
+
+Blueprint durable après rollback A:
+...
+
+
+RotationState après rollback A:
+...
+
+
+Rollback vrai chemin après fillRotation:
+PASS/FAIL
+
+
+Blueprint durable après rollback B:
+...
+
+
+RotationState après rollback B:
+...
+
+
+T-PG-09 reclassé:
+PREUVE IMPASSE-KRP-001 / autre
+
+
+IMPASSE-KRP-001:
+CONSERVÉE
+
+
+Nouvelles impasses:
+AUCUNE / ...
+
+
+Écarts autonomes KRP:
+AUCUN / ...
+
+
+Tests PostgreSQL réellement concurrents:
+...
+
+
+VERDICT:
+KRP AUTONOME TERMINALEMENT VALIDÉ
+/
+CORRECTION REQUISE
+
+
+Puis STOP.
+
+Le point essentiel est maintenant : ne plus accepter “9/9 GREEN” comme preuve simplement parce que PostgreSQL a été utilisé. Il faut que chaque test prouve réellement le mécanisme KRP qu'il prétend valider.
+
+Après #159B, si ces preuves passent, là je considérerai la validation autonome KRP terminale.

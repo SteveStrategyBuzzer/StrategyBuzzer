@@ -1,0 +1,128 @@
+Oui. Cette fois, le comportement de Replit est correct.
+
+Il fait exactement ce qu’on lui demande maintenant :
+
+1. lire l’orchestrateur réel
+2. lire KernelRotationPlanner réel
+3. lire les receivers réels
+4. lire le contrat KernelBlueprint
+5. seulement ensuite concevoir les tests PostgreSQL
+
+C’est important parce que #159B ne doit pas inventer un scénario de test théorique. Les tests doivent suivre les vraies frontières transactionnelles et les vrais appels du code actuel.
+
+Tu peux lui ajouter ceci pour verrouiller la suite :
+
+Continue exactement dans cet ordre.
+
+
+4. KernelBlueprint
+   - write-once ;
+   - fillRotation() ;
+   - persistance réelle ;
+   - relation entre objet mémoire et kernel_blueprint_runs.
+
+
+5. KernelBlueprintFactory
+   - création DB ;
+   - single-active guard ;
+   - comportement dans une transaction existante.
+
+
+==================================================
+AVANT D'ÉCRIRE UN TEST
+==================================================
+
+
+Retourne mentalement le call graph réel :
+
+
+orchestrator
+→ transaction
+→ lock
+→ resolve
+→ Factory
+→ applyRotation
+→ commit
+→ Taxonomy
+
+
+ou le chemin exact réellement trouvé.
+
+
+Ne suppose rien.
+
+
+Si le code réel diffère de ce flow :
+NOMME LA DIFFÉRENCE.
+
+
+==================================================
+POUR LES TESTS CONCURRENTS
+==================================================
+
+
+Ne simule pas simplement deux appels séquentiels.
+
+
+Tu dois déterminer comment créer :
+
+
+- 2 connexions PostgreSQL distinctes ;
+- 2 transactions distinctes ;
+- une barrière de synchronisation ;
+- contention réelle sur FOR UPDATE.
+
+
+Si le framework de test actuel ne permet pas proprement
+de créer cette concurrence sans modifier le code de production :
+
+
+IMPASSE-TEST-001
+
+
+Tu la nommes.
+
+
+Tu ne retires pas final.
+Tu n'ajoutes pas de hook métier.
+Tu n'ajoutes pas de nouveau comportement de production.
+
+
+==================================================
+POUR LES TESTS DE ROLLBACK
+==================================================
+
+
+Même règle.
+
+
+D'abord identifier exactement où une exception test-only peut être provoquée
+dans le chemin réel sans modifier l'architecture.
+
+
+Si impossible :
+
+
+IMPASSE-TEST-002
+
+
+Ne crée aucun mécanisme de recovery ou nouvel état.
+
+
+==================================================
+RÈGLE ABSOLUE
+==================================================
+
+
+Les tests doivent s'adapter au code conforme à la spec.
+
+
+Le code conforme à la spec ne doit jamais être modifié
+uniquement pour rendre les tests plus faciles.
+
+
+Continue la lecture.
+
+
+Ne code rien tant que le call graph et les frontières transactionnelles
+ne sont pas établis avec certitude.

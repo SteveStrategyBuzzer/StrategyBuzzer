@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\QuestionBank\Rotation;
 
 use App\Services\QuestionBank\KernelBlueprint;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use RuntimeException;
@@ -382,14 +383,27 @@ final class KernelRotationPlanner
                 return;
             }
 
-            // ── 2. Insérer le reçu ────────────────────────────────────────────
-            DB::table(self::RECEIPTS_TABLE)->insert([
-                'blueprint_id' => $blueprintId,
-                'event_id'     => (string) Str::orderedUuid(),
-                'depth'        => $depth,
-                'domain_code'  => $domain,
-                'received_at'  => now(),
-            ]);
+            // ── 2. Insérer le reçu (SAVEPOINT contre la race concurrente) ────────
+            // En PostgreSQL, si deux workers passent le EXISTS check simultanément,
+            // le second INSERT échoue (UniqueConstraintViolationException) et
+            // avorte toute la transaction.  Le SAVEPOINT isole cet INSERT :
+            // en cas d'échec → ROLLBACK TO SAVEPOINT (transaction reste valide)
+            // → retour idempotent, comme si $alreadyReceived était vrai.
+            DB::statement('SAVEPOINT ckr_receipt_insert');
+            try {
+                DB::table(self::RECEIPTS_TABLE)->insert([
+                    'blueprint_id' => $blueprintId,
+                    'event_id'     => (string) Str::orderedUuid(),
+                    'depth'        => $depth,
+                    'domain_code'  => $domain,
+                    'received_at'  => now(),
+                ]);
+            } catch (UniqueConstraintViolationException) {
+                // Worker concurrent a inséré en premier — PK UNIQUE protège les données.
+                // ROLLBACK TO SAVEPOINT évite l'état "aborted" de la transaction PG.
+                DB::statement('ROLLBACK TO SAVEPOINT ckr_receipt_insert');
+                return;
+            }
 
             // ── 3. Incrémenter kernel_received_total (AVANT transition) ────────
             (new DepthNeedMatrix())->incrementKernelReceived($depth, $domain);
