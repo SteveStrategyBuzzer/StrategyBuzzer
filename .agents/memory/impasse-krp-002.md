@@ -1,60 +1,41 @@
 ---
-name: IMPASSE-KRP-002 — cycle_target / cycle_completed encore autorité active (SUPERSEDED)
-description: applyDepthTransition() utilise cycle_completed/cycle_target comme autorité pour déterminer PRODUCTION_ON_HOLD, alors que ces autorités sont SUPERSEDED en v3.2.
+name: KRP-GAP-IMPLEMENTATION-002 — cycle_target/cycle_completed comme autorité (CORRIGÉ 2026-08-14)
+description: FERMÉ. applyDepthTransition() utilisait cycle_completed/cycle_target SUPERSEDED. Corrigé par DEPTH_CYCLE_NEXT constant. Reclassifié de IMPASSE-KRP-002 → KRP-GAP-IMPLEMENTATION-002.
 ---
 
-## IMPASSE-KRP-002
+## KRP-GAP-IMPLEMENTATION-002 — FERMÉ (2026-08-14)
 
-**Type :** NON-CONFORMITÉ AUTORITÉ SUPERSEDED
+**Classification initiale :** IMPASSE-KRP-002 (incorrecte)
+**Reclassification :** KRP-GAP-IMPLEMENTATION-002 — CODE NON CONFORME À SPEC FIGÉE
+**Statut :** CORRIGÉ
 
-**Modules concernés :**
-- 02_KernelRotationPlanner
-- DepthNeedMatrix
-- kernel_depth_matrix (table)
+### Ce qui était non conforme
 
-**Situation :**
+`applyDepthTransition()` appelait :
+- `DepthNeedMatrix::incrementCycleCompleted($exhaustedDepth)`
+- `DepthNeedMatrix::nextRequiredDepth($exhaustedDepth)`
 
-`KernelRotationPlanner::applyDepthTransition()` (privée, appelée par `receiveKernelReceivedV2`) :
-```php
-$depthMatrix->incrementCycleCompleted($exhaustedDepth);  // ligne 498
-$nextDepth = $depthMatrix->nextRequiredDepth($exhaustedDepth);  // ligne 499
+Ces deux méthodes utilisent `cycle_target` et `cycle_completed` comme autorité de transition,
+ce qui est interdit par la spec v3.2 figée.
+
+### Correction appliquée
+
+Ajout de la constante privée `DEPTH_CYCLE_NEXT` dans `KernelRotationPlanner` :
+```
+2→4 | 4→6 | 6→7 | 7→8 | 8→9 | 9→10 | 10→null (PRODUCTION_ON_HOLD)
 ```
 
-`DepthNeedMatrix::nextRequiredDepth()` lit `cycle_completed` et le compare à `cycle_target`
-pour déterminer si un Depth est "saturé". Si tous saturés → retourne null → PRODUCTION_ON_HOLD.
+`applyDepthTransition()` lit maintenant `self::DEPTH_CYCLE_NEXT[$exhaustedDepth]` directement.
+Aucun appel à `DepthNeedMatrix`. `cycle_target` / `cycle_completed` n'influencent plus
+aucune transition de Depth.
 
-La règle architecturale figée interdit explicitement :
-- "réintroduire CYCLE_TARGET comme autorité"
-- "réintroduire cycle_completed comme autorité"
+Depth hors DepthCycle (ex : Depth 1) → `RuntimeException` avec message "hors DepthCycle officiel".
 
-Ces autorités sont encore ACTIVES dans le chemin runtime :
-`ProcessKernelPipelineOutbox` → `receiveKernelReceivedV2` → `applyDepthTransition`.
+### Tests ajoutés (tous GREEN)
 
-**Preuve LOT B FAIL :**
+- T-26 à T-31 : transitions 2→4, 4→6, 6→7, 7→8, 8→9, 9→10
+- T-32 : Depth 10 → PRODUCTION_ON_HOLD SANS saturation matrix (prouve cycle_completed non modifié)
+- T-33 : Depth 1 (hors DepthCycle) → RuntimeException
 
-`ProcessKernelPipelineOutboxTest::test_pending_depth_10_causes_production_on_hold()` :
-- Pré-sature `cycle_completed = cycle_target` pour TOUS les Depths (lignes 309-313)
-- Le chemin DEPTH_EXHAUSTED(10) + CKR → PRODUCTION_ON_HOLD
-  DÉPEND de cette saturation pour fonctionner.
-
-**Ce qui manque :**
-
-La spec 02_KernelRotationPlanner v3.2 doit définir :
-- quel mécanisme remplace `cycle_target`/`cycle_completed` pour déterminer
-  si `nextRequiredDepth` retourne null (PRODUCTION_ON_HOLD) ;
-- ou confirmer que `cycle_target`/`cycle_completed` sont encore valides
-  dans `applyDepthTransition` (pour lever le flag SUPERSEDED).
-
-**Code inventé pour résoudre :** NON
-
-**Décision architecturale prise :** NON
-
-**Dépend de :** 02_KernelRotationPlanner v3.2 (clarification du mécanisme PRODUCTION_ON_HOLD
-dans le chemin receiveKernelReceivedV2 → applyDepthTransition)
-
-**Impact si on continue sans décision :**
-Le chemin DEPTH_EXHAUSTED → PRODUCTION_ON_HOLD reste fonctionnel MAIS non conforme
-à l'architecture figée. `cycle_target`/`cycle_completed` agissent comme autorité SUPERSEDED.
-
-**Why:** Identifiée le 2026-08-14 lors du scan des symboles SUPERSEDED demandé par l'utilisateur.
-La règle figée interdit explicitement ces autorités ; le code les utilise encore activement.
+**Why:** La règle figée interdisait "réintroduire CYCLE_TARGET comme autorité". La décision était
+déjà dans le spec : DepthCycle = [2,4,6,7,8,9,10]. Pas une impasse, une non-conformité à corriger.

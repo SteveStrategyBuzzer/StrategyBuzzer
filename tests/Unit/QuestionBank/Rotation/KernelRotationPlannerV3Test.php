@@ -554,12 +554,10 @@ class KernelRotationPlannerV3Test extends TestCase
         $state = DB::table('kernel_rotation_state_v2')->first();
         $this->assertNull($state->pending_depth_exhausted_depth, 'pending réinitialisé après transition');
         $this->assertNull($state->domain_position, 'domain_position réinitialisé après transition');
-        // active_depth doit avoir avancé (2 → 4 car cycle_target[2] > cycle_completed)
-        // OU depth_state = PRODUCTION_ON_HOLD si plus de Depth disponible
-        // Dans ce test, cycle_target[2]=1000 > cycle_completed=1 → active_depth = 4
+        // active_depth avancé via DepthCycle figé : DEPTH_CYCLE_NEXT[2] = 4
         $this->assertSame('ROTATION_ACTIVE', $state->depth_state);
         $this->assertSame(4, (int) $state->active_depth,
-            'Transition Depth 2 → 4 (prochain dans DEPTH_CYCLE)'
+            'Transition Depth 2 → 4 (DepthCycle v3.2 figé)'
         );
     }
 
@@ -578,8 +576,165 @@ class KernelRotationPlannerV3Test extends TestCase
     }
 
     // =========================================================================
+    // Tests : DepthCycle figé — transitions complètes (KRP v3.2 VERROUILLÉ)
+    // =========================================================================
+
+    /**
+     * T-26 à T-31 — Transitions DepthCycle directs (sans consultation matrice).
+     *
+     * Pour chaque transition X→Y :
+     *   - pending_depth_exhausted_depth = X
+     *   - CKR(blueprint_id, depth=X) déclenche applyDepthTransition
+     *   - active_depth = Y
+     *   - domain_position = NULL (réinitialisé)
+     *   - pending = NULL
+     *
+     * Aucun appel à nextRequiredDepth / incrementCycleCompleted.
+     */
+    public function test_depth_transition_2_to_4(): void
+    {
+        $this->assertDepthCycleTransition(2, 4);
+    }
+
+    public function test_depth_transition_4_to_6(): void
+    {
+        $this->assertDepthCycleTransition(4, 6);
+    }
+
+    public function test_depth_transition_6_to_7(): void
+    {
+        $this->assertDepthCycleTransition(6, 7);
+    }
+
+    public function test_depth_transition_7_to_8(): void
+    {
+        $this->assertDepthCycleTransition(7, 8);
+    }
+
+    public function test_depth_transition_8_to_9(): void
+    {
+        $this->assertDepthCycleTransition(8, 9);
+    }
+
+    public function test_depth_transition_9_to_10(): void
+    {
+        $this->assertDepthCycleTransition(9, 10);
+    }
+
+    /**
+     * T-32 : Depth 10 → PRODUCTION_ON_HOLD SANS saturation matrix.
+     *
+     * Preuve :
+     *   - kernel_depth_matrix.cycle_completed[10] = 0 avant ET après le test
+     *     → incrementCycleCompleted non appelé.
+     *   - PRODUCTION_ON_HOLD atteint via DEPTH_CYCLE_NEXT[10] = null uniquement.
+     *   - kernel_received_total +1 exactement une fois.
+     *   - receipt inséré exactement une fois.
+     *   - domain_position = NULL.
+     */
+    public function test_depth_transition_10_to_production_on_hold_without_matrix(): void
+    {
+        // Précondition : aucune saturation
+        $before = (int) DB::table('kernel_depth_matrix')
+            ->where('depth', 10)->value('cycle_completed');
+        $this->assertSame(0, $before, 'Précondition : cycle_completed[10] = 0');
+
+        $domainStates = $this->buildDomainStates();
+        $this->insertState([
+            'active_depth'                  => 10,
+            'domain_position'               => 5,
+            'domain_states'                 => json_encode($domainStates),
+            'pending_depth_exhausted_depth' => 10,
+        ]);
+        $this->seedDepthDomainTotals();
+
+        $blueprintId = 'bp-d10-nomatrix';
+        $this->planner->receiveKernelReceivedV2($blueprintId, 10, 'geographie');
+
+        $state = DB::table('kernel_rotation_state_v2')->first();
+        $this->assertSame('PRODUCTION_ON_HOLD', $state->depth_state);
+        $this->assertNull($state->pending_depth_exhausted_depth, 'pending réinitialisé');
+        $this->assertNull($state->domain_position, 'domain_position = NULL');
+
+        // kernel_received_total +1 exactement une fois
+        $total = DB::table('kernel_depth_domain_totals')
+            ->where('depth', 10)->where('domain_code', 'geographie')
+            ->value('kernel_received_total');
+        $this->assertSame(1, (int) $total, 'kernel_received_total +1 exactement une fois');
+
+        // receipt exactement une fois
+        $this->assertSame(1,
+            (int) DB::table('kernel_current_kernel_receipts')
+                ->where('blueprint_id', $blueprintId)->count(),
+            'receipt inséré exactement une fois'
+        );
+
+        // Preuve : incrementCycleCompleted non appelé → cycle_completed inchangé
+        $after = (int) DB::table('kernel_depth_matrix')
+            ->where('depth', 10)->value('cycle_completed');
+        $this->assertSame(0, $after,
+            'cycle_completed[10] toujours 0 — incrementCycleCompleted non appelé'
+        );
+    }
+
+    /**
+     * T-33 : Depth hors DepthCycle → RuntimeException.
+     *
+     * Depth 1 est explicitement hors DepthCycle officiel.
+     * applyDepthTransition doit lever RuntimeException sans modifier l'état.
+     */
+    public function test_depth_transition_invalid_depth_throws_runtime_exception(): void
+    {
+        $domainStates = $this->buildDomainStates();
+        $this->insertState([
+            'active_depth'                  => 2,
+            'domain_states'                 => json_encode($domainStates),
+            'pending_depth_exhausted_depth' => 1, // Depth 1 hors DepthCycle
+        ]);
+        $this->seedDepthDomainTotals();
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessageMatches('/hors DepthCycle officiel/');
+
+        $this->planner->receiveKernelReceivedV2('bp-invalid-d1', 1, 'geographie');
+    }
+
+    // =========================================================================
     // Helpers
     // =========================================================================
+
+    /**
+     * Vérifie une transition DepthCycle : pending=X + CKR(X) → active_depth=Y, domain_position=NULL.
+     *
+     * Utilisé par T-26..T-31. Aucune saturation de matrice.
+     */
+    private function assertDepthCycleTransition(int $fromDepth, int $toDepth): void
+    {
+        $domainStates = $this->buildDomainStates();
+        $this->insertState([
+            'active_depth'                  => $fromDepth,
+            'domain_position'               => 3, // ancienne valeur, doit être réinitialisée
+            'domain_states'                 => json_encode($domainStates),
+            'pending_depth_exhausted_depth' => $fromDepth,
+        ]);
+        $this->seedDepthDomainTotals();
+
+        $this->planner->receiveKernelReceivedV2("bp-d{$fromDepth}", $fromDepth, 'geographie');
+
+        $state = DB::table('kernel_rotation_state_v2')->first();
+        $this->assertSame('ROTATION_ACTIVE', $state->depth_state,
+            "Transition {$fromDepth}→{$toDepth} : depth_state = ROTATION_ACTIVE"
+        );
+        $this->assertSame($toDepth, (int) $state->active_depth,
+            "Transition DepthCycle {$fromDepth} → {$toDepth} (DEPTH_CYCLE_NEXT figé)"
+        );
+        $this->assertNull($state->pending_depth_exhausted_depth,
+            "pending réinitialisé après transition {$fromDepth}→{$toDepth}"
+        );
+        $this->assertNull($state->domain_position,
+            "domain_position = NULL après transition {$fromDepth}→{$toDepth}"
+        );
+    }
 
     private function makeBlueprint(): KernelBlueprint
     {

@@ -296,22 +296,17 @@ class ProcessKernelPipelineOutboxTest extends TestCase
      * ─────────────────────────────────────────────────────────────────────
      * Attendu :
      *   - compteur +1
-     *   - transition : nextRequiredDepth(10) = null (tous saturés après incrementCycleCompleted)
+     *   - transition : DepthCycle figé → Depth 10 = dernier → PRODUCTION_ON_HOLD
      *   - depth_state = PRODUCTION_ON_HOLD
      *   - pending = NULL
      *   - orchestrator::run() retourne PRODUCTION_ON_HOLD
+     *
+     * SANS SATURATION DE MATRIX :
+     *   cycle_target / cycle_completed ne pilotent PAS cette transition.
+     *   applyDepthTransition() utilise DEPTH_CYCLE_NEXT[10] = null directement.
      */
     public function test_pending_depth_10_causes_production_on_hold(): void
     {
-        // Saturer TOUS les Depths y compris 10.
-        // incrementCycleCompleted(10) ajoutera 1 (cycle_target+1 = toujours saturé),
-        // puis nextRequiredDepth(10) trouvera tous les depths saturés → retourne null.
-        foreach (DepthNeedMatrix::DEPTH_CYCLE as $depth) {
-            DB::table('kernel_depth_matrix')
-                ->where('depth', $depth)
-                ->update(['cycle_completed' => DepthNeedMatrix::CYCLE_TARGET[$depth]]);
-        }
-
         $domainStates = $this->buildDomainStates();
         DB::table('kernel_rotation_state_v2')->insert([
             'depth_state'                    => 'ROTATION_ACTIVE',

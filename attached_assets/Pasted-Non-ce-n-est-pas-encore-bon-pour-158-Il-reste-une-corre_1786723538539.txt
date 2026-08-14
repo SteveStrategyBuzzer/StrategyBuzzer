@@ -1,0 +1,489 @@
+Non, ce n’est pas encore bon pour #158. Il reste une correction KRP autonome obligatoire.
+
+Le point essentiel : IMPASSE-KRP-002 n’est pas une impasse. La réponse existe déjà dans 02_KernelRotationPlanner v3.2. Replit ne doit pas demander une nouvelle décision pour remplacer cycle_target/cycle_completed.
+
+Le contrat est déjà figé :
+
+DepthCycle :
+2 → 4 → 6 → 7 → 8 → 9 → 10
+
+DEPTH_EXHAUSTED(2) + CKR → 4
+DEPTH_EXHAUSTED(4) + CKR → 6
+DEPTH_EXHAUSTED(6) + CKR → 7
+DEPTH_EXHAUSTED(7) + CKR → 8
+DEPTH_EXHAUSTED(8) + CKR → 9
+DEPTH_EXHAUSTED(9) + CKR → 10
+
+DEPTH_EXHAUSTED(10) + CKR
+→ PRODUCTION_ON_HOLD
+
+Il n’y a rien à décider. DepthNeedMatrix::nextRequiredDepth(), cycle_target, cycle_completed et incrementCycleCompleted() ne doivent simplement plus piloter cette transition.
+
+Et le fait que Replit dise que nextRequiredDepth(10) peut retourner Depth 1 confirme que l’ancien moteur est encore en train de piloter une partie du KRP. Depth 1 est explicitement hors du DepthCycle officiel.
+
+Donne ceci à Replit
+STOP.
+
+Le rapport #156 est accepté PARTIELLEMENT.
+
+Les suppressions suivantes sont conformes :
+
+- ApplyCurrentKernelReceivedToRotation : SUPPRIMÉ
+- applyEmptyAndGetNext : SUPPRIMÉ
+- KernelRotationPlanner : final restauré
+- stubs V1/V2 inutiles : supprimés
+- IMPASSE-KRP-001 : correctement identifiée
+
+MAIS :
+
+IMPASSE-KRP-002 EST REJETÉE COMME "IMPASSE".
+
+==================================================
+1 — IMPASSE-KRP-002 N'EST PAS UNE IMPASSE
+==================================================
+
+Tu écris :
+
+applyDepthTransition()
+→ nextRequiredDepth()
+→ cycle_target / cycle_completed
+
+et tu conclus :
+
+"non résoluble sans décision explicite".
+
+FAUX.
+
+La décision existe déjà dans :
+
+02_KernelRotationPlanner v3.2 VERROUILLÉ.
+
+Tu n'as aucune nouvelle décision à prendre.
+
+Le contrat exact est :
+
+DepthCycle =
+2 → 4 → 6 → 7 → 8 → 9 → 10
+
+Sur DEPTH_EXHAUSTED prospectivement mémorisé,
+au CURRENT_KERNEL_RECEIVED suivant :
+
+2  → 4
+4  → 6
+6  → 7
+7  → 8
+8  → 9
+9  → 10
+
+10 → PRODUCTION_ON_HOLD
+
+Aucune autre condition.
+
+Donc reclasser :
+
+IMPASSE-KRP-002
+→ KRP-GAP-IMPLEMENTATION-002
+
+Type :
+CODE NON CONFORME À SPEC FIGÉE
+
+Solution :
+IMPLANTER LE CONTRAT DÉJÀ FIGÉ.
+
+Aucune DEC.
+Aucune nouvelle architecture.
+
+==================================================
+2 — RÉÉCRIRE applyDepthTransition()
+==================================================
+
+applyDepthTransition() ne doit plus appeler :
+
+- DepthNeedMatrix::nextRequiredDepth()
+- DepthNeedMatrix::incrementCycleCompleted()
+- cycle_target
+- cycle_completed
+
+Implémenter uniquement le DepthCycle officiel.
+
+Pseudo-contrat :
+
+applyDepthTransition(int $exhaustedDepth):
+
+  switch exhaustedDepth:
+
+    2:
+      nextDepth = 4
+
+    4:
+      nextDepth = 6
+
+    6:
+      nextDepth = 7
+
+    7:
+      nextDepth = 8
+
+    8:
+      nextDepth = 9
+
+    9:
+      nextDepth = 10
+
+    10:
+      depth_state = PRODUCTION_ON_HOLD
+      pending_depth_exhausted_depth = NULL
+      return
+
+    autre:
+      throw InvariantViolationException
+
+  active_depth = nextDepth
+  domain_position = NULL
+  pending_depth_exhausted_depth = NULL
+
+Aucune consultation de matrice.
+
+Tu peux techniquement représenter le cycle
+par une constante/table immutable :
+
+[2,4,6,7,8,9,10]
+
+si cela ne crée aucune nouvelle responsabilité.
+
+==================================================
+3 — DEPTH 1 EST INTERDIT
+==================================================
+
+Tu as rapporté :
+
+nextRequiredDepth(10)
+→ Depth 1
+
+Ceci est une preuve de legacy non conforme.
+
+KRP v3.2 ne peut JAMAIS sélectionner Depth 1.
+
+Après correction :
+
+rechercher dans tout le chemin KRP actif
+toute possibilité d'obtenir :
+
+depth = 1
+
+Résultat obligatoire :
+
+AUCUNE.
+
+==================================================
+4 — TEST CANONIQUE DEPTH 10
+==================================================
+
+Créer le test SANS AUCUNE SATURATION DE MATRIX :
+
+active_depth = 10
+depth_state = ROTATION_ACTIVE
+pending_depth_exhausted_depth = 10
+
+cycle_target :
+valeur quelconque ou table absente du scénario
+
+cycle_completed :
+valeur quelconque ou table absente du scénario
+
+CURRENT_KERNEL_RECEIVED(
+    blueprint Depth 10,
+    domaine courant
+)
+
+Attendu atomiquement :
+
+receipt inséré exactement une fois
+kernel_received_total +1 exactement une fois
+depth_state = PRODUCTION_ON_HOLD
+pending_depth_exhausted_depth = NULL
+
+ET :
+
+nextRequiredDepth appelé = 0 fois
+incrementCycleCompleted appelé = 0 fois.
+
+==================================================
+5 — TESTER TOUT LE DEPTHCYCLE
+==================================================
+
+Ajouter tests directs :
+
+pending=2  + CKR → active_depth=4
+pending=4  + CKR → active_depth=6
+pending=6  + CKR → active_depth=7
+pending=7  + CKR → active_depth=8
+pending=8  + CKR → active_depth=9
+pending=9  + CKR → active_depth=10
+pending=10 + CKR → PRODUCTION_ON_HOLD
+
+Pour chaque transition 2→10 :
+
+domain_position = NULL.
+
+Pour Depth 10 :
+
+aucun nouveau Depth.
+
+==================================================
+6 — AUDIT DU LEGACY APRÈS CORRECTION
+==================================================
+
+Après le patch, scanner :
+
+nextRequiredDepth
+incrementCycleCompleted
+cycle_target
+cycle_completed
+DepthNeedMatrix
+
+Pour chaque symbole retourner :
+
+fichier
+méthode
+readers runtime
+writers runtime
+tests actifs
+statut
+
+Valeurs autorisées :
+
+ACTIF MAIS NON AUTORITAIRE
+LEGACY NON APPELÉ
+TEST SEULEMENT
+ZÉRO CALLER
+
+Aucun de ces symboles ne peut influencer :
+
+- transition de Depth ;
+- resolveNextRotation ;
+- DOMAIN_EXHAUSTED ;
+- DEPTH_EXHAUSTED ;
+- PRODUCTION_ON_HOLD.
+
+Si un symbole est encore nécessaire à une autre responsabilité
+officielle extérieure au KRP :
+
+NE PAS le supprimer arbitrairement.
+
+Le nommer et expliquer son propriétaire.
+
+==================================================
+7 — IMPASSE-KRP-001 RESTE UNE VRAIE IMPASSE
+==================================================
+
+Conserver :
+
+IMPASSE-KRP-001
+
+Pourquoi :
+
+elle concerne le comportement APRÈS responsabilité KRP :
+
+Blueprint valide KRP committé
+→ entrée Taxonomy
+→ échec Taxonomy
+→ état du Blueprint et reprise pipeline.
+
+Ce comportement dépend réellement du futur contrat 03_Taxonomy.
+
+Donc :
+
+NE PAS le résoudre.
+NE PAS inventer recovery.
+NE PAS modifier Taxonomy.
+NE PAS commencer LOT C.
+
+==================================================
+8 — #158 EST PARFAITEMENT IDENTIFIÉ
+==================================================
+
+Tu as écrit :
+
+"#158 non identifiable".
+
+Correction :
+
+#158 est la tâche déjà définie :
+
+REMOVE OBSOLETE DB COLUMNS SO SCHEMA MATCHES LIVE CODE
+
+Colonnes concernées :
+
+kernel_rotation_state_v2.rotation_status
+kernel_rotation_state_v2.active_tour_id
+
+Objectif :
+
+les DROP uniquement après preuve :
+
+readers runtime = 0
+writers runtime = 0
+CLI = 0
+listeners = 0
+tests actifs = 0
+
+Ne lance PAS #158 dans ce patch.
+
+Après correction KRP-GAP-IMPLEMENTATION-002,
+retourne simplement si #158 devient autorisable.
+
+Ne profite pas de #158 pour supprimer d'autres colonnes
+sans audit et autorisation.
+
+==================================================
+9 — RÈGLE ARCHITECTURE FIGÉE
+==================================================
+
+Rappel absolu :
+
+Tu ne changes PAS ce qui est autorisé.
+
+Tu codes avec ce qui est déjà figé.
+
+Si la spec donne la réponse :
+→ tu implantes la réponse.
+
+Si la spec ne donne réellement pas la réponse :
+→ tu nommes une IMPASSE.
+
+Tu ne peux pas transformer un simple écart de code
+en "impasse architecturale" pour éviter de corriger le code.
+
+Inversement, tu ne peux pas inventer une règle
+pour résoudre une vraie impasse.
+
+==================================================
+10 — RETOUR ATTENDU
+==================================================
+
+Retourne uniquement :
+
+#156 — CORRECTION TERMINALE DEPTH TRANSITION
+
+IMPASSE-KRP-002 reclassée:
+OUI/NON
+
+Nouvelle classification:
+...
+
+Nouvelle décision architecturale créée:
+NON/OUI
+
+applyDepthTransition utilise DepthCycle figé:
+PASS/FAIL
+
+nextRequiredDepth appelé par applyDepthTransition:
+NON/OUI
+
+incrementCycleCompleted appelé par applyDepthTransition:
+NON/OUI
+
+cycle_target influence changement Depth:
+NON/OUI
+
+cycle_completed influence changement Depth:
+NON/OUI
+
+Depth 1 sélectionnable par KRP:
+NON/OUI
+
+Tests :
+
+2→4:
+PASS/FAIL
+
+4→6:
+PASS/FAIL
+
+6→7:
+PASS/FAIL
+
+7→8:
+PASS/FAIL
+
+8→9:
+PASS/FAIL
+
+9→10:
+PASS/FAIL
+
+10→PRODUCTION_ON_HOLD:
+PASS/FAIL
+
+Depth10 test sans saturation matrix:
+PASS/FAIL
+
+kernel_received_total exactly-once sur Depth10:
+PASS/FAIL
+
+domain_position reset à chaque changement Depth:
+PASS/FAIL
+
+Scan nextRequiredDepth:
+...
+
+Scan incrementCycleCompleted:
+...
+
+Scan cycle_target:
+...
+
+Scan cycle_completed:
+...
+
+IMPASSE-KRP-001 conservée:
+OUI/NON
+
+Autre impasse réelle découverte:
+AUCUNE / IMPASSE-...
+
+Écarts autonomes KRP restant:
+...
+
+#158 identifié:
+OUI/NON
+
+#158 autorisable:
+OUI/NON
+
+LOT A:
+PASS/FAIL
+
+LOT B:
+PASS/FAIL
+
+VERDICT:
+LOT A+B CONFORMES HORS IMPASSE INTER-MODULE 001
+/
+CORRECTION REQUISE
+
+Puis STOP.
+
+Ne lance pas #158.
+Ne commence pas LOT C.
+Ne commence pas 03_Taxonomy.
+État réel à ce moment
+
+On a maintenant une distinction importante :
+
+IMPASSE-KRP-001
+= VRAIE IMPASSE
+= frontière KRP → Taxonomy
+= on STOP et on attend 03_Taxonomy
+
+mais :
+
+ancien IMPASSE-KRP-002
+= PAS UNE IMPASSE
+= le code utilise encore l'ancienne autorité
+= Replit doit le corriger
+
+C’est exactement la discipline que tu voulais : il ne change rien de ce qui est figé, il implante ce qui est déjà décidé, et seulement lorsqu’une réponse n’existe réellement pas dans les contrats verrouillés il nomme une impasse.
+
+Et oui : #158 est bien connu. Il concerne le cleanup de rotation_status et active_tour_id; Replit ne devait pas dire qu’il était « non identifiable ».

@@ -72,6 +72,22 @@ final class KernelRotationPlanner
     /** Résultat de resolveNextRotation : aucun besoin actif. */
     public const RESULT_PRODUCTION_ON_HOLD = 'PRODUCTION_ON_HOLD';
 
+    /**
+     * Séquence officielle de transition entre Depths (DepthCycle v3.2, VERROUILLÉ).
+     * null = PRODUCTION_ON_HOLD (Depth 10 est le dernier Depth du cycle).
+     *
+     * @var array<int, int|null>
+     */
+    private const DEPTH_CYCLE_NEXT = [
+        2  => 4,
+        4  => 6,
+        6  => 7,
+        7  => 8,
+        8  => 9,
+        9  => 10,
+        10 => null,
+    ];
+
     // =========================================================================
     // V3 — Gate : résolution de la rotation
     // =========================================================================
@@ -401,18 +417,30 @@ final class KernelRotationPlanner
     // =========================================================================
 
     /**
-     * Applique la transition vers le Depth suivant après traitement d'un signal
-     * DEPTH_EXHAUSTED en attente.
+     * Applique la transition vers le Depth suivant selon le DepthCycle officiel.
      *
-     * Appelé depuis receiveKernelReceivedV2() uniquement.
+     * Appelé depuis receiveKernelReceivedV2() uniquement (DEC-093).
      * Réinitialise domain_position et pending_depth_exhausted_depth.
+     *
+     * Contrat v3.2 figé :
+     *   2→4 | 4→6 | 6→7 | 7→8 | 8→9 | 9→10 | 10→PRODUCTION_ON_HOLD
+     *
+     * Aucune consultation de DepthNeedMatrix :
+     *   cycle_target et cycle_completed ne sont PAS autorisés comme autorité
+     *   de transition de Depth dans la spec v3.2 verrouillée.
+     *
+     * @throws RuntimeException si $exhaustedDepth est hors DepthCycle officiel.
      */
     private function applyDepthTransition(object $state, int $exhaustedDepth): void
     {
-        $depthMatrix = new DepthNeedMatrix();
-        $depthMatrix->incrementCycleCompleted($exhaustedDepth);
-        $nextDepth = $depthMatrix->nextRequiredDepth($exhaustedDepth);
+        if (!array_key_exists($exhaustedDepth, self::DEPTH_CYCLE_NEXT)) {
+            throw new RuntimeException(
+                "[KRP] INVARIANT — applyDepthTransition : Depth {$exhaustedDepth} hors DepthCycle officiel. "
+                . 'DepthCycle : ' . implode('→', array_keys(self::DEPTH_CYCLE_NEXT)) . '.'
+            );
+        }
 
+        $nextDepth    = self::DEPTH_CYCLE_NEXT[$exhaustedDepth]; // null = PRODUCTION_ON_HOLD
         $domainStates = json_decode((string) ($state->domain_states ?? '{}'), true) ?: [];
 
         $updates = [
@@ -423,7 +451,7 @@ final class KernelRotationPlanner
         ];
 
         if ($nextDepth !== null) {
-            // Réinitialiser domain_states pour le nouveau Depth (56 → ACTIF uniquement ce Depth)
+            // Réinitialiser domain_states pour le nouveau Depth (tous Domaines → ACTIF)
             $newDepthKey = (string) $nextDepth;
             foreach (DepthTourState::DOMAIN_CYCLE as $d) {
                 $domainStates[$newDepthKey][$d] = 'ACTIF';
@@ -470,15 +498,4 @@ final class KernelRotationPlanner
         return $states; // 7 × 8 = 56 paires
     }
 
-    /**
-     * Reconstruit un DepthTourState depuis un tableau persisté (legacy EMPTY loop).
-     * Retourne un tour frais si les données sont absentes.
-     */
-    private function makeTourState(?array $data): DepthTourState
-    {
-        if (empty($data) || !isset($data['states'])) {
-            return DepthTourState::initTour();
-        }
-        return DepthTourState::fromArray($data);
-    }
 }
