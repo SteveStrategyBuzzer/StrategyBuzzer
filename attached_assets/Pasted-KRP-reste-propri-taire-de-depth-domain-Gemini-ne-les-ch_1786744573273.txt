@@ -1,0 +1,816 @@
+KRP reste propriétaire de depth + domain. Gemini ne les choisit jamais.
+Taxonomy reçoit ce couple déjà décidé et Gemini travaille sous cette contrainte pour décomposer intellectuellement le domaine au niveau de profondeur demandé.
+
+Le fonctionnement attendu que je reconstruis est le suivant.
+
+Fonctionnement complet attendu de Taxonomy
+KernelBlueprint déjà créé
+↓
+KRP écrit :
+depth
+domain
+↓
+TAXONOMY reçoit ce bassin exact :
+Depth + Domain
+↓
+Taxonomy recharge ou initialise sa Bank persistante
+↓
+Gemini décompose le Domain selon le Depth
+↓
+création/sélection d'un Subdomain
+↓
+Gemini produit les Subjects de ce Subdomain
+maximum 50
+↓
+pour le Subject actif :
+Gemini produit des candidats Dominant Ideas
+maximum 5 exploitables
+↓
+04_ValidationDominantIdeas
+↓
+IdeaBank validée
+↓
+Taxonomy sélectionne UN IdeaSlot exact
+↓
+Taxonomy écrit :
+subdomain_active
+subject_active
+dominant_idea_active
+dans le Blueprint
+↓
+CE MÊME IdeaSlot exact → CONSUMED
+↓
+Taxonomy met à jour ses Banks
+↓
+éventuellement :
+Subject EXHAUSTED
+Subdomain EXHAUSTED
+DOMAIN_EXHAUSTED
+DEPTH_EXHAUSTED
+↓
+le Blueprint courant poursuit son pipeline
+
+Maintenant, chaque morceau.
+
+1. KRP remet Depth + Domain à Taxonomy
+
+Exemple :
+
+depth = 4
+domain = geographie
+
+À ce moment, Taxonomy n'a aucun droit de changer ça.
+
+Elle ne peut pas dire :
+
+finalement je vais travailler Histoire
+
+ou :
+
+je préfère Depth 6
+
+Son contrat devient :
+
+« Je dois construire un territoire intellectuel cohérent à l'intérieur de Géographie, avec le niveau de profondeur 4. »
+
+Donc :
+
+KRP
+= autorité de rotation
+
+
+Taxonomy
+= autorité de fragmentation intellectuelle
+2. Taxonomy ouvre le bassin Depth + Domain
+
+Chaque combinaison doit avoir sa progression indépendante.
+
+Exemple :
+
+Depth 2 + Géographie
+≠
+Depth 4 + Géographie
+≠
+Depth 4 + Histoire
+
+Taxonomy doit donc avoir une mémoire persistante pour chacun.
+
+Conceptuellement :
+
+TAXONOMY BANK
+└── Depth 4
+    └── Géographie
+        ├── Subdomains
+        ├── Subjects
+        ├── Ideas
+        └── états de consommation
+
+Lors d'un premier passage :
+
+bassin inexistant
+↓
+initialisation
+
+Lors d'un retour plus tard :
+
+bassin existant
+↓
+rechargement
+↓
+continuer où il était rendu
+
+Pas de régénération arbitraire de zéro à chaque passage.
+
+3. Gemini intervient ici
+
+Oui : Gemini est le moteur génératif intellectuel utilisé par Taxonomy.
+
+Mais Gemini n'est pas l'autorité architecturale.
+
+Il reçoit un contrat précis de Taxonomy.
+
+Par exemple :
+
+Depth = 4
+Domain = Géographie
+
+
+MISSION GEMINI :
+décomposer ce domaine en matière intellectuelle
+adaptée à ce niveau de profondeur.
+
+Taxonomy lui impose donc :
+
+Depth
+Domain
+matière déjà existante
+matière déjà utilisée
+contraintes de structure
+
+Gemini produit des candidats.
+
+Taxonomy reste responsable de l'organisation et de la persistance de ces résultats.
+
+4. Premier niveau de fragmentation : Subdomain
+
+Pour :
+
+Domain = Géographie
+
+Gemini doit créer des fragments intellectuels cohérents du domaine.
+
+Exemples conceptuels :
+
+Reliefs montagneux
+Hydrographie
+Frontières
+Climats
+Archipels
+Déserts
+etc.
+
+Ou une structure plus précise selon le Depth.
+
+Le point essentiel est :
+
+Le Subdomain n'est pas choisi au hasard. Il doit constituer une subdivision logique du Domain, compatible avec le Depth.
+
+Le Depth influence le niveau de granularité.
+
+Par exemple, la matière acceptable à Depth 2 ne doit pas nécessairement être fragmentée exactement comme à Depth 8.
+
+Ce qu'il reste à verrouiller
+
+Nous devons encore décider précisément :
+
+comment Gemini propose les Subdomains ;
+comment Taxonomy choisit le Subdomain actif ;
+comment elle évite les doublons ;
+quand un Subdomain est déclaré épuisé ;
+comment elle passe au suivant.
+
+Je ne fixerais pas encore un maximum de 20 Subdomains : cette valeur vient de legacy et n'est pas encore une règle officielle.
+
+5. Deuxième niveau : maximum 50 Subjects pour le Subdomain
+
+Là, oui, la structure attendue est importante.
+
+Prenons :
+
+Depth = 4
+Domain = Géographie
+Subdomain = Rocheuses
+
+Taxonomy demande à Gemini de décomposer ce Subdomain en dimensions de connaissance.
+
+Exemple :
+
+Rocheuses
+├── Hauteur
+├── Étendue
+├── Sommets
+├── Lacs
+├── Parcs
+├── Climat
+├── Relief
+├── Géologie
+├── Faune
+├── Villes
+├── Exploration
+...
+Règle
+maximum 50 SubjectSlots
+par Subdomain
+
+Mais :
+
+50 ≠ obligation
+
+Si Gemini ne trouve que 31 Subjects intellectuellement solides :
+
+31 valides
+
+peut être préférable à :
+
+31 bons
++
+19 remplissages artificiels
+
+Donc 50 est un plafond de Bank, pas une cible à atteindre coûte que coûte.
+
+6. Le Subject doit être une dimension, pas simplement une autre entité
+
+C'est une distinction importante.
+
+Pour :
+
+Subdomain = Rocheuses
+
+on ne veut pas automatiquement :
+
+Subject 1 = Canada
+Subject 2 = États-Unis
+Subject 3 = Alberta
+
+si cela ne représente pas la bonne fragmentation intellectuelle.
+
+Le Subject doit répondre à :
+
+« Sous quel angle de connaissance puis-je explorer ce Subdomain ? »
+
+Donc :
+
+Subject = Parcs
+
+est une dimension.
+
+Puis les entités concrètes apparaissent au niveau suivant.
+
+7. Troisième niveau : Dominant Ideas
+
+Prenons :
+
+Subdomain = Rocheuses
+Subject = Parcs
+
+Gemini produit des candidats Dominant Ideas :
+
+Banff
+Jasper
+Yellowstone
+Yoho
+Kootenay
+
+Nous avons :
+
+maximum 5 IdeaSlots par Subject
+
+Encore une fois :
+
+5 ≠ obligation
+
+Si seulement 3 idées sont suffisamment bonnes :
+
+IDE-001 = Banff
+IDE-002 = Jasper
+IDE-003 = Yellowstone
+IDE-004 = EMPTY
+IDE-005 = EMPTY
+
+cela peut être parfaitement acceptable.
+
+La question de savoir combien d'idées minimum rendent un Subject READY reste à verrouiller dans 03_Taxonomy.
+
+8. ValidationDominantIdeas intervient ici
+
+C'est là que je veux garder une frontière très nette.
+
+Taxonomy peut produire :
+
+Banff
+Jasper
+Yellowstone
+Yoho
+Kootenay
+
+mais elle ne doit pas simplement décider :
+
+« C'est beau, je garde tout. »
+
+Elle soumet ces candidats à :
+
+04_ValidationDominantIdeas
+9. Ce que ValidationDominantIdeas reçoit
+
+Son contrat doit au minimum connaître le contexte intellectuel complet :
+
+Depth
+Domain
+Subdomain
+Subject
+Dominant Idea candidate
+
+Exemple :
+
+Depth        = 4
+Domain       = Géographie
+Subdomain    = Rocheuses
+Subject      = Parcs
+Candidate    = Banff
+
+Pourquoi le contexte complet ?
+
+Parce que "Banff" seul ne permet pas de savoir si cette idée est bonne.
+
+Il faut savoir :
+
+Est-ce que Banff est une idée dominante valide de Parcs, dans Rocheuses, pour Géographie Depth 4 ?
+
+10. Ce que ValidationDominantIdeas fait
+
+Son mécanisme détaillé appartient à 04, mais Taxonomy a besoin de connaître son contrat.
+
+VDI doit contrôler deux grandes familles.
+
+Validation individuelle
+
+Chaque candidat doit être :
+
+cohérent avec Domain
+cohérent avec Subdomain
+cohérent avec Subject
+adapté au Depth
+suffisamment distinct du Subject lui-même
+intellectuellement exploitable
+non redondant/interchangeable avec une idée déjà retenue
+
+Les règles exactes — notamment les 18 règles déjà prévues — seront verrouillées dans 04_ValidationDominantIdeas.
+
+Nous ne les absorbons pas dans Taxonomy.
+
+Validation collective
+
+Les 5 candidats ne peuvent pas être évalués uniquement isolément.
+
+Exemple mauvais :
+
+Banff
+Parc Banff
+Banff National Park
+Parc national de Banff
+Banff Canada
+
+Individuellement ils peuvent sembler plausibles.
+
+Collectivement :
+
+aucune diversité réelle
+
+VDI doit donc aussi vérifier la cohérence/diversité du groupe.
+
+11. Retour VDI vers Taxonomy
+
+Conceptuellement :
+
+Gemini
+↓
+5 candidats
+↓
+ValidationDominantIdeas
+↓
+PASS / FAIL par candidat
++
+validation collective
+↓
+Taxonomy
+
+Exemple :
+
+Banff       PASS
+Jasper      PASS
+Yellowstone PASS
+Yoho        PASS
+Kootenay    FAIL
+
+Taxonomy obtient alors son IdeaBank exploitable :
+
+IDE-001 Banff       FILLED
+IDE-002 Jasper      FILLED
+IDE-003 Yellowstone FILLED
+IDE-004 Yoho        FILLED
+IDE-005             EMPTY
+
+Nous devons encore décider dans 03_Taxonomy :
+
+Si VDI laisse trop peu d'idées valides, est-ce qu'on redemande des candidats à Gemini, est-ce qu'on accepte le Subject avec moins d'idées, ou est-ce qu'on abandonne ce Subject ?
+
+Ça reste une vraie décision à prendre.
+
+12. Taxonomy sélectionne l'IdeaSlot exact
+
+Supposons :
+
+IDE-001 Banff       disponible
+IDE-002 Jasper      disponible
+IDE-003 Yellowstone disponible
+IDE-004 Yoho        disponible
+
+Taxonomy choisit :
+
+IDE-002
+Jasper
+
+À partir de là, l'identité doit être conservée.
+
+Il faut savoir :
+
+Depth 4
+Geographie
+Rocheuses
+Parcs
+IDE-002
+Jasper
+
+et pas seulement conserver le texte Jasper.
+
+13. Inscription dans le Blueprint
+
+Seulement lorsque la chaîne est prête :
+
+Subdomain valide
++
+Subject valide
++
+Idea exacte validée
+
+Taxonomy peut appeler conceptuellement :
+
+fillTaxonomy(
+    subdomain_active,
+    subject_active,
+    dominant_idea_active
+)
+
+Le Blueprint devient :
+
+blueprint_id          = BP-123
+depth                 = 4
+domain                = geographie
+subdomain_active      = Rocheuses
+subject_active        = Parcs
+dominant_idea_active  = Jasper
+kernel_code           = pas encore écrit
+
+Taxonomy écrit les trois informations ensemble.
+
+Pas :
+
+Subdomain aujourd'hui
+Subject ensuite
+Idea plus tard
+
+Le triplet doit être prêt avant son inscription.
+
+14. Consommation de l'IdeaBank
+
+Et ici nous conservons la règle qu'on vient de rétablir.
+
+Le flow est :
+
+IDE-002 Jasper sélectionné
+↓
+VDI PASS
+↓
+IDE-002 Jasper écrit dans Blueprint
+↓
+écriture Blueprint réussie
+↓
+CE MÊME IDE-002 → CONSUMED
+
+Pas ReadyBank.
+
+Pas une recherche ultérieure.
+
+Pas :
+
+firstAvailableIdea()
+
+L'identité doit être exacte :
+
+sélectionné
+=
+validé
+=
+écrit Blueprint
+=
+CONSUMED
+15. Suivi de la SubjectBank
+
+Après consommation de IDE-002 :
+
+Subject = Parcs
+
+
+IDE-001 Banff       CONSUMED
+IDE-002 Jasper      CONSUMED
+IDE-003 Yellowstone AVAILABLE
+IDE-004 Yoho        AVAILABLE
+IDE-005             EMPTY
+
+Donc :
+
+Subject Parcs
+= encore exploitable
+
+Lors d'un prochain passage approprié :
+
+IDE-003 Yellowstone
+
+peut être utilisé.
+
+Quand :
+
+tous les IdeaSlots exploitables
+= CONSUMED
+
+alors :
+
+SubjectSlot Parcs
+→ EXHAUSTED
+
+Taxonomy passe ensuite au Subject suivant de sa propre Bank.
+
+16. Suivi du Subdomain
+
+Exemple :
+
+Rocheuses
+
+
+Hauteur    EXHAUSTED
+Étendue    EXHAUSTED
+Sommets    EXHAUSTED
+Lacs       EXHAUSTED
+Parcs      EXHAUSTED
+Climat     AVAILABLE
+...
+
+Le Subdomain n'est évidemment pas épuisé.
+
+Taxonomy poursuit :
+
+Climat
+
+Quand il n'existe plus aucun Subject exploitable dans ce Subdomain :
+
+Subdomain
+→ EXHAUSTED
+
+et Taxonomy doit passer au Subdomain suivant.
+
+Le mécanisme exact de création/sélection du Subdomain suivant est l'un des points que nous devons maintenant spécifier.
+
+17. DOMAIN_EXHAUSTED
+
+Seulement lorsque Taxonomy peut établir :
+
+Depth 4
++
+Geographie
++
+aucun Subdomain exploitable restant
++
+aucun Subject exploitable restant
++
+aucun IdeaSlot exploitable restant
+
+alors elle peut produire :
+
+DOMAIN_EXHAUSTED(4, geographie)
+
+Elle ne produit jamais ce signal simplement parce que :
+
+un IdeaBank est vide
+
+ou :
+
+un Subject est fini
+
+ou :
+
+un Subdomain est fini
+18. Relation avec KRP
+
+C'est ici que les deux moteurs communiquent, sans se mélanger.
+
+Taxonomy dit seulement :
+
+DOMAIN_EXHAUSTED(depth, domain)
+
+et éventuellement :
+
+DEPTH_EXHAUSTED(depth)
+
+KRP enregistre ces informations pour ses rotations futures.
+
+Taxonomy ne dit jamais :
+
+prends maintenant Histoire
+
+KRP reste le seul à choisir le prochain domaine.
+
+19. Le Blueprint courant continue normalement
+
+Supposons que Jasper était la dernière idée de tout le bassin :
+
+Depth 4 + Géographie
+
+Taxonomy peut faire :
+
+Jasper
+→ Blueprint
+→ CONSUMED
+→ bassin maintenant épuisé
+→ DOMAIN_EXHAUSTED(4, geographie)
+
+Mais le Blueprint Jasper reste valide.
+
+Il continue :
+
+QuestionIntent
+↓
+Phase 1
+↓
+Validation
+↓
+Phase 2
+↓
+Validation
+↓
+ReadyBank
+
+Le signal DOMAIN_EXHAUSTED est prospectif.
+
+Il affectera les futurs Blueprints.
+
+20. ReadyBank et CURRENT_KERNEL_RECEIVED
+
+Quand le Blueprint courant arrive finalement dans ReadyBank :
+
+ReadyBank
+↓
+CURRENT_KERNEL_RECEIVED
+
+KRP peut déclencher le prochain cycle.
+
+À ce moment, il connaît déjà éventuellement :
+
+Depth 4 + Géographie
+= DOMAIN_EXHAUSTED
+
+Il exclut donc ce bassin de sa prochaine sélection.
+
+C'est là la vraie relation :
+
+TAXONOMY
+→ dit ce qui est épuisé
+
+
+READYBANK
+→ confirme qu'un cycle de noyau est terminé
+
+
+KRP
+→ décide où produire le prochain noyau
+21. DEPTH_EXHAUSTED
+
+Taxonomy doit aussi suivre l'état de tous les domaines du même Depth.
+
+Pour Depth 4 :
+
+Geographie EXHAUSTED
+Histoire    EXHAUSTED
+Faune       EXHAUSTED
+Art         EXHAUSTED
+Sport       EXHAUSTED
+Cinema      EXHAUSTED
+Cuisine     EXHAUSTED
+Science     EXHAUSTED
+
+Alors :
+
+DEPTH_EXHAUSTED(4)
+
+Taxonomy peut l'annoncer.
+
+Et ensuite seulement KRP appliquera :
+
+4 → 6
+
+Taxonomy ne décide jamais que le prochain Depth est 6.
+
+Architecture fonctionnelle Taxonomy que je retiens
+                    KRP
+                     │
+              depth + domain
+                     │
+                     ▼
+              ┌──────────────┐
+              │   TAXONOMY   │
+              └──────────────┘
+                     │
+          ouvre/recharge le bassin
+                     │
+                     ▼
+                  GEMINI
+                     │
+            fragmentation Domain
+                     │
+                     ▼
+                 Subdomain
+                     │
+                     ▼
+          SubjectBank max 50
+                     │
+                     ▼
+             Subject actif
+                     │
+                     ▼
+                  GEMINI
+                     │
+          candidats Dominant Ideas
+                     │
+                     ▼
+       04_ValidationDominantIdeas
+                     │
+              PASS / FAIL
+                     │
+                     ▼
+            IdeaBank max 5
+                     │
+                     ▼
+           IdeaSlot exact choisi
+                     │
+                     ▼
+              fillTaxonomy()
+                     │
+        ┌────────────┴────────────┐
+        ▼                         ▼
+Blueprint                  IdeaSlot exact
+Subdomain                  → CONSUMED
+Subject                         │
+Dominant Idea                   ▼
+        │                 mise à jour Banks
+        │                         │
+        │                 Subject EXHAUSTED ?
+        │                         │
+        │                Subdomain EXHAUSTED ?
+        │                         │
+        │                 Domain EXHAUSTED ?
+        │                         │
+        │                  Depth EXHAUSTED ?
+        │                         │
+        ▼                         ▼
+suite pipeline        signaux prospectifs KRP
+Les décisions qu'il nous reste réellement à verrouiller
+
+Maintenant que ce fonctionnement général est clair, 03_Taxonomy doit surtout décider :
+
+Comment Gemini construit les Subdomains à partir de Depth + Domain.
+Comment un Subdomain est déclaré valide/actif/épuisé.
+Comment les maximum 50 Subjects sont générés et structurés.
+Quand une SubjectBank est considérée suffisamment préparée.
+Que faire si Gemini produit moins de Subjects utiles.
+Comment constituer les maximum 5 Dominant Ideas.
+Que faire lorsque VDI rejette une partie ou toutes les idées.
+Lifecycle exact des SubjectSlot.
+Lifecycle exact des IdeaSlot.
+Identifiants permanents permettant une consommation exacte.
+Mécanisme précis de progression Subject → Subdomain → Domain.
+Persistance du bassin et reprise lors du retour de KRP.
+Condition exacte de DOMAIN_EXHAUSTED.
+Condition exacte de DEPTH_EXHAUSTED.
+Gestion des erreurs Gemini / préparation incomplète.
+IMPASSE-KRP-001, une fois ce lifecycle complètement défini.
+
+C'est ce système-là que je considère maintenant comme le périmètre fonctionnel de 03_Taxonomy. On peut rédiger la spécification en suivant exactement cette chaîne, plutôt que de commencer par des descriptions abstraites qui risquent de perdre la mécanique réelle.

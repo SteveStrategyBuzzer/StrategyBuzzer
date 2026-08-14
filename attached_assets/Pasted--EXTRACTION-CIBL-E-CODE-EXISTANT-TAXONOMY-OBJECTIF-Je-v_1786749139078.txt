@@ -1,0 +1,423 @@
+# EXTRACTION CIBLÉE — CODE EXISTANT TAXONOMY
+
+OBJECTIF
+
+Je veux récupérer le code Taxonomy existant afin de le comparer ensuite
+à la nouvelle spécification 03_Taxonomy.
+
+AUCUNE MODIFICATION.
+AUCUN PATCH.
+AUCUNE MIGRATION.
+AUCUN TEST À LANCER.
+AUCUNE ANALYSE ARCHITECTURALE.
+AUCUNE PROPOSITION DE SOLUTION.
+
+Tu dois uniquement EXTRAIRE le code et les informations techniques demandées.
+
+==================================================
+CONTEXTE IMPORTANT
+==================================================
+
+La future architecture Taxonomy est définie hors Replit.
+
+Ne considère PAS le code actuel comme source de vérité métier.
+
+Nous voulons simplement savoir ce qui existe déjà afin de déterminer ensuite :
+
+CONSERVER
+MODIFIER
+SUPPRIMER
+AJOUTER
+
+==================================================
+1 — POINT D'ENTRÉE TAXONOMY
+==================================================
+
+Trouve exactement comment Taxonomy est appelée actuellement.
+
+Je veux le code complet ou le slice complet avec contexte de :
+
+- KernelPipelineOrchestrator ou équivalent ;
+- méthode qui appelle Taxonomy ;
+- arguments transmis ;
+- résultat attendu ;
+- gestion des erreurs ;
+- transaction éventuelle autour de cet appel.
+
+Inclure :
+
+PATH
+namespace
+imports utiles
+constructeur
+méthode complète concernée
+
+==================================================
+2 — CLASSES TAXONOMY PRINCIPALES
+==================================================
+
+Retourne le contenu complet des classes existantes correspondant à :
+
+- TaxonomyOrchestrator
+- TaxonomyProgressManager
+- TaxonomyReader
+- TaxonomyBankRepository
+- TaxonomyGeminiClient
+- TaxonomyConfig
+
+Si un nom n'existe pas exactement :
+trouve son équivalent réel.
+
+Pour chaque fichier :
+
+PATH:
+...
+
+CONTENU:
+...
+
+Ne résume pas le code.
+Je veux pouvoir le réutiliser directement.
+
+==================================================
+3 — PERSISTANCE TAXONOMY
+==================================================
+
+Trouve toutes les migrations et modèles concernant Taxonomy.
+
+Je veux notamment savoir si existent des structures pour :
+
+- bassin Depth + Domain ;
+- Subdomain ;
+- Subject ;
+- Dominant Idea / IdeaSlot ;
+- état de consommation ;
+- curseurs ;
+- statut d'épuisement ;
+- lien vers Blueprint ;
+- identifiants de slots.
+
+Retourne :
+
+A. migrations complètes pertinentes ;
+B. modèles Eloquent complets pertinents ;
+C. schéma actuel résumé sous cette forme :
+
+TABLE:
+colonnes:
+indexes:
+unique constraints:
+foreign keys:
+
+Ne modifie rien.
+
+==================================================
+4 — GÉNÉRATION GEMINI
+==================================================
+
+Retourne exactement le code qui :
+
+- appelle Gemini pour Taxonomy ;
+- construit les prompts ;
+- parse les réponses ;
+- génère les subdomains ;
+- génère les subjects ;
+- génère les dominant ideas ;
+- gère retry / erreur / réponse invalide.
+
+Je veux voir :
+
+- client utilisé ;
+- modèle Gemini utilisé ;
+- paramètres ;
+- prompts complets ;
+- format JSON attendu ;
+- validation du JSON ;
+- retry actuel ;
+- fallback éventuel.
+
+Inclure tous les fichiers nécessaires.
+
+==================================================
+5 — SUBDOMAIN
+==================================================
+
+Trouve tout le code actuel qui :
+
+- crée un Subdomain ;
+- sélectionne un Subdomain ;
+- le persiste ;
+- décide qu'il est actif ;
+- décide qu'il est épuisé ;
+- passe au suivant.
+
+Retourne les méthodes complètes.
+
+Si aucun mécanisme n'existe :
+écrire simplement :
+
+SUBDOMAIN PROGRESSION :
+ABSENTE
+
+==================================================
+6 — SUBJECT BANK
+==================================================
+
+Trouve tout le code actuel qui :
+
+- génère les Subjects ;
+- applique une limite de 50 ;
+- persiste les Subjects ;
+- sélectionne le Subject actif ;
+- avance vers le Subject suivant ;
+- marque un Subject épuisé.
+
+Je veux savoir précisément :
+
+- où apparaît la valeur 50 ;
+- si 50 est traité comme maximum ou obligation ;
+- comment le Subject courant est retrouvé ;
+- quel identifiant possède un Subject ;
+- quels états existent réellement.
+
+Retourne le code complet pertinent.
+
+==================================================
+7 — IDEA BANK / DOMINANT IDEAS
+==================================================
+
+Trouve tout le code actuel qui :
+
+- génère les Dominant Ideas ;
+- applique une limite de 5 ;
+- persiste les idées ;
+- assigne un identifiant à l'idée ;
+- sélectionne une idée ;
+- la marque ACTIVE/FILLED/CONSUMED ou équivalent ;
+- choisit "first available idea" ou logique similaire.
+
+Je veux voir précisément :
+
+- où la valeur 5 intervient ;
+- structure exacte d'un IdeaSlot ;
+- identifiant exact d'un IdeaSlot ;
+- états existants ;
+- fonction actuelle de sélection ;
+- fonction actuelle de consommation.
+
+Retourne les méthodes complètes.
+
+==================================================
+8 — peekNext / confirmConsumed
+==================================================
+
+Retourne le code COMPLET des méthodes :
+
+peekNext(...)
+confirmConsumed(...)
+
+ou leurs équivalents actuels.
+
+Inclure toutes les méthodes qu'elles appellent directement
+si elles sont nécessaires pour comprendre :
+
+- comment l'idée est sélectionnée ;
+- comment elle est retrouvée ;
+- comment la consommation avance ;
+- si l'identité exacte du slot est conservée ou recalculée.
+
+==================================================
+9 — ÉCRITURE DANS KERNELBLUEPRINT
+==================================================
+
+Retourne le code exact reliant Taxonomy à :
+
+KernelBlueprint::fillTaxonomy(...)
+
+Je veux voir :
+
+- où fillTaxonomy est appelé ;
+- quelles valeurs lui sont données ;
+- comment subdomain_active est obtenu ;
+- comment subject_active est obtenu ;
+- comment dominant_idea_active est obtenu ;
+- ce qui se passe immédiatement après fillTaxonomy.
+
+Inclure la signature actuelle de :
+
+KernelBlueprint::fillTaxonomy()
+
+mais pas besoin de retourner tout KernelBlueprint si non nécessaire.
+
+==================================================
+10 — VALIDATIONDOMINANTIDEAS
+==================================================
+
+Trouve tout ce qui existe déjà sous les noms :
+
+ValidationDominantIdeas
+DominantIdeaValidator
+KLD
+KEY_LEARNING_DIRECTION
+KEY_STRUCTURE
+IdeaSlotLoader
+
+ou équivalent.
+
+Pour chacun :
+
+PATH
+classe
+rôle technique actuel
+appelants actuels
+méthodes publiques
+
+Puis retourner le code des méthodes directement utilisées par Taxonomy.
+
+IMPORTANT :
+
+Ne décide pas quelle architecture est correcte.
+Je veux seulement savoir ce qui existe.
+
+==================================================
+11 — DOMAIN_EXHAUSTED / DEPTH_EXHAUSTED
+==================================================
+
+Trouve tous les callers/readers/writers actuels de :
+
+DOMAIN_EXHAUSTED
+DEPTH_EXHAUSTED
+isExhausted
+EMPTY
+AVAILABLE
+
+Je veux voir :
+
+- où Taxonomy produit actuellement un état d'épuisement ;
+- où KRP le reçoit ;
+- si KRP interroge encore Taxonomy ;
+- quelles méthodes font la transition.
+
+Retourne seulement les slices pertinents avec PATH.
+
+==================================================
+12 — TESTS TAXONOMY EXISTANTS
+==================================================
+
+Liste les tests directement liés à Taxonomy.
+
+Pour chacun :
+
+PATH
+nom du test
+ce qu'il vérifie en une phrase
+
+Puis retourne le contenu complet uniquement des tests qui couvrent :
+
+- génération Subdomain ;
+- SubjectBank ;
+- IdeaBank ;
+- sélection ;
+- consommation ;
+- reprise d'un bassin ;
+- épuisement ;
+- fillTaxonomy ;
+- Gemini.
+
+Ne lance aucun test.
+
+==================================================
+13 — DÉPENDANCES TECHNIQUES
+==================================================
+
+Retourne la liste exacte des dépendances nécessaires pour réécrire Taxonomy :
+
+- interfaces ;
+- DTO ;
+- enums ;
+- repositories ;
+- services ;
+- events ;
+- jobs ;
+- listeners ;
+- modèles ;
+- config ;
+- traits.
+
+Format :
+
+PATH
+TYPE
+UTILISÉ PAR
+POURQUOI IL EST NÉCESSAIRE
+
+==================================================
+14 — RAPPORT FINAL TRÈS COURT
+==================================================
+
+Après l'extraction, termine uniquement par :
+
+TAXONOMY — INVENTAIRE CODE ACTUEL
+
+Point d'entrée:
+...
+
+Classes principales:
+...
+
+Tables:
+...
+
+Gemini:
+PRÉSENT / ABSENT
+
+Subdomain progression:
+PRÉSENTE / PARTIELLE / ABSENTE
+
+SubjectBank:
+PRÉSENTE / PARTIELLE / ABSENTE
+
+IdeaBank:
+PRÉSENTE / PARTIELLE / ABSENTE
+
+Identité permanente IdeaSlot:
+PRÉSENTE / ABSENTE / INCERTAINE
+
+Consommation exacte du même IdeaSlot:
+PRÉSENTE / ABSENTE / INCERTAINE
+
+ValidationDominantIdeas actuelle:
+PRÉSENTE / PARTIELLE / ABSENTE
+
+DOMAIN_EXHAUSTED actuel:
+...
+
+DEPTH_EXHAUSTED actuel:
+...
+
+fillTaxonomy branché:
+OUI / NON
+
+Nombre de fichiers retournés:
+...
+
+Code modifié:
+NON
+
+Tests exécutés:
+NON
+
+Puis STOP.
+
+==================================================
+INTERDICTIONS
+==================================================
+
+Ne corrige rien.
+Ne supprime rien.
+Ne crée rien.
+Ne modifie pas .agents/memory.
+Ne rédige pas 03_Taxonomy.md.
+Ne propose pas de nouvelle architecture.
+Ne fais pas de plan d'implantation.
+Ne fais pas de validation terminale.
