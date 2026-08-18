@@ -1,124 +1,105 @@
 # StrategyBuzzer — IMPLEMENTATION STATE
 
-## RECOVERY-01 — Point de reprise vérifié
+## RECOVERY-01 — État de reprise prouvé
 
 **Date de récupération :** 17 août 2026  
 **Dépôt :** `SteveStrategyBuzzer/StrategyBuzzer`  
-**Branche auditée :** `replit/intellectual-engine-current-2026-08-16`  
-**Baseline auditée :** `db26047532cfdf5e030c348dba4455f8eb310971`  
-**Portée :** `01_KernelBlueprint`, `02_KernelRotationPlanner`, frontière vers `03_Taxonomy`  
-**Nouvelle logique moteur introduite pendant RECOVERY-01 :** AUCUNE
+**Branche :** `replit/intellectual-engine-current-2026-08-16`  
+**Baseline propre auditée :** `db26047532cfdf5e030c348dba4455f8eb310971`  
+**Dernier état moteur découvert avant ce checkpoint :** `6b82bcf2d9965e4efb16ae6bbf5d854ad18b83bf`  
+**Portée :** `01_KernelBlueprint`, `02_KernelRotationPlanner`, frontière `03_Taxonomy`  
+**Nouvelle logique moteur introduite par RECOVERY-01 :** AUCUNE
 
 ---
 
-# 1. Règle d'autorité utilisée pour la reprise
+# 1. Verdict
 
-Pour éviter toute reconstruction à partir d'un code ancien ou d'une mémoire périmée, l'ordre d'autorité est :
+```text
+RECOVERY-01             ✅ TERMINÉ
+POINT DE REPRISE         ✅ ÉTABLI
+NOUVELLE LOGIQUE         ✅ AUCUNE
+
+02_KernelRotationPlanner
+au SHA db260475          ✅ dernière implémentation cohérente retrouvée avec le contrat v3.2
+
+Série post-db260 v3.3    ❌ CONFLIT CONTRACTUEL
+
+03_Taxonomy              ⛔ NE PAS REPRENDRE EN IMPLANTATION
+                         tant que le conflit KRP n'est pas restauré/résolu
+```
+
+**Verdict d'architecture :**
+
+> **REFUS — incohérence architecturale.**
+>
+> La série de commits v3.3 postérieure à `db260475` modifie des règles KRP verrouillées sans mettre à jour la source de vérité documentaire, cite des décisions `DEC-108` et `DEC-111` absentes du registre, et réintroduit des mécanismes explicitement superseded par les décisions officielles actives.
+
+---
+
+# 2. Ordre d'autorité pour la reprise
 
 1. `docs/architecture/00_ArchitectureRegister.md` — décisions `OFFICIAL` non superseded ;
-2. dernière spécification verrouillée du module, lorsqu'elle ne contredit pas le Register ;
-3. code réellement présent au SHA audité ;
-4. tests réellement présents au SHA audité ;
-5. `.agents/memory/*` et `attached_assets/*` uniquement comme preuves historiques / handoff, jamais comme source autonome de contrat.
+2. dernière spécification verrouillée du module ;
+3. code au SHA audité ;
+4. tests au SHA audité ;
+5. historique Git / `.agents/memory/*` / `attached_assets/*` comme preuves de réalisation et de handoff, jamais comme autorité supérieure au contrat.
 
-Règle de travail conservée : **la spécification pilote le code, jamais l'inverse**.
+Principe conservé :
+
+> **La spécification pilote le code. Le code ne réécrit pas la spécification.**
 
 ---
 
-# 2. État documentaire constaté
+# 3. Contrat officiel encore actif au HEAD v3.3
 
-## 2.1 Architecture Register
+Le post-db260 n'a pas modifié `00_ArchitectureRegister.md` ni fait passer `02_KernelRotationPlanner.md` à v3.3.
 
-Le Register est explicitement la source centralisée des décisions officielles.
+Le HEAD v3.3 contient toujours :
 
-Décisions actives déterminantes pour la reprise KRP :
+```text
+docs/architecture/02_KernelRotationPlanner.md
+Version : 3.2
+Date    : 13 août 2026
+Statut  : VERROUILLÉ
+```
 
-- `DEC-034` — KernelBlueprint write-once ;
+Décisions officielles déterminantes :
+
 - `DEC-058` — `KernelBlueprintFactory` crée le Blueprint avant KRP ;
-- `DEC-059` — `blueprint_id` canonique, `rotation_identifier` supprimé ;
-- `DEC-060` — `kernel_received_total` = traçabilité ; `cycle_target/cycle_completed` ne pilotent plus le changement de Depth ;
-- `DEC-063` — `CURRENT_KERNEL_RECEIVED` = déclencheur de la prochaine rotation ;
-- `DEC-067` — états techniques du Blueprint ;
+- `DEC-060` — `kernel_received_total` est de la traçabilité ; `cycle_target/cycle_completed` ne sont plus l'autorité de changement de Depth ;
+- `DEC-063` — `CURRENT_KERNEL_RECEIVED` est le seul déclencheur de la prochaine rotation ;
 - `DEC-068` — KRP n'écrit jamais `kernel_code` ;
-- `DEC-082` — `DOMAIN_EXHAUSTED(depth, domain)` prospectif, produit par Taxonomy ;
-- `DEC-083` — `DEPTH_EXHAUSTED(depth)` prospectif, produit par Taxonomy ;
-- `DEC-092` — `DEPTH_EXHAUSTED(10)` mène à `PRODUCTION_ON_HOLD` ;
+- `DEC-082` — `DOMAIN_EXHAUSTED(depth, domain)` est un signal prospectif produit par Taxonomy ;
+- `DEC-083` — `DEPTH_EXHAUSTED(depth)` est un signal prospectif produit par Taxonomy ;
+- `DEC-092` — après `DEPTH_EXHAUSTED(10)`, la transition terminale est `PRODUCTION_ON_HOLD` ;
 - `DEC-093` — `CURRENT_KERNEL_RECEIVED` est le seul incrémenteur de `kernel_received_total` ;
-- `DEC-094` — DepthCycle officiel : `2 → 4 → 6 → 7 → 8 → 9 → 10`, sans retour automatique vers 2.
+- `DEC-094` — DepthCycle officiel `2 → 4 → 6 → 7 → 8 → 9 → 10`, sans retour automatique à 2.
 
-## 2.2 `01_KernelBlueprint.md`
-
-- Version : `1.5`.
-- Statut documentaire : `VERROUILLÉ`.
-- Le document déclare le module `IMPLÉMENTÉ — CORRECTION TERMINALE`.
-- Une section héritée affirme encore que KRP « crée le KernelBlueprint canonique ».
-- Cette phrase est **superseded** par `DEC-058` et par `02_KernelRotationPlanner.md v3.2` : la Factory crée le Blueprint avant KRP.
-
-Cette incohérence est documentaire. Elle ne doit pas provoquer un retour à l'ancienne architecture.
-
-## 2.3 `02_KernelRotationPlanner.md`
-
-- Version : `3.2`.
-- Date : `13 août 2026`.
-- Statut : `VERROUILLÉ`.
-- Le contrat impose : `KernelBlueprintFactory → Blueprint vide → KRP → fillRotation(depth, domain)`.
-- Le tableau d'en-tête indique encore `Implémentation 0 % / Validation 0 %`.
-- Ce tableau est **périmé** par rapport au code, aux tests et aux validations PostgreSQL réalisés ensuite le 14 août 2026.
-
-Aucune architecture ne doit être régressée pour faire correspondre le code à ce tableau historique.
+Le registre ne contient aucune définition de `DEC-108` ni `DEC-111`.
 
 ---
 
-# 3. `01_KernelBlueprint` — état d'implantation constaté
+# 4. Baseline `db260475` — état cohérent retrouvé
 
-Fichier principal :
+## 4.1 KernelBlueprint
 
 `app/Services/QuestionBank/KernelBlueprint.php`
 
-Implanté au SHA audité :
+La Partie 1 canonique est implantée :
 
-- `blueprint_id` privé, initialisé par `KernelBlueprintFactory` ;
-- `depth` + `domain` privés, écrits par `fillRotation()` ;
-- `subdomain_active` + `subject_active` + `dominant_idea_active`, écrits par `fillTaxonomy()` ;
-- `kernel_code`, écrit par `fillKernelCode()` ;
-- lecture publique via `__get()` ;
-- écriture directe externe bloquée via `__set()` ;
-- write-once par groupe de slots ;
-- helpers `isRotationFilled()`, `isTaxonomyFilled()`, `isIdentityComplete()`, `isComplete()` ;
-- `toArray()` pour les six champs de la Partie 1.
+- `blueprint_id` privé, Factory owner ;
+- `depth + domain` privés, KRP owner ;
+- `subdomain_active + subject_active + dominant_idea_active`, Taxonomy owner ;
+- `kernel_code`, KernelCodeEngine owner ;
+- write-once via méthodes `fill*()` ;
+- écriture externe bloquée ;
+- lecture publique contrôlée.
 
-Le fichier précise lui-même :
+Le code indique lui-même que les Parties 2–6 futures ne sont pas encore implantées.
 
-`Parties 2–6 : non encore implémentées — attendues ultérieurement.`
+## 4.2 KRP au baseline
 
-Donc le constat de reprise est :
-
-**Partie 1 / identité canonique : IMPLÉMENTÉE.**  
-**Le Blueprint complet futur au-delà de cette partie : non déclaré terminé par le code actuel.**
-
-Tests identifiés au SHA audité :
-
-- `tests/Unit/QuestionBank/KernelBlueprintPart1Test.php` ;
-- tests Factory / Orchestrator / KernelCodeEngine utilisant le Blueprint réel.
-
-RECOVERY-01 n'a pas relancé PHPUnit ; aucun résultat courant n'est inventé.
-
----
-
-# 4. `02_KernelRotationPlanner` — état d'implantation constaté
-
-Fichiers principaux vérifiés :
-
-- `KernelRotationPlanner.php` ;
-- `KernelBlueprintFactory.php` ;
-- `KernelPipelineOrchestrator.php` ;
-- `ProcessKernelPipelineOutbox.php` ;
-- `DepthNeedMatrix.php` ;
-- repositories / événements / migrations associés.
-
-## 4.1 Rotation réellement implantée
-
-`KernelRotationPlanner.php` possède une table de transition figée :
+Au SHA `db260475`, KRP suit la transition figée :
 
 ```text
 2  → 4
@@ -130,250 +111,307 @@ Fichiers principaux vérifiés :
 10 → null = PRODUCTION_ON_HOLD
 ```
 
-La transition de Depth ne repose plus sur `nextRequiredDepth()` ni sur `cycle_completed`.
+`cycle_target/cycle_completed` ne pilotent plus cette transition.
 
-Le KRP :
+`DEPTH_EXHAUSTED` est mémorisé prospectivement puis appliqué à la réception canonique du Blueprint courant.
 
-- sélectionne le prochain domaine actif ;
-- ignore les domaines `DOMAIN_EXHAUSTED` ;
-- reçoit `DOMAIN_EXHAUSTED` de façon idempotente ;
-- reçoit `DEPTH_EXHAUSTED` de façon idempotente ;
-- mémorise le Depth épuisé comme transition pending ;
-- applique cette transition au `CURRENT_KERNEL_RECEIVED` correspondant ;
-- écrit `depth + domain` une seule fois via `fillRotation()` ;
-- ne produit pas lui-même les signaux d'épuisement Taxonomy.
-
-## 4.2 CURRENT_KERNEL_RECEIVED réellement implanté
-
-Chemin canonique constaté :
+Le chemin canonique retrouvé est :
 
 ```text
-ReadyBank / Outbox CURRENT_KERNEL_RECEIVED
+ReadyBank
 ↓
-ProcessKernelPipelineOutbox
+CURRENT_KERNEL_RECEIVED
 ↓
-KernelRotationPlanner::receiveKernelReceivedV2()
+Outbox
 ↓
-receipt idempotent
+KRP reçoit/comptabilise le Blueprint exactement une fois
 ↓
-kernel_received_total +1 exactement une fois
+kernel_received_total +1
 ↓
-transition Depth pending éventuelle
+applique la transition DEPTH_EXHAUSTED pending si nécessaire
 ↓
-KernelPipelineOrchestrator::run()
-↓
-Blueprint suivant
+Orchestration du Blueprint suivant
 ```
 
-`ApplyCurrentKernelReceivedToRotation::applyCount()` est désactivé du chemin canonique.
+## 4.3 Validation historique retrouvée
 
-## 4.3 `DepthNeedMatrix` — dette / surface legacy à ne pas confondre avec l'autorité KRP
+Le handoff du 14 août documente :
 
-Le fichier contient encore :
+```text
+PostgreSQL / Neon #159  : 9/9 PASS
+PostgreSQL strict #159B : 6/6 PASS
+TOTAL                    : 15/15 PASS
+```
 
-- `CYCLE_TARGET` ;
-- `nextRequiredDepth()` ;
-- commentaires historiques de wrap `10 → 2` ;
-- `incrementCycleCompleted()`.
-
-Mais le KRP corrigé n'utilise plus ces mécanismes comme autorité de transition de Depth.
-
-Ils doivent être traités comme **surface legacy / traçabilité à auditer ultérieurement**, pas comme le contrat actif de rotation.
-
-RECOVERY-01 ne les supprime pas et ne les réactive pas.
-
----
-
-# 5. Validation KRP retrouvée
-
-Tests unitaires présents au SHA audité notamment :
-
-- `KernelRotationPlannerV3Test.php` ;
-- `KernelPipelineOrchestratorTest.php` ;
-- `ProcessKernelPipelineOutboxTest.php` ;
-- `KernelBlueprintFactoryTest.php` ;
-- `KernelMigrationSchemaTest.php` ;
-- `DepthNeedMatrixTest.php` ;
-- `DepthTourStateTest.php`.
-
-Tests PostgreSQL réels présents :
-
-- `tests/Integration/QuestionBank/Rotation/KernelRotationPlannerPostgresTest.php` ;
-- `tests/Integration/QuestionBank/Rotation/KernelRotationPlannerPostgresStrictTest.php`.
-
-Preuve historique enregistrée le 14 août 2026 :
-
-- série #159 : `9/9 PASS` sur PostgreSQL / Neon ;
-- série #159B stricte : `6/6 PASS` ;
-- total documenté : `15/15 PASS`.
-
-Ces tests couvrent notamment :
+Couverture documentée :
 
 - `FOR UPDATE` réel ;
 - concurrence ;
 - single-active Blueprint ;
 - idempotence CKR ;
-- `4 → 6` ;
-- `10 → PRODUCTION_ON_HOLD` sans pilotage par matrix ;
+- transition `4 → 6` ;
+- `Depth 10 → PRODUCTION_ON_HOLD` ;
 - idempotence `DOMAIN_EXHAUSTED` ;
 - idempotence `DEPTH_EXHAUSTED` ;
 - rollback ;
-- preuve de `IMPASSE-KRP-001`.
+- preuve `IMPASSE-KRP-001`.
 
-**Limite RECOVERY-01 :** les tests n'ont pas été réexécutés pendant cette récupération. Aucun workflow GitHub Actions n'est associé au commit baseline. Le dernier résultat exécutable prouvé retrouvé est donc le résultat historique du 14 août.
+RECOVERY-01 n'a pas réexécuté PHPUnit : aucun résultat courant n'est inventé.
 
 ---
 
-# 6. IMPASSE-KRP-001 — toujours ouverte, volontairement
+# 5. Delta complet `db260475 → 6b82bcf2`
 
-Type : **FRONTIÈRE INTER-MODULE KRP → Taxonomy**.
+La série v3.3 commence directement après `db260475` et contient neuf commits :
 
-Cas :
+| Ordre | Commit | Changement principal | Verdict Recovery |
+|---:|---|---|---|
+| 1 | `d482821b` | réécriture `KernelRotationPlanner` sous un prétendu contrat v3.3 | ❌ CONFLIT |
+| 2 | `900ffa95` | Orchestrator réduit à Factory → KRP → depth/domain | ⚠️ MIXTE / non enregistré |
+| 3 | `15529c09` | commande rotate réduite au module 02 | ⚠️ suit le changement précédent |
+| 4 | `2bb88895` | CKR retiré du chemin direct de comptabilisation/transition KRP | ❌ CONFLIT |
+| 5 | `bb87f8a2` | commande Outbox alignée sur cette nouvelle frontière CKR | ❌ dépend du conflit |
+| 6 | `a2f36539` | tests Orchestrator réécrits pour v3.3 | ⚠️ tests du nouveau comportement |
+| 7 | `203e2151` | CKR laissé rejouable selon nouveaux états KRP | ⚠️ comportement non enregistré |
+| 8 | `0d9cc046` | tests KRP réécrits pour cycle_target/cycle_completed + wrap 10→2 | ❌ CONFLIT DIRECT |
+| 9 | `6b82bcf2` | tests CKR réécrits pour nouvelle frontière v3.3 | ❌ valide la dérive |
+
+Aucun de ces neuf commits ne modifie le registre d'architecture ni ne remplace officiellement `02_KernelRotationPlanner.md v3.2`.
+
+---
+
+# 6. Conflits précis introduits par v3.3
+
+## CONFLIT A — décisions inexistantes
+
+Le code v3.3 affirme :
+
+```text
+Contrat actif v3.3 (DEC-094 / DEC-108 / DEC-111)
+```
+
+Or :
+
+```text
+DEC-094 : existe
+DEC-108 : ABSENTE du Architecture Register
+DEC-111 : ABSENTE du Architecture Register
+```
+
+Un commentaire de code ne peut pas créer une décision d'architecture.
+
+## CONFLIT B — `cycle_target/cycle_completed` réactivés comme autorité
+
+Le KRP v3.3 appelle :
+
+```text
+DepthNeedMatrix::incrementCycleCompleted()
+DepthNeedMatrix::nextRequiredDepth()
+```
+
+Cela réactive exactement le mécanisme que `DEC-060` a retiré du chemin décisionnel.
+
+## CONFLIT C — changement de sens de `DEPTH_EXHAUSTED`
+
+Contrat officiel :
+
+```text
+DEPTH_EXHAUSTED(depth)
+= épuisement réel de tous les bassins Domaines du Depth
+→ prochain Depth au prochain CURRENT_KERNEL_RECEIVED
+```
+
+v3.3 :
+
+```text
+DEPTH_EXHAUSTED
+= fin d'UN tour
+→ cycle_completed +1
+→ possibilité de revenir au même Depth selon target
+```
+
+Ce n'est pas la même sémantique.
+
+## CONFLIT D — retour automatique Depth 10 → Depth 2
+
+Contrat officiel :
+
+```text
+2 → 4 → 6 → 7 → 8 → 9 → 10
+DEPTH_EXHAUSTED(10)
+→ PRODUCTION_ON_HOLD
+```
+
+Interdiction explicite :
+
+```text
+10 → 2 automatique
+```
+
+Les tests v3.3 exigent au contraire un wrap `10 → 2` lorsque des cibles restent ouvertes.
+
+## CONFLIT E — CURRENT_KERNEL_RECEIVED
+
+Contrat officiel :
+
+```text
+CURRENT_KERNEL_RECEIVED
+= seul déclencheur de la prochaine rotation
++ seul incrémenteur de kernel_received_total
++ point où une transition DEPTH_EXHAUSTED pending devient effective
+```
+
+v3.3 déprécie `receiveKernelReceivedV2()` comme mécanisme de transition KRP et retire son appel du processeur Outbox.
+
+Le signal autorise seulement la création du Blueprint suivant ; la décision KRP est recalculée ensuite via la matrix.
+
+C'est une modification de contrat non enregistrée.
+
+## CONFLIT F — états inventés/non enregistrés
+
+v3.3 ajoute notamment :
+
+```text
+VISIBLE
+ESTOMPÉ
+BLOCKED
+AWAITING_DEPTH_EXHAUSTED
+retry de persistance KRP
+```
+
+Ces concepts peuvent être techniquement plausibles, mais ils n'ont pas été inscrits comme décisions officielles avant leur implantation.
+
+Ils ne sont donc pas validés par RECOVERY-01.
+
+---
+
+# 7. Ce qui peut être conservé conceptuellement de la série v3.3
+
+Un point de v3.3 correspond à une frontière déjà verrouillée :
+
+```text
+KernelRotationPlanner
+↓
+reçoit Blueprint existant
+↓
+choisit depth + domain
+↓
+écrit depth + domain
+↓
+FIN DE SA RESPONSABILITÉ
+```
+
+Donc l'intention de **ne pas faire exécuter Taxonomy ou KernelCodeEngine par KRP lui-même** est correcte.
+
+Cependant les commits `900ffa95` et `15529c09` ne doivent pas être conservés aveuglément : ils changent aussi le rôle de `KernelPipelineOrchestrator`, alors que `02_KernelRotationPlanner.md v3.2` décrit encore cet orchestrateur comme coordinateur des moteurs successifs.
+
+Cette séparation devra être remise en conformité explicitement pendant le bloc de restauration, sans importer les mécanismes v3.3 en conflit.
+
+---
+
+# 8. IMPASSE-KRP-001
+
+Au baseline `db260475`, l'impasse documentée est :
 
 ```text
 Factory crée Blueprint CREATED_UNENGAGED
 ↓
-KRP commit sa transaction correctement
+transaction KRP validée
 ↓
-Taxonomy est appelée hors transaction
+Taxonomy appelée ensuite
 ↓
-Taxonomy lève une exception
+exception Taxonomy
 ↓
-Blueprint CREATED_UNENGAGED reste durable
+Blueprint CREATED_UNENGAGED durable
 ↓
-single-active guard peut bloquer le cycle suivant
+single-active guard bloque le run suivant
 ```
 
-La preuve existe dans :
+Cette impasse devait être résolue à la frontière de `03_Taxonomy`, sans inventer :
 
-`KernelPipelineOrchestratorTest::test_exception_after_transaction_leaves_blueprint_created_unengaged()`.
+- auto-recovery ;
+- cleanup métier ;
+- timeout ;
+- retry métier ;
+- nouvel état ;
+- nouveau signal ;
+- contournement du single-active guard.
 
-Décision de récupération :
-
-- ne pas inventer auto-recovery ;
-- ne pas inventer cleanup métier ;
-- ne pas ajouter état / timeout / retry / signal ;
-- ne pas contourner le single-active guard ;
-- résoudre seulement après définition du contrat `03_Taxonomy` pour cette frontière.
-
-`peekNext() == null` n'est pas ce cas : le CONTAINMENT temporaire existant nettoie ce Blueprint sans inférer `DOMAIN_EXHAUSTED`. L'impasse concerne une **exception Taxonomy après COMMIT**.
+La série v3.3 a changé la frontière avant que le contrat 03 soit verrouillé. RECOVERY-01 ne valide donc pas cette résolution implicite.
 
 ---
 
-# 7. Handoff réel retrouvé dans l'historique
+# 9. État officiel de reprise
 
-Un artefact ajouté le 14 août 2026 établit le point de passage suivant :
+| Brique | État |
+|---|---|
+| Architecture Register | ✅ autorité retrouvée |
+| 01 KernelBlueprint Partie 1 | ✅ implantée |
+| 02 KRP v3.2 au baseline `db260475` | ✅ dernière version cohérente + validation historique retrouvée |
+| série KRP v3.3 post-db260 | ❌ non conforme au contrat officiel actuel |
+| tests v3.3 | ❌ ne peuvent pas servir de preuve de conformité puisqu'ils ont été réécrits pour la dérive |
+| IMPASSE-KRP-001 | 🟡 ouverte selon le contrat baseline |
+| 03 Taxonomy | ⛔ ne pas implanter tant que 02 n'est pas restauré/stabilisé |
+
+---
+
+# 10. Bloc suivant autorisé — RESTORE-02
+
+Objectif : **restaurer le module 02 sur son contrat officiel sans reconstruire l'architecture à partir du code v3.3.**
+
+Séquence obligatoire :
 
 ```text
-01_KernelBlueprint
-✅ implanté pour la frontière courante
-
-02_KernelRotationPlanner
-✅ implanté
-validation terminale globale / inter-module reportée
-
-↓
-03_Taxonomy
-PHASE DE SPÉCIFICATION
+1. prendre db260475 comme référence comportementale KRP prouvée
+2. comparer chaque fichier modifié par la série v3.3
+3. classer chaque changement :
+   CONSERVER / RESTAURER / RÉÉCRIRE / SUPPRIMER
+4. restaurer les invariants officiels :
+   - cycle_target/cycle_completed = zéro autorité de transition
+   - DEPTH_EXHAUSTED = épuisement réel du Depth
+   - transition appliquée au CKR
+   - Depth 10 → PRODUCTION_ON_HOLD
+   - CKR = comptabilisation idempotente + déclencheur
+5. conserver uniquement les séparations de responsabilité réellement compatibles
+6. remettre les tests sur le contrat officiel
+7. exécuter validation disponible
+8. seulement après validation : autoriser le passage à 03_Taxonomy
 ```
 
-Les commits suivants jusqu'à `db260475` ajoutent principalement des notes et extractions de recherche pour Taxonomy.
+Aucune modification de Taxonomy n'est autorisée dans RESTORE-02.
 
-Le commit baseline `db260475` demande explicitement d'extraire le code Taxonomy existant **sans le considérer comme source de vérité métier**, afin de pouvoir ensuite classer :
+---
+
+# 11. Interdictions actives
+
+Ne pas :
+
+- inventer `DEC-108` ou `DEC-111` rétroactivement ;
+- faire du code v3.3 la source de vérité ;
+- garder un wrap automatique `10 → 2` ;
+- réactiver `cycle_target/cycle_completed` comme autorité KRP ;
+- changer le sens de `DEPTH_EXHAUSTED` ;
+- supprimer la comptabilisation CKR officielle ;
+- passer à Taxonomy pour masquer le conflit de la brique 02 ;
+- modifier une brique suivante pour rendre les tests 02 verts ;
+- déclarer le KRP FINI tant que le code courant n'est pas revenu en conformité et revalidé.
+
+---
+
+# 12. Statut terminal de RECOVERY-01
 
 ```text
-CONSERVER
-MODIFIER
-SUPPRIMER
-AJOUTER
-```
+SPEC AUDIT db260             ✅
+CODE AUDIT db260             ✅
+TEST INVENTORY db260         ✅
+HISTORIQUE VALIDATION        ✅ 15/15 PG documentés
+DELTA db260 → 6b82           ✅ 9 commits audités
+CONTRAT v3.3 OFFICIEL        ❌ ABSENT
+DÉRIVE v3.3                  ✅ PROUVÉE
+CHECKPOINT                   ✅ MIS À JOUR
+TESTS RERUN                  ⚪ NON EXÉCUTÉS
+NOUVELLE LOGIQUE RECOVERY    ✅ AUCUNE
 
-Aucune preuve n'indique qu'une nouvelle architecture Taxonomy devait être implantée avant son verrouillage.
-
----
-
-# 8. État de reprise officiel après RECOVERY-01
-
-| Brique | Contrat | Code | Tests disponibles | Validation retrouvée | Statut de reprise |
-|---|---|---|---|---|---|
-| Architecture Register | source centrale | n/a | n/a | n/a | AUTORITÉ |
-| 01 KernelBlueprint — Partie 1 | verrouillé | implanté | présents | historique | REPRIS |
-| 02 KernelRotationPlanner | v3.2 verrouillé | implanté | unit + PostgreSQL | 15/15 PG documentés le 14 août | REPRIS — frontière Taxonomy ouverte |
-| IMPASSE-KRP-001 | non résolue par design | aucune solution inventée | preuve présente | prouvée | OUVERTE — dépend de 03 |
-| 03 Taxonomy | à spécifier complètement | code existant = matière d'audit seulement | anciens tests présents | non retenus comme contrat | PROCHAINE BRIQUE |
-
----
-
-# 9. Prochaine séquence autorisée
-
-```text
-03_Taxonomy
-↓
-reconstruction documentaire depuis Constitution + Architecture Register
-↓
-spécification complète des états et lifecycles
-↓
-résolution explicite de la frontière IMPASSE-KRP-001
-↓
-décisions Architecture Register
-↓
-VERROUILLAGE 03_Taxonomy
-↓
-seulement ensuite : audit du code Taxonomy existant
-↓
-CONSERVER / MODIFIER / SUPPRIMER / AJOUTER
-↓
-implantation
-↓
-validation terminale
-```
-
-Points Taxonomy devant être spécifiés avant implantation :
-
-- bassin `Depth + Domain` ;
-- cycle Subdomain ;
-- SubjectBank et lifecycle SubjectSlot ;
-- IdeaBank et lifecycle IdeaSlot ;
-- identité permanente du SubjectSlot / IdeaSlot ;
-- contrat avec `04_ValidationDominantIdeas` sans absorber ses règles ;
-- readiness d'un sujet ;
-- sélection exacte du territoire ;
-- moment d'écriture `fillTaxonomy()` ;
-- moment exact de consommation ;
-- conservation de l'identité exacte entre sélection et consommation ;
-- reprise du state persistant ;
-- émission `DOMAIN_EXHAUSTED` ;
-- émission `DEPTH_EXHAUSTED` ;
-- comportement après Blueprint valide si Taxonomy échoue — `IMPASSE-KRP-001`.
-
----
-
-# 10. Interdictions de reprise
-
-À partir de ce checkpoint, ne pas :
-
-- reconstruire KRP depuis une ancienne mémoire ;
-- réintroduire Depth 1 ;
-- réintroduire un wrap automatique `10 → 2` ;
-- utiliser `cycle_target/cycle_completed` comme autorité KRP ;
-- réintroduire `Général` comme domaine de création ;
-- faire produire `DOMAIN_EXHAUSTED` ou `DEPTH_EXHAUSTED` par KRP ;
-- corriger Taxonomy en prenant son code actuel comme source de vérité ;
-- résoudre `IMPASSE-KRP-001` par invention avant le contrat 03 ;
-- modifier une brique suivante pour masquer une incohérence de la précédente.
-
----
-
-# 11. Verdict RECOVERY-01
-
-```text
-SPEC AUDIT           ✅ TERMINÉ
-CODE AUDIT           ✅ TERMINÉ pour la frontière 01 → 02 → 03
-TEST INVENTORY       ✅ TERMINÉ
-TESTS RERUN          ⚪ NON EXÉCUTÉS pendant Recovery
-POINT DE REPRISE     ✅ ÉTABLI
-NOUVELLE LOGIQUE     ✅ AUCUNE
-
-PROCHAINE ACTION
-→ reprendre 03_Taxonomy en SPÉCIFICATION, pas en implantation.
+NEXT
+→ RESTORE-02 — correction contrôlée du module 02 avant toute reprise de Taxonomy.
 ```
