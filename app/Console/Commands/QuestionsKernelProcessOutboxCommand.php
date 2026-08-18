@@ -4,31 +4,21 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
-use App\Services\QuestionBank\KernelCodeEngine;
 use App\Services\QuestionBank\Rotation\KernelBlueprintFactory;
 use App\Services\QuestionBank\Rotation\KernelPipelineOrchestrator;
 use App\Services\QuestionBank\Rotation\KernelPipelineOutboxRepository;
 use App\Services\QuestionBank\Rotation\KernelRotationPlanner;
 use App\Services\QuestionBank\Rotation\ProcessKernelPipelineOutbox;
-use App\Services\QuestionBank\Taxonomy\TaxonomyBankRepository;
-use App\Services\QuestionBank\Taxonomy\TaxonomyGeminiClient;
-use App\Services\QuestionBank\Taxonomy\TaxonomyOrchestrator;
-use App\Services\QuestionBank\Taxonomy\ValidationDominantIdeas;
 use Illuminate\Console\Command;
 
 /**
  * questions:kernel:process-outbox
  *
- * Traite les événements CURRENT_KERNEL_RECEIVED en attente dans kernel_pipeline_outbox.
+ * CURRENT_KERNEL_RECEIVED
+ * → création du Blueprint suivant
+ * → KRP assigne depth + domain
  *
- * Pour chaque événement :
- *   1. Comptabilisation idempotente (KernelRotationPlanner::receiveKernelReceivedV2 — DEC-093)
- *   2. Déclenchement du Blueprint suivant (KernelPipelineOrchestrator::run)
- *   3. Marquage processed_at UNIQUEMENT après succès complet
- *
- * Ne touche aucun composant BankWorker.
- *
- * Si un Scheduler existe, cette commande doit être planifiée avec withoutOverlapping().
+ * Aucun appel direct CURRENT_KERNEL_RECEIVED → KRP.
  */
 class QuestionsKernelProcessOutboxCommand extends Command
 {
@@ -36,19 +26,18 @@ class QuestionsKernelProcessOutboxCommand extends Command
                             {--batch=10 : Nombre maximum d\'événements traités par exécution}
                             {--dry-run  : Affiche les événements en attente sans les traiter}';
 
-    protected $description = 'V2 — Traite les événements CURRENT_KERNEL_RECEIVED de l\'Outbox Kernel et déclenche le Blueprint suivant (KRP-R11).';
+    protected $description = 'Traite CURRENT_KERNEL_RECEIVED et déclenche le prochain Blueprint puis le module 02.';
 
     public function handle(): int
     {
         $batchSize = (int) $this->option('batch');
-        $dryRun    = (bool) $this->option('dry-run');
+        $dryRun = (bool) $this->option('dry-run');
 
         if ($dryRun) {
             return $this->runDryMode();
         }
 
-        $processor = $this->buildProcessor();
-        $results   = $processor->process($batchSize);
+        $results = $this->buildProcessor()->process($batchSize);
 
         if (empty($results)) {
             $this->info('[questions:kernel:process-outbox] Aucun événement en attente.');
@@ -56,10 +45,8 @@ class QuestionsKernelProcessOutboxCommand extends Command
         }
 
         foreach ($results as $r) {
-            $outcome = $r['outcome'];
             $eventId = $r['event_id'];
-
-            match ($outcome) {
+            match ($r['outcome']) {
                 ProcessKernelPipelineOutbox::OUTCOME_PROCESSED => $this->info(
                     "[PROCESSED] event_id={$eventId} orchestrator={$r['orchestrator_status']}"
                 ),
@@ -70,26 +57,17 @@ class QuestionsKernelProcessOutboxCommand extends Command
                 ProcessKernelPipelineOutbox::OUTCOME_ALREADY_PROCESSED => $this->line(
                     "[NO-OP] event_id={$eventId}"
                 ),
-                default => $this->warn("[UNKNOWN] event_id={$eventId} outcome={$outcome}"),
+                default => $this->warn("[UNKNOWN] event_id={$eventId}"),
             };
         }
-
-        $processed = count(array_filter($results, fn($r) => $r['outcome'] === ProcessKernelPipelineOutbox::OUTCOME_PROCESSED));
-        $errors    = count(array_filter($results, fn($r) => $r['outcome'] === ProcessKernelPipelineOutbox::OUTCOME_ERROR));
-
-        $this->info("[questions:kernel:process-outbox] Terminé — {$processed} traité(s), {$errors} erreur(s).");
 
         return self::SUCCESS;
     }
 
-    // =========================================================================
-    // Mode dry-run
-    // =========================================================================
-
     private function runDryMode(): int
     {
-        $outboxRepo = new KernelPipelineOutboxRepository();
-        $pending    = $outboxRepo->findPending('CURRENT_KERNEL_RECEIVED', 50);
+        $pending = (new KernelPipelineOutboxRepository())
+            ->findPending('CURRENT_KERNEL_RECEIVED', 50);
 
         if ($pending->isEmpty()) {
             $this->info('[DRY-RUN] Aucun événement en attente.');
@@ -101,41 +79,27 @@ class QuestionsKernelProcessOutboxCommand extends Command
             $pending->map(fn($row) => [
                 $row->event_id,
                 json_decode($row->payload, true)['blueprint_id'] ?? '—',
-                json_decode($row->payload, true)['depth']        ?? '—',
-                json_decode($row->payload, true)['domain']       ?? '—',
+                json_decode($row->payload, true)['depth'] ?? '—',
+                json_decode($row->payload, true)['domain'] ?? '—',
                 $row->attempt_count,
                 $row->created_at,
             ])->toArray()
         );
 
-        $this->line('[DRY-RUN] ' . $pending->count() . ' événement(s) en attente — aucun traitement effectué.');
-
         return self::SUCCESS;
     }
 
-    // =========================================================================
-    // Construction du processeur
-    // =========================================================================
-
     private function buildProcessor(): ProcessKernelPipelineOutbox
     {
-        $outboxRepo = new KernelPipelineOutboxRepository();
-
-        $taxonomy = new TaxonomyOrchestrator(
-            new TaxonomyBankRepository(),
-            new TaxonomyGeminiClient(),
-            new ValidationDominantIdeas(),
-        );
-
         $planner = new KernelRotationPlanner();
-
         $orchestrator = new KernelPipelineOrchestrator(
             new KernelBlueprintFactory(),
             $planner,
-            $taxonomy,
-            new KernelCodeEngine(),
         );
 
-        return new ProcessKernelPipelineOutbox($planner, $orchestrator, $outboxRepo);
+        return new ProcessKernelPipelineOutbox(
+            $orchestrator,
+            new KernelPipelineOutboxRepository(),
+        );
     }
 }
