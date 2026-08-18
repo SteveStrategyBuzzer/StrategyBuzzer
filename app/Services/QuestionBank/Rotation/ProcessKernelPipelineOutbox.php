@@ -7,6 +7,7 @@ namespace App\Services\QuestionBank\Rotation;
 use App\Services\QuestionBank\Rotation\Events\CurrentKernelReceived;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use RuntimeException;
 use Throwable;
 
 /**
@@ -18,6 +19,9 @@ use Throwable;
  *
  * La transaction englobe création/rotation + processed_at afin qu'un crash entre
  * les deux n'autorise jamais deux Blueprints pour le même événement Outbox.
+ *
+ * Si KRP est BLOCKED ou attend encore DEPTH_EXHAUSTED, le signal reste rejouable :
+ * processed_at n'est pas écrit et aucun nouveau Blueprint n'est conservé.
  */
 final class ProcessKernelPipelineOutbox
 {
@@ -76,15 +80,25 @@ final class ProcessKernelPipelineOutbox
         try {
             $payload = json_decode((string) $row->payload, true);
             if (!is_array($payload)) {
-                throw new \RuntimeException("Payload JSON invalide pour event_id={$row->event_id}");
+                throw new RuntimeException("Payload JSON invalide pour event_id={$row->event_id}");
             }
 
-            // Validation structurelle du signal. Sa destination fonctionnelle reste
-            // la frontière de création du Blueprint, pas KRP.
+            // Validation structurelle seulement. Le signal ne devient jamais une
+            // commande directe vers KernelRotationPlanner.
             $event = CurrentKernelReceived::fromPayload($payload);
 
             $orchResult = DB::transaction(function () use ($row, $event): array {
                 $result = $this->orchestrator->run();
+
+                if (in_array($result['status'], [
+                    KernelPipelineOrchestrator::STATUS_BLOCKED,
+                    KernelPipelineOrchestrator::STATUS_AWAITING_DEPTH_EXHAUSTED,
+                ], true)) {
+                    throw new RuntimeException(
+                        '[CURRENT_KERNEL_RECEIVED] Déclenchement différé : état KRP '
+                        . $result['status'] . '. Événement conservé pour reprise.'
+                    );
+                }
 
                 DB::table(self::OUTBOX_TABLE)
                     ->where('event_id', $row->event_id)
