@@ -1,6 +1,6 @@
 # StrategyBuzzer — Architecture Register actif
 
-**Date :** 2026-08-16  
+**Date :** 2026-08-19  
 **Statut :** ACTIVE — registre de consolidation de la phase de spécification  
 **Règle :** aucune décision n’est supprimée. Une décision remplacée devient `SUPERSEDED`.
 
@@ -14,35 +14,37 @@ SUPERSEDED
 REJECTED
 ```
 
-## Décisions historiques directement impactées
+---
 
-### DEC-082
+# Décisions historiques directement impactées
+
+## DEC-082
 - **Statut :** OFFICIAL
 - **Décision :** `DOMAIN_EXHAUSTED` est prospectif et produit par Taxonomy.
 - **Évolution :** précisé par DEC-107.
 
-### DEC-083
+## DEC-083
 - **Statut :** OFFICIAL
 - **Décision :** `DEPTH_EXHAUSTED` est prospectif et produit par Taxonomy.
 - **Évolution :** précisé par DEC-108 : il signifie la fin d’un **tour** du Depth.
 
-### DEC-084
+## DEC-084
 - **Statut :** OFFICIAL
 - **Décision :** indépendance de l’état de progression Taxonomy et de la rotation KRP.
 
-### DEC-085
+## DEC-085
 - **Statut :** OFFICIAL
 - **Décision :** flux informationnel d’épuisement distinct du déclenchement du prochain Blueprint.
 
-### DEC-086
+## DEC-086
 - **Statut :** REJECTED
 - **Décision :** signal normal `AVAILABLE` rejeté.
 
-### DEC-087
+## DEC-087
 - **Statut :** OFFICIAL
 - **Décision :** le transport physique des signaux est un détail d’implantation ; la sémantique qui produit/possède/consomme reste contractuelle.
 
-### DEC-088
+## DEC-088
 - **Version :** antérieure
 - **Date :** antérieure au 2026-08-16
 - **Statut :** **SUPERSEDED**
@@ -51,22 +53,22 @@ REJECTED
 - **Remplacée par :** DEC-094.
 - **Modules concernés :** 02_KernelRotationPlanner, 03_Taxonomy.
 
-### DEC-089
+## DEC-089
 - **Statut :** REJECTED
 - **Décision :** SHORTFALL et états dérivés rejetés.
 
-### DEC-090
+## DEC-090
 - **Statut :** REJECTED
 - **Décision :** `DepthProductionState` comme architecture parallèle rejeté.
 
-### DEC-093
+## DEC-093
 - **Statut :** OFFICIAL historique
 - **Décision pertinente :** la comptabilisation de réception d’un Blueprint est idempotente et n’autorise pas des effets doubles.
 - **Note :** cette décision ne possède pas la consommation Taxonomy.
 
 ---
 
-# Nouvelles décisions OFFICIAL
+# Décisions OFFICIAL de consolidation
 
 ## DEC-094 — Double autorité : fin de tour vs besoin global
 - **Version :** 1.0
@@ -204,50 +206,70 @@ REJECTED
 - **Version :** 1.0
 - **Date :** 2026-08-16
 - **Statut :** OFFICIAL
-- **Décision :** `03_Taxonomy` atteint Architecture 100 % et Contrat 100 % avec les sections Mission, Responsabilités, Interdictions, Entrées, Sorties, Slots Blueprint, Données internes, Mécanismes, Communication, Contrats, États, Transitions, Cas limites, Persistance, Validation et Tests minimaux.
+- **Décision :** `03_Taxonomy` atteint Architecture 100 % et Contrat 100 % avec toutes les rubriques obligatoires complètes.
 - **Modules :** 03 et contrats entrants/sortants.
+
+## DEC-113 — Spécification KernelBlueprint v2.0 verrouillée
+- **Version :** 2.0
+- **Date :** 2026-08-19
+- **Statut :** OFFICIAL
+- **Décision :** `01_KernelBlueprint` atteint Architecture 100 % et Contrat 100 % après reconstruction canonique complète. `KernelBlueprintFactory` crée une nouvelle enveloppe avant KRP ; `blueprint_id` est immuable ; Section 1 est write-once dans le chemin normal ; les 7 CognitiveSlots et leur couche de traduction sont des conteneurs permanents ; Banks/cycle data restent externes ; ReadyBank ne recycle jamais l’ancien Blueprint vers KRP ; `CURRENT_KERNEL_RECEIVED` autorise la création du Blueprint suivant.
+- **Justification :** fermer la reconstruction de 01 sans réintroduire les formulations historiques incompatibles avec Factory, write-once et la séparation des responsabilités.
+- **Modules :** 01 et frontières 02,03,05,06,08,10,11.
+- **Décision remplacée :** AUCUNE — consolidation/verrouillage du contrat actif.
+- **Décision remplaçante :** AUCUNE.
 
 ---
 
-# Prochaine révision obligatoire
+# Prochaine étape obligatoire
 
-`02_KernelRotationPlanner` doit être réécrit intégralement en **v3.3** avant nouveau verrouillage afin d’intégrer DEC-094, DEC-095 (frontière), DEC-108 et DEC-111 sans conserver la formulation supersédée de DEC-088.
+`01_KernelBlueprint` passe maintenant à :
 
+```text
+AUDIT-01-00
+↓
+audit du code réel contre specifications/01_KernelBlueprint.md v2.0
+↓
+implantation par micro-blocs
+↓
+validation terminale
+```
+
+`02_KernelRotationPlanner v3.3` reste fermé au travail tant que 01 n’a pas terminé implantation + validation.
 
 ---
 
 # Index normalisé obligatoire
 
-> Cet index est la vue normative des décisions de cette consolidation. Les champs non applicables sont explicitement `AUCUNE`.
-
 | Identifiant | Version | Date | Statut | Justification | Modules concernés | Décision remplacée | Décision remplaçante |
 |---|---|---|---|---|---|---|---|
-| DEC-082 | antérieure | antérieure | OFFICIAL | Taxonomy est l’autorité réelle de fin de matière d’un Domain ; le signal reste prospectif | 02,03 | AUCUNE | précisée par DEC-107 |
-| DEC-083 | antérieure | antérieure | OFFICIAL | Taxonomy est l’autorité réelle de fin d’un Depth ; le signal reste prospectif | 02,03 | AUCUNE | précisée par DEC-108 |
-| DEC-084 | antérieure | antérieure | OFFICIAL | Séparer progression Taxonomy et rotation KRP évite le couplage des réservoirs à la rotation | 02,03 | AUCUNE | AUCUNE |
+| DEC-082 | antérieure | antérieure | OFFICIAL | Taxonomy est l’autorité réelle de fin de matière d’un Domain ; signal prospectif | 02,03 | AUCUNE | précisée par DEC-107 |
+| DEC-083 | antérieure | antérieure | OFFICIAL | Taxonomy est l’autorité réelle de fin d’un tour de Depth | 02,03 | AUCUNE | précisée par DEC-108 |
+| DEC-084 | antérieure | antérieure | OFFICIAL | Séparer progression Taxonomy et rotation KRP | 02,03 | AUCUNE | AUCUNE |
 | DEC-085 | antérieure | antérieure | OFFICIAL | Distinguer information d’épuisement et déclenchement du prochain Blueprint | 02,03,11 | AUCUNE | AUCUNE |
 | DEC-086 | antérieure | antérieure | REJECTED | Le fonctionnement normal ne nécessite aucun signal AVAILABLE | 02,03 | AUCUNE | AUCUNE |
 | DEC-087 | antérieure | antérieure | OFFICIAL | Le canal physique peut varier sans changer la sémantique inter-module | 02,03 | AUCUNE | AUCUNE |
-| DEC-088 | antérieure | antérieure | SUPERSEDED | La suppression totale de cycle_target/cycle_completed empêchait d’exprimer les besoins globaux gameplay par Depth | 02,03 | AUCUNE | DEC-094 |
-| DEC-089 | antérieure | antérieure | REJECTED | SHORTFALL créait un état dérivé inutile et une architecture parallèle | 02 | AUCUNE | AUCUNE |
+| DEC-088 | antérieure | antérieure | SUPERSEDED | L’ancienne suppression de cycle_target/cycle_completed empêchait les besoins globaux | 02,03 | AUCUNE | DEC-094 |
+| DEC-089 | antérieure | antérieure | REJECTED | SHORTFALL créait un état dérivé inutile | 02 | AUCUNE | AUCUNE |
 | DEC-090 | antérieure | antérieure | REJECTED | DepthProductionState créait une seconde source de vérité | 02 | AUCUNE | AUCUNE |
-| DEC-093 | antérieure | antérieure | OFFICIAL | La comptabilisation de réception doit être idempotente | 02,11 | AUCUNE | AUCUNE |
-| DEC-094 | 1.0 | 2026-08-16 | OFFICIAL | Séparer la fin intellectuelle d’un tour des besoins quantitatifs globaux permet de conserver l’autorité Taxonomy tout en satisfaisant le gameplay | 02,03 | DEC-088 | AUCUNE |
-| DEC-095 | 1.0 | 2026-08-16 | OFFICIAL | Un même Depth+Domain revient sur plusieurs tours ; il faut distinguer les réservoirs sans alourdir le Blueprint | 03,02 frontière | AUCUNE | AUCUNE |
-| DEC-096 | 1.0 | 2026-08-16 | OFFICIAL | La Taxonomy a été définie avec un seul Subdomain exploité par occurrence de bassin | 03 | AUCUNE | AUCUNE |
-| DEC-097 | 1.0 | 2026-08-16 | OFFICIAL | Le Subdomain n’est valide que s’il peut porter une SubjectBank conforme ; les deux doivent être créés ensemble | 03 | AUCUNE | AUCUNE |
-| DEC-098 | 1.0 | 2026-08-16 | OFFICIAL | Un plafond structurel ne doit jamais forcer de la matière non conforme | 03 | AUCUNE | AUCUNE |
-| DEC-099 | 1.0 | 2026-08-16 | OFFICIAL | Les FAIL Subjects ne servent qu’à empêcher les boucles dans l’appel courant, contrairement aux PASS exploitables | 03 | AUCUNE | AUCUNE |
-| DEC-100 | 1.0 | 2026-08-16 | OFFICIAL | Réduire le nombre d’appels Gemini sans créer un dernier lot artificiellement minuscule | 03 | AUCUNE | AUCUNE |
-| DEC-101 | 1.0 | 2026-08-16 | OFFICIAL | Gemini est l’acteur intellectuel ; VDI fournit les règles de création/contrôle au lieu d’un moteur de deuxième passe | 03,04 | anciennes formulations VDI moteur autonome | AUCUNE |
-| DEC-102 | 1.0 | 2026-08-16 | OFFICIAL | Un Subject accepté doit être intellectuellement exploitable sans imposer artificiellement cinq idées | 03,04 | anciennes règles 0..5 comme état normal | AUCUNE |
-| DEC-103 | 1.0 | 2026-08-16 | OFFICIAL | Une idée dominante est une direction contextualisée, pas un mot isolé | 03 | AUCUNE | AUCUNE |
-| DEC-104 | 1.0 | 2026-08-16 | OFFICIAL | Les rotations globales traversent 10→2 ; remettre l’historique à zéro réintroduirait des répétitions immédiates | 03 | AUCUNE | AUCUNE |
-| DEC-105 | 1.0 | 2026-08-16 | OFFICIAL | Les FAIL Dominant Ideas doivent empêcher leur reproposition pendant leur fenêtre de pertinence | 03 | AUCUNE | AUCUNE |
-| DEC-106 | 1.0 | 2026-08-16 | OFFICIAL | Éliminer toute divergence entre l’Idea sélectionnée, celle écrite et celle consommée | 01,03,11 frontière | ancienne consommation après ReadyBank / confirmConsumed tardif | AUCUNE |
-| DEC-107 | 1.0 | 2026-08-16 | OFFICIAL | Empêcher l’estompage d’un Domain tant qu’une Bank exploitable contient encore de la matière | 02,03,Admin/Ops | AUCUNE | AUCUNE |
-| DEC-108 | 1.0 | 2026-08-16 | OFFICIAL | Avec plusieurs tours par Depth, DEPTH_EXHAUSTED doit fermer un tour et non le besoin global du Depth | 02,03 | ancienne sémantique fin définitive du Depth | AUCUNE |
-| DEC-109 | 1.0 | 2026-08-16 | OFFICIAL | Les pannes transitoires Gemini doivent être réessayées sans produire d’effet métier | 03,Admin/Ops | AUCUNE | AUCUNE |
-| DEC-110 | 1.0 | 2026-08-16 | OFFICIAL | Plusieurs appels entièrement échoués indiquent une indisponibilité opérationnelle qui doit être visible et bloquante | 03,Admin/Ops | AUCUNE | AUCUNE |
-| DEC-111 | 1.0 | 2026-08-16 | OFFICIAL | Les transitions d’épuisement KRP doivent survivre aux redémarrages et ne produire qu’un effet | 02,03 frontière,Admin/Ops | AUCUNE | AUCUNE |
-| DEC-112 | 1.0 | 2026-08-16 | OFFICIAL | Toutes les rubriques obligatoires de la spécification Taxonomy sont complètes et auditées | 03 | AUCUNE | AUCUNE |
+| DEC-093 | antérieure | antérieure | OFFICIAL | La réception doit être idempotente | 02,11 | AUCUNE | AUCUNE |
+| DEC-094 | 1.0 | 2026-08-16 | OFFICIAL | Séparer fin intellectuelle d’un tour et besoin quantitatif global | 02,03 | DEC-088 | AUCUNE |
+| DEC-095 | 1.0 | 2026-08-16 | OFFICIAL | Distinguer les bassins lors des retours d’un même Depth+Domain | 03,02 frontière | AUCUNE | AUCUNE |
+| DEC-096 | 1.0 | 2026-08-16 | OFFICIAL | Un seul Subdomain exploité par occurrence | 03 | AUCUNE | AUCUNE |
+| DEC-097 | 1.0 | 2026-08-16 | OFFICIAL | Subdomain valide seulement avec SubjectBank viable | 03 | AUCUNE | AUCUNE |
+| DEC-098 | 1.0 | 2026-08-16 | OFFICIAL | 50 est un plafond, pas un quota | 03 | AUCUNE | AUCUNE |
+| DEC-099 | 1.0 | 2026-08-16 | OFFICIAL | PASS persistant, FAIL Subject éphémère | 03 | AUCUNE | AUCUNE |
+| DEC-100 | 1.0 | 2026-08-16 | OFFICIAL | Lots équilibrés avec minimum d’appels | 03 | AUCUNE | AUCUNE |
+| DEC-101 | 1.0 | 2026-08-16 | OFFICIAL | VDI fournit les règles à Gemini, pas une deuxième passe autonome | 03,04 | anciennes formulations VDI moteur autonome | AUCUNE |
+| DEC-102 | 1.0 | 2026-08-16 | OFFICIAL | Subject préparé = 1..5 Ideas PASS ; 0 = anomalie | 03,04 | anciennes règles 0..5 normal | AUCUNE |
+| DEC-103 | 1.0 | 2026-08-16 | OFFICIAL | Une DI est une direction contextualisée | 03 | AUCUNE | AUCUNE |
+| DEC-104 | 1.0 | 2026-08-16 | OFFICIAL | LOOKBACK traverse 10→2 | 03 | AUCUNE | AUCUNE |
+| DEC-105 | 1.0 | 2026-08-16 | OFFICIAL | FAIL DI persistante pendant sa fenêtre | 03 | AUCUNE | AUCUNE |
+| DEC-106 | 1.0 | 2026-08-16 | OFFICIAL | Idea sélectionnée = écrite = consommée | 01,03,11 frontière | ancienne consommation tardive | AUCUNE |
+| DEC-107 | 1.0 | 2026-08-16 | OFFICIAL | Empêcher DOMAIN_EXHAUSTED avec matière restante | 02,03,Admin/Ops | AUCUNE | AUCUNE |
+| DEC-108 | 1.0 | 2026-08-16 | OFFICIAL | DEPTH_EXHAUSTED ferme un tour, pas le besoin global | 02,03 | ancienne sémantique fin définitive | AUCUNE |
+| DEC-109 | 1.0 | 2026-08-16 | OFFICIAL | Retry Gemini sans effet métier | 03,Admin/Ops | AUCUNE | AUCUNE |
+| DEC-110 | 1.0 | 2026-08-16 | OFFICIAL | Échecs consécutifs → indisponibilité opérationnelle visible | 03,Admin/Ops | AUCUNE | AUCUNE |
+| DEC-111 | 1.0 | 2026-08-16 | OFFICIAL | Persister/idempotenter les transitions d’épuisement | 02,03 frontière,Admin/Ops | AUCUNE | AUCUNE |
+| DEC-112 | 1.0 | 2026-08-16 | OFFICIAL | Taxonomy remplit toutes les rubriques obligatoires | 03 | AUCUNE | AUCUNE |
+| DEC-113 | 2.0 | 2026-08-19 | OFFICIAL | KernelBlueprint v2.0 consolide la frontière Factory, write-once, enveloppe permanente et prochain Blueprint après ReadyBank | 01 + frontières | AUCUNE | AUCUNE |
