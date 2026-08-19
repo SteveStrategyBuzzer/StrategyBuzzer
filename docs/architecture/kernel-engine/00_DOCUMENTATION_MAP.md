@@ -32,7 +32,7 @@
 | `06..11 *_BRIDES_ACTIVE.md` | `working/<module>/` | brides seulement |
 | `00_ADMIN_OPERATIONS_BRIDES_ACTIVE.md` | `cross-module/` | transverse hors roadmap 01–11 |
 | `StrategyBuzzer_Registre_AntiDoublons.md` | `archive/superseded/` | supersédé ; ownership anti-doublon = Taxonomy |
-| grand document historique du 2026-08-19 | `archive/chat-reconstructions/` | historique uniquement |
+| grand collage historique du 2026-08-19 | `archive/chat-reconstructions/*INDEX.md` | indexé seulement ; le brut n’est pas dupliqué pour éviter de réactiver des règles supersédées |
 
 ## Fichiers volontairement NON créés
 
