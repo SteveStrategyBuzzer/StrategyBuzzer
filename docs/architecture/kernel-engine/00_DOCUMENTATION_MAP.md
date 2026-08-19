@@ -12,36 +12,87 @@
 | Contrat transversal | `cross-module/` | selon son statut, jamais un moteur 01–11 implicite |
 | Audit | `audits/` | preuve, pas contrat |
 | Certificat | `certificates/` | preuve de statut/validation, pas remplacement du contrat |
-| Historique / supersédé | `archive/` | NON |
+| Historique / supersédé | `archive/` ou historique Git | NON |
 
-## Migration réalisée
+## État canonique actuel
 
-| Source de récupération | Destination | Statut après classement |
+| Module / document | Destination | Statut |
 |---|---|---|
-| `00_MOTEUR_INTELLECTUEL_ACTIVE_SPEC.md` | `00_MOTEUR_INTELLECTUEL_ACTIVE_SPEC.md` | maître actif harmonisé |
-| `00_ArchitectureRegister_ACTIVE.md` | `00_ArchitectureRegister.md` | registre actif copié sans suppression ni nouvelle DEC |
-| Constitution historique Document 1 | `00_ConstitutionCognitive.md` | v1.1.0 OFFICIAL, harmonisation des termes supersédés |
-| `01_KernelBlueprint_RECONSTRUCTION_ACTIVE.md` | `working/01_KernelBlueprint/` | reconstruction, non promue |
-| `02_KernelRotationPlanner_REFERENCE_ACTIVE.md` | `working/02_KernelRotationPlanner/` | référence v3.3, non promue |
-| `03_Taxonomy_ACTIVE_SPEC.md` | `specifications/03_Taxonomy.md` | **canonique v1.0 VERROUILLÉE** |
-| `03_Taxonomy_COHERENCE_AUDIT.md` | `audits/03_Taxonomy/` | preuve |
-| `03_Taxonomy_CERTIFICAT_VERROUILLAGE.md` | `certificates/03_Taxonomy/` | preuve |
-| `04_ValidationDominantIdeas_BRIDES_ACTIVE.md` | `working/04_ValidationDominantIdeas/` | brides seulement |
-| `05_QuestionIntent_BRIDES_ACTIVE.md` | `archive/superseded/` | supersédé documentairement |
-| certificat terminal QI récupéré dans l’historique | `certificates/05_QuestionIntent/*RECOVERY_INDEX.md` | index de récupération, pas spécification |
-| `06..11 *_BRIDES_ACTIVE.md` | `working/<module>/` | brides seulement |
-| `00_ADMIN_OPERATIONS_BRIDES_ACTIVE.md` | `cross-module/` | transverse hors roadmap 01–11 |
-| `StrategyBuzzer_Registre_AntiDoublons.md` | `archive/superseded/` | supersédé ; ownership anti-doublon = Taxonomy |
-| grand collage historique du 2026-08-19 | `archive/chat-reconstructions/*INDEX.md` | indexé seulement ; le brut n’est pas dupliqué pour éviter de réactiver des règles supersédées |
+| Constitution | `00_ConstitutionCognitive.md` | OFFICIAL |
+| Architecture Register | `00_ArchitectureRegister.md` | registre actif |
+| Master | `00_MOTEUR_INTELLECTUEL_ACTIVE_SPEC.md` | vérité globale active |
+| Handoff | `00_CURRENT_HANDOFF.md` | reprise opérationnelle uniquement |
+| 01 KernelBlueprint | `specifications/01_KernelBlueprint.md` | **v2.0 VERROUILLÉE** |
+| Certificat 01 | `certificates/01_KernelBlueprint/` | preuve de verrouillage |
+| Reconstruction 01 | `working/01_KernelBlueprint/01_KernelBlueprint_RECONSTRUCTION_ACTIVE.md` | **CLOSED/PROMOTED pointer** |
+| Reconstruction antérieure 01 | historique Git du fichier `working/01_KernelBlueprint/01_KernelBlueprint_RECONSTRUCTION_ACTIVE.md` | historique non actif |
+| 02 KernelRotationPlanner | `working/02_KernelRotationPlanner/` | référence v3.3, non promue |
+| 03 Taxonomy | `specifications/03_Taxonomy.md` | **v1.0 VERROUILLÉE** |
+| Audit/Certificat 03 | `audits/03_Taxonomy/`, `certificates/03_Taxonomy/` | preuves |
+| 04 ValidationDominantIdeas | `working/04_ValidationDominantIdeas/` | brides seulement |
+| 05 QuestionIntent | `certificates/05_QuestionIntent/` + source historique récupérée | statut verrouillé selon certificat ; canon kernel-engine à consolider sans réécriture de mémoire |
+| 06..11 | `working/<module>/` | brides seulement |
+| Admin/Ops | `cross-module/` | transverse hors roadmap 01–11 |
 
-## Fichiers volontairement NON créés
+## Règle de promotion
+
+Un fichier n’entre dans `specifications/` qu’après :
+
+```text
+Mission
+↓
+Responsabilités
+↓
+Interdictions
+↓
+Entrées
+↓
+Sorties
+↓
+Slots Blueprint
+↓
+Données internes
+↓
+Mécanismes
+↓
+Communication
+↓
+Contrats
+↓
+États
+↓
+Transitions
+↓
+Cas limites
+↓
+Persistance
+↓
+Validation
+↓
+Tests
+↓
+Architecture = 100 %
+↓
+certificat de verrouillage
+```
+
+## Fichiers canoniques volontairement NON créés à ce jour
 
 Aucun faux contrat canonique n’est créé pour :
 
-- `specifications/01_KernelBlueprint.md` — reconstruction à certifier ;
-- `specifications/02_KernelRotationPlanner.md` — v3.3 à réécrire/verrouiller ;
+- `specifications/02_KernelRotationPlanner.md` — v3.3 non encore reconstruite/verrouillée ;
 - `specifications/04_ValidationDominantIdeas.md` — brides seulement ;
-- `specifications/05_QuestionIntent.md` — module verrouillé mais fichier canonique original non récupéré ;
+- `specifications/05_QuestionIntent.md` dans `kernel-engine/` — le module est verrouillé selon certificat mais sa consolidation documentaire doit respecter les sources récupérées, jamais être réécrite de mémoire ;
 - `specifications/06..11` — pas encore verrouillés.
 
-Cette absence est intentionnelle : **un nom de fichier canonique ne doit jamais donner une fausse impression de verrouillage.**
+## Bloc opérationnel actuel
+
+```text
+SPEC-01-CLOSE = CLOSED
+↓
+AUDIT-01-00 = NEXT
+```
+
+Aucun code 01 ne doit être patché avant l’audit.
+
+`02_KernelRotationPlanner` reste fermé au travail jusqu’à fermeture implantation + validation de 01.

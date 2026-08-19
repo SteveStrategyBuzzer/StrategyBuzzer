@@ -1,17 +1,15 @@
 # StrategyBuzzer — Moteur intellectuel — Spécification active maître
 
-**Version :** 1.1.0-recovery  
+**Version :** 1.2.0-recovery  
 **Date :** 2026-08-19  
 **Statut :** ACTIF — VÉRITÉ GLOBALE COURANTE  
 **Portée :** architecture globale, frontières, ownership, communications et état documentaire des modules 01→11.
 
-> Réécriture complète de récupération. Elle harmonise des décisions déjà actives et ne crée aucune nouvelle décision métier. L’historique intellectuel reste dans `00_ArchitectureRegister.md` et `archive/`.
+> Cette version intègre la fermeture documentaire de `01_KernelBlueprint v2.0`. Elle ne redessine pas les modules suivants ; elle aligne uniquement l’état global sur la spécification canonique désormais verrouillée.
 
 ---
 
 # 1. Hiérarchie des sources de vérité
-
-Ordre obligatoire :
 
 ```text
 00_ConstitutionCognitive.md
@@ -27,7 +25,7 @@ working/ du SEUL module actif
 code réel, seulement après verrouillage
 ```
 
-`00_CURRENT_HANDOFF.md` indique le point exact de reprise entre deux chats mais ne possède aucune autorité architecturale propre.
+`00_CURRENT_HANDOFF.md` indique le point exact de reprise mais n’a aucune autorité architecturale propre.
 
 `archive/` n’est jamais une source active.
 
@@ -46,8 +44,6 @@ UNE SOURCE DE VÉRITÉ
 ---
 
 # 2. Méthode officielle
-
-Toujours :
 
 ```text
 Idée métier
@@ -73,7 +69,9 @@ Code existant
 Architecture supposée
 ```
 
-Une seule spécification est travaillée à la fois. Avant chaque module, tous les contrats verrouillés précédents sont reconstruits.
+Une seule spécification ou un seul bloc d’implantation est travaillé à la fois.
+
+Après verrouillage d’un module : audit code → micro-blocs d’implantation → validation terminale → module suivant.
 
 ---
 
@@ -107,13 +105,13 @@ Une seule spécification est travaillée à la fois. Avant chaque module, tous l
 
 # 4. Tableau de bord courant
 
-| Module | Architecture | Contrat | Implémentation | Validation | Statut documentaire actif |
+| Module | Architecture | Contrat | Implémentation | Validation | Statut actif |
 |---|---:|---:|---:|---:|---|
-| 01 KernelBlueprint | 100 % historique verrouillé | 100 % historique verrouillé | 100 % selon état historique | complète selon état historique | reconstruction canonique actuelle à certifier avant promotion |
-| 02 KernelRotationPlanner | v3.2 historique verrouillée ; v3.3 à reconstruire | v3.3 à réécrire | ancienne implémentation à auditer après v3.3 | à refaire contre v3.3 | **EN RÉVISION v3.3** |
-| 03 Taxonomy | **100 %** | **100 %** | **0 % à auditer/adapter** | **0 % code** | **SPÉCIFICATION v1.0 VERROUILLÉE** |
-| 04 ValidationDominantIdeas | brides actives | brides actives | non | non | **À SPÉCIFIER** |
-| 05 QuestionIntent | **100 %** | **100 %** | **100 %** | **100 %** | **v1.0 VERROUILLÉ selon certificat terminal récupéré** |
+| 01 KernelBlueprint | **100 %** | **100 %** | **20 % — code historique à auditer** | **20 % — ancienne preuve à rejouer** | **VERROUILLÉ v2.0 — AUDIT-01-00 NEXT** |
+| 02 KernelRotationPlanner | v3.2 historique ; v3.3 à reconstruire | v3.3 à réécrire | ancienne implantation à auditer plus tard | à refaire contre v3.3 | **EN ATTENTE — 01 doit fermer implantation + validation** |
+| 03 Taxonomy | **100 %** | **100 %** | **0 % à auditer/adapter dans son tour** | **0 % code** | **SPÉCIFICATION v1.0 VERROUILLÉE** |
+| 04 ValidationDominantIdeas | brides actives | brides actives | non | non | À SPÉCIFIER dans son tour |
+| 05 QuestionIntent | **100 %** | **100 %** | **100 %** | **100 %** | verrouillé selon certificat terminal récupéré |
 | 06 Phase1 | brides seulement | non verrouillé | à auditer plus tard | non | À VENIR |
 | 07 ValidationPhase1 | brides seulement | non verrouillé | à auditer plus tard | non | À VENIR |
 | 08 Phase2 | brides seulement | non verrouillé | à auditer plus tard | non | À VENIR |
@@ -121,7 +119,7 @@ Une seule spécification est travaillée à la fois. Avant chaque module, tous l
 | 10 Quarantine | frontière connue | non verrouillé | à auditer plus tard | non | À VENIR |
 | 11 ReadyBank | frontière connue | non verrouillé | à auditer plus tard | non | À VENIR |
 
-Le statut de `05_QuestionIntent` ne doit plus être rétrogradé à « À SPÉCIFIER ». Son fichier canonique original reste à récupérer ; cela est un problème documentaire, pas un blocker architectural.
+Le prochain travail autorisé est `AUDIT-01-00`.
 
 ---
 
@@ -155,14 +153,30 @@ CURRENT_KERNEL_RECEIVED
 ↓
 KernelBlueprintFactory crée le Blueprint suivant
 ↓
-KRP remplit la prochaine rotation
+KRP remplit la prochaine rotation sur ce NOUVEAU Blueprint
 ```
 
-Correction majeure de frontière : **KRP ne crée pas le Blueprint.** `KernelBlueprintFactory` crée l’enveloppe canonique avant KRP.
+Correction majeure de frontière : **KRP ne crée pas le Blueprint.**
+
+ReadyBank ne renvoie pas le Blueprint courant vers KRP pour réécriture.
 
 ---
 
-# 6. KernelBlueprint — contrat global actif
+# 6. KernelBlueprint — v2.0 VERROUILLÉ
+
+Source canonique :
+
+```text
+specifications/01_KernelBlueprint.md
+```
+
+Certificat :
+
+```text
+certificates/01_KernelBlueprint/01_KernelBlueprint_CERTIFICAT_VERROUILLAGE.md
+```
+
+Architecture Register : DEC-113.
 
 Le Blueprint est l’enveloppe canonique persistante d’un noyau. Il ne décide rien, ne crée aucun contenu intellectuel et ne possède aucun réservoir Taxonomy.
 
@@ -182,8 +196,6 @@ Le Blueprint n’est jamais recyclé pour une nouvelle rotation.
 
 ## 6.2 Section 1 — Création intellectuelle
 
-Slots structurels actifs :
-
 ```text
 blueprint_id            → KernelBlueprintFactory
 
@@ -198,7 +210,7 @@ kernel_code             → QuestionIntent, propriétaire fonctionnel
                           KernelCodeEngine = mécanisme d’implantation
 ```
 
-Écritures normales :
+Écritures structurelles normales :
 
 ```text
 fillRotation(depth, domain)
@@ -206,11 +218,11 @@ fillTaxonomy(subdomain, subject, dominantIdea)
 fillKernelCode(kernelCode)
 ```
 
-Les slots structurels sont write-once dans le chemin normal. Une correction future par Quarantine doit passer par un contrat contrôlé distinct ; elle ne transforme pas le Blueprint en objet librement modifiable.
+Section 1 est write-once dans le chemin normal.
 
-## 6.3 Sections aval
+## 6.3 Section 2 — création gameplay
 
-Section 2 — création gameplay : 7 CognitiveSlots :
+Sept CognitiveSlots permanents :
 
 ```text
 qcm_recognition
@@ -222,13 +234,15 @@ tf_reasoning_true
 tf_reasoning_false
 ```
 
-Chaque slot porte question + réponse(s) + Saviez-vous.
+Chaque conteneur porte le payload gameplay `question + réponse(s) + Saviez-vous` selon le contrat futur de Phase1.
 
-Section 3 — traduction : traductions des questions, réponses et Saviez-vous des 7 CognitiveSlots.
+## 6.4 Section 3 — traduction
 
-Quarantine et ReadyBank sont extérieurs aux trois sections de création du Blueprint.
+Chaque CognitiveSlot possède un contrat de traduction correspondant 1:1.
 
-## 6.4 Lifecycle structurel actif
+Phase2 définit plus tard le schéma linguistique détaillé sans redessiner l’enveloppe permanente.
+
+## 6.5 Lifecycle structurel
 
 ```text
 CREATED_UNENGAGED
@@ -238,18 +252,42 @@ ENGAGED_IN_PIPELINE
 
 `PRODUCTION_ON_HOLD` n’est pas un état du Blueprint.
 
----
-
-# 7. KernelRotationPlanner — frontière active v3.3
-
-La v3.2 demeure historique. La prochaine spécification canonique doit être une réécriture complète v3.3.
-
-## 7.1 Responsabilité
-
-KRP décide exclusivement le prochain :
+## 6.6 Frontière ReadyBank
 
 ```text
-Depth + Domain
+ReadyBank reçoit Blueprint courant
+↓
+CURRENT_KERNEL_RECEIVED
+↓
+KernelBlueprintFactory crée Blueprint suivant
+↓
+KRP reçoit ce nouveau Blueprint
+```
+
+## 6.7 Consommation Taxonomy
+
+DEC-106 :
+
+```text
+IdeaSlot sélectionné
+=
+dominant_idea_active écrit
+=
+IdeaSlot CONSUMED
+```
+
+`CONSUMED` suit uniquement une écriture `fillTaxonomy(...)` réussie.
+
+---
+
+# 7. KernelRotationPlanner — frontière active v3.3 à spécifier plus tard
+
+`02` n’est pas encore ouvert au travail parce que 01 doit d’abord terminer implantation + validation.
+
+Sa future v3.3 devra conserver :
+
+```text
+Depth + Domain seulement
 ```
 
 Il écrit uniquement :
@@ -259,15 +297,15 @@ Blueprint.depth
 Blueprint.domain
 ```
 
-Il ne choisit jamais Subdomain, Subject ou Dominant Idea et ne lit pas les Banks Taxonomy.
+Il ne crée pas le Blueprint, ne choisit pas Subdomain/Subject/Dominant Idea et ne lit pas les Banks Taxonomy.
 
-## 7.2 DepthCycle
+## 7.1 DepthCycle
 
 ```text
 2 → 4 → 6 → 7 → 8 → 9 → 10 → retour vers le prochain Depth encore nécessaire
 ```
 
-## 7.3 Domaines de création
+## 7.2 Domaines de création
 
 ```text
 Géographie
@@ -282,7 +320,7 @@ Science
 
 `Général` n’est pas un domaine de création intellectuelle.
 
-## 7.4 Besoins globaux DepthNeedMatrix
+## 7.3 DepthNeedMatrix
 
 ```text
 cycle_target[2]  = 250
@@ -298,13 +336,11 @@ cycle_remaining = max(0, cycle_target - cycle_completed)
 
 Double autorité :
 
-- Taxonomy constate l’épuisement intellectuel réel du Tour courant ;
-- DepthNeedMatrix conserve les besoins quantitatifs globaux ;
-- KRP combine rotation + besoins + signaux officiels.
+- Taxonomy constate la fin intellectuelle réelle du Tour ;
+- DepthNeedMatrix conserve le besoin quantitatif global ;
+- KRP combine les deux pour sélectionner le prochain Depth nécessaire.
 
-## 7.5 Horloge d’un Tour de Depth
-
-Dans un Tour :
+## 7.4 Horloge du Tour
 
 ```text
 VISIBLE
@@ -312,36 +348,30 @@ VISIBLE
 ESTOMPÉ
 ```
 
-Aucun retour `ESTOMPÉ → VISIBLE` dans le même Tour.
-
-Un Tour ultérieur du même Depth est une nouvelle occurrence ; ses 8 Domaines peuvent repartir VISIBLE sans constituer une régression historique.
-
-Quand les 8 Domaines du Tour sont terminés :
+Après les 8 Domaines :
 
 ```text
 Taxonomy → DEPTH_EXHAUSTED(depth)
 ↓
-KRP persiste la fermeture
+KRP persiste fermeture
 ↓
 cycle_completed[depth] += 1 exactement une fois
 ↓
 prochain Depth encore nécessaire
 ```
 
-`DEPTH_EXHAUSTED` = fin d’un Tour, **pas** satisfaction globale du Depth.
+`DEPTH_EXHAUSTED` = fin d’un Tour, pas satisfaction globale du Depth.
 
-`PRODUCTION_ON_HOLD` est permis uniquement lorsque toutes les cibles globales sont satisfaites et qu’aucune transition n’est en attente de persistance.
+`PRODUCTION_ON_HOLD` seulement lorsque toutes les cibles globales sont satisfaites et qu’aucune transition n’attend de persistance.
 
-## 7.6 Persistance / idempotence
+## 7.5 Persistance KRP
 
-- signal identique déjà appliqué → `NO-OP` ;
-- 1 tentative initiale + 3 retries de persistance ;
-- `KRP-002 DOMAIN_EXHAUSTED_PERSIST_FAILED` ;
-- `KRP-003 DEPTH_EXHAUSTED_PERSIST_FAILED` ;
-- échec terminal → état opérationnel `BLOCKED` ;
-- aucune nouvelle rotation/Blueprint engagé tant que la transition requise n’est pas commitée.
+- signal déjà appliqué → NO-OP ;
+- 1 tentative initiale + 3 retries ;
+- `KRP-002` / `KRP-003` en échec terminal ;
+- aucune nouvelle rotation engagée tant que la transition requise n’est pas commitée.
 
-Décisions structurantes : DEC-094, DEC-095 frontière, DEC-108, DEC-111.
+Décisions structurantes futures : DEC-094, DEC-095 frontière, DEC-108, DEC-111.
 
 ---
 
@@ -349,23 +379,21 @@ Décisions structurantes : DEC-094, DEC-095 frontière, DEC-108, DEC-111.
 
 Source canonique : `specifications/03_Taxonomy.md`.
 
-Taxonomy reçoit le `Depth + Domain` fixé. Elle possède les réservoirs et la progression intellectuelle internes.
+Taxonomy reçoit `depth + domain` fixé et possède ses réservoirs/progression internes.
 
-## 8.1 Occurrence de bassin
-
-Un bassin est contextualisé par :
+## 8.1 Bassin
 
 ```text
-Depth + occurrence du Tour de Depth + Domain
+Depth + occurrence du Tour + Domain
 ```
 
-L’occurrence reste interne à Taxonomy ; aucun slot Blueprint supplémentaire.
+Occurrence interne à Taxonomy, aucun nouveau slot Blueprint.
 
-Chaque occurrence possède **un seul Subdomain officiel**.
+Un seul Subdomain officiel par occurrence.
 
-## 8.2 Création du territoire
+## 8.2 Territoire
 
-Un même travail intellectuel Gemini doit produire un territoire viable :
+Un travail intellectuel viable crée :
 
 ```text
 1 Subdomain
@@ -373,48 +401,35 @@ Un même travail intellectuel Gemini doit produire un territoire viable :
 1..50 Subjects PASS
 ```
 
-50 = maximum, jamais quota à remplir artificiellement.
+50 = maximum, jamais quota.
 
-Subject PASS → persistant.  
-Subject FAIL → éphémère dans l’appel courant.
+Subject PASS persistant ; Subject FAIL éphémère dans l’appel courant.
 
 ## 8.3 Dominant Ideas
 
-Les Subjects sont préparés en lots équilibrés, capacité actuelle 10 par appel.
+Subjects préparés en lots équilibrés, capacité actuelle 10 par appel.
 
-Gemini utilise le mécanisme/règles `ValidationDominantIdeas` **pendant** la création intellectuelle des Dominant Ideas.
+Gemini utilise les règles VDI pendant la création.
 
-Préparation réussie d’un Subject accepté :
+Préparation réussie :
 
 ```text
 1..5 Dominant Ideas PASS
 ```
 
-`0 PASS` = anomalie de préparation, pas état normal complet.
+`0 PASS` = anomalie.
 
-Taxonomy possède les mémoires PASS/FAIL et les exclusions anti-doublon. `ValidationDominantIdeas` ne possède pas ces Banks.
+LOOKBACK-2 cyclique traverse `10 → nouveau 2`.
 
-LOOKBACK-2 est cyclique et traverse `Depth 10 → nouveau Depth 2`.
-
-Identité PASS contextualisée :
+Identité PASS :
 
 ```text
 Depth + Domain + Subdomain + Subject + Dominant Idea
 ```
 
-## 8.4 Consommation exacte
+## 8.4 Consommation
 
-Invariant :
-
-```text
-IdeaSlot sélectionné
-=
-dominant_idea_active écrit
-=
-IdeaSlot marqué CONSUMED
-```
-
-`CONSUMED` est persisté immédiatement après `fillTaxonomy(...)` réussi. ReadyBank ne confirme pas cette consommation.
+DEC-106 s’applique immédiatement après `fillTaxonomy(...)` réussi.
 
 ## 8.5 Épuisement
 
@@ -426,60 +441,35 @@ AND
 remaining_ideas = 0
 ```
 
-Sinon :
+Sinon `TAX-003`.
 
-```text
-TAX-003 DOMAIN_EXHAUSTION_BLOCKED_REMAINING_CONTENT
-```
+Après 8 Domaines : `DEPTH_EXHAUSTED(depth)`.
 
-Après les 8 Domaines du Tour :
+Taxonomy ne modifie jamais `cycle_target/cycle_completed`.
 
-```text
-DEPTH_EXHAUSTED(depth)
-```
+## 8.6 Gemini
 
-Taxonomy ne modifie jamais `cycle_target` ou `cycle_completed`.
-
-## 8.6 Gemini technique
-
-- 1 tentative initiale + 3 retries par opération ;
+- 1 tentative + 3 retries ;
 - erreur technique → aucun effet métier ;
-- 3 opérations intellectuelles distinctes ayant chacune épuisé leurs 4 tentatives → `INTELLECTUAL_CREATION_UNAVAILABLE` + `BLOCKED` Admin/Ops ;
-- une réussite remet le compteur consécutif à zéro.
-
-`BLOCKED` ≠ `DOMAIN_EXHAUSTED` ≠ `DEPTH_EXHAUSTED` ≠ `PRODUCTION_ON_HOLD`.
+- 3 opérations intellectuelles consécutives ayant épuisé leurs tentatives → `INTELLECTUAL_CREATION_UNAVAILABLE` + `BLOCKED` ;
+- une réussite remet le compteur à zéro.
 
 ---
 
-# 9. ValidationDominantIdeas — brides actives
-
-Statut : **À SPÉCIFIER complètement**.
+# 9. ValidationDominantIdeas — à spécifier dans son tour
 
 Frontières déjà actives :
 
 - VDI possède les règles intellectuelles de création/contrôle des Dominant Ideas ;
-- ces règles sont utilisées par Gemini dans le travail orchestré par Taxonomy ;
-- VDI ne lit ni n’écrit directement le Blueprint ;
-- VDI ne possède ni SubjectBank, ni IdeaBank, ni mémoire anti-doublon ;
-- Taxonomy fournit le contexte/mémoires/exclusions applicables ;
-- la dominance doit être contextuelle au `Subdomain + Subject + DepthContract` ;
-- le mécanisme participe au contrat d’exploitabilité `1..5 PASS` d’un Subject accepté.
-
-Il est interdit de réintroduire l’ancienne architecture « génération libre → deuxième moteur autonome VDI ».
+- Gemini utilise ces règles dans le travail orchestré par Taxonomy ;
+- VDI ne lit/écrit pas directement Blueprint ;
+- VDI ne possède pas les Banks Taxonomy ;
+- Taxonomy fournit contexte/mémoires/exclusions ;
+- ne jamais restaurer « génération libre puis deuxième moteur autonome VDI ».
 
 ---
 
-# 10. QuestionIntent — v1.0 verrouillé
-
-Le certificat terminal récupéré établit :
-
-```text
-Architecture    100 %
-Contrat         100 %
-Implémentation  100 %
-Validation      100 %
-BLOCKERS        AUCUN
-```
+# 10. QuestionIntent — verrouillé selon certificat récupéré
 
 Entrée canonique :
 
@@ -497,93 +487,87 @@ Seule écriture Blueprint :
 kernel_code
 ```
 
-QuestionIntent ne recrée ni ne valide Taxonomy et ne modifie aucun des cinq champs intellectuels amont.
-
-Le certificat récupéré indique également une identité de forme :
+Identité de forme récupérée :
 
 ```text
 DD-DO-SUB-SUJ-IDE-VVVV
 ```
 
-avec suffixe base36 sur 4 caractères.
+suffixe base36 sur 4 caractères.
 
-Le fichier canonique original `05_QuestionIntent.md` reste à récupérer. **Ne pas le réécrire de mémoire et ne pas rétrograder son statut.**
+QuestionIntent ne modifie aucun des cinq champs intellectuels amont.
 
 ---
 
-# 11. Frontières aval déjà connues
+# 11. Frontières aval connues
 
-## 11.1 Phase1
+## Phase1
 
-Responsabilité future : remplir les 7 CognitiveSlots avec questions + réponse(s) + Saviez-vous selon les contrats de création gameplay. Détail non verrouillé ici.
+Remplit les 7 CognitiveSlots. Son payload métier détaillé est à spécifier avec 06.
 
-## 11.2 ValidationPhase1
+## ValidationPhase1
 
-Valide la création Phase1. Les contenus explicitement FAIL peuvent entrer en Quarantine selon le futur contrat détaillé. Ne pas inventer davantage avant 07.
+Valide la création Phase1. Ne pas inventer son mode détaillé avant 07.
 
-## 11.3 Phase2
+## Phase2
 
-Crée les traductions dans les TranslationSlots prévus. Détail non verrouillé ici.
+Remplit la couche de traduction correspondante. Détail à spécifier avec 08.
 
-## 11.4 ValidationPhase2
+## ValidationPhase2
 
-Valide la cohérence linguistique/sémantique/gameplay selon son futur contrat. Détail non verrouillé ici.
+Valide les traductions selon 09.
 
-## 11.5 Quarantine
+## Quarantine
 
-Nature déjà fixée : **station de correction**, pas moteur de création normal.
+Station de correction contrôlée, pas quatrième section du Blueprint. Contrat détaillé futur 10.
 
-Elle travaille sur une représentation/copie contrôlée du contenu FAIL et doit retourner une correction vers le Blueprint canonique selon un contrat de reprise/versionnement encore à spécifier.
+## ReadyBank
 
-## 11.6 ReadyBank
-
-Destination terminale du noyau canonique prêt.
+Destination terminale :
 
 ```text
-ReadyBank reçoit/stocke le noyau prêt
+ReadyBank reçoit/stocke noyau prêt
 ↓
 CURRENT_KERNEL_RECEIVED
 ↓
-KernelBlueprintFactory crée le prochain Blueprint
+KernelBlueprintFactory crée prochain Blueprint
 ↓
-KRP remplit depth + domain
+KRP remplit depth + domain du nouveau Blueprint
 ```
 
-ReadyBank ne décide jamais quelle Idea Taxonomy consomme et ne confirme pas la consommation d’un IdeaSlot.
+ReadyBank ne choisit ni ne valide la consommation Taxonomy.
 
 ---
 
 # 12. Administration opérationnelle
 
-La couche Admin/Ops est extérieure aux moteurs 01→11. Elle observe/persiste les incidents, expose l’état de production et autorise les reprises prévues par les contrats.
+Admin/Ops est extérieure aux moteurs 01→11. Elle observe/persiste les incidents et les reprises autorisées sans posséder de contenu intellectuel normal.
 
-Elle ne possède aucun contenu intellectuel normal et ne transforme jamais un incident technique en épuisement métier.
-
-Détails : `cross-module/AdminOperations_BRIDES_ACTIVE.md`.
+Référence : `cross-module/AdminOperations_BRIDES_ACTIVE.md`.
 
 ---
 
-# 13. Frontières explicitement interdites
+# 13. Frontières interdites
 
 ```text
 KRP ne crée pas le Blueprint
-KRP ne crée pas de Subdomain
-KRP ne choisit pas de Subject
-KRP ne choisit pas de Dominant Idea
-KRP n’infère pas DOMAIN_EXHAUSTED depuis ses propres compteurs
+KRP ne crée pas Subdomain
+KRP ne choisit pas Subject
+KRP ne choisit pas Dominant Idea
+KRP n’infère pas DOMAIN_EXHAUSTED depuis ses compteurs
 
-Taxonomy ne choisit pas le prochain Domain
-Taxonomy ne choisit pas le prochain Depth
+Taxonomy ne choisit pas prochain Domain/Depth
 Taxonomy ne modifie pas cycle_target/cycle_completed
 Taxonomy n’écrit pas kernel_code
 Taxonomy ne consomme pas une autre Idea que celle écrite
-Taxonomy ne crée pas plusieurs Subdomains dans une même occurrence
+Taxonomy ne crée pas plusieurs Subdomains dans une occurrence
 
-VDI ne lit/écrit pas directement le Blueprint
+VDI ne lit/écrit pas directement Blueprint
 VDI ne possède pas les Banks Taxonomy
 
 QuestionIntent ne modifie pas les cinq dimensions intellectuelles amont
 
+ReadyBank ne recycle pas le Blueprint courant vers KRP
 ReadyBank ne choisit/valide pas la consommation Taxonomy
 ```
 
@@ -591,47 +575,44 @@ ReadyBank ne choisit/valide pas la consommation Taxonomy
 
 # 14. Points ouverts — NE PAS INVENTER
 
-Ouverts :
-
-1. certification/promotion de la reconstruction canonique actuelle de `01_KernelBlueprint` ;
-2. réécriture complète + verrouillage de `02_KernelRotationPlanner` v3.3 ;
-3. détail interne complet de `04_ValidationDominantIdeas` ;
-4. récupération du **fichier** canonique `05_QuestionIntent.md` — son contrat/statut n’est pas ouvert ;
-5. contrats complets 06→11 dans leur ordre officiel.
+1. `AUDIT-01-00` puis micro-blocs d’implantation/validation de `01_KernelBlueprint v2.0` ;
+2. seulement après fermeture totale de 01 : réécriture complète + verrouillage de `02_KernelRotationPlanner v3.3` ;
+3. détail interne complet de `04_ValidationDominantIdeas` dans son tour ;
+4. contrats complets 06→11 dans leur ordre officiel.
 
 Fermés :
 
+- `01_KernelBlueprint v2.0` Architecture 100 % / Contrat 100 % ;
 - ownership Factory → nouveau Blueprint → KRP ;
+- ReadyBank → CURRENT_KERNEL_RECEIVED → nouveau Blueprint ;
 - Taxonomy v1.0 ;
 - occurrence de bassin par Tour ;
 - 1 Subdomain par occurrence ;
-- SubjectBank max 50 sans remplissage forcé ;
+- SubjectBank max 50 ;
 - `1..5 PASS` par Subject préparé ;
-- VDI utilisé par Gemini, non deuxième moteur autonome ;
-- anti-doublon Taxonomy + LOOKBACK-2 ;
+- VDI utilisé par Gemini ;
+- anti-doublon + LOOKBACK-2 ;
 - consommation exacte immédiate ;
-- `DOMAIN_EXHAUSTED` avec garde TAX-003 ;
+- `DOMAIN_EXHAUSTED` + TAX-003 ;
 - `DEPTH_EXHAUSTED` = fin d’un Tour ;
-- `cycle_target/cycle_completed` = besoins quantitatifs globaux ;
+- `cycle_target/cycle_completed` = besoins globaux ;
 - retries Gemini ;
-- QuestionIntent v1.0 verrouillé selon certificat terminal récupéré.
+- QuestionIntent verrouillé selon certificat terminal récupéré.
 
 ---
 
 # 15. Architecture Register structurant
-
-Décisions actives de cette consolidation :
 
 ```text
 DEC-094  fin d’un Tour Taxonomy vs besoin global DepthNeedMatrix/KRP
 DEC-095  occurrence de bassin par Tour
 DEC-096  un Subdomain par occurrence
 DEC-097  création atomique Subdomain + SubjectBank
-DEC-098  SubjectBank max 50 sans remplissage artificiel
+DEC-098  SubjectBank max 50
 DEC-099  Subject PASS persistant / FAIL éphémère
 DEC-100  lots équilibrés
 DEC-101  VDI utilisé par Gemini
-DEC-102  1..5 Dominant Ideas PASS par Subject préparé
+DEC-102  1..5 Dominant Ideas PASS
 DEC-103  identité anti-doublon contextualisée
 DEC-104  LOOKBACK-2 cyclique
 DEC-105  FAIL Bank DI persistante
@@ -642,9 +623,10 @@ DEC-109  retry Gemini 1+3
 DEC-110  BLOCKED après échecs intellectuels consécutifs
 DEC-111  persistance/idempotence KRP
 DEC-112  Taxonomy v1.0 verrouillée
+DEC-113  KernelBlueprint v2.0 verrouillé
 ```
 
-`DEC-088` est `SUPERSEDED` par `DEC-094`.
+`DEC-088` reste `SUPERSEDED` par `DEC-094`.
 
 ---
 
@@ -657,12 +639,14 @@ START_HERE.md
 00_CURRENT_HANDOFF.md
 00_DOCUMENTATION_MAP.md
 
+specifications/01_KernelBlueprint.md
 specifications/03_Taxonomy.md
 
-working/01_KernelBlueprint/01_KernelBlueprint_RECONSTRUCTION_ACTIVE.md
+working/01_KernelBlueprint/01_KernelBlueprint_RECONSTRUCTION_ACTIVE.md  [CLOSED/PROMOTED pointer]
 working/02_KernelRotationPlanner/02_KernelRotationPlanner_REFERENCE_ACTIVE.md
 working/04_ValidationDominantIdeas/04_ValidationDominantIdeas_BRIDES_ACTIVE.md
 
+certificates/01_KernelBlueprint/
 certificates/03_Taxonomy/
 certificates/05_QuestionIntent/
 
@@ -670,3 +654,17 @@ cross-module/AdminOperations_BRIDES_ACTIVE.md
 ```
 
 Aucun document d’`archive/` ne doit être utilisé pour réintroduire une architecture supersédée.
+
+---
+
+# 17. Prochain bloc exact
+
+```text
+AUDIT-01-00
+```
+
+Audit code uniquement. Aucun patch pendant ce bloc.
+
+Après audit : définir les micro-blocs `IMPL-01-XX`, les fermer un par un avec tests, diff et commit, puis produire la validation terminale de 01.
+
+Seulement ensuite ouvrir `02_KernelRotationPlanner`.
