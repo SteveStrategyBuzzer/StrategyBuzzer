@@ -1,49 +1,29 @@
 # CURRENT HANDOFF — StrategyBuzzer Kernel Engine
 
-**Mis à jour :** 2026-08-19  
+**Mis à jour :** 2026-08-20  
 **Branche :** `replit/intellectual-engine-current-2026-08-16`  
-**Bloc actif :** `AUDIT-01-00`  
-**Dernier bloc fermé :** `SPEC-01-CLOSE`
+**Bloc actif :** `PREP-01-SYNC`  
+**Dernier bloc fermé :** `AUDIT-01-00`
 
-> Ce fichier n’a aucune autorité architecturale propre. Il indique le point exact de reprise entre deux chats. En cas de contradiction, `Architecture Register + spécification canonique verrouillée + document maître actif` priment.
+> Ce fichier n’a aucune autorité architecturale propre. En cas de contradiction, `00_ArchitectureRegister.md + spécification canonique verrouillée + 00_MOTEUR_INTELLECTUEL_ACTIVE_SPEC.md` priment.
 
 ---
 
-# 1. Ordre officiel de travail
+# 1. Module actif
 
 ```text
-01 KernelBlueprint
-↓ spécification VERROUILLÉE
-AUDIT CODE
-↓
-IMPLANTATION PAR MICRO-BLOCS
-↓
-VALIDATION TERMINALE
-↓
-02 KernelRotationPlanner
-↓
-...
+01_KernelBlueprint
 ```
 
-Il est interdit de passer à 02 tant que 01 n’est pas fermé en Architecture + Contrat + Implémentation + Validation.
-
----
-
-# 2. 01 — KernelBlueprint
-
-## Spécification
+Spécification canonique :
 
 ```text
+specifications/01_KernelBlueprint.md
 Version : 2.0
 Architecture : 100 %
 Contrat : 100 %
 Statut : VERROUILLÉ
-```
-
-Canon :
-
-```text
-specifications/01_KernelBlueprint.md
+DEC : DEC-113
 ```
 
 Certificat :
@@ -52,219 +32,220 @@ Certificat :
 certificates/01_KernelBlueprint/01_KernelBlueprint_CERTIFICAT_VERROUILLAGE.md
 ```
 
-Architecture active confirmée :
-
-```text
-KernelBlueprintFactory
-↓
-nouveau KernelBlueprint + blueprint_id
-↓
-KernelRotationPlanner
-↓
-Taxonomy
-↓
-QuestionIntent
-↓
-...
-↓
-ReadyBank
-↓
-CURRENT_KERNEL_RECEIVED
-↓
-KernelBlueprintFactory crée le Blueprint suivant
-```
-
-Rappels obligatoires :
-
-- KRP ne crée pas le Blueprint ;
-- ReadyBank ne renvoie pas l’ancien Blueprint à KRP ;
-- le Blueprint suivant reçoit un nouveau `blueprint_id` ;
-- Section 1 est write-once dans le chemin normal ;
-- `PRODUCTION_ON_HOLD` n’est pas un état Blueprint ;
-- les Banks/cycle data restent hors Blueprint ;
-- DEC-106 : Idea sélectionnée = Idea écrite = Idea consommée après succès de `fillTaxonomy`.
-
-## Implantation
-
-```text
-État : CODE HISTORIQUE PRÉSENT — NON ENCORE AUDITÉ CONTRE v2.0
-Avancement normalisé : 20 %
-```
-
-Aucun patch v2.0 n’est encore autorisé avant l’audit du code.
-
-## Validation
-
-```text
-État : ancienne validation historique disponible, mais validation terminale v2.0 à rejouer
-Avancement normalisé : 20 %
-```
+`02_KernelRotationPlanner` reste fermé tant que 01 n’a pas terminé implantation + validation terminale.
 
 ---
 
-# 3. Bloc fermé — SPEC-01-CLOSE
+# 2. GitHub — état confirmé
+
+Avant AUDIT-01-00 :
+
+```text
+690c859e4b13a0cde1056d363f41ff8dbb03aa67
+docs(kernel-engine): close KernelBlueprint v2.0 specification
+```
+
+Commit propre à l’audit :
+
+```text
+f258464aab9f4eda060175e9ab303f3028667bff
+docs(kernel-engine): record KernelBlueprint v2.0 code audit
+```
+
+Audit canonique :
+
+```text
+audits/01_KernelBlueprint/01_KernelBlueprint_CODE_AUDIT_V2.md
+```
+
+Le commit qui contient le présent fichier est un checkpoint opérationnel distinct de l’audit.
+
+---
+
+# 3. Replit — état réel confirmé pendant l’audit
+
+Projet : `StrategyBuzzer`
+
+```text
+branche locale : replit/intellectual-engine-current-2026-08-16
+HEAD local : db26047532cfdf5e030c348dba4455f8eb310971
+git status : propre
+origin local connu : 0 ahead / 0 behind
+```
+
+IMPORTANT : `origin` local est périmé. GitHub était 52 commits devant `db260475` au moment de la comparaison ; ces 52 commits étaient exclusivement documentaires.
+
+Donc :
+
+- code `app/**`, `tests/**` et migrations du workspace Replit = code audité sur GitHub ;
+- documents Bible Replit = en retard ;
+- aucun patch n’est autorisé avant synchronisation Replit avec GitHub.
+
+---
+
+# 4. AUDIT-01-00 — CLOSED
 
 Résultat :
 
-- reconstruction complète de 01 ;
-- spécification canonique v2.0 produite ;
-- checklist Mission → Tests contractuels = 100 % ;
-- certificat de verrouillage produit ;
-- DEC-113 ajouté au Register ;
-- reconstruction `working/` fermée ;
-- aucun fichier `app/**` modifié ;
-- aucun fichier `tests/**` modifié.
+```text
+Architecture v2.0 : 100 %
+Contrat v2.0      : 100 %
+Implémentation    : PARTIELLE / NON CONFORME v2.0
+Validation v2.0   : NON
+UNRESOLVED bloquant : AUCUN
+```
 
-Le commit de fermeture est le commit Git portant simultanément la promotion canonique, ce handoff et DEC-113.
+Baseline Replit exécutée sans modification :
+
+```text
+KernelBlueprintPart1Test
++
+KernelBlueprintFactoryTest
+=
+75 tests / 130 assertions / PASS
+```
+
+Ces tests sont historiques et ne certifient pas v2.0.
 
 ---
 
-# 4. Prochain bloc EXACT
+# 5. KEEP principal
+
+Conserver :
+
+- propriétés Section 1 privées ;
+- lecture contrôlée / écriture directe refusée ;
+- `initializeBlueprintId()` write-once ;
+- `fillRotation()` groupé/write-once ;
+- `fillTaxonomy()` groupé/write-once ;
+- `fillKernelCode()` write-once ;
+- aucune écriture directe externe trouvée ;
+- Factory distincte de KRP ;
+- création `CREATED_UNENGAGED` ;
+- garde applicative + index PostgreSQL `one_active_blueprint_idx` ;
+- test concurrent Factory ;
+- dans le chemin principal, engagement après `fillTaxonomy()` réussi ;
+- KernelCodeEngine respecte Science et refuse Général ;
+- réception ReadyBank atomique réception + Outbox.
+
+---
+
+# 6. MODIFY principal
+
+À aligner :
+
+- docblocks KernelBlueprint historiques ;
+- `toArray()` / tests limités à l’ancien Blueprint de six clés ;
+- références `NOT_ENGAGED_PRODUCTION_ON_HOLD` ;
+- `KernelBlueprintRunRepository::markEngaged()` inutilisé et historiquement couplé à rotation ;
+- persistance Section 1 incomplète ;
+- persistance atomique Rotation/Taxonomy incomplète ;
+- orchestrateur résout actuellement KRP avant Factory ;
+- cleanup destructif d’un `CREATED_UNENGAGED` sur Taxonomy null ;
+- `CURRENT_KERNEL_RECEIVED` va directement vers `KernelRotationPlanner::receiveKernelReceivedV2()` ;
+- tests historiques qui figent ces anciens comportements.
+
+---
+
+# 7. MISSING principal
+
+Manquent :
+
+1. 7 CognitiveSlots permanents dans KernelBlueprint ;
+2. couche TranslationSlots 1:1 ;
+3. interfaces contrôlées Sections 2/3 ;
+4. persistance du triplet Taxonomy sous `blueprint_id` ;
+5. persistance des conteneurs Sections 2/3 ;
+6. réhydratation/reconstruction d’un KernelBlueprint après redémarrage ;
+7. reprise technique d’un `CREATED_UNENGAGED` orphelin après crash ;
+8. tests contractuels v2.0 correspondants.
+
+---
+
+# 8. REMOVE du chemin canonique
+
+Ne plus utiliser comme vérité de 01 :
+
+- `KernelFrameBuilder` comme faux Blueprint parallèle ;
+- ancien handoff direct `ReadyBank/CURRENT_KERNEL_RECEIVED → KRP`.
+
+Le retrait physique du legacy ne doit pas casser les modules aval non encore spécifiés.
+
+---
+
+# 9. Plan de micro-blocs 01
+
+Après synchronisation Replit :
 
 ```text
-AUDIT-01-00
+IMPL-01-01 — coeur canonique v2.0
+IMPL-01-02 — 7 coquilles CognitiveSlots
+IMPL-01-03 — coquilles TranslationSlots 1:1
+IMPL-01-04 — persistance canonique Section 1
+IMPL-01-05 — persistance conteneurs Sections 2/3
+IMPL-01-06 — réhydratation / reprise technique
+IMPL-01-07 — lifecycle Taxonomy
+IMPL-01-08 — frontière CURRENT_KERNEL_RECEIVED → nouveau Blueprint
+IMPL-01-09 — nettoyage legacy contractuel 01
+IMPL-01-10 — validation terminale v2.0
+```
+
+Chaque bloc doit recevoir sa fiche exacte avant patch. Jamais deux blocs en parallèle.
+
+---
+
+# 10. Prochaine opération EXACTE
+
+```text
+PREP-01-SYNC
 ```
 
 Mission unique :
 
 ```text
-auditer le code réel de 01_KernelBlueprint
-contre specifications/01_KernelBlueprint.md v2.0
+synchroniser le workspace Replit
+avec la branche GitHub officielle
+sans modification métier
 ```
 
-Avant tout patch, produire :
+Critères :
 
 ```text
-KEEP
-MODIFY
-REMOVE
-MISSING
-UNRESOLVED
+Replit HEAD = GitHub HEAD
++
+git status propre
++
+référence origin fraîche
 ```
 
-pour les slices exacts concernés.
-
-Audit minimum :
-
-- `KernelBlueprint` ;
-- `KernelBlueprintFactory` ;
-- persistance du Blueprint ;
-- migrations associées ;
-- appels de création ;
-- appels `fillRotation` ;
-- appels `fillTaxonomy` ;
-- appels `fillKernelCode` ;
-- écritures directes éventuelles ;
-- tests existants de 01 ;
-- concurrence/atomicité ;
-- frontière ReadyBank/CURRENT_KERNEL_RECEIVED uniquement pour vérifier qu’aucun ancien Blueprint n’est recyclé.
-
-Aucune correction pendant `AUDIT-01-00`.
-
----
-
-# 5. Micro-blocs d’implantation
-
-Ils ne sont nommés définitivement qu’après l’audit.
-
-Format :
+Seulement ensuite :
 
 ```text
 IMPL-01-01
-→ une responsabilité
-→ fichiers autorisés précis
-→ patch minimal
-→ tests ciblés
-→ tests cumulatifs
-→ diff Git
-→ un commit
-→ CLOSED
-```
-
-Ne pas préfabriquer les patches avant l’audit.
-
----
-
-# 6. 02 — KernelRotationPlanner
-
-```text
-v3.2 : historique
-v3.3 : à reconstruire/verrouiller plus tard
-```
-
-DEC actives à conserver pour sa future reconstruction :
-
-```text
-DEC-094
-DEC-095 frontière
-DEC-108
-DEC-111
-```
-
-`02` reste **FERMÉ AU TRAVAIL** tant que 01 n’a pas terminé implantation + validation.
-
----
-
-# 7. 03 — Taxonomy
-
-```text
-Spécification v1.0 : VERROUILLÉE
-Architecture : 100 %
-Contrat : 100 %
-```
-
-Aucune implantation maintenant.
-
----
-
-# 8. Synchronisation Replit
-
-Dernier état connu avant `SPEC-01-CLOSE` : Replit était encore sur `db260475` et son `git pull` échouait par authentification SSH. Son message « up to date with origin » reposait donc sur une référence distante locale périmée.
-
-Après le commit `SPEC-01-CLOSE`, la synchronisation Replit doit être confirmée avant toute implantation.
-
-Preuve exigée :
-
-```text
-git fetch réussi
-+
-HEAD local Replit = HEAD de la branche GitHub
-+
-git status propre
-```
-
-Commande de contrôle cible :
-
-```bash
-git rev-list --left-right --count HEAD...origin/replit/intellectual-engine-current-2026-08-16
-```
-
-Résultat attendu lorsque synchronisé :
-
-```text
-0    0
 ```
 
 ---
 
-# 9. DO NOT REDO
+# 11. DO NOT REDO
 
 Ne pas :
 
-- reconstruire `01_KernelBlueprint` depuis les anciens chats ;
-- utiliser `docs/architecture/01_KernelBlueprint.md` comme contrat actif ;
-- réouvrir le flow « KRP crée Blueprint » ;
+- refaire `SPEC-01-CLOSE` ;
+- refaire `AUDIT-01-00` ;
+- reconstruire 01 depuis les anciens chats ;
+- utiliser l’ancien `docs/architecture/01_KernelBlueprint.md` comme contrat actif ;
+- déduire l’architecture depuis KernelFrameBuilder ;
+- réintroduire `PRODUCTION_ON_HOLD` comme état Blueprint ;
 - réintroduire ReadyBank → ancien Blueprint → KRP ;
 - commencer KRP v3.3 ;
 - commencer Taxonomy implantation ;
-- modifier du code avant `AUDIT-01-00` ;
-- considérer les anciens tests comme certification automatique de v2.0.
+- patcher Replit avant `PREP-01-SYNC`.
 
 ---
 
-# 10. Reprise du prochain chat
+# 12. Reprise prochain chat
 
-Lire dans l’ordre :
+Lire :
 
 1. `START_HERE.md`
 2. `00_ConstitutionCognitive.md`
@@ -272,12 +253,12 @@ Lire dans l’ordre :
 4. `00_MOTEUR_INTELLECTUEL_ACTIVE_SPEC.md`
 5. `00_CURRENT_HANDOFF.md`
 6. `specifications/01_KernelBlueprint.md`
-7. `certificates/01_KernelBlueprint/01_KernelBlueprint_CERTIFICAT_VERROUILLAGE.md`
+7. `audits/01_KernelBlueprint/01_KernelBlueprint_CODE_AUDIT_V2.md`
 
 Puis reprendre directement :
 
 ```text
-AUDIT-01-00
+PREP-01-SYNC
 ```
 
-sans patch de code avant le rapport d’audit.
+sans refaire l’audit.
