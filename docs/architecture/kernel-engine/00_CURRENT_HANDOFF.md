@@ -2,227 +2,316 @@
 
 **Mis à jour :** 2026-08-20  
 **Branche :** `replit/intellectual-engine-current-2026-08-16`  
-**Bloc actif :** `PREP-01-SYNC`  
-**Dernier bloc fermé :** `AUDIT-01-00`
+**Module actif :** `02_KernelRotationPlanner`  
+**Bloc actif :** `AUDIT-02-00`  
+**Dernière décision structurante :** `DEC-114`
 
-> Ce fichier n’a aucune autorité architecturale propre. En cas de contradiction, `00_ArchitectureRegister.md + spécification canonique verrouillée + 00_MOTEUR_INTELLECTUEL_ACTIVE_SPEC.md` priment.
+> Ce fichier est un pointeur de reprise. Il n’a aucune autorité architecturale propre. En cas de contradiction : `00_ArchitectureRegister.md + spécification canonique verrouillée + 00_MOTEUR_INTELLECTUEL_ACTIVE_SPEC.md` priment.
 
 ---
 
-# 1. Module actif
+# 1. État canonique KRP
 
 ```text
-01_KernelBlueprint
-```
-
-Spécification canonique :
-
-```text
-specifications/01_KernelBlueprint.md
-Version : 2.0
-Architecture : 100 %
-Contrat : 100 %
-Statut : VERROUILLÉ
-DEC : DEC-113
+specifications/02_KernelRotationPlanner.md
+Version : 3.3
+Statut : VERROUILLÉ — PARTIE INTELLECTUELLE
+Architecture intellectuelle : 100 %
+Contrat intellectuel : 100 %
+Implémentation : À AUDITER
+Validation code : NON
+DEC : DEC-114
 ```
 
 Certificat :
 
 ```text
-certificates/01_KernelBlueprint/01_KernelBlueprint_CERTIFICAT_VERROUILLAGE.md
+certificates/02_KernelRotationPlanner/02_KernelRotationPlanner_CERTIFICAT_VERROUILLAGE.md
 ```
-
-`02_KernelRotationPlanner` reste fermé tant que 01 n’a pas terminé implantation + validation terminale.
 
 ---
 
-# 2. GitHub — état confirmé
+# 2. Vérité KRP à reconstruire avant tout audit/code
 
-Avant AUDIT-01-00 :
-
-```text
-690c859e4b13a0cde1056d363f41ff8dbb03aa67
-docs(kernel-engine): close KernelBlueprint v2.0 specification
-```
-
-Commit propre à l’audit :
+## Frontière
 
 ```text
-f258464aab9f4eda060175e9ab303f3028667bff
-docs(kernel-engine): record KernelBlueprint v2.0 code audit
+CURRENT_KERNEL_RECEIVED
+↓
+lifecycle/orchestration externe
+↓
+KernelBlueprintFactory
+↓
+NOUVEAU Blueprint + blueprint_id
+↓
+KernelRotationPlanner
+↓
+RotationState + DepthNeedMatrix
+↓
+sélection depth + domain
+↓
+fillRotation(depth, domain)
+↓
+persistance
+↓
+FIN KRP
+↓
+porte vers Taxonomy
 ```
 
-Audit canonique :
+KRP n’écrit que :
 
 ```text
-audits/01_KernelBlueprint/01_KernelBlueprint_CODE_AUDIT_V2.md
+depth
+domain
 ```
 
-Le commit qui contient le présent fichier est un checkpoint opérationnel distinct de l’audit.
+KRP ne crée pas Blueprint, Subdomain, Subject, Dominant Idea ou `kernel_code`.
 
 ---
 
-# 3. Replit — état réel confirmé pendant l’audit
+# 3. Décisions KRP obligatoires
 
-Projet : `StrategyBuzzer`
+## DEC-094
+
+Double autorité :
 
 ```text
-branche locale : replit/intellectual-engine-current-2026-08-16
-HEAD local : db26047532cfdf5e030c348dba4455f8eb310971
-git status : propre
-origin local connu : 0 ahead / 0 behind
+Taxonomy / DEPTH_EXHAUSTED
+= fin réelle du tour intellectuel
+
+DepthNeedMatrix
+= besoin quantitatif global
+
+KRP
+= combine les deux
 ```
 
-IMPORTANT : `origin` local est périmé. GitHub était 52 commits devant `db260475` au moment de la comparaison ; ces 52 commits étaient exclusivement documentaires.
+Cibles de tours :
 
-Donc :
+```text
+2  = 250
+4  = 300
+6  = 350
+7  = 350
+8  = 350
+9  = 250
+10 = 100
+```
 
-- code `app/**`, `tests/**` et migrations du workspace Replit = code audité sur GitHub ;
-- documents Bible Replit = en retard ;
-- aucun patch n’est autorisé avant synchronisation Replit avec GitHub.
+DepthCycle :
+
+```text
+2 → 4 → 6 → 7 → 8 → 9 → 10 → prochain Depth encore nécessaire
+```
+
+Retour `10→2` possible si un besoin subsiste.
+
+## DEC-107
+
+`DOMAIN_EXHAUSTED` n’est valide qu’après garde Taxonomy :
+
+```text
+remaining_subjects = 0
+AND
+remaining_ideas = 0
+```
+
+Sinon `TAX-003` bloque le signal avant KRP.
+
+KRP applique :
+
+```text
+VISIBLE → ESTOMPÉ
+```
+
+Aucun retour `ESTOMPÉ→VISIBLE` dans le même tour.
+
+## DEC-108
+
+```text
+DEPTH_EXHAUSTED(depth)
+= FIN DU TOUR
+≠ fin définitive du besoin global du Depth
+```
+
+Après commit valide :
+
+```text
+cycle_completed[depth] += 1
+```
+
+exactement une fois.
+
+## DEC-111
+
+- transition persistée avant progression ;
+- répétition après commit = `NO-OP` ;
+- 1 tentative + 3 retries ;
+- `KRP-002` / `KRP-003` en échec persistant ;
+- aucune rotation nouvelle depuis un état non commité.
 
 ---
 
-# 4. AUDIT-01-00 — CLOSED
-
-Résultat :
+# 4. DomainCycle de création
 
 ```text
-Architecture v2.0 : 100 %
-Contrat v2.0      : 100 %
-Implémentation    : PARTIELLE / NON CONFORME v2.0
-Validation v2.0   : NON
-UNRESOLVED bloquant : AUCUN
+Géographie
+→ Histoire
+→ Faune
+→ Art
+→ Sport
+→ Cinéma
+→ Cuisine
+→ Science
 ```
 
-Baseline Replit exécutée sans modification :
-
-```text
-KernelBlueprintPart1Test
-+
-KernelBlueprintFactoryTest
-=
-75 tests / 130 assertions / PASS
-```
-
-Ces tests sont historiques et ne certifient pas v2.0.
+`Général` n’est pas un domaine de création.
 
 ---
 
-# 5. KEEP principal
+# 5. Porte Taxonomy
 
-Conserver :
+Sortie normale KRP :
 
-- propriétés Section 1 privées ;
-- lecture contrôlée / écriture directe refusée ;
-- `initializeBlueprintId()` write-once ;
-- `fillRotation()` groupé/write-once ;
-- `fillTaxonomy()` groupé/write-once ;
-- `fillKernelCode()` write-once ;
-- aucune écriture directe externe trouvée ;
-- Factory distincte de KRP ;
-- création `CREATED_UNENGAGED` ;
-- garde applicative + index PostgreSQL `one_active_blueprint_idx` ;
-- test concurrent Factory ;
-- dans le chemin principal, engagement après `fillTaxonomy()` réussi ;
-- KernelCodeEngine respecte Science et refuse Général ;
-- réception ReadyBank atomique réception + Outbox.
+```text
+blueprint_id           = REMPLI
+depth                  = REMPLI
+domain                 = REMPLI
+subdomain_active       = NULL
+subject_active         = NULL
+dominant_idea_active   = NULL
+kernel_code            = NULL
+```
+
+Ce même nouveau Blueprint est recevable par Taxonomy.
+
+Le retour informationnel Taxonomy :
+
+```text
+DOMAIN_EXHAUSTED
+DEPTH_EXHAUSTED
+```
+
+est distinct du déclenchement de création du Blueprint suivant.
 
 ---
 
-# 6. MODIFY principal
+# 6. PRODUCTION_ON_HOLD
 
-À aligner :
+Seulement si :
 
-- docblocks KernelBlueprint historiques ;
-- `toArray()` / tests limités à l’ancien Blueprint de six clés ;
-- références `NOT_ENGAGED_PRODUCTION_ON_HOLD` ;
-- `KernelBlueprintRunRepository::markEngaged()` inutilisé et historiquement couplé à rotation ;
-- persistance Section 1 incomplète ;
-- persistance atomique Rotation/Taxonomy incomplète ;
-- orchestrateur résout actuellement KRP avant Factory ;
-- cleanup destructif d’un `CREATED_UNENGAGED` sur Taxonomy null ;
-- `CURRENT_KERNEL_RECEIVED` va directement vers `KernelRotationPlanner::receiveKernelReceivedV2()` ;
-- tests historiques qui figent ces anciens comportements.
+```text
+pour tous les Depths :
+cycle_completed[depth] >= cycle_target[depth]
+```
+
+et aucune transition KRP n’attend de commit.
+
+La simple fermeture du Depth 10 ne suffit pas.
 
 ---
 
-# 7. MISSING principal
+# 7. Documents KRP à NE PLUS utiliser comme vérité
 
-Manquent :
+```text
+docs/architecture/02_KernelRotationPlanner.md
+→ HISTORIQUE v3.2
 
-1. 7 CognitiveSlots permanents dans KernelBlueprint ;
-2. couche TranslationSlots 1:1 ;
-3. interfaces contrôlées Sections 2/3 ;
-4. persistance du triplet Taxonomy sous `blueprint_id` ;
-5. persistance des conteneurs Sections 2/3 ;
-6. réhydratation/reconstruction d’un KernelBlueprint après redémarrage ;
-7. reprise technique d’un `CREATED_UNENGAGED` orphelin après crash ;
-8. tests contractuels v2.0 correspondants.
+docs/architecture/02_KernelRotationPlanner_v3.3_ALIGNMENT.md
+→ SUPERSEDED
+
+working/02_KernelRotationPlanner/02_KernelRotationPlanner_REFERENCE_ACTIVE.md
+→ PROMOTED / CLOSED
+```
+
+La source unique est :
+
+```text
+specifications/02_KernelRotationPlanner.md v3.3
+```
 
 ---
 
-# 8. REMOVE du chemin canonique
+# 8. Extension future Phases 1–2
 
-Ne plus utiliser comme vérité de 01 :
+KRP est **complet pour la partie intellectuelle**.
 
-- `KernelFrameBuilder` comme faux Blueprint parallèle ;
-- ancien handoff direct `ReadyBank/CURRENT_KERNEL_RECEIVED → KRP`.
+Les éventuelles interfaces requises plus tard par Phase1/Phase2 sont :
 
-Le retrait physique du legacy ne doit pas casser les modules aval non encore spécifiés.
+```text
+RÉSERVÉES
+NON SPÉCIFIÉES
+NON BLOQUANTES pour AUDIT-02-00
+```
+
+Une extension future exige :
+
+```text
+spécification propriétaire Phase concernée
+↓
+nouvelle version KRP
+↓
+nouvelle DEC
+```
+
+Aucune logique Phase1/Phase2 ne doit être inventée pendant l’audit intellectuel KRP.
 
 ---
 
-# 9. Plan de micro-blocs 01
+# 9. Prochaine opération EXACTE — AUDIT-02-00
 
-Après synchronisation Replit :
+Mission :
 
 ```text
-IMPL-01-01 — coeur canonique v2.0
-IMPL-01-02 — 7 coquilles CognitiveSlots
-IMPL-01-03 — coquilles TranslationSlots 1:1
-IMPL-01-04 — persistance canonique Section 1
-IMPL-01-05 — persistance conteneurs Sections 2/3
-IMPL-01-06 — réhydratation / reprise technique
-IMPL-01-07 — lifecycle Taxonomy
-IMPL-01-08 — frontière CURRENT_KERNEL_RECEIVED → nouveau Blueprint
-IMPL-01-09 — nettoyage legacy contractuel 01
-IMPL-01-10 — validation terminale v2.0
+auditer le code KRP réel contre specifications/02_KernelRotationPlanner.md v3.3
 ```
 
-Chaque bloc doit recevoir sa fiche exacte avant patch. Jamais deux blocs en parallèle.
+Inspecter uniquement ce qui est nécessaire à KRP et ses portes :
+
+```text
+KernelRotationPlanner
+RotationState
+DepthNeedMatrix
+Factory → KRP
+DOMAIN_EXHAUSTED
+DEPTH_EXHAUSTED
+KRP → Blueprint.fillRotation(depth, domain)
+KRP → porte Taxonomy
+PRODUCTION_ON_HOLD
+persistance / idempotence
+```
+
+Classer chaque élément :
+
+```text
+KEEP
+MODIFY
+REMOVE
+MISSING
+UNRESOLVED
+```
+
+Aucun patch avant la fermeture de l’audit.
 
 ---
 
-# 10. Prochaine opération EXACTE
+# 10. Tests futurs KRP — principe simple
 
-```text
-PREP-01-SYNC
-```
+Les tests KRP doivent prouver KRP, pas les modules aval :
 
-Mission unique :
+1. reçoit un nouveau Blueprint déjà créé ;
+2. lit RotationState et DepthNeedMatrix ;
+3. choisit le bon Depth + Domain ;
+4. écrit uniquement `depth + domain` ;
+5. respecte `VISIBLE→ESTOMPÉ` ;
+6. traite les répétitions en `NO-OP` ;
+7. ferme un tour sur `DEPTH_EXHAUSTED` et incrémente une fois ;
+8. revient vers un Depth encore nécessaire après 10 ;
+9. met HOLD seulement quand tous les besoins sont satisfaits ;
+10. laisse une porte valide vers Taxonomy.
 
-```text
-synchroniser le workspace Replit
-avec la branche GitHub officielle
-sans modification métier
-```
-
-Critères :
-
-```text
-Replit HEAD = GitHub HEAD
-+
-git status propre
-+
-référence origin fraîche
-```
-
-Seulement ensuite :
-
-```text
-IMPL-01-01
-```
+Ne pas faire dépendre la validation KRP de l’exécution complète de Taxonomy, QuestionIntent, Phase1 ou Phase2.
 
 ---
 
@@ -230,16 +319,14 @@ IMPL-01-01
 
 Ne pas :
 
-- refaire `SPEC-01-CLOSE` ;
-- refaire `AUDIT-01-00` ;
-- reconstruire 01 depuis les anciens chats ;
-- utiliser l’ancien `docs/architecture/01_KernelBlueprint.md` comme contrat actif ;
-- déduire l’architecture depuis KernelFrameBuilder ;
-- réintroduire `PRODUCTION_ON_HOLD` comme état Blueprint ;
-- réintroduire ReadyBank → ancien Blueprint → KRP ;
-- commencer KRP v3.3 ;
-- commencer Taxonomy implantation ;
-- patcher Replit avant `PREP-01-SYNC`.
+- réouvrir ALIGN-02 ;
+- reconstruire KRP depuis v3.2 ;
+- remettre `DEPTH_EXHAUSTED` comme fin définitive ;
+- supprimer `cycle_target/cycle_completed` du chemin décisionnel ;
+- arrêter définitivement après Depth 10 si des besoins restent ;
+- faire recevoir directement l’ancien Blueprint à KRP depuis ReadyBank ;
+- faire écrire Taxonomy ou kernel_code par KRP ;
+- inventer les Phases 1–2 pendant AUDIT-02-00.
 
 ---
 
@@ -252,13 +339,12 @@ Lire :
 3. `00_ArchitectureRegister.md`
 4. `00_MOTEUR_INTELLECTUEL_ACTIVE_SPEC.md`
 5. `00_CURRENT_HANDOFF.md`
-6. `specifications/01_KernelBlueprint.md`
-7. `audits/01_KernelBlueprint/01_KernelBlueprint_CODE_AUDIT_V2.md`
+6. `specifications/01_KernelBlueprint.md` pour la frontière d’entrée
+7. `specifications/02_KernelRotationPlanner.md` v3.3
+8. `specifications/03_Taxonomy.md` pour la frontière de sortie
 
 Puis reprendre directement :
 
 ```text
-PREP-01-SYNC
+AUDIT-02-00
 ```
-
-sans refaire l’audit.
