@@ -7,7 +7,8 @@ namespace App\Services\QuestionBank;
 /**
  * KernelBlueprint — enveloppe canonique d'un noyau en construction.
  *
- * Partie 1 : 6 champs d'identité intellectuelle + blueprint_id.
+ * Section 1 : identité canonique, Rotation, Taxonomy et kernel_code.
+ * L'identité canonique du Blueprint précède les écritures de pipeline.
  *
  * ── Ownership des slots ───────────────────────────────────────────────────
  *   blueprint_id        ← KernelBlueprintFactory  (initializeBlueprintId)
@@ -23,7 +24,7 @@ namespace App\Services\QuestionBank;
  *     __set() lève une LogicException.
  *   • Chaque slot ne peut être attribué qu'une seule fois (write-once) :
  *     un second appel au fill*() correspondant lève une LogicException.
- *   • Les slots non encore écrits valent null.
+ *   • Les propriétés non encore écrites valent null.
  *
  * Parties 2–6 : non encore implémentées — attendues ultérieurement.
  */
@@ -38,7 +39,7 @@ class KernelBlueprint
      */
     private ?string $blueprint_id = null;
 
-    // ─── Partie 1 — 6 champs de l'identité intellectuelle ───────────────────
+    // ─── Section 1 — champs de l'identité et du pipeline ────────────────────
 
     /**
      * Propriétaire : KernelRotationPlanner.
@@ -49,8 +50,7 @@ class KernelBlueprint
 
     /**
      * Propriétaire : KernelRotationPlanner.
-     * Détermine le réservoir exploité par Taxonomy.
-     * Domaines autorisés : Géographie, Histoire, Faune, Art, Sport, Cinéma, Cuisine, Général.
+     * Détermine le domaine transmis à Taxonomy.
      * Immuable après fillRotation().
      */
     private ?string $domain = null;
@@ -70,16 +70,15 @@ class KernelBlueprint
     private ?string $subject_active = null;
 
     /**
-     * Propriétaire : Taxonomy (propose) + DominantIdeaValidator (valide).
-     * N'est inscrit dans le Blueprint QU'APRÈS obtention d'un PASS de DominantIdeaValidator.
+     * Propriétaire : Taxonomy.
+     * Taxonomy ne l'inscrit qu'après validation de sa valeur.
      * Immuable après fillTaxonomy().
      */
     private ?string $dominant_idea_active = null;
 
     /**
      * Propriétaire : KernelCodeEngine.
-     * Produit uniquement après validation complète des 5 champs d'identité.
-     * Format : yy-xx-xxx-xxx-xxx-zz (KernelCodeContract).
+     * Produit uniquement après complétude de l'identité et de la Taxonomy.
      * Immuable après fillKernelCode().
      */
     private ?string $kernel_code = null;
@@ -143,10 +142,11 @@ class KernelBlueprint
     }
 
     /**
-     * Appelée par KernelRotationPlanner uniquement — premier moteur.
+     * Appelée par KernelRotationPlanner uniquement — après l'identité canonique.
      *
      * Remplit depth + domain simultanément. Ne touche pas aux champs Taxonomy ni kernel_code.
      *
+     * @throws \LogicException si blueprint_id n'est pas initialisé.
      * @throws \LogicException si la rotation est déjà définie (write-once).
      */
     public function fillRotation(int $depth, string $domain): void
@@ -157,17 +157,23 @@ class KernelBlueprint
             );
         }
 
+        if ($this->blueprint_id === null) {
+            throw new \LogicException(
+                '[KernelBlueprint] Identité canonique requise avant la Rotation.'
+            );
+        }
+
         $this->depth  = $depth;
         $this->domain = $domain;
     }
 
     /**
-     * Appelée par Taxonomy uniquement — après validation DominantIdeaValidator.
+     * Appelée par Taxonomy uniquement — après la Rotation.
      *
      * Taxonomy lit depth + domain (déjà écrits par KernelRotationPlanner).
-     * dominant_idea_active ne doit être passé ici QU'APRÈS obtention d'un PASS.
      * Ne touche pas à depth, domain, kernel_code.
      *
+     * @throws \LogicException si la Rotation n'est pas définie.
      * @throws \LogicException si les slots Taxonomy sont déjà définis (write-once).
      */
     public function fillTaxonomy(
@@ -183,17 +189,24 @@ class KernelBlueprint
             );
         }
 
+        if (! $this->isRotationFilled()) {
+            throw new \LogicException(
+                '[KernelBlueprint] Rotation requise avant la Taxonomy.'
+            );
+        }
+
         $this->subdomain_active     = $subdomainActive;
         $this->subject_active       = $subjectActive;
         $this->dominant_idea_active = $dominantIdeaActive;
     }
 
     /**
-     * Appelée par KernelCodeEngine uniquement.
+     * Appelée par KernelCodeEngine uniquement — après l'identité et Taxonomy.
      *
-     * Précondition : isIdentityComplete() === true.
-     * Lit les 5 champs d'identité — ne les modifie jamais.
+     * Précondition : blueprint_id et isIdentityComplete() sont définis.
+     * Lit les champs précédents — ne les modifie jamais.
      *
+     * @throws \LogicException si la Section 1 n'est pas prête pour le code.
      * @throws \LogicException si kernel_code est déjà défini (write-once).
      */
     public function fillKernelCode(string $kernelCode): void
@@ -201,6 +214,12 @@ class KernelBlueprint
         if ($this->kernel_code !== null) {
             throw new \LogicException(
                 '[KernelBlueprint] kernel_code déjà défini — write-once violation (fillKernelCode).'
+            );
+        }
+
+        if ($this->blueprint_id === null || ! $this->isIdentityComplete()) {
+            throw new \LogicException(
+                '[KernelBlueprint] Identité canonique, Rotation et Taxonomy requises avant kernel_code.'
             );
         }
 
@@ -222,7 +241,7 @@ class KernelBlueprint
     /**
      * Vérifie que Taxonomy a rempli sa partie
      * (subdomain_active + subject_active + dominant_idea_active).
-     * dominant_idea_active est garanti PASS de DominantIdeaValidator si true.
+     * Taxonomy a validé dominant_idea_active avant son écriture.
      */
     public function isTaxonomyFilled(): bool
     {
@@ -241,21 +260,24 @@ class KernelBlueprint
     }
 
     /**
-     * Vérifie que la Partie 1 est entièrement complète (kernel_code inclus).
-     * Précondition pour passer à la Partie 2 du pipeline.
+     * Vérifie que la Section 1 est entièrement complète :
+     * identité canonique, Rotation, Taxonomy et kernel_code.
      */
     public function isComplete(): bool
     {
-        return $this->isIdentityComplete() && $this->kernel_code !== null;
+        return $this->blueprint_id !== null
+            && $this->isIdentityComplete()
+            && $this->kernel_code !== null;
     }
 
     /**
-     * Exporte les 6 champs de la Partie 1 sous forme de tableau.
+     * Exporte l'identité canonique et les six champs de la Section 1.
      * Aucune règle, aucun contrat, aucune métadonnée.
      */
     public function toArray(): array
     {
         return [
+            'blueprint_id'         => $this->blueprint_id,
             'depth'                => $this->depth,
             'domain'               => $this->domain,
             'subdomain_active'     => $this->subdomain_active,

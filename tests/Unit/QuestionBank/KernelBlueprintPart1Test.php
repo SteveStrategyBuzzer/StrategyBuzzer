@@ -13,7 +13,8 @@ use PHPUnit\Framework\TestCase;
  *
  * Aucune DB, aucun appel AI. Étend PHPUnit\Framework\TestCase directement.
  *
- * Structure testée :
+ * Structure Section 1 testée :
+ *   blueprint_id        ← KernelBlueprintFactory
  *   depth               ← KernelRotationPlanner
  *   domain              ← KernelRotationPlanner
  *   subdomain_active    ← Taxonomy
@@ -28,8 +29,16 @@ class KernelBlueprintPart1Test extends TestCase
         return new KernelBlueprint();
     }
 
+    private function identifiedBlueprint(): KernelBlueprint
+    {
+        $blueprint = $this->blueprint();
+        $blueprint->initializeBlueprintId('bp-section-1');
+
+        return $blueprint;
+    }
+
     // =========================================================================
-    // 1. Structure initiale — 6 champs null
+    // 1. Structure initiale — identité + 6 champs null
     // =========================================================================
 
     public function test_blueprint_is_instantiable(): void
@@ -67,8 +76,13 @@ class KernelBlueprintPart1Test extends TestCase
         $this->assertNull($this->blueprint()->kernel_code);
     }
 
+    public function test_blueprint_id_is_null_at_construction(): void
+    {
+        $this->assertNull($this->blueprint()->blueprint_id);
+    }
+
     // =========================================================================
-    // 2. toArray() — exactement 6 clés, aucune règle
+    // 2. toArray() — identité + 6 clés, aucune règle
     // =========================================================================
 
     public function test_toArray_returns_array(): void
@@ -76,14 +90,15 @@ class KernelBlueprintPart1Test extends TestCase
         $this->assertIsArray($this->blueprint()->toArray());
     }
 
-    public function test_toArray_has_exactly_6_keys(): void
+    public function test_toArray_has_exactly_7_keys(): void
     {
-        $this->assertCount(6, $this->blueprint()->toArray());
+        $this->assertCount(7, $this->blueprint()->toArray());
     }
 
-    public function test_toArray_contains_the_6_official_keys(): void
+    public function test_toArray_contains_identity_and_the_6_official_keys(): void
     {
         $expected = [
+            'blueprint_id',
             'depth', 'domain', 'subdomain_active',
             'subject_active', 'dominant_idea_active', 'kernel_code',
         ];
@@ -155,7 +170,7 @@ class KernelBlueprintPart1Test extends TestCase
 
     public function test_fillRotation_sets_depth(): void
     {
-        $bp = $this->blueprint();
+        $bp = $this->identifiedBlueprint();
         $bp->fillRotation(4, 'science');
 
         $this->assertSame(4, $bp->depth);
@@ -163,7 +178,7 @@ class KernelBlueprintPart1Test extends TestCase
 
     public function test_fillRotation_sets_domain(): void
     {
-        $bp = $this->blueprint();
+        $bp = $this->identifiedBlueprint();
         $bp->fillRotation(4, 'science');
 
         $this->assertSame('science', $bp->domain);
@@ -171,7 +186,7 @@ class KernelBlueprintPart1Test extends TestCase
 
     public function test_fillRotation_does_not_touch_taxonomy_fields(): void
     {
-        $bp = $this->blueprint();
+        $bp = $this->identifiedBlueprint();
         $bp->fillRotation(4, 'science');
 
         $this->assertNull($bp->subdomain_active,     'fillRotation ne doit pas toucher subdomain_active');
@@ -181,7 +196,7 @@ class KernelBlueprintPart1Test extends TestCase
 
     public function test_fillRotation_does_not_touch_kernel_code(): void
     {
-        $bp = $this->blueprint();
+        $bp = $this->identifiedBlueprint();
         $bp->fillRotation(4, 'science');
 
         $this->assertNull($bp->kernel_code, 'fillRotation ne doit pas toucher kernel_code');
@@ -190,10 +205,18 @@ class KernelBlueprintPart1Test extends TestCase
     public function test_fillRotation_accepts_all_valid_depths(): void
     {
         foreach (range(1, 10) as $depth) {
-            $bp = $this->blueprint();
+            $bp = $this->identifiedBlueprint();
             $bp->fillRotation($depth, 'géographie');
             $this->assertSame($depth, $bp->depth, "fillRotation doit accepter depth={$depth}");
         }
+    }
+
+    public function test_fillRotation_requires_canonical_identity(): void
+    {
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessageMatches('/Identité canonique requise/');
+
+        $this->blueprint()->fillRotation(4, 'science');
     }
 
     // =========================================================================
@@ -202,7 +225,7 @@ class KernelBlueprintPart1Test extends TestCase
 
     public function test_fillTaxonomy_sets_subdomain_active(): void
     {
-        $bp = $this->blueprint();
+        $bp = $this->identifiedBlueprint();
         $bp->fillRotation(4, 'science');
         $bp->fillTaxonomy('Physique', 'Lumière', 'réfraction');
 
@@ -211,7 +234,7 @@ class KernelBlueprintPart1Test extends TestCase
 
     public function test_fillTaxonomy_sets_subject_active(): void
     {
-        $bp = $this->blueprint();
+        $bp = $this->identifiedBlueprint();
         $bp->fillRotation(4, 'science');
         $bp->fillTaxonomy('Physique', 'Lumière', 'réfraction');
 
@@ -220,7 +243,7 @@ class KernelBlueprintPart1Test extends TestCase
 
     public function test_fillTaxonomy_sets_dominant_idea_active(): void
     {
-        $bp = $this->blueprint();
+        $bp = $this->identifiedBlueprint();
         $bp->fillRotation(4, 'science');
         $bp->fillTaxonomy('Physique', 'Lumière', 'réfraction');
 
@@ -229,7 +252,7 @@ class KernelBlueprintPart1Test extends TestCase
 
     public function test_fillTaxonomy_does_not_overwrite_rotation_fields(): void
     {
-        $bp = $this->blueprint();
+        $bp = $this->identifiedBlueprint();
         $bp->fillRotation(6, 'histoire');
         $bp->fillTaxonomy('Révolutions', 'Bastille', 'prise_1789');
 
@@ -239,10 +262,19 @@ class KernelBlueprintPart1Test extends TestCase
 
     public function test_fillTaxonomy_does_not_touch_kernel_code(): void
     {
-        $bp = $this->blueprint();
+        $bp = $this->identifiedBlueprint();
+        $bp->fillRotation(4, 'science');
         $bp->fillTaxonomy('SD', 'S', 'I');
 
         $this->assertNull($bp->kernel_code, 'fillTaxonomy ne doit pas toucher kernel_code');
+    }
+
+    public function test_fillTaxonomy_requires_rotation(): void
+    {
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessageMatches('/Rotation requise/');
+
+        $this->identifiedBlueprint()->fillTaxonomy('Physique', 'Lumière', 'réfraction');
     }
 
     // =========================================================================
@@ -251,7 +283,7 @@ class KernelBlueprintPart1Test extends TestCase
 
     public function test_fillKernelCode_sets_kernel_code(): void
     {
-        $bp = $this->blueprint();
+        $bp = $this->identifiedBlueprint();
         $bp->fillRotation(4, 'science');
         $bp->fillTaxonomy('Physique', 'Lumière', 'réfraction');
         $bp->fillKernelCode('04-sc-phy-lum-ref-01');
@@ -261,8 +293,9 @@ class KernelBlueprintPart1Test extends TestCase
 
     public function test_fillKernelCode_does_not_overwrite_rotation_fields(): void
     {
-        $bp = $this->blueprint();
+        $bp = $this->identifiedBlueprint();
         $bp->fillRotation(4, 'science');
+        $bp->fillTaxonomy('Physique', 'Lumière', 'réfraction');
         $bp->fillKernelCode('04-sc-phy-lum-ref-01');
 
         $this->assertSame(4,         $bp->depth,  'fillKernelCode ne doit pas modifier depth');
@@ -271,13 +304,24 @@ class KernelBlueprintPart1Test extends TestCase
 
     public function test_fillKernelCode_does_not_overwrite_taxonomy_fields(): void
     {
-        $bp = $this->blueprint();
+        $bp = $this->identifiedBlueprint();
+        $bp->fillRotation(4, 'science');
         $bp->fillTaxonomy('Physique', 'Lumière', 'réfraction');
         $bp->fillKernelCode('04-sc-phy-lum-ref-01');
 
         $this->assertSame('Physique',    $bp->subdomain_active,     'fillKernelCode ne doit pas modifier subdomain_active');
         $this->assertSame('Lumière',     $bp->subject_active,        'fillKernelCode ne doit pas modifier subject_active');
         $this->assertSame('réfraction',  $bp->dominant_idea_active,  'fillKernelCode ne doit pas modifier dominant_idea_active');
+    }
+
+    public function test_fillKernelCode_requires_rotation_and_taxonomy(): void
+    {
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessageMatches('/Rotation et Taxonomy requises/');
+
+        $bp = $this->identifiedBlueprint();
+        $bp->fillRotation(4, 'science');
+        $bp->fillKernelCode('04-sc-phy-lum-ref-01');
     }
 
     // =========================================================================
@@ -291,7 +335,7 @@ class KernelBlueprintPart1Test extends TestCase
 
     public function test_isRotationFilled_true_after_fillRotation(): void
     {
-        $bp = $this->blueprint();
+        $bp = $this->identifiedBlueprint();
         $bp->fillRotation(4, 'science');
 
         $this->assertTrue($bp->isRotationFilled());
@@ -304,7 +348,8 @@ class KernelBlueprintPart1Test extends TestCase
 
     public function test_isTaxonomyFilled_true_after_fillTaxonomy(): void
     {
-        $bp = $this->blueprint();
+        $bp = $this->identifiedBlueprint();
+        $bp->fillRotation(4, 'science');
         $bp->fillTaxonomy('Physique', 'Lumière', 'réfraction');
 
         $this->assertTrue($bp->isTaxonomyFilled());
@@ -312,23 +357,21 @@ class KernelBlueprintPart1Test extends TestCase
 
     public function test_isIdentityComplete_false_when_only_rotation_filled(): void
     {
-        $bp = $this->blueprint();
+        $bp = $this->identifiedBlueprint();
         $bp->fillRotation(4, 'science');
 
         $this->assertFalse($bp->isIdentityComplete());
     }
 
-    public function test_isIdentityComplete_false_when_only_taxonomy_filled(): void
+    public function test_isIdentityComplete_false_before_rotation_and_taxonomy(): void
     {
-        $bp = $this->blueprint();
-        $bp->fillTaxonomy('Physique', 'Lumière', 'réfraction');
-
+        $bp = $this->identifiedBlueprint();
         $this->assertFalse($bp->isIdentityComplete());
     }
 
     public function test_isIdentityComplete_true_when_rotation_and_taxonomy_filled(): void
     {
-        $bp = $this->blueprint();
+        $bp = $this->identifiedBlueprint();
         $bp->fillRotation(4, 'science');
         $bp->fillTaxonomy('Physique', 'Lumière', 'réfraction');
 
@@ -337,16 +380,16 @@ class KernelBlueprintPart1Test extends TestCase
 
     public function test_isComplete_false_when_identity_complete_but_no_kernel_code(): void
     {
-        $bp = $this->blueprint();
+        $bp = $this->identifiedBlueprint();
         $bp->fillRotation(4, 'science');
         $bp->fillTaxonomy('Physique', 'Lumière', 'réfraction');
 
         $this->assertFalse($bp->isComplete());
     }
 
-    public function test_isComplete_true_when_all_6_fields_filled(): void
+    public function test_isComplete_true_when_section_1_identity_and_6_fields_are_filled(): void
     {
-        $bp = $this->blueprint();
+        $bp = $this->identifiedBlueprint();
         $bp->fillRotation(4, 'science');
         $bp->fillTaxonomy('Physique', 'Lumière', 'réfraction');
         $bp->fillKernelCode('04-sc-phy-lum-ref-01');
@@ -355,12 +398,12 @@ class KernelBlueprintPart1Test extends TestCase
     }
 
     // =========================================================================
-    // 7. Scénario pipeline complet (séquence Rotation → Taxonomy → KernelCodeEngine)
+    // 7. Scénario pipeline complet (identité → Rotation → Taxonomy → KernelCodeEngine)
     // =========================================================================
 
     public function test_full_pipeline_sequence_produces_correct_state(): void
     {
-        $bp = new KernelBlueprint();
+        $bp = $this->identifiedBlueprint();
 
         // Étape 1 — KernelRotationPlanner
         $bp->fillRotation(6, 'histoire');
@@ -387,7 +430,7 @@ class KernelBlueprintPart1Test extends TestCase
 
     public function test_full_pipeline_toArray_reflects_all_writes(): void
     {
-        $bp = new KernelBlueprint();
+        $bp = $this->identifiedBlueprint();
         $bp->fillRotation(6, 'histoire');
         $bp->fillTaxonomy('Révolutions', 'Bastille', 'prise_1789');
         $bp->fillKernelCode('06-hi-rev-bas-pr1-01');
@@ -400,6 +443,7 @@ class KernelBlueprintPart1Test extends TestCase
         $this->assertSame('Bastille',            $arr['subject_active']);
         $this->assertSame('prise_1789',          $arr['dominant_idea_active']);
         $this->assertSame('06-hi-rev-bas-pr1-01', $arr['kernel_code']);
+        $this->assertSame('bp-section-1',         $arr['blueprint_id']);
     }
 
     // =========================================================================
@@ -408,7 +452,7 @@ class KernelBlueprintPart1Test extends TestCase
 
     public function test_taxonomy_reads_rotation_but_cannot_overwrite_it(): void
     {
-        $bp = new KernelBlueprint();
+        $bp = $this->identifiedBlueprint();
         $bp->fillRotation(8, 'géographie');
 
         // Taxonomy lit depth + domain pour travailler dans le bon réservoir,
@@ -428,7 +472,7 @@ class KernelBlueprintPart1Test extends TestCase
         $this->expectException(\LogicException::class);
         $this->expectExceptionMessageMatches('/Écriture directe interdite/');
 
-        $bp = new KernelBlueprint();
+        $bp = $this->identifiedBlueprint();
         $bp->depth = 4; // doit lever une LogicException
     }
 
@@ -454,7 +498,7 @@ class KernelBlueprintPart1Test extends TestCase
         $this->expectException(\LogicException::class);
         $this->expectExceptionMessageMatches('/write-once violation/');
 
-        $bp = new KernelBlueprint();
+        $bp = $this->identifiedBlueprint();
         $bp->fillRotation(4, 'science');
         $bp->fillRotation(6, 'histoire'); // doit lever une LogicException
     }
@@ -464,7 +508,8 @@ class KernelBlueprintPart1Test extends TestCase
         $this->expectException(\LogicException::class);
         $this->expectExceptionMessageMatches('/write-once violation/');
 
-        $bp = new KernelBlueprint();
+        $bp = $this->identifiedBlueprint();
+        $bp->fillRotation(4, 'science');
         $bp->fillTaxonomy('SD1', 'S1', 'I1');
         $bp->fillTaxonomy('SD2', 'S2', 'I2'); // doit lever une LogicException
     }
@@ -474,7 +519,9 @@ class KernelBlueprintPart1Test extends TestCase
         $this->expectException(\LogicException::class);
         $this->expectExceptionMessageMatches('/write-once violation/');
 
-        $bp = new KernelBlueprint();
+        $bp = $this->identifiedBlueprint();
+        $bp->fillRotation(4, 'science');
+        $bp->fillTaxonomy('SD1', 'S1', 'I1');
         $bp->fillKernelCode('04-sc-phy-lum-ref-01');
         $bp->fillKernelCode('04-sc-phy-lum-ref-02'); // doit lever une LogicException
     }
@@ -490,7 +537,7 @@ class KernelBlueprintPart1Test extends TestCase
 
     public function test_read_via_magic_get_works_after_fill(): void
     {
-        $bp = new KernelBlueprint();
+        $bp = $this->identifiedBlueprint();
         $bp->fillRotation(7, 'sport');
         $this->assertSame(7,       $bp->depth);
         $this->assertSame('sport', $bp->domain);
