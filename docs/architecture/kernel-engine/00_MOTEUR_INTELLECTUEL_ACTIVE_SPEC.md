@@ -1,11 +1,11 @@
 # StrategyBuzzer — Moteur intellectuel — Spécification active maître
 
-**Version :** 1.5.0-krp-signal-boundary  
+**Version :** 1.6.0-krp-sequential-boundary  
 **Date :** 2026-08-23  
 **Statut :** **ACTIF — VÉRITÉ GLOBALE COURANTE**  
 **Portée :** architecture globale, frontières, ownership, communications et état documentaire des modules 01→11.
 
-> Cette version intègre `DEC-116` et `02_KernelRotationPlanner v3.5`. Elle remplace la v3.4 qui faisait lire à KRP une réalité Taxonomy persistée. La frontière correcte est maintenant active : **Taxonomy pousse un fait Domain vide à KRP; KRP reste seul décideur de rotation.**
+> Cette version intègre `DEC-117` et `02_KernelRotationPlanner v3.6`. Elle verrouille la règle : **un seul module métier actif à la fois**. Taxonomy émet le fait `DOMAIN_EXHAUSTED(depth,domain)` à la fin de son travail; KRP ne l'applique qu'à sa prochaine activation après ReadyBank → Factory → nouveau Blueprint.
 
 ---
 
@@ -86,7 +86,7 @@ Une seule spécification est travaillée à la fois.
 | Module | Architecture | Contrat | Implémentation | Validation | Statut |
 |---|---:|---:|---:|---:|---|
 | 01 KernelBlueprint | 100 % intellectuel | 100 % | Section 1 alignée | terminale globale différée | contrat d’entrée disponible |
-| 02 KernelRotationPlanner | **100 % intellectuel v3.5** | **100 %** | travail local v3.3/v3.4 à réauditer | NON | **VERROUILLÉ — DEC-116** |
+| 02 KernelRotationPlanner | **100 % intellectuel v3.6** | **100 %** | travail local v3.3/v3.4/v3.5 à réauditer | NON | **VERROUILLÉ — DEC-117** |
 | 03 Taxonomy | détails internes historiques utiles | frontière KRP v1.0 superseded | non à poursuivre maintenant | NON | **À RÉÉCRIRE v1.1 dans son tour** |
 | 04 ValidationDominantIdeas | brides actives | règles utilisées par Gemini | non | non | à spécifier |
 | 05 QuestionIntent | historique verrouillé | historique verrouillé | historique | historique | verrouillé selon certificat |
@@ -99,7 +99,42 @@ Une seule spécification est travaillée à la fois.
 
 ---
 
-# 5. Pipeline intellectuel actif
+# 5. Invariant d'exécution global
+
+```text
+UN SEUL MODULE MÉTIER ACTIF À LA FOIS
+```
+
+Séquence :
+
+```text
+KRP ACTIVE
+↓
+KRP FIN
+↓
+Taxonomy ACTIVE
+↓
+Taxonomy FIN
+↓
+QuestionIntent / autres modules selon pipeline
+...
+↓
+ReadyBank
+↓
+Factory
+↓
+KRP ACTIVE à nouveau
+```
+
+État interdit :
+
+```text
+KRP ACTIVE + Taxonomy ACTIVE
+```
+
+---
+
+# 6. Pipeline intellectuel actif
 
 ```text
 KernelBlueprintFactory
@@ -107,15 +142,19 @@ KernelBlueprintFactory
 NOUVEAU KernelBlueprint canonique
 ↓
 KernelRotationPlanner
+  ↳ consomme les faits Domain vides en attente
   ↳ lit RotationState + DepthNeedMatrix
-  ↳ applique les faits Domain vides déjà reçus de Taxonomy
   ↳ décide seul depth + domain
   ↳ écrit uniquement depth + domain
+↓
+KRP FIN
 ↓
 Taxonomy
   ↳ gère ses réservoirs
   ↳ écrit subdomain_active + subject_active + dominant_idea_active
-  ↳ lorsqu’un Domain actif est réellement vide : pousse DOMAIN_EXHAUSTED(depth, domain)
+  ↳ si le Domain devient réellement vide : émet DOMAIN_EXHAUSTED(depth,domain) à la fin de son travail
+↓
+Taxonomy FIN
 ↓
 QuestionIntent
   ↳ écrit kernel_code
@@ -123,9 +162,11 @@ QuestionIntent
 FIN PHASE INTELLECTUELLE
 ```
 
+Le fait Taxonomy n'active pas KRP. Il reste en attente jusqu'au prochain cycle déclenché après ReadyBank.
+
 ---
 
-# 6. Ownership global
+# 7. Ownership global
 
 ## KernelBlueprintFactory
 
@@ -137,22 +178,33 @@ rôle : créer une nouvelle enveloppe
 ## Taxonomy
 
 ```text
-propriétaire : ses Banks, occurrences, curseurs et contenu intellectuel
-propriétaire : constat factuel de vacuité du Domain actif
-NON propriétaire : prochain Domain
-NON propriétaire : prochain Depth
+propriétaire : Banks, occurrences, curseurs et contenu intellectuel
+propriétaire : constat de vacuité du Domain qu'il vient de travailler
+peut émettre : DOMAIN_EXHAUSTED(depth,domain)
+signification : « ce Domain est vide »
+NON propriétaire : rotation
 NON propriétaire : fin de tour KRP
+NON propriétaire : prochain Depth
 ```
 
-Signal factuel actif :
+Taxonomy n'émet pas `DEPTH_EXHAUSTED` dans le contrat actif.
+
+## Frontière de communication
 
 ```text
-DOMAIN_EXHAUSTED(depth, domain)
+conserve le fait DOMAIN_EXHAUSTED après Taxonomy FIN
+n'active pas KRP
+ne décide aucune rotation
 ```
 
-Il signifie uniquement : les Banks du Domain actif ne contiennent plus de contenu exploitable.
+Le mécanisme technique n'est pas contractuel.
 
-Taxonomy **n’envoie pas** `DEPTH_EXHAUSTED` dans le contrat actif.
+## ReadyBank / CURRENT_KERNEL_RECEIVED
+
+```text
+rôle : déclencher le lifecycle du prochain noyau
+NON propriétaire : décision de rotation
+```
 
 ## DepthNeedMatrix
 
@@ -161,13 +213,6 @@ propriétaire : besoin quantitatif global par Depth
 cycle_target
 cycle_completed
 cycle_remaining
-```
-
-## ReadyBank / CURRENT_KERNEL_RECEIVED
-
-```text
-rôle : déclencher le lifecycle du prochain noyau
-NON propriétaire : décision de rotation
 ```
 
 ## KernelRotationPlanner
@@ -179,6 +224,8 @@ AUTORITÉ UNIQUE DE ROTATION
 KRP décide seul :
 
 - conserver le même Domain ;
+- rendre un Domain `ESTOMPÉ` à partir d'un fait en attente ;
+- exclure les Domaines `ESTOMPÉ` de ses rotations du tour courant ;
 - sélectionner le prochain Domain ;
 - fermer le tour ;
 - incrémenter `cycle_completed` ;
@@ -188,37 +235,49 @@ KRP décide seul :
 
 ---
 
-# 7. Communication Taxonomy → KRP
+# 8. Communication Taxonomy → KRP
+
+À la fin de Taxonomy :
 
 ```text
-Taxonomy travaille le territoire actif
+Taxonomy FIN
 ↓
-si contenu exploitable reste
-→ aucun signal
-
-si Domain réellement vide
-→ DOMAIN_EXHAUSTED(depth, domain)
+si Domain vide : DOMAIN_EXHAUSTED(depth,domain)
 ↓
-KRP reçoit le fait
+fait en attente
 ↓
-KRP persiste VISIBLE → ESTOMPÉ
-↓
-aucune rotation immédiate
+KRP INACTIF
 ```
 
-La garde avant émission est :
+Signification :
 
 ```text
-remaining_subjects = 0
-AND
-remaining_ideas = 0
+CE DOMAIN EST VIDE
 ```
 
-Le signal ne contient jamais le prochain Domain ou Depth.
+Aucun autre effet métier immédiat.
+
+Au prochain cycle seulement :
+
+```text
+ReadyBank
+↓
+CURRENT_KERNEL_RECEIVED
+↓
+Factory crée NOUVEAU Blueprint
+↓
+KRP ACTIVE
+↓
+consomme le fait en attente
+↓
+VISIBLE → ESTOMPÉ
+↓
+Domain exclu des rotations restantes du tour
+```
 
 ---
 
-# 8. Flow lifecycle canonique
+# 9. Flow lifecycle canonique
 
 ```text
 noyau courant termine
@@ -233,22 +292,24 @@ Factory crée NOUVEAU Blueprint
 ↓
 KRP reçoit ce Blueprint
 ↓
-KRP lit :
-  RotationState
-  DepthNeedMatrix
+KRP charge RotationState
+↓
+KRP consomme faits DOMAIN_EXHAUSTED en attente
+↓
+KRP consulte DepthNeedMatrix si nécessaire
 ↓
 KRP applique SON contrat de rotation
 ↓
-fillRotation(depth, domain)
+fillRotation(depth,domain)
 ↓
-Taxonomy reçoit le même Blueprint
+KRP FIN
+↓
+Taxonomy peut devenir ACTIVE
 ```
-
-La création d’un nouveau Blueprint n’implique pas automatiquement un changement de Domain.
 
 ---
 
-# 9. KRP v3.5 — règles centrales
+# 10. KRP v3.6 — règles centrales
 
 ## DepthCycle
 
@@ -269,52 +330,32 @@ Géographie
 → Science
 ```
 
-`Général` n’est pas un domaine de création.
+`Général` n'est pas un domaine de création.
 
-## Domain encore actif
-
-Sans `DOMAIN_EXHAUSTED` valide reçu :
+## Domain sans fait d'épuisement
 
 ```text
-Domain courant reste VISIBLE
-↓
-prochain Blueprint
-↓
-KRP conserve le même depth + domain
+Domain = VISIBLE
+→ même depth + domain au prochain Blueprint
 ```
 
-## Domain vide
+## Domain avec fait d'épuisement en attente
 
 ```text
-Taxonomy pousse DOMAIN_EXHAUSTED
-↓
-KRP persiste VISIBLE → ESTOMPÉ
-↓
-attente du prochain Blueprint
+DOMAIN_EXHAUSTED
+→ à la prochaine activation KRP : VISIBLE → ESTOMPÉ
+→ ESTOMPÉ = Domain abstrait/exclu des rotations restantes du tour
+→ KRP choisit le prochain Domain VISIBLE
 ```
 
-Au prochain Blueprint :
-
-```text
-KRP voit Domain courant ESTOMPÉ
-↓
-KRP choisit lui-même le prochain Domain VISIBLE
-```
-
-## Fin du tour
+## Fin de tour
 
 ```text
 8 Domaines ESTOMPÉ
-↓
-prochain Blueprint
-↓
-KRP ferme SON tour
-↓
-cycle_completed[depth] += 1 exactement une fois
-↓
-DepthNeedMatrix
-↓
-prochain Depth nécessaire
+→ KRP ferme SON tour
+→ cycle_completed[depth] += 1 exactement une fois
+→ DepthNeedMatrix
+→ prochain Depth nécessaire
 ```
 
 Taxonomy ne déclare pas la fin du tour.
@@ -323,10 +364,8 @@ Taxonomy ne déclare pas la fin du tour.
 
 ```text
 Depth 10 terminé
-↓
-Matrix
-↓
-prochain Depth encore nécessaire
+→ Matrix
+→ prochain Depth encore nécessaire
 ```
 
 Retour possible à 2.
@@ -337,7 +376,7 @@ Seulement lorsque toutes les cibles globales sont satisfaites.
 
 ---
 
-# 10. Cibles DepthNeedMatrix
+# 11. Cibles DepthNeedMatrix
 
 ```text
 2  = 250
@@ -356,33 +395,31 @@ cycle_remaining[depth]
 
 ---
 
-# 11. Persistance KRP
+# 12. Persistance KRP
 
-Les transitions appartiennent à KRP :
+Transitions KRP :
 
 ```text
-DOMAIN_EXHAUSTED reçu
+fait DOMAIN_EXHAUSTED consommé
 → VISIBLE → ESTOMPÉ
 
-8 ESTOMPÉ au cycle suivant
+8 ESTOMPÉ
 → OPEN → CLOSED
 → cycle_completed += 1
 ```
 
-Elles sont persistées avant progression.
-
-Politique d’échec technique :
+Politique d'échec technique :
 
 ```text
 1 tentative + 3 retries
-KRP-002 — DOMAIN_EXHAUSTED_PERSIST_FAILED
+KRP-002 — DOMAIN_ROTATION_STATE_PERSIST_FAILED
 KRP-003 — DEPTH_TOUR_STATE_PERSIST_FAILED
 BLOCKED après échec persistant
 ```
 
 ---
 
-# 12. Blueprint — ownership Section intellectuelle
+# 13. Blueprint — ownership Section intellectuelle
 
 ```text
 blueprint_id            → KernelBlueprintFactory
@@ -406,17 +443,17 @@ kernel_code = null
 
 ---
 
-# 13. Taxonomy — état documentaire après DEC-116
+# 14. Taxonomy — état documentaire après DEC-117
 
-`03_Taxonomy v1.0` contient des formulations superseded, notamment `DEPTH_EXHAUSTED` et une ownership de rotation trop large.
+`03_Taxonomy v1.0` reste historique sur sa frontière KRP.
 
 Boundary bridge actif :
 
 ```text
-working/03_Taxonomy/03_Taxonomy_BOUNDARY_BRIDGE_DEC-116.md
+working/03_Taxonomy/03_Taxonomy_BOUNDARY_BRIDGE_DEC-117.md
 ```
 
-Quand le module 03 sera officiellement repris :
+Quand le module 03 sera repris :
 
 ```text
 reconstruction complète
@@ -430,45 +467,45 @@ verrouillage
 
 ---
 
-# 14. ValidationDominantIdeas
+# 15. ValidationDominantIdeas
 
-Gemini utilise les règles `ValidationDominantIdeas` **pendant** la création des Dominant Ideas à l’intérieur du travail Taxonomy. Ce n’est pas un moteur autonome postérieur relisant le Blueprint.
+Gemini utilise les règles `ValidationDominantIdeas` pendant la création des Dominant Ideas à l'intérieur du travail Taxonomy. Ce n'est pas un moteur autonome postérieur relisant le Blueprint.
 
 ---
 
-# 15. Phases 1–2
+# 16. Phases 1–2
 
 Leurs interfaces détaillées restent réservées et non spécifiées. Elles ne doivent pas être inventées dans KRP.
 
 ---
 
-# 16. État opérationnel immédiat
+# 17. État opérationnel immédiat
 
-Le Build Replit `IMPL-02-01` commencé contre v3.3/v3.4 est **PAUSED**.
+Le Build Replit `IMPL-02-01` reste **PAUSED**.
 
 Prochaine opération :
 
 ```text
-DEC-116 + KRP v3.5
+DEC-117 + KRP v3.6
 ↓
-réaudit ciblé des modifications locales déjà faites par Replit
+réaudit ciblé des modifications locales déjà faites
 ↓
-KEEP / REVERT / MODIFY
+KEEP / REVERT / MODIFY / MISSING
 ↓
 reprise contrôlée IMPL-02-01
 ↓
-tests contractuels v3.5
+tests contractuels v3.6
 ```
 
 ---
 
-# 17. Sources actives KRP
+# 18. Sources actives KRP
 
 ```text
-00_ArchitectureRegister.md — DEC-116
+00_ArchitectureRegister.md — DEC-117
 00_MOTEUR_INTELLECTUEL_ACTIVE_SPEC.md
-specifications/02_KernelRotationPlanner.md v3.5
+specifications/02_KernelRotationPlanner.md v3.6
 certificates/02_KernelRotationPlanner/02_KernelRotationPlanner_CERTIFICAT_VERROUILLAGE.md
 ```
 
-Anciennes v3.4/v3.3/v3.2/ALIGN-02 : historiques/superseded.
+Anciennes v3.5/v3.4/v3.3/v3.2/ALIGN-02 : historiques/superseded.
