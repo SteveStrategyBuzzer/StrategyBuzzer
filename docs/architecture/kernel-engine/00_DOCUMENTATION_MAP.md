@@ -1,6 +1,6 @@
 # DOCUMENTATION MAP — StrategyBuzzer Kernel Engine
 
-**Date : 2026-08-20**
+**Date : 2026-08-23**
 
 ## Autorité
 
@@ -10,18 +10,19 @@
 | Architecture Register | `00_ArchitectureRegister.md` | OUI |
 | Master actif | `00_MOTEUR_INTELLECTUEL_ACTIVE_SPEC.md` | OUI globale |
 | Spécification verrouillée | `specifications/` | OUI module concerné |
-| Working | `working/` | NON, sauf bride exacte non encore promue |
+| Boundary bridge explicitement déclaré | `working/` | OUI uniquement pour la frontière indiquée |
 | Audit | `audits/` | preuve seulement |
 | Certificat | `certificates/` | preuve de statut |
-| Archive / superseded | `archive/`, historique Git, fichiers marqués SUPERSEDED | NON |
+| Archive / superseded | historique Git, fichiers marqués SUPERSEDED | NON |
 
 ## État canonique
 
 | Module | Source | Statut |
 |---|---|---|
-| 01 KernelBlueprint | `specifications/01_KernelBlueprint.md` | v2.0 VERROUILLÉ — contrat canonique; frontière intellectuelle disponible pour KRP |
-| 02 KernelRotationPlanner | `specifications/02_KernelRotationPlanner.md` | **v3.3 VERROUILLÉ — PARTIE INTELLECTUELLE** |
-| 03 Taxonomy | `specifications/03_Taxonomy.md` | v1.0 VERROUILLÉ |
+| 01 KernelBlueprint | `specifications/01_KernelBlueprint.md` | contrat intellectuel disponible pour KRP |
+| 02 KernelRotationPlanner | `specifications/02_KernelRotationPlanner.md` | **v3.4 VERROUILLÉ — PARTIE INTELLECTUELLE — DEC-115** |
+| 03 Taxonomy | `specifications/03_Taxonomy.md` | v1.0 historique sur la frontière KRP; détails internes à reconstruire en v1.1 |
+| 03 frontière temporaire | `working/03_Taxonomy/03_Taxonomy_BOUNDARY_BRIDGE_DEC-115.md` | **ACTIVE uniquement pour ownership KRP/Taxonomy** |
 | 04 ValidationDominantIdeas | `working/04_ValidationDominantIdeas/` | brides actives; règles utilisées par Gemini pendant Taxonomy |
 | 05 QuestionIntent | certificat/source récupérée | verrouillé selon certificat |
 | 06..11 | `working/` | à spécifier dans leur tour |
@@ -30,18 +31,38 @@
 
 ```text
 docs/architecture/kernel-engine/specifications/02_KernelRotationPlanner.md
-Version 3.3
+Version 3.4
 VERROUILLÉ — PARTIE INTELLECTUELLE
-DEC-114
+DEC-115
 ```
 
-Le certificat est :
+## Ownership actif
 
 ```text
-certificates/02_KernelRotationPlanner/02_KernelRotationPlanner_CERTIFICAT_VERROUILLAGE.md
+Taxonomy
+= réalité de ses réservoirs
+= aucune décision de rotation
+
+ReadyBank / CURRENT_KERNEL_RECEIVED
+= déclencheur lifecycle
+
+Factory
+= nouveau Blueprint
+
+KRP
+= autorité UNIQUE de rotation
 ```
 
-## Documents KRP explicitement non actifs
+Les anciennes interfaces :
+
+```text
+Taxonomy → DOMAIN_EXHAUSTED
+Taxonomy → DEPTH_EXHAUSTED
+```
+
+sont SUPERSEDED comme frontière active.
+
+## Documents KRP non actifs
 
 ```text
 docs/architecture/02_KernelRotationPlanner.md
@@ -52,28 +73,25 @@ docs/architecture/02_KernelRotationPlanner_v3.3_ALIGNMENT.md
 
 working/02_KernelRotationPlanner/02_KernelRotationPlanner_REFERENCE_ACTIVE.md
 → PROMOTED / CLOSED
-```
 
-Aucun de ces documents ne peut remplacer `specifications/02_KernelRotationPlanner.md v3.3`.
+AUDIT-02-00 v3.3
+→ preuve historique; ne suffit plus comme cible d’implantation après DEC-115
+```
 
 ## Extension KRP future
 
-KRP est complet et verrouillé pour la partie intellectuelle.
-
-Les éventuelles interfaces nécessaires aux futures Phases 1–2 restent :
+Les éventuelles interfaces Phase1/Phase2 restent :
 
 ```text
 RÉSERVÉES
 NON SPÉCIFIÉES
 ```
 
-Elles ne peuvent être ajoutées que depuis la spécification propriétaire de la Phase concernée, avec nouvelle version KRP + nouvelle DEC si KRP est affecté.
-
 ## Bloc actif
 
 ```text
 02_KernelRotationPlanner
-AUDIT-02-00 = NEXT
+RÉAUDIT-02-v3.4 = NEXT
 ```
 
-But : auditer le code KRP réel contre la v3.3 verrouillée, puis corriger uniquement KRP et ses portes Factory/Taxonomy.
+But : auditer le diff local déjà commencé par Replit contre la v3.4, puis reprendre uniquement les corrections compatibles.
