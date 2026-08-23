@@ -3,8 +3,8 @@
 **Mis à jour :** 2026-08-23  
 **Branche :** `replit/intellectual-engine-current-2026-08-16`  
 **Module actif :** `02_KernelRotationPlanner`  
-**Bloc actif :** `RÉAUDIT-02-v3.6 AVANT REPRISE IMPL-02-01`  
-**Dernière décision structurante :** `DEC-117`
+**Bloc actif :** `RÉAUDIT-02-v3.7 AVANT REPRISE IMPL-02-01`  
+**Dernière décision structurante :** `DEC-118`
 
 > Ce fichier est un pointeur de reprise. En cas de contradiction : `00_ArchitectureRegister.md + 00_MOTEUR_INTELLECTUEL_ACTIVE_SPEC.md + spécification canonique du module` priment.
 
@@ -14,18 +14,18 @@
 
 ```text
 specifications/02_KernelRotationPlanner.md
-Version : 3.6
+Version : 3.7
 Statut : VERROUILLÉ — PARTIE INTELLECTUELLE
 Architecture : 100 %
 Contrat : 100 %
 Implémentation : modifications locales antérieures à réauditer
 Validation : NON
-DEC : DEC-117
+DEC : DEC-118
 ```
 
 ---
 
-# 2. Règle fondamentale DEC-117
+# 2. Règle fondamentale
 
 ```text
 UN SEUL MODULE MÉTIER ACTIF À LA FOIS
@@ -46,9 +46,37 @@ KRP et Taxonomy ne sont jamais actifs simultanément.
 
 ---
 
-# 3. Signal Taxonomy exact
+# 3. Moment exact de l’information Taxonomy
 
-Taxonomy peut émettre, à la fin de son travail :
+Taxonomy ne communique rien à KRP pendant son travail intermédiaire.
+
+Dans sa fermeture de sortie :
+
+```text
+IdeaSlot exact sélectionné
+↓
+triplet exact prêt
+↓
+écriture Blueprint réussie
+↓
+consommation immédiate du même IdeaSlot
+↓
+évaluation de l’état final du Domain
+```
+
+Si le Domain reste exploitable :
+
+```text
+AUCUN SIGNAL
+```
+
+Si cette consommation provoque :
+
+```text
+ENCORE EXPLOITABLE → VIDE
+```
+
+Taxonomy émet :
 
 ```text
 DOMAIN_EXHAUSTED(depth, domain)
@@ -60,31 +88,38 @@ Signification exacte :
 CE DOMAIN EST VIDE
 ```
 
-Ce signal :
+---
 
-- ne choisit aucun prochain Domain ;
-- ne choisit aucun prochain Depth ;
-- ne ferme aucun tour ;
-- ne produit pas HOLD ;
-- n'active pas KRP immédiatement.
+# 4. Règle delta-only
 
-Taxonomy n'émet pas `DEPTH_EXHAUSTED` dans le contrat actif.
+Taxonomy informe KRP uniquement lorsqu’un besoin change.
+
+Donc :
+
+- pas de signal à chaque noyau ;
+- pas de signal à chaque passage ;
+- pas de `AVAILABLE` ;
+- pas de répétition normale après qu’une occurrence a déjà été déclarée vide ;
+- au maximum un `DOMAIN_EXHAUSTED` normal par occurrence de bassin ;
+- une nouvelle occurrence future peut produire son propre signal lorsqu’elle devient vide.
 
 ---
 
-# 4. Moment exact des effets
+# 5. Aucun effet KRP immédiat
 
 ```text
 Taxonomy FIN
 ↓
-DOMAIN_EXHAUSTED si nécessaire
+DOMAIN_EXHAUSTED si changement réel
 ↓
 fait conservé en attente
 ↓
 KRP INACTIF
 ```
 
-Puis :
+Le signal ne déclenche pas KRP et ne contient aucune destination de rotation.
+
+Puis seulement :
 
 ```text
 noyau courant termine
@@ -98,8 +133,16 @@ lifecycle
 Factory crée NOUVEAU Blueprint
 ↓
 KRP ACTIVE
-↓
-KRP consomme le fait en attente
+```
+
+---
+
+# 6. Application KRP
+
+À sa prochaine activation :
+
+```text
+KRP consomme DOMAIN_EXHAUSTED en attente
 ↓
 VISIBLE → ESTOMPÉ
 ```
@@ -111,32 +154,17 @@ ESTOMPÉ
 = Domain abstrait/exclu des rotations restantes du tour courant
 ```
 
-Après application des faits en attente, KRP choisit seul sa rotation.
-
----
-
-# 5. Rotation KRP
-
-Sans fait d'épuisement :
+Ensuite KRP applique seul son contrat :
 
 ```text
 Domain courant VISIBLE
 → même Depth + même Domain
-```
 
-Avec fait d'épuisement :
+Domain courant ESTOMPÉ
+→ prochain Domain VISIBLE selon DomainCycle
 
-```text
-DOMAIN_EXHAUSTED en attente
-→ KRP rend Domain ESTOMPÉ
-→ KRP l'exclut du DomainCycle du tour
-→ KRP choisit le prochain Domain VISIBLE
-```
-
-Si les huit Domaines sont ESTOMPÉ :
-
-```text
-KRP ferme SON tour
+8 Domaines ESTOMPÉ
+→ KRP ferme SON tour
 → cycle_completed[depth] += 1 exactement une fois
 → DepthNeedMatrix
 → prochain Depth encore nécessaire
@@ -144,18 +172,20 @@ KRP ferme SON tour
 
 Après Depth 10, retour possible vers Depth 2 si un besoin subsiste.
 
+Taxonomy n’émet pas `DEPTH_EXHAUSTED` dans le contrat actif.
+
 ---
 
-# 6. Ownership
+# 7. Ownership
 
 ```text
 Taxonomy
-= réalité intellectuelle de ses Banks
-= émet le fait « ce Domain est vide »
+= propriétaire de ses Banks
+= communique uniquement le changement « ce Domain vient de devenir vide »
 = aucune autorité de rotation
 
 Frontière de communication
-= conserve le fait jusqu'au prochain KRP
+= conserve le fait jusqu’au prochain KRP
 = aucune décision
 
 ReadyBank / CURRENT_KERNEL_RECEIVED
@@ -174,7 +204,7 @@ KRP
 
 ---
 
-# 7. Build Replit #163
+# 8. Build Replit #163
 
 La Task #163 / `IMPL-02-01` est arrêtée.
 
@@ -192,22 +222,23 @@ La Task #163 / `IMPL-02-01` est arrêtée.
 À réauditer/corriger impérativement :
 
 - toute exécution KRP pendant Taxonomy ACTIVE ;
-- tout `receiveDomainExhausted()` qui applique immédiatement la transition pendant la phase Taxonomy ;
+- tout traitement immédiat de `DOMAIN_EXHAUSTED` pendant la phase Taxonomy ;
 - toute lecture/poll Taxonomy par KRP ;
 - tout `receiveDepthExhausted()` actif ;
 - toute fermeture de tour directement déclenchée par Taxonomy ;
-- tout test qui suppose KRP et Taxonomy actifs en même temps ;
+- tout signal Taxonomy émis à chaque noyau plutôt qu’au changement réel ;
+- tout signal émis avant écriture Blueprint réussie + consommation du même IdeaSlot ;
 - tout test qui transforme `DOMAIN_EXHAUSTED` en commande de rotation immédiate.
 
 ---
 
-# 8. Prochaine opération EXACTE
+# 9. Prochaine opération EXACTE
 
 ```text
-RÉAUDIT-02-v3.6
+RÉAUDIT-02-v3.7
 ```
 
-Comparer le diff local Replit déjà créé contre v3.6 et classer :
+Comparer le diff local Replit déjà créé contre v3.7 et classer :
 
 ```text
 KEEP
@@ -217,39 +248,3 @@ MISSING
 ```
 
 Puis seulement reprendre `IMPL-02-01`.
-
----
-
-# 9. Tests v3.6 obligatoires
-
-1. nouveau Blueprint créé avant KRP ;
-2. KRP et Taxonomy jamais actifs simultanément ;
-3. Taxonomy FIN peut émettre `DOMAIN_EXHAUSTED` sans activer KRP ;
-4. signal = uniquement « ce Domain est vide » ;
-5. fait conservé jusqu'au prochain Blueprint ;
-6. KRP consomme le fait à sa prochaine activation ;
-7. `VISIBLE→ESTOMPÉ` à ce moment seulement ;
-8. ESTOMPÉ exclut le Domain des rotations restantes du tour ;
-9. sans fait, même Domain conservé ;
-10. KRP choisit seul le Domain suivant ;
-11. huit ESTOMPÉ → KRP ferme le tour ;
-12. `cycle_completed` exactement une fois ;
-13. prochain Depth via Matrix ;
-14. après 10, retour vers prochain besoin ;
-15. HOLD seulement toutes cibles atteintes ;
-16. aucun `DEPTH_EXHAUSTED` Taxonomy actif ;
-17. KRP écrit uniquement `depth + domain`.
-
----
-
-# 10. DO NOT REDO
-
-Ne pas :
-
-- revenir à v3.5/v3.4/v3.3 ;
-- reprendre ALIGN-02 ;
-- faire poller Taxonomy par KRP ;
-- faire exécuter KRP pendant Taxonomy ;
-- laisser Taxonomy choisir le prochain Domain ou Depth ;
-- appliquer la rotation au moment de l'émission du signal ;
-- inventer Phase1/Phase2.
