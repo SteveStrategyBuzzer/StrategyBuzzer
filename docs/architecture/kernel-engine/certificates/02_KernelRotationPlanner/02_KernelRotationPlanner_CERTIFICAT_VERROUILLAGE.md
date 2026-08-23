@@ -1,10 +1,10 @@
 # Certificat de verrouillage — 02_KernelRotationPlanner
 
 **Module :** `02_KernelRotationPlanner`  
-**Version :** 3.3  
-**Date :** 2026-08-20  
+**Version :** 3.4  
+**Date :** 2026-08-23  
 **Statut :** **VERROUILLÉ — PARTIE INTELLECTUELLE**  
-**Décision :** DEC-114
+**Décision :** DEC-115
 
 ## Source canonique
 
@@ -12,33 +12,38 @@
 docs/architecture/kernel-engine/specifications/02_KernelRotationPlanner.md
 ```
 
-## Autorités intégrées
-
-- DEC-094 — double autorité `DEPTH_EXHAUSTED` / `DepthNeedMatrix` ;
-- DEC-107 — garde terminale avant `DOMAIN_EXHAUSTED` ;
-- DEC-108 — `DEPTH_EXHAUSTED` = fin d’un tour ;
-- DEC-111 — persistance et idempotence KRP.
-
-## Résultat du verrouillage intellectuel
+## Ownership verrouillé
 
 ```text
-Architecture intellectuelle : 100 %
-Contrat intellectuel      : 100 %
-Spécification             : VERROUILLÉE
-Implémentation            : À AUDITER
-Validation code terminale : NON
+Taxonomy
+= expose la réalité de ses réservoirs
+= aucune autorité de rotation
+
+ReadyBank / CURRENT_KERNEL_RECEIVED
+= déclenche le lifecycle
+= aucune autorité de rotation
+
+KernelBlueprintFactory
+= crée le NOUVEAU Blueprint
+
+KernelRotationPlanner
+= autorité UNIQUE de rotation
 ```
 
-Le contrat verrouille notamment :
+## Contrat verrouillé
 
 ```text
-nouveau Blueprint déjà créé
+ReadyBank reçoit le noyau courant
 ↓
-KRP
+CURRENT_KERNEL_RECEIVED
 ↓
-RotationState + DepthNeedMatrix
+lifecycle
 ↓
-sélection depth + domain
+Factory crée un nouveau Blueprint
+↓
+KRP lit RotationState + DepthNeedMatrix + réalité Taxonomy
+↓
+KRP décide seul depth + domain
 ↓
 fillRotation(depth, domain)
 ↓
@@ -46,40 +51,49 @@ persistance
 ↓
 FIN KRP
 ↓
-porte vers Taxonomy
+porte Taxonomy
 ```
 
-Le contrat interdit le recyclage de l’ancien Blueprint depuis ReadyBank vers KRP.
+## Règles principales
 
-## Extension future
+- contenu Taxonomy restant → KRP conserve le même Domain ;
+- aucun contenu Taxonomy restant → KRP persiste `VISIBLE→ESTOMPÉ` et choisit le Domain suivant ;
+- huit Domaines `ESTOMPÉ` → KRP ferme son tour ;
+- `cycle_completed[depth] += 1` exactement une fois par tour ;
+- prochain Depth choisi par `DepthNeedMatrix` ;
+- après Depth 10, retour possible vers Depth 2 si un besoin subsiste ;
+- HOLD uniquement lorsque toutes les cibles globales sont satisfaites ;
+- KRP écrit uniquement `depth + domain`.
 
-KRP est complet pour la partie intellectuelle. Les besoins éventuels provenant des futures Phases 1 et 2 restent non spécifiés et ne bloquent pas ce verrouillage.
+## Ancienne ownership superseded
 
-Toute extension future :
-
-1. doit provenir de la spécification propriétaire de la Phase concernée ;
-2. doit produire une nouvelle version KRP et une nouvelle DEC si KRP est affecté ;
-3. ne peut pas modifier silencieusement les responsabilités intellectuelles v3.3.
-
-## Documents non autoritatifs
+Les formulations suivantes ne sont plus contractuelles :
 
 ```text
-docs/architecture/02_KernelRotationPlanner.md
-→ historique v3.2
-
-docs/architecture/02_KernelRotationPlanner_v3.3_ALIGNMENT.md
-→ SUPERSEDED
-
-working/02_KernelRotationPlanner/02_KernelRotationPlanner_REFERENCE_ACTIVE.md
-→ PROMOTED / CLOSED
+Taxonomy produit DOMAIN_EXHAUSTED
+Taxonomy produit DEPTH_EXHAUSTED
 ```
 
-Aucun de ces documents ne peut remplacer la spécification canonique v3.3.
+Elles sont remplacées par DEC-115.
+
+## Résultat
+
+```text
+Architecture intellectuelle : 100 %
+Contrat intellectuel      : 100 %
+Spécification             : VERROUILLÉE v3.4
+Implémentation            : À RÉAUDITER
+Validation code terminale : NON
+```
+
+## Taxonomy
+
+`03_Taxonomy v1.0` doit être réécrite en v1.1 dans son propre tour pour intégrer cette frontière. Jusqu’alors, `working/03_Taxonomy/03_Taxonomy_BOUNDARY_BRIDGE_DEC-115.md` est le bridge actif pour l’ownership KRP/Taxonomy.
 
 ## Prochaine étape
 
 ```text
-AUDIT-02-00
+RÉAUDIT-02-v3.4
 ```
 
-Audit du code réel contre la spécification v3.3 avant toute implantation KRP.
+Le Build local v3.3 arrêté ne doit pas être repris sans ce réaudit.
