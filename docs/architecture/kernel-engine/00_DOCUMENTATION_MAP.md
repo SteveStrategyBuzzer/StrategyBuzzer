@@ -20,9 +20,9 @@
 | Module | Source | Statut |
 |---|---|---|
 | 01 KernelBlueprint | `specifications/01_KernelBlueprint.md` | contrat intellectuel disponible pour KRP |
-| 02 KernelRotationPlanner | `specifications/02_KernelRotationPlanner.md` | **v3.6 VERROUILLÉ — PARTIE INTELLECTUELLE — DEC-117** |
-| 03 Taxonomy | `specifications/03_Taxonomy.md` | v1.0 historique sur frontière KRP; détails internes à reconstruire en v1.1 |
-| 03 frontière temporaire | `working/03_Taxonomy/03_Taxonomy_BOUNDARY_BRIDGE_DEC-117.md` | **ACTIVE uniquement pour ownership KRP/Taxonomy** |
+| 02 KernelRotationPlanner | `specifications/02_KernelRotationPlanner.md` | **v3.7 VERROUILLÉ — PARTIE INTELLECTUELLE — DEC-118** |
+| 03 Taxonomy | `specifications/03_Taxonomy.md` | v1.0 historique sur frontière KRP; détails internes à reconstruire dans son tour |
+| 03 frontière temporaire | `working/03_Taxonomy/03_Taxonomy_BOUNDARY_BRIDGE_DEC-118.md` | **ACTIVE uniquement pour ownership KRP/Taxonomy** |
 | 04 ValidationDominantIdeas | `working/04_ValidationDominantIdeas/` | brides actives; règles utilisées par Gemini pendant Taxonomy |
 | 05 QuestionIntent | certificat/source récupérée | verrouillé selon certificat |
 | 06..11 | `working/` | à spécifier dans leur tour |
@@ -31,9 +31,9 @@
 
 ```text
 docs/architecture/kernel-engine/specifications/02_KernelRotationPlanner.md
-Version 3.6
+Version 3.7
 VERROUILLÉ — PARTIE INTELLECTUELLE
-DEC-117
+DEC-118
 ```
 
 ## Invariant actif
@@ -46,25 +46,46 @@ KRP et Taxonomy ne sont jamais actifs simultanément.
 
 ## Frontière active Taxonomy → KRP
 
+Dans la fermeture de sortie Taxonomy :
+
 ```text
-Taxonomy FIN
+triplet écrit avec succès
 ↓
+même IdeaSlot consommé
+↓
+si le besoin reste identique : silence
+
+si ENCORE EXPLOITABLE → VIDE :
 DOMAIN_EXHAUSTED(depth,domain)
-= « ce Domain est vide »
-↓
-fait conservé en attente
-↓
-KRP INACTIF
+```
+
+Le signal signifie uniquement :
+
+```text
+CE DOMAIN EST VIDE
+```
+
+Règle : **delta-only**.
+
+```text
+pas de signal à chaque noyau
+pas de signal à chaque passage
+pas de AVAILABLE
+maximum 1 DOMAIN_EXHAUSTED normal par occurrence
 ```
 
 Puis :
 
 ```text
-ReadyBank
+Taxonomy FIN
 ↓
-CURRENT_KERNEL_RECEIVED
+fait conservé en attente
 ↓
-Factory crée NOUVEAU Blueprint
+KRP INACTIF
+↓
+ReadyBank → CURRENT_KERNEL_RECEIVED → Factory
+↓
+nouveau Blueprint
 ↓
 KRP ACTIVE
 ↓
@@ -77,7 +98,7 @@ Domain abstrait/exclu des rotations restantes du tour
 
 KRP choisit ensuite seul Domain, fin de tour, prochain Depth et HOLD.
 
-Taxonomy n'émet pas `DEPTH_EXHAUSTED` dans le contrat actif.
+Taxonomy n’émet pas `DEPTH_EXHAUSTED` dans le contrat actif.
 
 ## Documents KRP non actifs
 
@@ -100,10 +121,16 @@ KRP v3.4 / DEC-115
 KRP v3.5 / DEC-116
 → SUPERSEDED
 
+KRP v3.6 / DEC-117
+→ SUPERSEDED
+
 working/03_Taxonomy/03_Taxonomy_BOUNDARY_BRIDGE_DEC-115.md
 → SUPERSEDED
 
 working/03_Taxonomy/03_Taxonomy_BOUNDARY_BRIDGE_DEC-116.md
+→ SUPERSEDED
+
+working/03_Taxonomy/03_Taxonomy_BOUNDARY_BRIDGE_DEC-117.md
 → SUPERSEDED
 
 AUDIT-02-00 v3.3
@@ -123,7 +150,7 @@ NON SPÉCIFIÉES
 
 ```text
 02_KernelRotationPlanner
-RÉAUDIT-02-v3.6 = NEXT
+RÉAUDIT-02-v3.7 = NEXT
 ```
 
-But : auditer le diff local déjà commencé par Replit contre la v3.6, puis reprendre uniquement les corrections compatibles.
+But : auditer le diff local déjà commencé par Replit contre la v3.7, puis reprendre uniquement les corrections compatibles.
