@@ -9,12 +9,12 @@ Ce dossier est la **mémoire architecturale persistante** du moteur intellectuel
 3. `00_MOTEUR_INTELLECTUEL_ACTIVE_SPEC.md`
 4. `00_CURRENT_HANDOFF.md`
 5. les spécifications verrouillées nécessaires dans `specifications/`
-6. le dossier `working/` du **seul module actif**, uniquement s’il n’a pas déjà été promu
+6. le boundary bridge explicitement actif du module suivant, seulement si requis par la frontière courante
 
 ## Hiérarchie
 
 - `specifications/` = contrats canoniques verrouillés seulement ;
-- `working/` = reconstruction, références et brides non canoniques ;
+- `working/` = reconstruction, références et boundary bridges explicitement déclarés ;
 - `cross-module/` = brides transversales qui ne constituent pas un moteur 01–11 ;
 - `audits/` = preuves d’audit, ne remplacent jamais les contrats ;
 - `certificates/` = preuves de verrouillage/validation, ne remplacent jamais les contrats ;
@@ -28,13 +28,62 @@ Ce dossier est la **mémoire architecturale persistante** du moteur intellectuel
 
 02 KernelRotationPlanner
 → specifications/02_KernelRotationPlanner.md
-→ v3.3 VERROUILLÉ — PARTIE INTELLECTUELLE
-→ DEC-114
-→ AUDIT-02-00 NEXT
+→ v3.7 VERROUILLÉ — PARTIE INTELLECTUELLE
+→ DEC-118
+→ RÉAUDIT-02-v3.7 NEXT
 
 03 Taxonomy
-→ specifications/03_Taxonomy.md v1.0 VERROUILLÉ
+→ spécification v1.0 historique sur la frontière KRP
+→ boundary bridge actif : working/03_Taxonomy/03_Taxonomy_BOUNDARY_BRIDGE_DEC-118.md
+→ réécriture complète dans son propre tour
 ```
+
+## KRP — règle active fondamentale
+
+```text
+UN SEUL MODULE MÉTIER ACTIF À LA FOIS
+```
+
+Taxonomy communique uniquement un **changement réel de besoin** dans sa fermeture de sortie :
+
+```text
+triplet Blueprint écrit avec succès
+↓
+même IdeaSlot consommé
+↓
+si le Domain reste exploitable : silence
+
+si ENCORE EXPLOITABLE → VIDE :
+DOMAIN_EXHAUSTED(depth,domain)
+```
+
+Signification :
+
+```text
+CE DOMAIN EST VIDE
+```
+
+Le fait reste en attente sans activer KRP.
+
+KRP le consomme seulement lors de sa prochaine activation après :
+
+```text
+ReadyBank
+→ CURRENT_KERNEL_RECEIVED
+→ Factory
+→ NOUVEAU Blueprint
+→ KRP
+```
+
+KRP fait alors :
+
+```text
+VISIBLE → ESTOMPÉ
+```
+
+`ESTOMPÉ` = Domain abstrait/exclu des rotations restantes du tour courant.
+
+Taxonomy ne choisit aucun prochain Domain/Depth et n’émet pas `DEPTH_EXHAUSTED` dans le contrat actif.
 
 ## KRP — interdiction de sources historiques
 
@@ -49,12 +98,24 @@ docs/architecture/02_KernelRotationPlanner_v3.3_ALIGNMENT.md
 
 working/02_KernelRotationPlanner/02_KernelRotationPlanner_REFERENCE_ACTIVE.md
 → PROMOTED / CLOSED
+
+KRP v3.3 / DEC-114
+→ SUPERSEDED
+
+KRP v3.4 / DEC-115
+→ SUPERSEDED
+
+KRP v3.5 / DEC-116
+→ SUPERSEDED
+
+KRP v3.6 / DEC-117
+→ SUPERSEDED
 ```
 
 Source KRP unique :
 
 ```text
-docs/architecture/kernel-engine/specifications/02_KernelRotationPlanner.md
+docs/architecture/kernel-engine/specifications/02_KernelRotationPlanner.md v3.7
 ```
 
 ## Interdictions générales
@@ -68,7 +129,7 @@ docs/architecture/kernel-engine/specifications/02_KernelRotationPlanner.md
 
 ## Extension KRP Phases 1–2
 
-KRP est complet pour la partie intellectuelle. Les éventuelles interfaces provenant plus tard de Phase1/Phase2 sont **réservées, non spécifiées et non bloquantes pour AUDIT-02-00**.
+KRP est complet pour la partie intellectuelle. Les éventuelles interfaces provenant plus tard de Phase1/Phase2 sont **réservées, non spécifiées et non bloquantes pour la fermeture intellectuelle actuelle**.
 
 Toute extension future de KRP exige une nouvelle version complète + une nouvelle DEC.
 
@@ -81,7 +142,7 @@ replit/intellectual-engine-current-2026-08-16
 ## Prochaine opération exacte
 
 ```text
-AUDIT-02-00
+RÉAUDIT-02-v3.7
 ```
 
-Audit du code KRP réel contre la v3.3 canonique. Aucun patch avant la fermeture de l’audit.
+Comparer le diff local Replit déjà commencé contre la v3.7 canonique. Classer `KEEP / REVERT / MODIFY / MISSING`. Aucun nouveau patch avant fermeture de ce réaudit.
