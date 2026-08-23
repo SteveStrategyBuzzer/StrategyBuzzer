@@ -1,62 +1,136 @@
 # 02_KernelRotationPlanner — Spécification canonique
 
-**Version :** 3.5  
+**Version :** 3.6  
 **Date :** 2026-08-23  
 **Statut :** **VERROUILLÉ — PARTIE INTELLECTUELLE**  
 **Architecture intellectuelle :** 100 %  
 **Contrat intellectuel :** 100 %  
-**Implémentation :** À RÉAUDITER CONTRE v3.5  
+**Implémentation :** À RÉAUDITER CONTRE v3.6  
 **Validation terminale code :** NON  
-**Décision de verrouillage :** DEC-116
+**Décision de verrouillage :** DEC-117
 
-> Cette v3.5 remplace intégralement la v3.4. Elle corrige la frontière Taxonomy → KRP : Taxonomy **parle à KRP** par un signal factuel d’épuisement du Domain courant. KRP ne lit pas les Banks Taxonomy et ne poll pas un état Taxonomy partagé.
+> Cette v3.6 remplace intégralement la v3.5. Elle verrouille deux principes : **un seul module métier actif à la fois** et `DOMAIN_EXHAUSTED(depth, domain)` signifie uniquement **« ce Domain est vide »**.
 >
-> Taxonomy n’ordonne jamais le prochain Domain ni le prochain Depth. Il n’envoie pas `DEPTH_EXHAUSTED`. KRP reste l’autorité unique du contrat de rotation.
+> Taxonomy émet ce fait à la fin de son propre travail. Ce fait est conservé à la frontière de communication sans activer KRP. KRP ne le consomme et ne l'applique à sa rotation qu'à sa prochaine activation, après création d'un nouveau KernelBlueprint déclenchée par ReadyBank.
 >
-> Les besoins éventuels des futures Phases 1 et 2 restent **RÉSERVÉS / NON SPÉCIFIÉS** et ne peuvent modifier silencieusement ce contrat.
+> Taxonomy ne choisit jamais le prochain Domain, le prochain Depth, la fermeture de tour ou HOLD. Il n'émet pas `DEPTH_EXHAUSTED` dans le contrat actif.
 
 ---
 
 # 1. Mission
 
-`KernelRotationPlanner` (KRP) est l’autorité unique de rotation du moteur intellectuel.
+`KernelRotationPlanner` (KRP) est l'autorité unique de rotation du moteur intellectuel.
 
-Pour chaque **nouveau KernelBlueprint déjà créé**, KRP choisit et écrit exactement :
+À chaque activation, KRP reçoit un **nouveau KernelBlueprint déjà créé** et choisit exactement :
 
 ```text
 depth + domain
 ```
 
-KRP prend sa décision à partir de :
+KRP décide à partir de :
 
 1. `RotationState` — son propre état persistant ;
-2. `DepthNeedMatrix` — le besoin quantitatif global par Depth ;
-3. les faits d’épuisement Domain déjà transmis par Taxonomy et persistés dans `RotationState`.
+2. `DepthNeedMatrix` — les besoins quantitatifs globaux par Depth ;
+3. les faits `DOMAIN_EXHAUSTED(depth, domain)` émis par une phase Taxonomy **déjà terminée** et conservés jusqu'à la prochaine activation KRP.
 
-Taxonomy fournit la réalité intellectuelle de ses Banks. `DepthNeedMatrix` fournit la réalité quantitative globale. KRP transforme ces réalités en décision de rotation.
+KRP ne lit pas Taxonomy, ne poll pas ses Banks et ne s'exécute jamais en parallèle de Taxonomy.
 
 ---
 
-# 2. Position canonique
+# 2. Invariant d'exécution séquentielle
 
-## 2.1 Pendant le travail Taxonomy
+Principe absolu :
 
 ```text
-KRP a attribué depth + domain
-↓
-Taxonomy travaille ce territoire
-↓
-si du contenu exploitable reste
-→ aucun signal de rotation
-
-si les Banks du Domain sont réellement vides
-→ Taxonomy envoie DOMAIN_EXHAUSTED(depth, domain)
-→ KRP reçoit le FAIT
-→ KRP persiste VISIBLE → ESTOMPÉ dans RotationState
-→ aucune nouvelle rotation n’est lancée à cet instant
+UN SEUL MODULE MÉTIER ACTIF À LA FOIS
 ```
 
-## 2.2 Déclenchement du noyau suivant
+Séquence intellectuelle :
+
+```text
+KRP ACTIF
+↓
+KRP écrit depth + domain
+↓
+KRP FIN
+↓
+Taxonomy ACTIF
+↓
+Taxonomy travaille le territoire
+↓
+Taxonomy FIN
+↓
+modules suivants du pipeline
+...
+↓
+ReadyBank
+↓
+CURRENT_KERNEL_RECEIVED
+↓
+Factory crée NOUVEAU Blueprint
+↓
+KRP ACTIF à nouveau
+```
+
+Interdiction :
+
+```text
+Taxonomy ACTIF
++
+KRP ACTIF
+```
+
+n'existe jamais comme état normal du pipeline.
+
+---
+
+# 3. Frontière Taxonomy → KRP
+
+## 3.1 Sortie factuelle Taxonomy
+
+Lorsqu'à la fin de son travail Taxonomy sait que le Domain attribué est vide, il émet :
+
+```text
+DOMAIN_EXHAUSTED(depth, domain)
+```
+
+Signification contractuelle exacte :
+
+```text
+CE DOMAIN EST VIDE
+```
+
+Le signal ne veut jamais dire :
+
+- passe au prochain Domain ;
+- ferme le tour ;
+- passe au prochain Depth ;
+- mets HOLD ;
+- exécute KRP maintenant.
+
+La garde intellectuelle qui autorise Taxonomy à émettre ce fait appartient à Taxonomy. À la frontière active, le fait signifie que sa vérification de vacuité est terminée.
+
+## 3.2 Pas d'activation KRP au moment du signal
+
+Lorsque Taxonomy émet `DOMAIN_EXHAUSTED` :
+
+```text
+Taxonomy termine sa phase
+↓
+DOMAIN_EXHAUSTED(depth, domain)
+↓
+fait conservé par la frontière de communication
+↓
+KRP RESTE INACTIF
+```
+
+Le transport technique, la file, l'inbox ou le stockage de ce fait ne constituent pas une responsabilité métier KRP ou Taxonomy et ne sont pas fixés par ce contrat.
+
+Aucune transition de rotation n'est exécutée pendant la phase Taxonomy.
+
+---
+
+# 4. Position canonique de KRP
 
 ```text
 noyau courant termine son pipeline
@@ -71,112 +145,119 @@ KernelBlueprintFactory
 ↓
 NOUVEAU KernelBlueprint + blueprint_id
 ↓
-KernelRotationPlanner
+KernelRotationPlanner devient ACTIF
 ↓
-lecture RotationState
+charge RotationState
 +
-lecture DepthNeedMatrix
+consomme les faits DOMAIN_EXHAUSTED en attente
++
+consulte DepthNeedMatrix si nécessaire
 ↓
-KRP applique SON contrat de rotation
+applique SON contrat de rotation
 ↓
 Blueprint.fillRotation(depth, domain)
 ↓
 persistance KRP
 ↓
-FIN KRP
+KRP FIN
 ↓
-porte vers Taxonomy
+Taxonomy peut devenir ACTIF
 ```
 
-Règles absolues :
+ReadyBank ne remet jamais l'ancien Blueprint à KRP.
 
-- ReadyBank ne remet jamais l’ancien Blueprint à KRP ;
-- `CURRENT_KERNEL_RECEIVED` déclenche le lifecycle mais ne décide aucune rotation ;
-- Taxonomy peut informer KRP d’un Domain vide, mais ne déclenche pas le prochain Blueprint ;
-- la réception de `DOMAIN_EXHAUSTED` ne choisit pas immédiatement un nouveau Domain ;
-- le Blueprint reçu par KRP est toujours une nouvelle enveloppe créée par Factory.
+`CURRENT_KERNEL_RECEIVED` déclenche le lifecycle, mais ne décide aucune rotation.
 
 ---
 
-# 3. Responsabilités
+# 5. Responsabilités
 
 KRP doit :
 
-1. recevoir un nouveau Blueprint avec `blueprint_id` rempli et `depth/domain` vides ;
-2. charger son `RotationState` ;
-3. consulter `DepthNeedMatrix` ;
-4. recevoir le signal factuel `DOMAIN_EXHAUSTED(depth, domain)` de Taxonomy ;
-5. valider que ce signal concerne le territoire KRP actif ;
-6. persister `VISIBLE → ESTOMPÉ` pour le Domain concerné ;
-7. traiter un replay déjà appliqué comme `NO-OP` ;
-8. ne déclencher aucune rotation simplement parce que le signal vient d’arriver ;
-9. connaître le `DepthCycle` officiel ;
-10. connaître le `DomainCycle` officiel ;
-11. conserver le même `depth + domain` au prochain Blueprint tant que le Domain courant reste `VISIBLE` ;
-12. sélectionner lui-même le prochain Domain `VISIBLE` lorsque le Domain courant est `ESTOMPÉ` ;
-13. constater lui-même qu’un tour est terminé lorsque les huit Domaines sont `ESTOMPÉ` ;
-14. fermer lui-même ce tour ;
-15. incrémenter `cycle_completed[depth]` exactement une fois par tour fermé ;
-16. demander à `DepthNeedMatrix` le prochain Depth encore nécessaire ;
-17. revenir vers Depth 2 après Depth 10 si un besoin global subsiste ;
-18. produire `PRODUCTION_ON_HOLD` seulement lorsque toutes les cibles globales sont satisfaites ;
-19. écrire uniquement `depth + domain` dans le Blueprint ;
-20. persister toute transition KRP avant de la considérer commise ;
-21. laisser le même Blueprint prêt pour Taxonomy.
+1. recevoir un nouveau Blueprint identifié avec `depth/domain` vides ;
+2. charger `RotationState` ;
+3. consommer les faits `DOMAIN_EXHAUSTED` en attente provenant de phases Taxonomy terminées ;
+4. valider qu'un fait correspond à un territoire connu de son tour ;
+5. transformer un fait Domain vide en état de rotation `ESTOMPÉ` ;
+6. traiter un fait déjà appliqué comme `NO-OP` ;
+7. exclure tout Domain `ESTOMPÉ` des sélections restantes du tour courant ;
+8. conserver le même Domain tant qu'il reste `VISIBLE` ;
+9. choisir seul le prochain Domain `VISIBLE` selon le `DomainCycle` ;
+10. constater seul qu'un tour est terminé lorsque ses huit Domaines sont `ESTOMPÉ` ;
+11. fermer seul ce tour ;
+12. incrémenter `cycle_completed[depth]` exactement une fois pour ce tour ;
+13. consulter `DepthNeedMatrix` pour le prochain Depth encore nécessaire ;
+14. revenir vers Depth 2 après Depth 10 lorsqu'un besoin subsiste ;
+15. produire `PRODUCTION_ON_HOLD` uniquement lorsque toutes les cibles globales sont satisfaites ;
+16. écrire uniquement `depth + domain` dans le Blueprint ;
+17. persister ses transitions avant de les considérer commises ;
+18. terminer complètement avant activation de Taxonomy.
 
 ---
 
-# 4. Interdictions
+# 6. Interdictions
 
 KRP ne doit jamais :
 
 - créer le KernelBlueprint ;
-- générer ou modifier `blueprint_id` ;
-- recycler l’ancien Blueprint reçu par ReadyBank ;
-- traiter `CURRENT_KERNEL_RECEIVED` comme une commande de rotation ;
-- lire directement les SubjectBanks, IdeaBanks ou curseurs internes de Taxonomy ;
-- poller Taxonomy pour découvrir si un Domain est vide ;
-- recevoir de Taxonomy une commande « va au prochain Domain » ;
-- recevoir de Taxonomy une commande « va au prochain Depth » ;
-- recevoir de Taxonomy `DEPTH_EXHAUSTED` comme décision de fin de tour ;
-- changer de Domain au moment même de la réception du signal factuel ;
+- modifier `blueprint_id` ;
+- recycler l'ancien Blueprint ;
+- être actif en même temps que Taxonomy ;
+- être invoqué par Taxonomy pendant l'exécution Taxonomy ;
+- lire ou poller SubjectBanks, IdeaBanks, curseurs ou états internes Taxonomy ;
+- demander à Taxonomy « reste-t-il du contenu ? » pendant sa création ;
+- recevoir de Taxonomy le prochain Domain ou prochain Depth ;
+- recevoir `DEPTH_EXHAUSTED` comme commande Taxonomy ;
+- appliquer une rotation au moment où Taxonomy émet son signal ;
 - écrire `subdomain_active`, `subject_active`, `dominant_idea_active` ou `kernel_code` ;
 - créer ou valider du contenu intellectuel ;
 - utiliser `Général` comme domaine de création ;
-- déclarer HOLD parce que Depth 10 vient d’être terminé ;
-- inventer une logique Phase 1 ou Phase 2.
+- déclarer HOLD uniquement parce que Depth 10 vient d'être terminé ;
+- inventer les interfaces Phase1/Phase2.
 
 ---
 
-# 5. Entrées
+# 7. Entrées
 
-## 5.1 Nouveau KernelBlueprint
+## 7.1 Nouveau KernelBlueprint
 
 ```text
-blueprint_id = REMPLI
-depth = NULL
-domain = NULL
-subdomain_active = NULL
-subject_active = NULL
-dominant_idea_active = NULL
-kernel_code = NULL
+blueprint_id           = REMPLI
+depth                  = NULL
+domain                 = NULL
+subdomain_active       = NULL
+subject_active         = NULL
+dominant_idea_active   = NULL
+kernel_code            = NULL
 ```
 
-## 5.2 RotationState
+## 7.2 RotationState
 
-KRP possède et persiste au minimum la réalité nécessaire pour garantir :
+KRP possède l'état de rotation nécessaire pour :
 
 - Depth courant ;
 - Domain courant ;
 - position dans le DomainCycle ;
-- Domaines `VISIBLE / ESTOMPÉ` du tour courant ;
-- tour ouvert/fermé ;
-- fermeture d’un même tour exactement une fois ;
-- état opérationnel normal/bloqué/hold.
+- états `VISIBLE / ESTOMPÉ` des huit Domaines du tour ;
+- état `OPEN / CLOSED` du tour ;
+- fermeture exactement une fois ;
+- état opérationnel `NORMAL / BLOCKED / PRODUCTION_ON_HOLD`.
 
-Le nom exact des colonnes/classes n’est pas contractuel.
+## 7.3 Faits Domain en attente
 
-## 5.3 DepthNeedMatrix
+Interface sémantique :
+
+```text
+DOMAIN_EXHAUSTED(depth, domain)
+```
+
+Ces faits ont été produits par Taxonomy alors que KRP était inactif.
+
+Ils sont disponibles à la **prochaine activation KRP**.
+
+Le mécanisme technique qui les conserve entre les phases n'est pas contractuel.
+
+## 7.4 DepthNeedMatrix
 
 Autorité quantitative globale :
 
@@ -195,53 +276,15 @@ cycle_remaining[depth]
 = max(0, cycle_target[depth] - cycle_completed[depth])
 ```
 
-`DepthNeedMatrix` indique quels Depths ont encore besoin de tours. Il ne décide pas qu’un Domain Taxonomy est vide.
-
-## 5.4 Signal factuel Taxonomy
-
-Interface sémantique active :
-
-```text
-DOMAIN_EXHAUSTED(depth, domain)
-```
-
-Signification unique :
-
-```text
-Pour ce territoire actif,
-Taxonomy a vérifié qu’il ne reste plus
-aucun contenu intellectuel exploitable
-pour ce Domain.
-```
-
-Garde Taxonomy avant émission :
-
-```text
-remaining_subjects = 0
-AND
-remaining_ideas = 0
-```
-
-Taxonomy n’envoie aucun signal si du contenu exploitable reste.
-
-Le signal :
-
-- est un **fait**, pas une commande ;
-- ne contient aucun prochain Domain ;
-- ne contient aucun prochain Depth ;
-- ne ferme pas lui-même le tour ;
-- ne déclenche pas la création d’un nouveau Blueprint ;
-- doit concerner le territoire KRP actif au moment de son émission.
-
-Le transport technique et l’identité technique utilisée pour dédupliquer les replays peuvent varier ; ils ne changent pas cette sémantique métier.
+`DepthNeedMatrix` ne connaît pas les Banks Taxonomy et ne décide pas qu'un Domain est vide.
 
 ---
 
-# 6. Sorties
+# 8. Sorties
 
-## 6.1 Sortie normale vers Taxonomy
+## 8.1 Sortie normale
 
-Le même Blueprint ressort de KRP avec uniquement :
+Le même nouveau Blueprint ressort de KRP avec uniquement :
 
 ```text
 blueprint_id           = REMPLI
@@ -253,22 +296,25 @@ dominant_idea_active   = NULL
 kernel_code            = NULL
 ```
 
-KRP s’arrête ici.
-
-## 6.2 Sortie opérationnelle
-
-`PRODUCTION_ON_HOLD` est permis uniquement si :
+Après cette sortie :
 
 ```text
-pour tous les Depths :
-cycle_completed[depth] >= cycle_target[depth]
+KRP FIN
+↓
+Taxonomy peut devenir ACTIF
 ```
 
-et qu’aucune transition KRP n’attend de persistance.
+## 8.2 Sortie opérationnelle
+
+```text
+PRODUCTION_ON_HOLD
+```
+
+uniquement si tous les Depths ont satisfait leurs cibles et qu'aucune transition KRP n'est incertaine.
 
 ---
 
-# 7. Slots Blueprint
+# 9. Slots Blueprint
 
 KRP possède exactement :
 
@@ -277,27 +323,27 @@ depth
 domain
 ```
 
-Écriture unique :
+Écriture :
 
 ```text
 Blueprint.fillRotation(depth, domain)
 ```
 
-Aucun autre slot Blueprint n’appartient à KRP.
+Aucun autre slot Blueprint n'appartient à KRP.
 
 ---
 
-# 8. Cycles officiels
+# 10. Cycles officiels
 
-## 8.1 DepthCycle
+## 10.1 DepthCycle
 
 ```text
 2 → 4 → 6 → 7 → 8 → 9 → 10 → prochain Depth encore nécessaire
 ```
 
-Après 10, la recherche reprend cycliquement à 2.
+Après 10, la recherche reprend cycliquement vers le premier Depth encore nécessaire, potentiellement 2.
 
-## 8.2 DomainCycle
+## 10.2 DomainCycle
 
 ```text
 Géographie
@@ -314,77 +360,80 @@ Géographie
 
 ---
 
-# 9. Mécanisme de rotation
+# 11. Mécanisme de rotation
 
-## 9.1 Premier démarrage absolu
+## 11.1 Premier démarrage
 
-Sans territoire précédent :
+Sans fait antérieur :
 
 1. KRP consulte `DepthNeedMatrix` ;
-2. sélectionne le premier Depth encore nécessaire ;
-3. ouvre son tour avec les huit Domaines `VISIBLE` ;
-4. sélectionne Géographie ;
-5. écrit `depth + domain` dans le nouveau Blueprint.
+2. choisit le premier Depth nécessaire ;
+3. ouvre le tour avec huit Domaines `VISIBLE` ;
+4. choisit Géographie ;
+5. écrit `depth + domain` ;
+6. termine.
 
-## 9.2 Domain encore exploitable
+## 11.2 Domain toujours visible
 
-Tant que Taxonomy n’a pas envoyé de `DOMAIN_EXHAUSTED` pour le territoire actif :
+Si aucun fait Domain vide n'est en attente pour le Domain courant :
 
 ```text
-Domain courant reste VISIBLE
+Domain courant = VISIBLE
 ↓
-prochain ReadyBank/CURRENT_KERNEL_RECEIVED
-↓
-Factory crée nouveau Blueprint
-↓
-KRP conserve le même Depth + Domain
+KRP conserve même Depth + même Domain
 ```
 
-La création d’un nouveau Blueprint ne provoque donc jamais à elle seule une rotation de Domain.
+Un nouveau Blueprint ne fait jamais tourner automatiquement le Domain.
 
-## 9.3 Réception d’un Domain vide
+## 11.3 Application d'un fait Domain vide
 
-Lorsque Taxonomy a réellement épuisé le Domain actif :
+À l'activation KRP suivante :
 
 ```text
-Taxonomy
-→ DOMAIN_EXHAUSTED(depth, domain)
+KRP consomme DOMAIN_EXHAUSTED(depth, domain)
 ↓
-KRP valide le territoire actif
+valide le territoire
 ↓
-KRP persiste VISIBLE → ESTOMPÉ
-↓
-FIN de la réception du signal
+persiste VISIBLE → ESTOMPÉ
 ```
 
-Aucun nouveau `depth + domain` n’est choisi à cette étape.
-
-## 9.4 Blueprint suivant après Domain épuisé
+Définition opérationnelle :
 
 ```text
-ReadyBank
-→ CURRENT_KERNEL_RECEIVED
-→ Factory crée nouveau Blueprint
-→ KRP lit SON RotationState
+ESTOMPÉ
+= ce Domain est abstrait/exclu des rotations restantes du tour courant
 ```
 
-Si le Domain courant est `ESTOMPÉ` :
+Une fois `ESTOMPÉ`, KRP ne sélectionne plus ce Domain dans ce tour.
+
+## 11.4 Choix du Domain suivant
+
+Après application des faits en attente :
 
 ```text
-KRP choisit le prochain Domain VISIBLE
-selon SON DomainCycle
-```
-
-Taxonomy n’a pas choisi ce Domain.
-
-## 9.5 Fin du tour de Depth
-
-Si KRP constate dans `RotationState` que les huit Domaines du tour sont `ESTOMPÉ` au moment où un nouveau Blueprint lui est remis :
-
-```text
-KRP ferme SON tour
+Domain courant ESTOMPÉ
 ↓
-persiste la fermeture
+KRP parcourt SON DomainCycle
+↓
+choisit le prochain Domain VISIBLE
+```
+
+Taxonomy n'intervient pas dans ce choix.
+
+## 11.5 Fin de tour
+
+Après application des faits en attente, si :
+
+```text
+8 Domaines = ESTOMPÉ
+```
+
+alors KRP :
+
+```text
+ferme SON tour
+↓
+persiste CLOSED
 ↓
 cycle_completed[depth] += 1 exactement une fois
 ↓
@@ -392,81 +441,72 @@ DepthNeedMatrix
 ↓
 prochain Depth encore nécessaire
 ↓
-ouverture d’un nouveau tour de ce Depth
+ouverture d'un nouveau tour avec 8 Domaines VISIBLE
 ↓
-Géographie VISIBLE
+Géographie
 ```
 
-Taxonomy ne produit pas `DEPTH_EXHAUSTED`.
+Taxonomy n'émet aucun `DEPTH_EXHAUSTED`.
 
-## 9.6 Après Depth 10
-
-Si le tour Depth 10 est fermé et que des besoins globaux subsistent :
+## 11.6 Après Depth 10
 
 ```text
-DepthNeedMatrix
+Tour Depth 10 fermé
 ↓
-recherche cyclique depuis 2
+DepthNeedMatrix
 ↓
 prochain Depth encore nécessaire
 ```
 
-Si Depth 2 a encore un besoin, KRP repart sur Depth 2 avec un nouveau tour.
+Si Depth 2 est encore nécessaire, KRP ouvre un nouveau tour Depth 2.
 
 ---
 
-# 10. Ownership canonique — DEC-116
+# 12. Ownership canonique — DEC-117
 
 ```text
 Taxonomy
-= propriétaire de ses réservoirs
-= vérifie la réalité intellectuelle du Domain actif
-= pousse DOMAIN_EXHAUSTED(depth, domain) lorsque le Domain est réellement vide
+= propriétaire de ses Banks
+= à la FIN de son travail, peut émettre le fait : DOMAIN_EXHAUSTED(depth, domain)
+= signification : « ce Domain est vide »
 = aucune autorité de rotation
+= n'active jamais KRP directement
 
-DepthNeedMatrix
-= autorité quantitative globale des tours encore nécessaires
-= aucune autorité sur les Banks Taxonomy
+Frontière de communication
+= conserve le fait jusqu'à la prochaine activation KRP
+= ne décide aucune rotation
 
 ReadyBank / CURRENT_KERNEL_RECEIVED
-= déclencheur lifecycle du noyau suivant
+= déclenche le lifecycle du noyau suivant
 = aucune autorité de rotation
 
 KernelBlueprintFactory
 = crée le nouveau Blueprint
 
+DepthNeedMatrix
+= autorité quantitative globale
+
 KernelRotationPlanner
-= autorité UNIQUE de rotation
-= reçoit/persiste le fait Domain vide
-= décide seul du prochain Domain
-= décide seul de la fermeture du tour
-= décide seul du prochain Depth
-= décide seul de HOLD
+= seul module actif pendant sa phase
+= consomme les faits Domain vides en attente
+= rend ces Domaines ESTOMPÉ
+= les exclut de SON DomainCycle pour le tour courant
+= décide seul Domain, fin de tour, prochain Depth et HOLD
 ```
-
-La v3.4 qui disait que KRP devait « lire la réalité Taxonomy » est superseded.
-
-L’ancienne commande :
-
-```text
-Taxonomy → DEPTH_EXHAUSTED(depth)
-```
-
-reste superseded et n’appartient pas au contrat actif.
 
 ---
 
-# 11. États KRP
+# 13. États et transitions
 
-## 11.1 Domain
+## 13.1 Domain
 
 ```text
 VISIBLE
-↓ DOMAIN_EXHAUSTED factuel reçu + persistance KRP
+↓ fait DOMAIN_EXHAUSTED consommé par KRP à sa prochaine activation
 ESTOMPÉ
 ```
 
-Dans un même tour :
+Dans le même tour :
 
 ```text
 ESTOMPÉ → VISIBLE
@@ -474,57 +514,61 @@ ESTOMPÉ → VISIBLE
 
 est interdit.
 
-## 11.2 Tour
+## 13.2 Tour
 
 ```text
 OPEN
-↓ 8 Domaines ESTOMPÉ constatés par KRP lors du prochain cycle
+↓ huit Domaines ESTOMPÉ constatés pendant une activation KRP
 CLOSED
 ```
 
-Un retour futur au même Depth crée un nouveau tour avec huit Domaines `VISIBLE`.
+Un futur retour au même Depth ouvre un nouveau tour distinct avec huit Domaines `VISIBLE`.
 
-## 11.3 Opérationnel
+## 13.3 Module actif
+
+États normaux :
 
 ```text
-NORMAL
-BLOCKED
-PRODUCTION_ON_HOLD
+KRP_ACTIVE → KRP_DONE → TAXONOMY_ACTIVE → TAXONOMY_DONE → ...
+```
+
+État interdit :
+
+```text
+KRP_ACTIVE AND TAXONOMY_ACTIVE
 ```
 
 ---
 
-# 12. Persistance et idempotence
+# 14. Persistance et idempotence
 
-## 12.1 Signal Domain
+## 14.1 Fait Domain
 
-Première réception valide :
+Première consommation valide :
 
 ```text
-DOMAIN_EXHAUSTED(depth, domain)
+DOMAIN_EXHAUSTED
 ↓
 VISIBLE → ESTOMPÉ
 ↓
 COMMIT RotationState
 ```
 
-Replay déjà appliqué pour le même état actif :
+Replay déjà appliqué :
 
 ```text
 NO-OP
 ```
 
-Un signal contradictoire ou ne correspondant pas au territoire KRP actif ne modifie pas la rotation.
+Un fait contradictoire ou hors territoire connu ne provoque aucune rotation.
 
-## 12.2 Fermeture de tour
+## 14.2 Fermeture de tour
 
-La fermeture appartient à KRP et ne survient qu’au cycle de sélection déclenché par le nouveau Blueprint.
+Un même tour `CLOSED` ne peut incrémenter `cycle_completed` qu'une seule fois, y compris après reprise/retry.
 
-Un même tour `CLOSED` ne peut incrémenter `cycle_completed` qu’une seule fois, y compris après reprise/retry.
+L'identité technique garantissant cet `exactly once` appartient à l'implantation KRP ; elle n'est pas une responsabilité Taxonomy.
 
-L’identité technique garantissant cet `exactly once` appartient à l’implantation de `RotationState` et n’est pas une responsabilité Taxonomy.
-
-## 12.3 Échec technique de persistance
+## 14.3 Échec technique
 
 Politique :
 
@@ -536,29 +580,29 @@ Politique :
 Codes :
 
 ```text
-KRP-002 — DOMAIN_EXHAUSTED_PERSIST_FAILED
+KRP-002 — DOMAIN_ROTATION_STATE_PERSIST_FAILED
 KRP-003 — DEPTH_TOUR_STATE_PERSIST_FAILED
 ```
 
-Après épuisement : `BLOCKED` et aucune nouvelle progression basée sur un état incertain.
-
-Une anomalie sémantique de signal n’est pas une panne DB et ne produit pas `KRP-002`.
+Après épuisement : `BLOCKED`. Aucune progression depuis un état incertain.
 
 ---
 
-# 13. Communication inter-modules
+# 15. Communication inter-modules
 
-## 13.1 Taxonomy → KRP
+## 15.1 Taxonomy → frontière
 
 ```text
-Taxonomy
-→ DOMAIN_EXHAUSTED(depth, domain)
-→ KRP persiste le fait dans RotationState
+Taxonomy FIN
+↓
+DOMAIN_EXHAUSTED(depth, domain) si nécessaire
+↓
+fait en attente
 ```
 
-Cette communication ne crée aucun Blueprint et ne choisit aucune rotation.
+Aucun appel KRP à cette étape.
 
-## 13.2 ReadyBank → lifecycle
+## 15.2 ReadyBank → prochain cycle
 
 ```text
 ReadyBank
@@ -566,93 +610,93 @@ ReadyBank
 → lifecycle
 → Factory
 → nouveau Blueprint
-→ KRP
+→ KRP ACTIVE
 ```
 
-C’est cette séquence qui donne à KRP l’occasion d’appliquer la prochaine rotation.
-
-## 13.3 Sortie KRP
+## 15.3 KRP → Taxonomy
 
 ```text
-KRP
-→ même nouveau Blueprint avec blueprint_id + depth + domain
-→ Taxonomy
+KRP applique faits + rotation
+→ écrit depth + domain
+→ KRP FIN
+→ Taxonomy ACTIVE
 ```
 
 ---
 
-# 14. Cas limites
+# 16. Cas limites
 
-1. Aucun signal Taxonomy → Domain courant reste `VISIBLE` et est conservé au prochain Blueprint.
-2. `DOMAIN_EXHAUSTED` valide → KRP estompe le Domain, sans choisir immédiatement le suivant.
-3. Replay du signal déjà appliqué → `NO-OP`.
-4. Signal pour un territoire non actif → aucune mutation de rotation.
-5. Au prochain Blueprint, Domain courant ESTOMPÉ → KRP choisit le prochain Domain VISIBLE.
-6. Huit Domaines ESTOMPÉS → au prochain Blueprint, KRP ferme le tour une seule fois.
-7. Depth suivant déjà satisfait → KRP l’ignore via Matrix.
-8. Depth 10 terminé avec besoin restant → retour cyclique vers le prochain Depth nécessaire, potentiellement 2.
-9. Tous les Depths satisfaits → HOLD.
-10. Échec de persistance KRP → retries techniques puis BLOCKED.
-11. Nouveau Blueprint créé → ne signifie jamais automatiquement prochain Domain.
-12. Taxonomy ne transmet jamais le prochain Domain ni le prochain Depth.
+1. Aucun fait Domain vide → même Domain conservé.
+2. Fait Domain vide en attente → KRP l'applique à sa prochaine activation seulement.
+3. Domain déjà ESTOMPÉ → replay = `NO-OP`.
+4. Domain ESTOMPÉ → exclu de toute sélection restante du tour.
+5. Huit Domaines ESTOMPÉ → KRP ferme le tour.
+6. `cycle_completed` n'augmente qu'une fois par tour.
+7. Depth suivant déjà satisfait → ignoré par Matrix.
+8. Depth 10 terminé avec besoin restant → retour vers prochain Depth nécessaire.
+9. Tous besoins satisfaits → HOLD.
+10. Signal Taxonomy reçu pendant que KRP est inactif → conservé, aucune exécution KRP.
+11. Nouveau Blueprint sans signal d'épuisement → pas de rotation automatique.
+12. Taxonomy ne répond pas/échoue techniquement → KRP n'est pas simultanément invoqué pour deviner une rotation.
 
 ---
 
-# 15. Validation contractuelle
+# 17. Validation contractuelle
 
-KRP est conforme seulement si les tests prouvent :
+KRP v3.6 est conforme seulement si les tests prouvent :
 
 1. Factory crée un nouveau Blueprint avant KRP ;
-2. KRP consulte RotationState + DepthNeedMatrix, pas les Banks Taxonomy ;
-3. sans signal Domain vide → même `depth + domain` au Blueprint suivant ;
-4. Taxonomy peut envoyer `DOMAIN_EXHAUSTED(depth, domain)` factuel ;
-5. réception du signal → `VISIBLE → ESTOMPÉ`, sans rotation immédiate ;
-6. replay → `NO-OP` ;
-7. prochain Blueprint après Domain ESTOMPÉ → KRP choisit lui-même le suivant ;
-8. DomainCycle officiel respecté ;
-9. Général absent ;
-10. Taxonomy n’envoie pas `DEPTH_EXHAUSTED` dans le contrat actif ;
-11. huit Domaines ESTOMPÉS → KRP ferme lui-même le tour au prochain cycle ;
-12. `cycle_completed` incrémenté exactement une fois ;
-13. prochain Depth choisi par besoin global Matrix ;
-14. après Depth 10, retour vers 2 ou un autre Depth encore nécessaire ;
-15. HOLD seulement lorsque toutes les cibles sont satisfaites ;
-16. KRP écrit seulement `depth + domain` ;
-17. sortie Blueprint intacte pour Taxonomy ;
-18. `CURRENT_KERNEL_RECEIVED` reste un déclencheur lifecycle, pas une décision métier KRP ;
-19. persistance Domain et fermeture de tour respectent la politique 1+3 retries.
+2. KRP et Taxonomy ne sont jamais actifs simultanément ;
+3. Taxonomy peut émettre `DOMAIN_EXHAUSTED(depth, domain)` sans activer KRP ;
+4. le signal signifie uniquement « ce Domain est vide » ;
+5. le fait reste en attente jusqu'à la prochaine activation KRP ;
+6. à cette activation, KRP applique `VISIBLE → ESTOMPÉ` ;
+7. `ESTOMPÉ` exclut le Domain des rotations restantes du tour ;
+8. sans fait en attente, KRP conserve le même Domain ;
+9. KRP choisit seul le prochain Domain VISIBLE ;
+10. huit Domaines ESTOMPÉ → KRP ferme seul le tour ;
+11. `cycle_completed` incrémenté exactement une fois ;
+12. prochain Depth choisi via `DepthNeedMatrix` ;
+13. après 10, retour possible vers 2 ;
+14. HOLD seulement si toutes les cibles sont satisfaites ;
+15. aucun `DEPTH_EXHAUSTED` Taxonomy actif ;
+16. KRP écrit uniquement `depth + domain` ;
+17. le même Blueprint devient ensuite l'entrée Taxonomy ;
+18. aucune lecture/poll des Banks Taxonomy par KRP.
 
 ---
 
-# 16. Architecture = 100 % — partie intellectuelle
+# 18. Architecture = 100 %
 
-| Axe | Statut |
-|---|---:|
-| Mission | 100 % |
-| Responsabilités | 100 % |
-| Interdictions | 100 % |
-| Entrées | 100 % |
-| Sorties | 100 % |
-| Slots Blueprint | 100 % |
-| Données internes | 100 % |
-| Mécanismes | 100 % |
-| Communication | 100 % |
-| Contrats | 100 % |
-| États | 100 % |
-| Transitions | 100 % |
-| Cas limites | 100 % |
-| Persistance | 100 % |
-| Validation | 100 % |
-| Tests contractuels | 100 % |
-| Architecture intellectuelle | **100 %** |
+Checklist de verrouillage :
+
+```text
+Mission          100 %
+Responsabilités  100 %
+Interdictions    100 %
+Entrées          100 %
+Sorties          100 %
+Slots Blueprint  100 %
+Données internes 100 %
+Mécanismes       100 %
+Communication    100 %
+Contrats         100 %
+États            100 %
+Transitions      100 %
+Cas limites      100 %
+Persistance      100 %
+Validation       100 %
+Tests            100 %
+Architecture     100 %
+```
 
 ---
 
-# 17. Extension future Phases 1–2
+# 19. Extension future Phases 1–2
 
-KRP reste complet pour la responsabilité intellectuelle définie ici.
+KRP est verrouillé ici pour la partie intellectuelle.
 
-Toute nouvelle interface nécessaire à Phase1/Phase2 :
+Toute future exigence Phase1/Phase2 qui modifierait KRP exige :
 
 ```text
 spécification propriétaire de la Phase
@@ -662,4 +706,4 @@ nouvelle version KRP
 nouvelle DEC
 ```
 
-Aucune logique future n’est inventée dans v3.5.
+Aucune interface Phase1/Phase2 n'est inventée dans v3.6.
