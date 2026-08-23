@@ -20,9 +20,9 @@
 | Module | Source | Statut |
 |---|---|---|
 | 01 KernelBlueprint | `specifications/01_KernelBlueprint.md` | contrat intellectuel disponible pour KRP |
-| 02 KernelRotationPlanner | `specifications/02_KernelRotationPlanner.md` | **v3.4 VERROUILLÉ — PARTIE INTELLECTUELLE — DEC-115** |
+| 02 KernelRotationPlanner | `specifications/02_KernelRotationPlanner.md` | **v3.5 VERROUILLÉ — PARTIE INTELLECTUELLE — DEC-116** |
 | 03 Taxonomy | `specifications/03_Taxonomy.md` | v1.0 historique sur la frontière KRP; détails internes à reconstruire en v1.1 |
-| 03 frontière temporaire | `working/03_Taxonomy/03_Taxonomy_BOUNDARY_BRIDGE_DEC-115.md` | **ACTIVE uniquement pour ownership KRP/Taxonomy** |
+| 03 frontière temporaire | `working/03_Taxonomy/03_Taxonomy_BOUNDARY_BRIDGE_DEC-116.md` | **ACTIVE uniquement pour ownership KRP/Taxonomy** |
 | 04 ValidationDominantIdeas | `working/04_ValidationDominantIdeas/` | brides actives; règles utilisées par Gemini pendant Taxonomy |
 | 05 QuestionIntent | certificat/source récupérée | verrouillé selon certificat |
 | 06..11 | `working/` | à spécifier dans leur tour |
@@ -31,16 +31,16 @@
 
 ```text
 docs/architecture/kernel-engine/specifications/02_KernelRotationPlanner.md
-Version 3.4
+Version 3.5
 VERROUILLÉ — PARTIE INTELLECTUELLE
-DEC-115
+DEC-116
 ```
 
 ## Ownership actif
 
 ```text
 Taxonomy
-= réalité de ses réservoirs
+= pousse DOMAIN_EXHAUSTED(depth, domain) comme FAIT de Banks vides
 = aucune décision de rotation
 
 ReadyBank / CURRENT_KERNEL_RECEIVED
@@ -49,18 +49,36 @@ ReadyBank / CURRENT_KERNEL_RECEIVED
 Factory
 = nouveau Blueprint
 
+DepthNeedMatrix
+= besoins globaux par Depth
+
 KRP
 = autorité UNIQUE de rotation
 ```
 
-Les anciennes interfaces :
+La frontière active n’utilise pas :
+
+```text
+KRP qui poll les Banks Taxonomy
+Taxonomy → DEPTH_EXHAUSTED
+DOMAIN_EXHAUSTED comme commande de prochain Domain
+```
+
+## Moment exact
 
 ```text
 Taxonomy → DOMAIN_EXHAUSTED
-Taxonomy → DEPTH_EXHAUSTED
-```
+↓
+KRP persiste VISIBLE → ESTOMPÉ
+↓
+PAS de rotation immédiate
 
-sont SUPERSEDED comme frontière active.
+ReadyBank → prochain Blueprint
+↓
+KRP applique SON RotationState
+↓
+choisit le prochain Domain / ferme le tour / choisit le prochain Depth si nécessaire
+```
 
 ## Documents KRP non actifs
 
@@ -74,8 +92,17 @@ docs/architecture/02_KernelRotationPlanner_v3.3_ALIGNMENT.md
 working/02_KernelRotationPlanner/02_KernelRotationPlanner_REFERENCE_ACTIVE.md
 → PROMOTED / CLOSED
 
+KRP v3.3 / DEC-114
+→ SUPERSEDED
+
+KRP v3.4 / DEC-115
+→ SUPERSEDED
+
+working/03_Taxonomy/03_Taxonomy_BOUNDARY_BRIDGE_DEC-115.md
+→ SUPERSEDED
+
 AUDIT-02-00 v3.3
-→ preuve historique; ne suffit plus comme cible d’implantation après DEC-115
+→ preuve historique; ne suffit plus comme cible d’implantation
 ```
 
 ## Extension KRP future
@@ -91,7 +118,7 @@ NON SPÉCIFIÉES
 
 ```text
 02_KernelRotationPlanner
-RÉAUDIT-02-v3.4 = NEXT
+RÉAUDIT-02-v3.5 = NEXT
 ```
 
-But : auditer le diff local déjà commencé par Replit contre la v3.4, puis reprendre uniquement les corrections compatibles.
+But : auditer le diff local déjà commencé par Replit contre la v3.5, puis reprendre uniquement les corrections compatibles.
