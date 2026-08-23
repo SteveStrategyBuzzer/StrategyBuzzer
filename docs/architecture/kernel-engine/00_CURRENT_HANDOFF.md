@@ -1,12 +1,12 @@
 # CURRENT HANDOFF — StrategyBuzzer Kernel Engine
 
-**Mis à jour :** 2026-08-20  
+**Mis à jour :** 2026-08-23  
 **Branche :** `replit/intellectual-engine-current-2026-08-16`  
 **Module actif :** `02_KernelRotationPlanner`  
-**Bloc actif :** `AUDIT-02-00`  
-**Dernière décision structurante :** `DEC-114`
+**Bloc actif :** `RÉAUDIT-02-v3.4 AVANT REPRISE IMPL-02-01`  
+**Dernière décision structurante :** `DEC-115`
 
-> Ce fichier est un pointeur de reprise. Il n’a aucune autorité architecturale propre. En cas de contradiction : `00_ArchitectureRegister.md + spécification canonique verrouillée + 00_MOTEUR_INTELLECTUEL_ACTIVE_SPEC.md` priment.
+> Ce fichier est un pointeur de reprise. En cas de contradiction : `00_ArchitectureRegister.md + 00_MOTEUR_INTELLECTUEL_ACTIVE_SPEC.md + specification canonique du module` priment.
 
 ---
 
@@ -14,337 +14,182 @@
 
 ```text
 specifications/02_KernelRotationPlanner.md
-Version : 3.3
+Version : 3.4
 Statut : VERROUILLÉ — PARTIE INTELLECTUELLE
-Architecture intellectuelle : 100 %
-Contrat intellectuel : 100 %
-Implémentation : À AUDITER
-Validation code : NON
-DEC : DEC-114
-```
-
-Certificat :
-
-```text
-certificates/02_KernelRotationPlanner/02_KernelRotationPlanner_CERTIFICAT_VERROUILLAGE.md
+Architecture : 100 %
+Contrat : 100 %
+Implémentation : modifications locales v3.3 à réauditer
+Validation : NON
+DEC : DEC-115
 ```
 
 ---
 
-# 2. Vérité KRP à reconstruire avant tout audit/code
-
-## Frontière
+# 2. Correction d’ownership DEC-115
 
 ```text
+Taxonomy
+= expose la réalité de ses réservoirs
+= aucune décision de rotation
+
+ReadyBank / CURRENT_KERNEL_RECEIVED
+= déclenche le lifecycle du noyau suivant
+= aucune décision de rotation
+
+Factory
+= crée un NOUVEAU Blueprint
+
+KRP
+= autorité UNIQUE de rotation
+```
+
+KRP lit :
+
+```text
+RotationState
++
+DepthNeedMatrix
++
+réalité Taxonomy disponible
+```
+
+puis décide seul `depth + domain`.
+
+---
+
+# 3. Flow exact
+
+```text
+noyau courant termine
+↓
+ReadyBank
+↓
 CURRENT_KERNEL_RECEIVED
 ↓
-lifecycle/orchestration externe
+lifecycle
 ↓
-KernelBlueprintFactory
+Factory crée NOUVEAU Blueprint
 ↓
-NOUVEAU Blueprint + blueprint_id
+KRP reçoit ce Blueprint
 ↓
-KernelRotationPlanner
+KRP lit état rotation + Matrix + réalité Taxonomy
 ↓
-RotationState + DepthNeedMatrix
+contenu Taxonomy restant ?
+  OUI → même Depth + même Domain
+  NON → KRP estompe le Domain et choisit le suivant
 ↓
-sélection depth + domain
+si 8 Domaines ESTOMPÉ : KRP ferme le tour
+↓
+cycle_completed += 1 exactement une fois
+↓
+Matrix choisit le prochain Depth encore nécessaire
 ↓
 fillRotation(depth, domain)
 ↓
-persistance
-↓
-FIN KRP
-↓
-porte vers Taxonomy
+porte Taxonomy
 ```
 
-KRP n’écrit que :
-
-```text
-depth
-domain
-```
-
-KRP ne crée pas Blueprint, Subdomain, Subject, Dominant Idea ou `kernel_code`.
+Après Depth 10, retour possible à Depth 2 si un besoin subsiste.
 
 ---
 
-# 3. Décisions KRP obligatoires
+# 4. Ce qui est désormais interdit
 
-## DEC-094
-
-Double autorité :
+Ne plus utiliser comme vérité :
 
 ```text
-Taxonomy / DEPTH_EXHAUSTED
-= fin réelle du tour intellectuel
-
-DepthNeedMatrix
-= besoin quantitatif global
-
-KRP
-= combine les deux
+Taxonomy → DOMAIN_EXHAUSTED → KRP
+Taxonomy → DEPTH_EXHAUSTED → KRP
 ```
 
-Cibles de tours :
+Taxonomy ne déclare pas la fin d’un Domain au sens rotationnel et ne déclare pas la fin d’un tour KRP.
 
-```text
-2  = 250
-4  = 300
-6  = 350
-7  = 350
-8  = 350
-9  = 250
-10 = 100
-```
-
-DepthCycle :
-
-```text
-2 → 4 → 6 → 7 → 8 → 9 → 10 → prochain Depth encore nécessaire
-```
-
-Retour `10→2` possible si un besoin subsiste.
-
-## DEC-107
-
-`DOMAIN_EXHAUSTED` n’est valide qu’après garde Taxonomy :
-
-```text
-remaining_subjects = 0
-AND
-remaining_ideas = 0
-```
-
-Sinon `TAX-003` bloque le signal avant KRP.
-
-KRP applique :
-
-```text
-VISIBLE → ESTOMPÉ
-```
-
-Aucun retour `ESTOMPÉ→VISIBLE` dans le même tour.
-
-## DEC-108
-
-```text
-DEPTH_EXHAUSTED(depth)
-= FIN DU TOUR
-≠ fin définitive du besoin global du Depth
-```
-
-Après commit valide :
-
-```text
-cycle_completed[depth] += 1
-```
-
-exactement une fois.
-
-## DEC-111
-
-- transition persistée avant progression ;
-- répétition après commit = `NO-OP` ;
-- 1 tentative + 3 retries ;
-- `KRP-002` / `KRP-003` en échec persistant ;
-- aucune rotation nouvelle depuis un état non commité.
+Il expose seulement la réalité de ses Banks.
 
 ---
 
-# 4. DomainCycle de création
+# 5. Taxonomy v1.0
+
+`03_Taxonomy v1.0` reste utile pour ses détails intellectuels internes mais sa frontière KRP est superseded par DEC-115.
+
+Boundary bridge actif :
 
 ```text
-Géographie
-→ Histoire
-→ Faune
-→ Art
-→ Sport
-→ Cinéma
-→ Cuisine
-→ Science
+working/03_Taxonomy/03_Taxonomy_BOUNDARY_BRIDGE_DEC-115.md
 ```
 
-`Général` n’est pas un domaine de création.
+Taxonomy devra être réécrit intégralement en v1.1 dans son propre tour.
 
 ---
 
-# 5. Porte Taxonomy
+# 6. Build Replit #163
 
-Sortie normale KRP :
+La Task #163 / `IMPL-02-01` a été démarrée contre v3.3 puis arrêtée manuellement.
 
-```text
-blueprint_id           = REMPLI
-depth                  = REMPLI
-domain                 = REMPLI
-subdomain_active       = NULL
-subject_active         = NULL
-dominant_idea_active   = NULL
-kernel_code            = NULL
-```
+**Ne pas lui dire simplement « continue ».**
 
-Ce même nouveau Blueprint est recevable par Taxonomy.
+Certaines modifications v3.3 peuvent être conservées, notamment :
 
-Le retour informationnel Taxonomy :
+- Factory avant KRP ;
+- suppression du `10 → HOLD` automatique ;
+- usage de `DepthNeedMatrix` ;
+- `VISIBLE / ESTOMPÉ` comme états KRP ;
+- sortie KRP avant Taxonomy ;
+- `CURRENT_KERNEL_RECEIVED` hors responsabilité métier KRP.
 
-```text
-DOMAIN_EXHAUSTED
-DEPTH_EXHAUSTED
-```
+Mais doivent être réaudités/corrigés :
 
-est distinct du déclenchement de création du Blueprint suivant.
+- tout `receiveDomainExhausted()` utilisé comme commande Taxonomy ;
+- tout `receiveDepthExhausted()` utilisé comme commande Taxonomy ;
+- toute fermeture immédiate de tour déclenchée par Taxonomy ;
+- toute rotation de Domain automatique à chaque nouveau Blueprint sans vérifier la réalité Taxonomy ;
+- tests bâtis autour des signaux v3.3.
 
 ---
 
-# 6. PRODUCTION_ON_HOLD
-
-Seulement si :
+# 7. Prochaine opération EXACTE
 
 ```text
-pour tous les Depths :
-cycle_completed[depth] >= cycle_target[depth]
+RÉAUDIT-02-v3.4
 ```
 
-et aucune transition KRP n’attend de commit.
-
-La simple fermeture du Depth 10 ne suffit pas.
-
----
-
-# 7. Documents KRP à NE PLUS utiliser comme vérité
-
-```text
-docs/architecture/02_KernelRotationPlanner.md
-→ HISTORIQUE v3.2
-
-docs/architecture/02_KernelRotationPlanner_v3.3_ALIGNMENT.md
-→ SUPERSEDED
-
-working/02_KernelRotationPlanner/02_KernelRotationPlanner_REFERENCE_ACTIVE.md
-→ PROMOTED / CLOSED
-```
-
-La source unique est :
-
-```text
-specifications/02_KernelRotationPlanner.md v3.3
-```
-
----
-
-# 8. Extension future Phases 1–2
-
-KRP est **complet pour la partie intellectuelle**.
-
-Les éventuelles interfaces requises plus tard par Phase1/Phase2 sont :
-
-```text
-RÉSERVÉES
-NON SPÉCIFIÉES
-NON BLOQUANTES pour AUDIT-02-00
-```
-
-Une extension future exige :
-
-```text
-spécification propriétaire Phase concernée
-↓
-nouvelle version KRP
-↓
-nouvelle DEC
-```
-
-Aucune logique Phase1/Phase2 ne doit être inventée pendant l’audit intellectuel KRP.
-
----
-
-# 9. Prochaine opération EXACTE — AUDIT-02-00
-
-Mission :
-
-```text
-auditer le code KRP réel contre specifications/02_KernelRotationPlanner.md v3.3
-```
-
-Inspecter uniquement ce qui est nécessaire à KRP et ses portes :
-
-```text
-KernelRotationPlanner
-RotationState
-DepthNeedMatrix
-Factory → KRP
-DOMAIN_EXHAUSTED
-DEPTH_EXHAUSTED
-KRP → Blueprint.fillRotation(depth, domain)
-KRP → porte Taxonomy
-PRODUCTION_ON_HOLD
-persistance / idempotence
-```
-
-Classer chaque élément :
+Comparer le diff local Replit déjà créé contre v3.4 et classer :
 
 ```text
 KEEP
+REVERT
 MODIFY
-REMOVE
 MISSING
-UNRESOLVED
 ```
 
-Aucun patch avant la fermeture de l’audit.
+Puis seulement reprendre `IMPL-02-01`.
 
 ---
 
-# 10. Tests futurs KRP — principe simple
+# 8. Tests v3.4 obligatoires
 
-Les tests KRP doivent prouver KRP, pas les modules aval :
-
-1. reçoit un nouveau Blueprint déjà créé ;
-2. lit RotationState et DepthNeedMatrix ;
-3. choisit le bon Depth + Domain ;
-4. écrit uniquement `depth + domain` ;
-5. respecte `VISIBLE→ESTOMPÉ` ;
-6. traite les répétitions en `NO-OP` ;
-7. ferme un tour sur `DEPTH_EXHAUSTED` et incrémente une fois ;
-8. revient vers un Depth encore nécessaire après 10 ;
-9. met HOLD seulement quand tous les besoins sont satisfaits ;
-10. laisse une porte valide vers Taxonomy.
-
-Ne pas faire dépendre la validation KRP de l’exécution complète de Taxonomy, QuestionIntent, Phase1 ou Phase2.
+1. nouveau Blueprint créé avant KRP ;
+2. réalité Taxonomy = contenu restant → même Domain ;
+3. réalité Taxonomy = aucun contenu → KRP seul fait `VISIBLE→ESTOMPÉ` ;
+4. KRP choisit le Domain suivant selon le cycle ;
+5. huit Domaines ESTOMPÉ → KRP ferme le tour ;
+6. `cycle_completed` exactement une fois ;
+7. prochain Depth choisi via Matrix ;
+8. après 10, retour vers le prochain besoin, potentiellement 2 ;
+9. HOLD seulement toutes cibles atteintes ;
+10. KRP écrit seulement `depth + domain` ;
+11. aucune commande `DOMAIN_EXHAUSTED/DEPTH_EXHAUSTED` requise depuis Taxonomy ;
+12. `CURRENT_KERNEL_RECEIVED` reste lifecycle.
 
 ---
 
-# 11. DO NOT REDO
+# 9. DO NOT REDO
 
 Ne pas :
 
-- réouvrir ALIGN-02 ;
-- reconstruire KRP depuis v3.2 ;
-- remettre `DEPTH_EXHAUSTED` comme fin définitive ;
-- supprimer `cycle_target/cycle_completed` du chemin décisionnel ;
-- arrêter définitivement après Depth 10 si des besoins restent ;
-- faire recevoir directement l’ancien Blueprint à KRP depuis ReadyBank ;
-- faire écrire Taxonomy ou kernel_code par KRP ;
-- inventer les Phases 1–2 pendant AUDIT-02-00.
-
----
-
-# 12. Reprise prochain chat
-
-Lire :
-
-1. `START_HERE.md`
-2. `00_ConstitutionCognitive.md`
-3. `00_ArchitectureRegister.md`
-4. `00_MOTEUR_INTELLECTUEL_ACTIVE_SPEC.md`
-5. `00_CURRENT_HANDOFF.md`
-6. `specifications/01_KernelBlueprint.md` pour la frontière d’entrée
-7. `specifications/02_KernelRotationPlanner.md` v3.3
-8. `specifications/03_Taxonomy.md` pour la frontière de sortie
-
-Puis reprendre directement :
-
-```text
-AUDIT-02-00
-```
+- revenir à v3.3 ;
+- reprendre ALIGN-02 ;
+- laisser Taxonomy choisir le prochain Domain ou Depth ;
+- faire de ReadyBank une autorité de rotation ;
+- faire tourner le Domain automatiquement à chaque nouveau Blueprint ;
+- inventer Phase1/Phase2.
