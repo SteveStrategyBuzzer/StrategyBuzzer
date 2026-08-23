@@ -1,10 +1,10 @@
 # Certificat de verrouillage — 02_KernelRotationPlanner
 
 **Module :** `02_KernelRotationPlanner`  
-**Version :** 3.5  
+**Version :** 3.6  
 **Date :** 2026-08-23  
 **Statut :** **VERROUILLÉ — PARTIE INTELLECTUELLE**  
-**Décision :** DEC-116
+**Décision :** DEC-117
 
 ## Source canonique
 
@@ -12,45 +12,38 @@
 docs/architecture/kernel-engine/specifications/02_KernelRotationPlanner.md
 ```
 
-## Ownership verrouillé
+## Invariant verrouillé
 
 ```text
-Taxonomy
-= propriétaire de ses Banks
-= pousse DOMAIN_EXHAUSTED(depth, domain) comme fait lorsque le Domain actif est réellement vide
-= aucune autorité de rotation
-
-ReadyBank / CURRENT_KERNEL_RECEIVED
-= déclenche le lifecycle
-= aucune autorité de rotation
-
-KernelBlueprintFactory
-= crée le NOUVEAU Blueprint
-
-DepthNeedMatrix
-= indique les Depths encore nécessaires
-
-KernelRotationPlanner
-= autorité UNIQUE de rotation
+UN SEUL MODULE MÉTIER ACTIF À LA FOIS
 ```
 
-## Contrat verrouillé
+KRP et Taxonomy ne sont jamais actifs simultanément.
 
-### Information Taxonomy
+## Frontière Taxonomy
+
+À la fin de son travail, Taxonomy peut émettre :
 
 ```text
-Taxonomy
-→ DOMAIN_EXHAUSTED(depth, domain)
-→ KRP persiste VISIBLE → ESTOMPÉ
-→ aucune rotation immédiate
+DOMAIN_EXHAUSTED(depth, domain)
 ```
 
-Taxonomy n’envoie pas `DEPTH_EXHAUSTED` dans le contrat actif.
-
-### Rotation suivante
+Signification exacte :
 
 ```text
-ReadyBank reçoit le noyau courant
+CE DOMAIN EST VIDE
+```
+
+Ce fait n'active pas KRP et ne contient aucune décision de rotation.
+
+Il reste en attente jusqu'au prochain cycle.
+
+Taxonomy n'émet pas `DEPTH_EXHAUSTED` dans le contrat actif.
+
+## Rotation suivante
+
+```text
+ReadyBank
 ↓
 CURRENT_KERNEL_RECEIVED
 ↓
@@ -58,65 +51,65 @@ lifecycle
 ↓
 Factory crée un nouveau Blueprint
 ↓
-KRP lit SON RotationState + DepthNeedMatrix
+KRP devient ACTIF
+↓
+consomme les faits Domain vides en attente
+↓
+persiste VISIBLE → ESTOMPÉ
+↓
+ESTOMPÉ = Domain abstrait/exclu des rotations restantes du tour
 ↓
 KRP décide seul depth + domain
 ↓
-fillRotation(depth, domain)
+fillRotation(depth,domain)
 ↓
-persistance
+KRP FIN
 ↓
-FIN KRP
-↓
-porte Taxonomy
+Taxonomy peut devenir ACTIF
 ```
 
-## Règles principales
-
-- aucun `DOMAIN_EXHAUSTED` reçu → Domain courant reste `VISIBLE` et est conservé au Blueprint suivant ;
-- `DOMAIN_EXHAUSTED` valide → KRP persiste `VISIBLE→ESTOMPÉ`, sans choisir immédiatement un autre Domain ;
-- au Blueprint suivant, KRP choisit lui-même le prochain Domain `VISIBLE` ;
-- huit Domaines `ESTOMPÉ` → KRP ferme lui-même son tour au cycle suivant ;
-- `cycle_completed[depth] += 1` exactement une fois par tour ;
-- prochain Depth choisi par `DepthNeedMatrix` ;
-- après Depth 10, retour possible vers Depth 2 si un besoin subsiste ;
-- HOLD uniquement lorsque toutes les cibles globales sont satisfaites ;
-- KRP écrit uniquement `depth + domain`.
-
-## Anciennes formulations superseded
+## Fin de tour
 
 ```text
-KRP lit/poll la réalité Taxonomy
-Taxonomy produit DEPTH_EXHAUSTED
-DOMAIN_EXHAUSTED ordonne immédiatement la rotation
+8 Domaines ESTOMPÉ
+↓
+KRP ferme SON tour
+↓
+cycle_completed[depth] += 1 exactement une fois
+↓
+DepthNeedMatrix
+↓
+prochain Depth nécessaire
 ```
 
-Elles sont remplacées par DEC-116.
+Après Depth 10, retour possible vers Depth 2 si un besoin subsiste.
+
+HOLD uniquement lorsque toutes les cibles sont satisfaites.
 
 ## Résultat
 
 ```text
 Architecture intellectuelle : 100 %
 Contrat intellectuel      : 100 %
-Spécification             : VERROUILLÉE v3.5
+Spécification             : VERROUILLÉE v3.6
 Implémentation            : À RÉAUDITER
 Validation code terminale : NON
 ```
 
 ## Taxonomy
 
-`03_Taxonomy v1.0` devra être réécrite en v1.1 dans son propre tour pour intégrer cette frontière. Jusqu’alors :
+`03_Taxonomy v1.0` reste historique sur la frontière KRP. Le bridge actif est :
 
 ```text
-working/03_Taxonomy/03_Taxonomy_BOUNDARY_BRIDGE_DEC-116.md
+working/03_Taxonomy/03_Taxonomy_BOUNDARY_BRIDGE_DEC-117.md
 ```
 
-est le bridge actif pour l’ownership KRP/Taxonomy.
+Taxonomy sera réécrit intégralement en v1.1 dans son propre tour.
 
 ## Prochaine étape
 
 ```text
-RÉAUDIT-02-v3.5
+RÉAUDIT-02-v3.6
 ```
 
-Le Build local commencé contre v3.3/v3.4 ne doit pas être repris sans ce réaudit.
+Le Build local précédent ne doit pas être repris sans ce réaudit.
