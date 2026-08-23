@@ -20,17 +20,17 @@ REJECTED
 
 | Identifiant | Version | Date | Statut | Justification / décision | Modules concernés | Décision remplacée | Décision remplaçante |
 |---|---|---|---|---|---|---|---|
-| DEC-082 | antérieure | antérieure | SUPERSEDED | Ancienne ownership : Taxonomy produisait `DOMAIN_EXHAUSTED` | 02,03 | AUCUNE | DEC-115 |
-| DEC-083 | antérieure | antérieure | SUPERSEDED | Ancienne ownership : Taxonomy produisait `DEPTH_EXHAUSTED` | 02,03 | AUCUNE | DEC-115 |
+| DEC-082 | antérieure | antérieure | SUPERSEDED | Ancienne ownership de `DOMAIN_EXHAUSTED` par Taxonomy sans séparation fait/décision de rotation | 02,03 | AUCUNE | DEC-116 |
+| DEC-083 | antérieure | antérieure | SUPERSEDED | Ancienne ownership de `DEPTH_EXHAUSTED` par Taxonomy | 02,03 | AUCUNE | DEC-116 |
 | DEC-084 | antérieure | antérieure | OFFICIAL | Séparer progression Taxonomy et rotation KRP | 02,03 | AUCUNE | AUCUNE |
-| DEC-085 | antérieure | antérieure | OFFICIAL | Distinguer la réalité d’épuisement intellectuel du déclenchement lifecycle du prochain Blueprint | 02,03,11 | AUCUNE | précisée par DEC-115 |
+| DEC-085 | antérieure | antérieure | OFFICIAL | Distinguer information d’épuisement et déclenchement lifecycle du prochain Blueprint | 02,03,11 | AUCUNE | précisée par DEC-116 |
 | DEC-086 | antérieure | antérieure | REJECTED | Le fonctionnement normal ne nécessite aucun signal inverse `AVAILABLE` | 02,03 | AUCUNE | AUCUNE |
-| DEC-087 | antérieure | antérieure | SUPERSEDED | Ancien contrat de transport de signaux Taxonomy → KRP | 02,03 | AUCUNE | DEC-115 |
-| DEC-088 | antérieure | antérieure | SUPERSEDED | Ancienne suppression de `cycle_target/cycle_completed` du chemin décisionnel KRP | 02,03 | AUCUNE | DEC-094 puis DEC-115 |
+| DEC-087 | antérieure | antérieure | SUPERSEDED | Ancien contrat de transport des signaux Taxonomy → KRP | 02,03 | AUCUNE | DEC-116 |
+| DEC-088 | antérieure | antérieure | SUPERSEDED | Ancienne suppression de `cycle_target/cycle_completed` du chemin décisionnel KRP | 02,03 | AUCUNE | DEC-094 puis DEC-116 |
 | DEC-089 | antérieure | antérieure | REJECTED | `SHORTFALL` créait un état dérivé inutile | 02 | AUCUNE | AUCUNE |
 | DEC-090 | antérieure | antérieure | REJECTED | `DepthProductionState` créait une seconde source de vérité | 02 | AUCUNE | AUCUNE |
 | DEC-093 | antérieure | antérieure | OFFICIAL | La réception d’un noyau est idempotente et n’autorise pas de double effet lifecycle | 02,11 | AUCUNE | AUCUNE |
-| DEC-094 | 1.0 | 2026-08-16 | SUPERSEDED | Ancienne formulation : `DEPTH_EXHAUSTED` Taxonomy fermait un tour; Matrix portait les besoins globaux | 02,03 | DEC-088 | DEC-115 |
+| DEC-094 | 1.0 | 2026-08-16 | SUPERSEDED | Ancienne formulation double autorité autour de `DEPTH_EXHAUSTED` Taxonomy | 02,03 | DEC-088 | DEC-116 |
 | DEC-095 | 1.0 | 2026-08-16 | OFFICIAL | Un bassin Taxonomy est identifié par Depth + occurrence du tour + Domain; occurrence interne Taxonomy, aucun slot Blueprint | 03,02 frontière | AUCUNE | AUCUNE |
 | DEC-096 | 1.0 | 2026-08-16 | OFFICIAL | Un seul Subdomain officiel par occurrence de bassin | 03 | AUCUNE | AUCUNE |
 | DEC-097 | 1.0 | 2026-08-16 | OFFICIAL | Subdomain + SubjectBank créés atomiquement; aucun Subdomain vide persisté | 03 | AUCUNE | AUCUNE |
@@ -43,123 +43,130 @@ REJECTED
 | DEC-104 | 1.0 | 2026-08-16 | OFFICIAL | LOOKBACK-2 traverse le cycle `10→2` sans remise à zéro | 03 | AUCUNE | AUCUNE |
 | DEC-105 | 1.0 | 2026-08-16 | OFFICIAL | Dominant Idea FAIL persistante pendant sa fenêtre et jamais exploitable comme IdeaSlot | 03 | AUCUNE | AUCUNE |
 | DEC-106 | 1.0 | 2026-08-16 | OFFICIAL | IdeaSlot sélectionné = `dominant_idea_active` écrit = IdeaSlot `CONSUMED`, immédiatement après écriture réussie | 01,03,11 frontière | ancienne consommation tardive | AUCUNE |
-| DEC-107 | 1.0 | 2026-08-16 | SUPERSEDED | Ancienne garde avant production de `DOMAIN_EXHAUSTED` par Taxonomy | 02,03,Admin/Ops | AUCUNE | DEC-115 |
-| DEC-108 | 1.0 | 2026-08-16 | SUPERSEDED | Ancienne sémantique de signal `DEPTH_EXHAUSTED(depth)` | 02,03 | ancienne fin définitive | DEC-115 |
+| DEC-107 | 1.0 | 2026-08-16 | SUPERSEDED | Ancienne garde liée à un signal de commande; garde de vacuité reprise comme fait Taxonomy par DEC-116 | 02,03,Admin/Ops | AUCUNE | DEC-116 |
+| DEC-108 | 1.0 | 2026-08-16 | SUPERSEDED | Ancienne sémantique `DEPTH_EXHAUSTED(depth)` produit par Taxonomy | 02,03 | ancienne fin définitive | DEC-116 |
 | DEC-109 | 1.0 | 2026-08-16 | OFFICIAL | Gemini : 1 tentative + 3 retries techniques sans effet métier sur échec | 03,Admin/Ops | AUCUNE | AUCUNE |
 | DEC-110 | 1.0 | 2026-08-16 | OFFICIAL | 3 opérations intellectuelles consécutives ayant épuisé leurs retries → `INTELLECTUAL_CREATION_UNAVAILABLE` / `BLOCKED` | 03,Admin/Ops | AUCUNE | AUCUNE |
-| DEC-111 | 1.0 | 2026-08-16 | SUPERSEDED | Ancienne persistance/idempotence KRP formulée autour des signaux d’épuisement | 02,03 frontière,Admin/Ops | AUCUNE | DEC-115 |
-| DEC-112 | 1.0 | 2026-08-16 | SUPERSEDED | Verrouillage Taxonomy v1.0; ses détails internes restent historiques mais sa frontière KRP doit être réécrite | 03 + frontières | AUCUNE | DEC-115 sur la frontière; future DEC Taxonomy v1.1 |
+| DEC-111 | 1.0 | 2026-08-16 | SUPERSEDED | Ancienne persistance/idempotence formulée autour de deux signaux Taxonomy | 02,03 frontière,Admin/Ops | AUCUNE | DEC-116 |
+| DEC-112 | 1.0 | 2026-08-16 | SUPERSEDED | Taxonomy v1.0 verrouillée; sa frontière KRP doit être réécrite dans son propre tour | 03 + frontières | AUCUNE | DEC-116 sur frontière; future DEC Taxonomy v1.1 |
 | DEC-113 | 2.0 | 2026-08-19 | OFFICIAL | KernelBlueprint v2.0 : Factory avant KRP, `blueprint_id` immuable, Section 1 write-once, Banks/cycle externes, ancien Blueprint jamais recyclé vers KRP | 01 + frontières | AUCUNE | AUCUNE |
-| DEC-114 | 3.3 | 2026-08-20 | SUPERSEDED | Verrouillage KRP v3.3 basé encore sur les signaux Taxonomy d’épuisement | 02 + frontières | v3.2 + ALIGN-02 | DEC-115 |
-| DEC-115 | 3.4 | 2026-08-23 | OFFICIAL | Taxonomy expose la réalité de ses réservoirs; ReadyBank déclenche le lifecycle; KRP est l’autorité UNIQUE qui interprète cette réalité et applique toutes les rotations Domain/Depth/HOLD | 02 + frontières 01,03,11 | DEC-082,083,087,094,107,108,111,112(frontière),114 | AUCUNE |
+| DEC-114 | 3.3 | 2026-08-20 | SUPERSEDED | Verrouillage KRP v3.3 basé sur `DOMAIN_EXHAUSTED` + `DEPTH_EXHAUSTED` produits par Taxonomy | 02 + frontières | v3.2 + ALIGN-02 | DEC-115 puis DEC-116 |
+| DEC-115 | 3.4 | 2026-08-23 | SUPERSEDED | KRP devait lire une réalité Taxonomy persistée; corrigé en communication active factuelle | 02 + frontières 01,03,11 | DEC-114 | DEC-116 |
+| DEC-116 | 3.5 | 2026-08-23 | OFFICIAL | Taxonomy pousse `DOMAIN_EXHAUSTED(depth,domain)` comme fait de Banks vides; KRP persiste ce fait mais n’applique la rotation qu’au prochain Blueprint; KRP seul décide Domain, fin de tour, prochain Depth et HOLD; aucun `DEPTH_EXHAUSTED` Taxonomy actif | 02 + frontières 01,03,11 | DEC-082,083,087,094,107,108,111,112(frontière),114,115 | AUCUNE |
 
 ---
 
-# DEC-115 — Ownership canonique de la rotation KRP
+# DEC-116 — Communication factuelle Taxonomy → KRP et ownership de rotation
 
-- **Version :** 3.4
+- **Version :** 3.5
 - **Date :** 2026-08-23
 - **Statut :** **OFFICIAL**
 - **Module propriétaire :** `02_KernelRotationPlanner`
-- **Source canonique :** `specifications/02_KernelRotationPlanner.md` v3.4
+- **Source canonique :** `specifications/02_KernelRotationPlanner.md` v3.5
 
 ## Décision
 
-La rotation intellectuelle possède désormais quatre responsabilités séparées :
-
 ```text
 Taxonomy
-= propriétaire de ses Banks et de la réalité intellectuelle de ce qu’il reste à exploiter
+= propriétaire de ses Banks
+= vérifie la vacuité réelle du Domain actif
+= pousse DOMAIN_EXHAUSTED(depth, domain) lorsque le Domain est réellement vide
 = n’ordonne aucune rotation
 
 ReadyBank / CURRENT_KERNEL_RECEIVED
-= déclenche le lifecycle du prochain noyau
+= déclenche le lifecycle du noyau suivant
 = n’ordonne aucune rotation
 
 KernelBlueprintFactory
 = crée le NOUVEAU Blueprint
 
+DepthNeedMatrix
+= indique les Depths qui ont encore besoin de tours
+= ne connaît pas la vacuité des Banks Taxonomy
+
 KernelRotationPlanner
+= reçoit/persiste le fait Domain vide
 = autorité UNIQUE de rotation
-= lit RotationState + DepthNeedMatrix + réalité Taxonomy
-= décide seul de conserver/changer Domain, fermer un tour, sélectionner le prochain Depth et HOLD
+= choisit seul le prochain Domain
+= ferme seul le tour lorsque ses 8 Domaines sont ESTOMPÉ
+= choisit seul le prochain Depth via Matrix
+= décide seul de HOLD
 ```
 
-## Frontière Taxonomy
-
-Taxonomy expose/persiste une réalité de réservoir :
-
-```text
-contenu exploitable restant
-OU
-aucun contenu exploitable restant
-```
-
-Le nom technique de l’interface n’est pas contractuel.
-
-Les anciennes sorties de commande :
+## Signal factuel actif
 
 ```text
 DOMAIN_EXHAUSTED(depth, domain)
-DEPTH_EXHAUSTED(depth)
 ```
 
-ne sont plus des sorties contractuelles actives de Taxonomy.
+Signification : les Banks du Domain actif ne contiennent plus de contenu exploitable.
 
-## Domain rotation
-
-Au prochain nouveau Blueprint :
+Garde Taxonomy :
 
 ```text
-contenu restant
-→ KRP conserve le même Depth + Domain
-
-aucun contenu restant
-→ KRP persiste VISIBLE → ESTOMPÉ
-→ KRP choisit le prochain Domain selon SON DomainCycle
+remaining_subjects = 0
+AND
+remaining_ideas = 0
 ```
 
-## Fin de tour
+Le signal ne contient aucune destination de rotation.
 
-KRP ferme lui-même le tour lorsque les huit Domaines sont `ESTOMPÉ` :
+## Moment de rotation
+
+À la réception du signal :
+
+```text
+KRP persiste VISIBLE → ESTOMPÉ
+```
+
+mais ne choisit pas immédiatement un autre territoire.
+
+La rotation est appliquée seulement lorsque :
+
+```text
+ReadyBank
+→ CURRENT_KERNEL_RECEIVED
+→ lifecycle
+→ Factory crée un nouveau Blueprint
+→ KRP applique son RotationState
+```
+
+## Fin du tour
+
+Taxonomy ne produit pas `DEPTH_EXHAUSTED`.
+
+Au prochain Blueprint, si KRP constate ses huit Domaines `ESTOMPÉ` :
 
 ```text
 KRP ferme le tour
-→ persistance
 → cycle_completed[depth] += 1 exactement une fois
 → DepthNeedMatrix
-→ prochain Depth encore nécessaire
+→ prochain Depth nécessaire
 ```
 
 ## Depth 10
-
-La fermeture de Depth 10 n’implique jamais HOLD à elle seule.
 
 ```text
 10 terminé
 → Matrix
 → prochain Depth encore nécessaire
-→ retour possible à 2
+→ retour possible vers 2
 ```
 
-## HOLD
-
-`PRODUCTION_ON_HOLD` seulement lorsque tous les Depths ont atteint leurs cibles globales et qu’aucune transition KRP n’est incertaine.
+La fin de Depth 10 ne signifie jamais HOLD à elle seule.
 
 ## Persistance
 
-KRP persiste ses propres transitions de rotation, non des commandes Taxonomy :
-
 ```text
-KRP-002 — DOMAIN_ROTATION_STATE_PERSIST_FAILED
+KRP-002 — DOMAIN_EXHAUSTED_PERSIST_FAILED
 KRP-003 — DEPTH_TOUR_STATE_PERSIST_FAILED
 ```
 
-Politique technique : 1 tentative + 3 retries, puis `BLOCKED` en échec persistant.
+Politique technique : 1 tentative initiale + 3 retries, puis `BLOCKED` en échec persistant.
 
 ## Taxonomy v1.0
 
-Les mécanismes intellectuels internes de Taxonomy v1.0 restent une référence historique utile, mais sa frontière de signaux KRP est superseded. `03_Taxonomy` devra être réécrite intégralement en v1.1 dans son propre tour avant implantation/validation Taxonomy.
+La logique intellectuelle interne de Taxonomy v1.0 reste une référence historique utile, mais sa frontière KRP est superseded. `03_Taxonomy` devra être réécrite intégralement en v1.1 dans son propre tour et intégrer DEC-116.
 
 ---
 
@@ -167,8 +174,8 @@ Les mécanismes intellectuels internes de Taxonomy v1.0 restent une référence 
 
 ```text
 01 → specifications/01_KernelBlueprint.md
-02 → specifications/02_KernelRotationPlanner.md v3.4
-03 → v1.0 non active sur frontière KRP; boundary bridge DEC-115 puis future v1.1
+02 → specifications/02_KernelRotationPlanner.md v3.5
+03 → v1.0 non active sur frontière KRP; bridge DEC-116 puis future v1.1
 ```
 
 Pour KRP :
@@ -188,20 +195,20 @@ working/02_KernelRotationPlanner/02_KernelRotationPlanner_REFERENCE_ACTIVE.md
 
 # Prochaine étape obligatoire
 
-Le Build Replit commencé contre v3.3 reste arrêté.
+Le Build Replit commencé contre v3.3/v3.4 reste arrêté.
 
 ```text
-KRP v3.4 / DEC-115
+KRP v3.5 / DEC-116
 ↓
-réaudit ciblé du diff local IMPL-02-01 déjà commencé
+réaudit ciblé du diff local déjà commencé
 ↓
-KEEP / REVERT / MODIFY selon v3.4
+KEEP / REVERT / MODIFY
 ↓
 implantation ciblée restante
 ↓
-tests contractuels v3.4
+tests contractuels v3.5
 ↓
 validation terminale KRP
 ```
 
-Ne pas reprendre le Build v3.3 tel quel.
+Ne pas reprendre le Build précédent sans ce réaudit.
