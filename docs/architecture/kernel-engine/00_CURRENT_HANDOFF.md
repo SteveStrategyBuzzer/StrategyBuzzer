@@ -6,7 +6,7 @@
 **Spécification active :** `specifications/02_KernelRotationPlanner.md` v4.0  
 **Décision active :** `DEC-119 — OFFICIAL`  
 **Frontière suivante verrouillée :** `03_Taxonomy.md` v1.1 / `DEC-120 — OFFICIAL`  
-**Prochain bloc exact :** `RECOVERY-02-v4.0`
+**Prochain bloc exact :** `IMPL-02-01-v4.0`
 
 > Ce fichier est le pointeur opérationnel de reprise. Il ne possède aucune autorité architecturale propre. En cas de contradiction, `00_ArchitectureRegister.md + 00_MOTEUR_INTELLECTUEL_ACTIVE_SPEC.md + spécification canonique verrouillée du module` priment.
 
@@ -23,7 +23,7 @@ branche GitHub officielle
 
 HEAD de réalignement
 =
-59c0698a1053715c3e535cdfc4487fb0f484d906
+8898030da2521987762dcef7b36c28df3cdbc706
 
 divergence
 =
@@ -41,9 +41,9 @@ backup/replit-ace19555-before-realign-2026-08-25
 → ace19555a5c78e86885c5f9c339e269e1d4ed653
 ```
 
-Cette sauvegarde est une source de récupération de code uniquement.
+Cette sauvegarde est conservée uniquement comme trace historique de sécurité.
 
-Elle n’est jamais une source d’autorité architecturale.
+Son code est fondé sur une référence architecturale incorrecte et ne doit jamais être consulté, récupéré, fusionné, cherry-pické ou utilisé pour l’implantation KRP v4.0.
 
 ---
 
@@ -62,7 +62,7 @@ Version : 4.0
 Décision : DEC-119 — OFFICIAL
 Architecture : 100 %
 Contrat : 100 %
-Implémentation : à aligner/récupérer contre v4.0
+Implémentation : à réaliser depuis le HEAD officiel contre v4.0
 Validation terminale : NON
 Module actif : OUI
 ```
@@ -281,49 +281,76 @@ Sa spécification v1.1 peut uniquement être lue comme contrat frontalier.
 
 ---
 
-# 7. Prochain bloc exact — RECOVERY-02-v4.0
+# 7. Prochain bloc exact — IMPL-02-01-v4.0
 
 Mission unique :
 
 ```text
-comparer le code sauvegardé ace19555
-au HEAD officiel aligné
-et à KRP v4.0 / DEC-119
-afin de récupérer uniquement le code conforme
+commencer l’implantation KRP directement depuis le HEAD officiel
+8898030da2521987762dcef7b36c28df3cdbc706
+contre KRP v4.0 / DEC-119
 ```
 
-Comparer :
+Base obligatoire :
 
 ```text
-59c0698
-↔
-backup/replit-ace19555-before-realign-2026-08-25
-↔
+HEAD officiel courant
++
 specifications/02_KernelRotationPlanner.md v4.0
-↔
++
 DEC-119
++
+frontière Taxonomy v1.1 / DEC-120
 ```
 
-Classer chaque différence utile :
+La sauvegarde `ace19555` est exclue du travail.
+
+Avant le premier patch, inspecter uniquement le code actuellement présent au HEAD officiel afin d’identifier le plus petit micro-bloc autonome nécessaire à KRP v4.0.
+
+Retour obligatoire avant modification :
 
 ```text
-KEEP
-MODIFY
-REJECT
-MISSING
-UNRESOLVED
+BLOC :
+IMPL-02-01-v4.0
+
+RESPONSABILITÉ UNIQUE :
+...
+
+EXIGENCE BIBLE :
+...
+
+ÉTAT ACTUEL AU HEAD OFFICIEL :
+...
+
+FICHIERS AUTORISÉS :
+...
+
+FICHIERS INTERDITS :
+...
+
+MODIFICATIONS REQUISES :
+...
+
+TESTS CONTRACTUELS :
+...
+
+TESTS DE NON-RÉGRESSION :
+...
+
+UNRESOLVED :
+AUCUN / détail exact
+
+CRITÈRE DE PASS :
+...
 ```
 
-Règles :
+Si un véritable `UNRESOLVED` architectural apparaît :
 
-- ne jamais fusionner ou cherry-pick automatiquement tout `ace19555` ;
-- ne jamais considérer le code sauvegardé comme autorité ;
-- récupérer uniquement les éléments conformes à v4.0 ;
-- ne modifier aucun fichier Taxonomy ;
-- ne modifier aucun document Bible ;
-- ne lancer aucun travail sur les modules suivants ;
-- si un véritable `UNRESOLVED` architectural apparaît : `STOP CODE` ;
-- sinon définir le premier micro-bloc KRP implantable avec ses fichiers et tests précis.
+```text
+STOP CODE
+```
+
+Sinon, attendre la validation explicite du micro-bloc avant le premier patch.
 
 ---
 
@@ -337,9 +364,11 @@ Ne pas :
 - réécrire Taxonomy v1.1 ;
 - réintroduire DEC-114 ou DEC-115 à DEC-118 ;
 - reprendre Task #163 v3.3 ;
-- refaire le réalignement Git 59c0698 ;
-- supprimer la sauvegarde `ace19555` ;
-- fusionner aveuglément la sauvegarde ;
+- refaire le réalignement Git ;
+- consulter ou comparer `ace19555` ;
+- récupérer du code depuis `ace19555` ;
+- fusionner ou cherry-picker la sauvegarde ;
+- supprimer la sauvegarde historique ;
 - démarrer Taxonomy ;
 - demander à l’utilisateur de retrouver les documents dans les anciens chats ;
 - utiliser les anciens chats comme source principale.
@@ -348,23 +377,24 @@ Ne pas :
 
 # 9. Critère de sortie du prochain bloc
 
-`RECOVERY-02-v4.0` est fermé uniquement lorsque sont connus et prouvés :
+`IMPL-02-01-v4.0` est fermé uniquement lorsque :
 
 ```text
-code conforme récupérable
-code à modifier
-code à rejeter
-exigences manquantes
-premier micro-bloc exact
-fichiers autorisés
-tests contractuels requis
-absence d’UNRESOLVED architectural
+responsabilité unique implantée
++
+matrice de conformité Bible PASS
++
+tests contractuels mappés PASS
++
+non-régression ciblée PASS
++
+diff limité au périmètre autorisé
++
+commit Git identifié
++
+HEAD GitHub/Replit synchronisé
 ```
 
-Puis seulement :
+Après fermeture, le handoff doit nommer le prochain micro-bloc KRP exact.
 
-```text
-IMPL-02-01-v4.0
-```
-
-Aucun statut `FINI` n’est permis avant implantation complète, matrices Bible PASS, validation terminale et non-régression cumulative.
+Aucun statut `FINI` n’est permis avant implantation KRP complète, toutes les matrices Bible PASS, validation terminale et non-régression cumulative.
