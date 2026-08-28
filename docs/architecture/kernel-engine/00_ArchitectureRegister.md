@@ -57,7 +57,7 @@ REJECTED
 | DEC-118 | 3.7 | 2026-08-23 | REJECTED | Révision documentaire non autorisée : conservait à tort le même Domain tant qu’il restait `VISIBLE` | 02 + frontières | AUCUNE | DEC-119 |
 | DEC-119 | 4.0 | 2026-08-24 | OFFICIAL | KRP v4.0 : cadran Domain restauré; `DOMAIN_EXHAUSTED` et `DEPTH_EXHAUSTED` sont deux moteurs internes KRP; `DEPTH_EXHAUSTED` contient `DepthNeedMatrix` et la rotation des Depths | 02 + frontière 03 | DEC-114 sur ownership + rejet DEC-115..118 | AUCUNE |
 | DEC-120 | 1.1 | 2026-08-24 | OFFICIAL | Taxonomy v1.1 : conserve ses Banks et sa consommation exacte; transmet seulement le fait terminal « dernière Dominant Idea du dernier Subject de ce Domain utilisée »; aucun moteur `DOMAIN_EXHAUSTED`, aucun `DEPTH_EXHAUSTED`, aucune DepthNeedMatrix ni rotation globale dans Taxonomy | 03 + frontière 02 | DEC-112 + DEC-107/108 sur frontière | AUCUNE |
-| DEC-121 | 2.0 | 2026-08-28 | OFFICIAL | QuestionIntent produit l’identité stable `DD-DO-SUB-SUJ-IDE-VVVV`; Phase 1 produit `question_code = kernel_code-COG-VAR`; READY_BANK expose les segments structurés; le gameplay applique l’anti-répétition par joueur avec maximum 3 cognitifs distincts pour une même identité conceptuelle, sans reset par `VVVV` ou `VAR` | 05 + frontières Phase 1/READY_BANK/Gameplay | ancien 05_QuestionIntent v1.1 contradictoire | AUCUNE |
+| DEC-121 | 2.1 | 2026-08-28 | OFFICIAL | `kernel_code` se construit progressivement dans le même KernelBlueprint : écritures KRP → projection `DD-DO`; écritures Taxonomy → projection `SUB-SUJ-IDE`; QuestionIntent/KernelCodeEngine alloue uniquement `VVVV`, assemble et verrouille le code final. `VVVV` est un compteur base36 persistant, transactionnel, jamais recyclé, indépendant par bassin `Depth + Domain`, chaque bassin démarrant à `0000`. Phase 1 produit ensuite `question_code = kernel_code-COG-VAR`; Gameplay limite à 3 cognitifs distincts par joueur et identité conceptuelle sans reset par `VVVV`/`VAR` | 01,02,03,05 + frontières Phase 1/READY_BANK/Gameplay | formulation DEC-121 v2.0 où QuestionIntent construisait seul les six segments | AUCUNE |
 
 ---
 
@@ -222,10 +222,10 @@ AUDIT-03-v1.1
 
 Ne jamais demander à Replit d’implanter KRP et Taxonomy dans le même bloc.
 
-# DEC-121 — Identité noyau, identité cognitive et anti-répétition joueur
+# DEC-121 — Construction progressive, suffixe VVVV et anti-répétition joueur
 
 ```text
-05 → specifications/05_QuestionIntent.md v2.0 / DEC-121
+05 → specifications/05_QuestionIntent.md v2.1 / DEC-121
 ```
 
 Le document historique `docs/architecture/05_QuestionIntent.md` est SUPERSEDED et retiré de l’arbre actif. Son historique demeure récupérable dans Git.
