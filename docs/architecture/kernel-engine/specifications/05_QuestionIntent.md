@@ -1,6 +1,6 @@
 # STRATEGYBUZZER — 05_QUESTIONINTENT / KERNELCODEENGINE
 
-**Version :** 2.0  
+**Version :** 2.1  
 **Date :** 28 août 2026  
 **Statut :** OFFICIAL — CONTRAT ARCHITECTURAL VERROUILLÉ  
 **Décision :** DEC-121  
@@ -376,15 +376,15 @@ Les copies de travail et éléments de Quarantine conservent la référence au n
 10. replay identique → NO-OP;
 11. replay divergent → refus;
 12. concurrence → une seule identité persistée;
-7. QuestionIntent ne modifie aucun slot amont;
-8. QuestionIntent ne produit aucun cognitif;
-9. Phase 1 prolonge l’identité avec `COG-VAR`;
-10. même concept + même COG → exclusion joueur;
-11. même concept + nouveau COG → permis jusqu’à trois;
-12. quatrième COG distinct → exclusion;
-13. nouvelle version `VVVV` → compteur non réinitialisé;
-14. nouvelle variante `VAR` → compteur non réinitialisé;
-15. `READY_BANK` permet le filtrage structuré sans dépendre uniquement du parsing de chaîne.
+13. QuestionIntent ne modifie aucun slot amont;
+14. QuestionIntent ne produit aucun cognitif;
+15. Phase 1 prolonge l’identité avec `COG-VAR`;
+16. même concept + même COG → exclusion joueur;
+17. même concept + nouveau COG → permis jusqu’à trois;
+18. quatrième COG distinct → exclusion;
+19. nouvelle version `VVVV` → compteur non réinitialisé;
+20. nouvelle variante `VAR` → compteur non réinitialisé;
+21. `READY_BANK` permet le filtrage structuré sans dépendre uniquement du parsing de chaîne.
 
 ---
 
@@ -411,7 +411,7 @@ Ces contrats devront respecter les identités et invariants définis ici.
 ```text
 Architecture :        VERROUILLÉE
 Contrat :             VERROUILLÉ
-Spécification :       OFFICIAL v2.0 / DEC-121
+Spécification :       OFFICIAL v2.1 / DEC-121
 Implémentation :      À AUDITER
 Validation terminale : NON
 ```
@@ -419,9 +419,9 @@ Validation terminale : NON
 Prochaine opération autorisée :
 
 ```text
-AUDIT-05-v2.0
+ALIGN-AUDIT-05-v2.1
 ↓
-audit QuestionIntent + KernelCodeEngine + frontière Phase 1/READY_BANK/gameplay
+vérifier la construction progressive KRP/Taxonomy dans le KernelBlueprint et l’allocation VVVV par QuestionIntent
 ↓
 KEEP / MODIFY / REMOVE / MISSING / UNRESOLVED
 ```
