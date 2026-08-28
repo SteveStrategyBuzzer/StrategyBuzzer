@@ -86,7 +86,7 @@ class QuestionBankHealthController extends Controller
         $taxonomy = ['exhausted_subjects_with_zero_pass' => ['count' => 0, 'alert' => false, 'subjects' => []]];
         try {
             $taxonomyRepo      = new TaxonomyBankRepository();
-            $exhaustedSubjects = $taxonomyRepo->findExhaustedWithOnlyFails(minFails: 1);
+            $exhaustedSubjects = $taxonomyRepo->findV11PreparationAnomalies(minFails: 1);
             $taxonomy = [
                 'exhausted_subjects_with_zero_pass' => [
                     'count'    => count($exhaustedSubjects),

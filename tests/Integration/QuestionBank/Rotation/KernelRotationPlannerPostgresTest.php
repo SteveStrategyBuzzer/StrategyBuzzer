@@ -4,13 +4,12 @@ declare(strict_types=1);
 
 namespace Tests\Integration\QuestionBank\Rotation;
 
-use App\Services\QuestionBank\KernelCodeEngine;
 use App\Services\QuestionBank\Rotation\DepthNeedMatrix;
 use App\Services\QuestionBank\Rotation\DepthTourState;
 use App\Services\QuestionBank\Rotation\KernelBlueprintFactory;
 use App\Services\QuestionBank\Rotation\KernelPipelineOrchestrator;
 use App\Services\QuestionBank\Rotation\KernelRotationPlanner;
-use App\Services\QuestionBank\Rotation\TaxonomyNavigatorInterface;
+use App\Services\QuestionBank\Rotation\KernelRotationStateRepository;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Tests\TestCase;
@@ -46,7 +45,7 @@ class KernelRotationPlannerPostgresTest extends TestCase
 
     private KernelRotationPlanner      $planner;
     private KernelPipelineOrchestrator $orchestrator;
-    private TaxonomyNavigatorInterface $taxonomy;
+    private KernelRotationStateRepository $stateRepository;
 
     protected function setUp(): void
     {
@@ -67,14 +66,13 @@ class KernelRotationPlannerPostgresTest extends TestCase
         DB::beginTransaction();
 
         // ── Services ──────────────────────────────────────────────────────────
-        $this->taxonomy     = $this->createMock(TaxonomyNavigatorInterface::class);
+        $this->stateRepository = new KernelRotationStateRepository();
         $this->planner      = new KernelRotationPlanner();
         $factory            = new KernelBlueprintFactory();
         $this->orchestrator = new KernelPipelineOrchestrator(
             $factory,
             $this->planner,
-            $this->taxonomy,
-            new KernelCodeEngine()
+            $this->stateRepository,
         );
     }
 
@@ -184,12 +182,6 @@ class KernelRotationPlannerPostgresTest extends TestCase
 
     public function test_two_sequential_orchestrations_produce_exactly_one_blueprint(): void
     {
-        $this->taxonomy->method('peekNext')->willReturn([
-            'sub_domain'    => 'Capitales',
-            'subject'       => 'Paris',
-            'dominant_idea' => 'Paris est la capitale de la France',
-        ]);
-
         // Première orchestration → Blueprint créé + ENGAGED_IN_PIPELINE
         $result1 = $this->orchestrator->run(null);
         $this->assertSame(KernelPipelineOrchestrator::STATUS_ROTATION_ASSIGNED, $result1['status']);
@@ -414,48 +406,6 @@ class KernelRotationPlannerPostgresTest extends TestCase
         );
         $this->assertSame(0, (int) DB::table('kernel_rotation_state_v2')->count(),
             'Rollback PostgreSQL réel : état KRP annulé'
-        );
-    }
-
-    // =========================================================================
-    // T-PG-09 — IMPASSE-KRP-001 sur Neon : Blueprint CREATED_UNENGAGED durable
-    // =========================================================================
-
-    /**
-     * Prouve IMPASSE-KRP-001 sur PostgreSQL réel :
-     *   Transaction 1 COMMIT → Blueprint CREATED_UNENGAGED durable sur Neon
-     *   → Taxonomy lève une RuntimeException
-     *   → Blueprint reste CREATED_UNENGAGED (aucun recovery disponible sans 03_Taxonomy)
-     *
-     * NB : l'orchestrateur ne fait PAS de cleanup quand peekNext() THROWS (vs null).
-     * peekNext() == null → cleanupBlueprint (DEC-087). Exception → Blueprint orphelin.
-     */
-    public function test_blueprint_stays_created_unengaged_when_taxonomy_throws_on_neon(): void
-    {
-        $this->taxonomy->method('peekNext')
-            ->willThrowException(new \RuntimeException('Taxonomy indisponible — IMPASSE-KRP-001'));
-
-        $caught = false;
-        try {
-            $this->orchestrator->run(null);
-        } catch (\RuntimeException $e) {
-            $this->assertStringContainsString('Taxonomy indisponible', $e->getMessage());
-            $caught = true;
-        }
-        $this->assertTrue($caught, 'Exception Taxonomy propagée correctement');
-
-        // Transaction 1 a committé avant l'exception Taxonomy
-        // (l'outer transaction de test = SAVEPOINT → Blueprint visible dans la transaction)
-        $blueprint = DB::table('kernel_blueprint_runs')
-            ->where('execution_state', 'CREATED_UNENGAGED')
-            ->first();
-
-        $this->assertNotNull($blueprint,
-            'IMPASSE-KRP-001 sur Neon : Blueprint CREATED_UNENGAGED persiste après échec Taxonomy'
-        );
-        $this->assertNotNull(
-            DB::table('kernel_rotation_state_v2')->value('active_blueprint_identity'),
-            'active_blueprint_identity enregistrée sur Neon (Transaction 1 committée)'
         );
     }
 

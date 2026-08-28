@@ -5,13 +5,12 @@ declare(strict_types=1);
 namespace Tests\Integration\QuestionBank\Rotation;
 
 use App\Services\QuestionBank\KernelBlueprint;
-use App\Services\QuestionBank\KernelCodeEngine;
 use App\Services\QuestionBank\Rotation\DepthNeedMatrix;
 use App\Services\QuestionBank\Rotation\DepthTourState;
 use App\Services\QuestionBank\Rotation\KernelBlueprintFactory;
 use App\Services\QuestionBank\Rotation\KernelPipelineOrchestrator;
 use App\Services\QuestionBank\Rotation\KernelRotationPlanner;
-use App\Services\QuestionBank\Rotation\TaxonomyNavigatorInterface;
+use App\Services\QuestionBank\Rotation\KernelRotationStateRepository;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use PDO;
@@ -69,7 +68,7 @@ class KernelRotationPlannerPostgresStrictTest extends TestCase
 
     private KernelRotationPlanner      $planner;
     private KernelPipelineOrchestrator $orchestrator;
-    private TaxonomyNavigatorInterface $taxonomy;
+    private KernelRotationStateRepository $stateRepository;
 
     /** @var array<string, mixed> */
     private array $pgCfg;
@@ -89,14 +88,13 @@ class KernelRotationPlannerPostgresStrictTest extends TestCase
 
         $this->pgCfg    = config('database.connections.pgsql');
         $this->planner  = new KernelRotationPlanner();
-        $this->taxonomy = $this->createMock(TaxonomyNavigatorInterface::class);
+        $this->stateRepository = new KernelRotationStateRepository();
         $factory        = new KernelBlueprintFactory();
 
         $this->orchestrator = new KernelPipelineOrchestrator(
             $factory,
             $this->planner,
-            $this->taxonomy,
-            new KernelCodeEngine()
+            $this->stateRepository,
         );
     }
 
@@ -375,12 +373,6 @@ class KernelRotationPlannerPostgresStrictTest extends TestCase
             $rowInserted = false;
 
             // ── Partie B : deux orchestrations via KRP réel ───────────────────
-            $this->taxonomy->method('peekNext')->willReturn([
-                'sub_domain'    => 'Capitales',
-                'subject'       => 'Paris',
-                'dominant_idea' => 'Paris est la capitale de la France',
-            ]);
-
             // Orchestration 1 → succès (commit réel sur Neon)
             $result1 = $this->orchestrator->run(null);
             $orchestrated = true;
@@ -435,59 +427,6 @@ class KernelRotationPlannerPostgresStrictTest extends TestCase
     // T-PGB-05 — Rollback vrai chemin après Factory = PREUVE IMPASSE-KRP-001
     //            (Régime A — SAVEPOINT model)
     // =========================================================================
-
-    /**
-     * Prouve IMPASSE-KRP-001 via l'orchestrateur réel.
-     *
-     * Flow KRP :
-     *   ┌─ Transaction 1 (FOR UPDATE) ──────────────────────────┐
-     *   │  Factory::create()   → Blueprint CREATED_UNENGAGED    │
-     *   │  registerActiveBlueprintIdentity() → state updated    │
-     *   └─ COMMIT (SAVEPOINT releasé dans outer txn) ────────────┘
-     *   taxonomy.peekNext() → RuntimeException  (aucune Transaction 2)
-     *
-     * Résultats attendus :
-     *   Blueprint durable après rollback A = 1 CREATED_UNENGAGED (visible)
-     *   RotationState après rollback A     = active_blueprint_identity SET,
-     *                                        active_depth = NULL
-     *
-     * Régime A : les données sont dans l'outer txn (SAVEPOINT releasé) ;
-     * tearDown rollback nettoie.
-     */
-    public function test_rollback_real_path_after_factory_impasse_krp001(): void
-    {
-        $this->taxonomy->method('peekNext')
-            ->willThrowException(new \RuntimeException('Taxonomy indisponible — IMPASSE-KRP-001'));
-
-        $caught = false;
-        try {
-            $this->orchestrator->run(null);
-        } catch (\RuntimeException $e) {
-            $this->assertStringContainsString('Taxonomy indisponible', $e->getMessage());
-            $caught = true;
-        }
-        $this->assertTrue($caught, 'Exception Taxonomy propagée correctement');
-
-        // ── Blueprint durable après rollback A ────────────────────────────────
-        $blueprint = DB::table('kernel_blueprint_runs')
-            ->where('execution_state', 'CREATED_UNENGAGED')
-            ->first();
-        $this->assertNotNull($blueprint,
-            'Blueprint durable après rollback A : 1 CREATED_UNENGAGED — IMPASSE-KRP-001 prouvée sur Neon'
-        );
-
-        // ── RotationState après rollback A ────────────────────────────────────
-        $state = DB::table('kernel_rotation_state_v2')->first();
-        $this->assertNotNull($state,
-            'RotationState après rollback A : ligne d\'état présente'
-        );
-        $this->assertNotNull($state->active_blueprint_identity,
-            'RotationState après rollback A : active_blueprint_identity SET (Transaction 1 commitée avant Taxonomy throw)'
-        );
-        $this->assertNull($state->active_depth,
-            'RotationState après rollback A : active_depth = NULL (applyRotation jamais appelé)'
-        );
-    }
 
     // =========================================================================
     // T-PGB-06 — Rollback vrai chemin après fillRotation (Régime A — SAVEPOINT)

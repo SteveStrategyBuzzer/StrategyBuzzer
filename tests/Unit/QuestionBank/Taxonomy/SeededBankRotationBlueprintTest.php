@@ -5,14 +5,15 @@ declare(strict_types=1);
 namespace Tests\Unit\QuestionBank\Taxonomy;
 
 use App\Services\QuestionBank\KernelBlueprint;
-use App\Services\QuestionBank\KernelCodeEngine;
 use App\Services\QuestionBank\Rotation\DepthNeedMatrix;
 use App\Services\QuestionBank\Rotation\KernelBlueprintFactory;
 use App\Services\QuestionBank\Rotation\KernelPipelineOrchestrator;
 use App\Services\QuestionBank\Rotation\KernelRotationPlanner;
+use App\Services\QuestionBank\Rotation\KernelRotationStateRepository;
 use App\Services\QuestionBank\Taxonomy\TaxonomyBankRepository;
 use App\Services\QuestionBank\Taxonomy\TaxonomyGeminiClient;
 use App\Services\QuestionBank\Taxonomy\TaxonomyOrchestrator;
+use App\Services\QuestionBank\Taxonomy\TaxonomyPipelineBridge;
 use App\Services\QuestionBank\Taxonomy\ValidationDominantIdeas;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
@@ -25,8 +26,8 @@ use Tests\TestCase;
  *
  * Vérifie le chemin complet, jamais couvert par les tests unitaires isolés :
  *
- *   seed (subdomain + subject + idée PASS+AVAILABLE)
- *     → TaxonomyOrchestrator::peekNext() retourne le territoire (SANS Gemini)
+ *   seed occurrence v1.1 (subdomain + subject + idée PASS+AVAILABLE)
+ *     → TaxonomyPipelineBridge attribue le territoire (SANS Gemini)
  *     → KernelPipelineOrchestrator::run() retourne ROTATION_ASSIGNED
  *     → Blueprint : sub_domain / subject / dominant_idea remplis
  *
@@ -95,18 +96,22 @@ class SeededBankRotationBlueprintTest extends TestCase
         $this->orchestrator = new KernelPipelineOrchestrator(
             new KernelBlueprintFactory(),
             new KernelRotationPlanner(),
-            $taxonomy,
-            new KernelCodeEngine(),
+            new KernelRotationStateRepository(),
+            new TaxonomyPipelineBridge($taxonomy, $this->repo, new KernelRotationPlanner()),
         );
     }
 
     protected function tearDown(): void
     {
         DB::statement('PRAGMA foreign_keys = OFF');
-        Schema::dropIfExists('taxonomy_generation_memory');
-        Schema::dropIfExists('taxonomy_dominant_idea_bank');
-        Schema::dropIfExists('taxonomy_subject_bank');
-        Schema::dropIfExists('taxonomy_subdomain_bank');
+        Schema::dropIfExists('taxonomy_v11_blueprint_assignments');
+        Schema::dropIfExists('taxonomy_v11_terminal_facts');
+        Schema::dropIfExists('taxonomy_v11_generation_memory');
+        Schema::dropIfExists('taxonomy_v11_ideas');
+        Schema::dropIfExists('taxonomy_v11_subjects');
+        Schema::dropIfExists('taxonomy_v11_subdomains');
+        Schema::dropIfExists('taxonomy_v11_occurrences');
+        Schema::dropIfExists('kernel_taxonomy_terminal_facts');
         Schema::dropIfExists('kernel_depth_domain_totals');
         Schema::dropIfExists('kernel_depth_matrix');
         Schema::dropIfExists('kernel_rotation_state_v2');
@@ -122,7 +127,7 @@ class SeededBankRotationBlueprintTest extends TestCase
     public function test_seeded_bank_yields_rotation_assigned_blueprint(): void
     {
         // Gemini ne doit JAMAIS être appelé quand la banque est déjà semée
-        $this->gemini->expects($this->never())->method('generateSubdomains');
+        $this->gemini->expects($this->never())->method('generateOccurrence');
         $this->gemini->expects($this->never())->method('generateSubjects');
         $this->gemini->expects($this->never())->method('generateIdeas');
 
@@ -156,40 +161,18 @@ class SeededBankRotationBlueprintTest extends TestCase
     }
 
     // =========================================================================
-    // peekNext direct — contrat de forme du territoire
-    // =========================================================================
-
-    public function test_peek_next_returns_seeded_territory_without_gemini(): void
-    {
-        $this->gemini->expects($this->never())->method('generateSubdomains');
-        $this->gemini->expects($this->never())->method('generateSubjects');
-        $this->gemini->expects($this->never())->method('generateIdeas');
-
-        $this->seedBankCell($this->firstDepth, self::FIRST_DOMAIN, 'Capitales européennes', 'Paris', 'Paris est traversée par la Seine');
-
-        $taxonomy = new TaxonomyOrchestrator($this->repo, $this->gemini, new ValidationDominantIdeas());
-        $territory = $taxonomy->peekNext($this->firstDepth, self::FIRST_DOMAIN);
-
-        $this->assertNotNull($territory);
-        $this->assertSame('Capitales européennes', $territory['sub_domain'] ?? null);
-        $this->assertSame('Paris', $territory['subject'] ?? null);
-        $this->assertSame(
-            'Paris est traversée par la Seine',
-            $territory['dominant_idea'] ?? $territory['dominant_idea_active'] ?? null,
-            'Le territoire doit exposer l\'idée dominante sous une clé reconnue par KernelPipelineOrchestrator'
-        );
-    }
-
-    // =========================================================================
     // Helpers
     // =========================================================================
 
-    /** Insère un sous-domaine + sujet + idée PASS+AVAILABLE pour (depth, domain). */
+    /** Insère une occurrence v1.1 OPEN avec une idée PASS+AVAILABLE. */
     private function seedBankCell(int $depth, string $domainCode, string $subdomainName, string $subjectName, string $ideaValue): void
     {
-        $subdomain = $this->repo->findOrCreateSubdomain($depth, $domainCode, $subdomainName);
-        $subject   = $this->repo->findOrCreateSubject($subdomain->id, $subjectName);
-        $this->repo->persistPassIdea($subject->id, $ideaValue);
+        $occurrence = $this->repo->findOrCreateV11Occurrence($depth, $domainCode);
+        $subdomain = $this->repo->createV11Subdomain((int) $occurrence->id, $subdomainName);
+        $this->repo->createV11Subjects((int) $subdomain->id, [$subjectName]);
+        $subject = $this->repo->getV11SubjectsForSubdomain((int) $subdomain->id)[0];
+        $this->repo->persistV11PassIdea((int) $subject->id, $ideaValue);
+        $this->repo->markV11OccurrenceOpen((int) $occurrence->id);
     }
 
     private function createKernelSchema(): void
@@ -221,6 +204,11 @@ class SeededBankRotationBlueprintTest extends TestCase
             $table->integer('pending_depth_exhausted_depth')->nullable();
             $table->integer('domain_position')->nullable();
             $table->text('tour_domain_states')->nullable();
+            $table->string('active_tour_id', 36)->nullable();
+            $table->string('tour_state', 32)->nullable();
+            $table->string('last_closed_tour_id', 36)->nullable();
+            $table->smallInteger('last_closed_depth')->nullable();
+            $table->string('last_closed_tour_summary_hash', 64)->nullable();
             $table->string('active_blueprint_identity', 36)->nullable();
             $table->string('last_counted_blueprint_identity', 36)->nullable();
             $table->unsignedBigInteger('lock_version')->default(1);
@@ -244,49 +232,70 @@ class SeededBankRotationBlueprintTest extends TestCase
             $table->primary(['depth', 'domain_code']);
         });
 
+        Schema::create('kernel_taxonomy_terminal_facts', function (Blueprint $table) {
+            $table->id();
+            $table->string('fact_id', 128)->unique();
+            $table->unsignedTinyInteger('depth');
+            $table->string('domain_code', 32);
+            $table->string('tour_id', 36);
+            $table->timestamp('received_at');
+            $table->timestamp('consumed_at')->nullable();
+            $table->timestamps();
+        });
     }
 
     private function createTaxonomySchema(): void
     {
         DB::statement('PRAGMA foreign_keys = ON');
 
-        Schema::create('taxonomy_subdomain_bank', function (Blueprint $table) {
+        Schema::create('taxonomy_v11_occurrences', function (Blueprint $table) {
             $table->id();
             $table->unsignedTinyInteger('depth');
             $table->string('domain_code', 32);
-            $table->string('subdomain_name', 256);
-            $table->string('status', 16)->default('ACTIVE');
-            $table->boolean('generation_exhausted')->default(false);
-            $table->unsignedTinyInteger('subject_attempt_count')->default(0);
+            $table->unsignedInteger('ordinal');
+            $table->string('status', 16)->default('PREPARING');
+            $table->unsignedTinyInteger('consecutive_technical_failures')->default(0);
+            $table->text('last_error')->nullable();
+            $table->timestamp('exhausted_at')->nullable();
             $table->timestamps();
-            $table->unique(['depth', 'domain_code', 'subdomain_name']);
+            $table->unique(['depth', 'domain_code', 'ordinal']);
         });
 
-        Schema::create('taxonomy_subject_bank', function (Blueprint $table) {
+        Schema::create('taxonomy_v11_subdomains', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('subdomain_id')->constrained('taxonomy_subdomain_bank')->cascadeOnDelete();
+            $table->foreignId('occurrence_id')->unique()
+                ->constrained('taxonomy_v11_occurrences')->cascadeOnDelete();
+            $table->string('subdomain_name', 256);
+            $table->string('status', 16)->default('ACTIVE');
+            $table->timestamps();
+        });
+
+        Schema::create('taxonomy_v11_subjects', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('subdomain_id')->constrained('taxonomy_v11_subdomains')->cascadeOnDelete();
             $table->string('subject_name', 256);
-            $table->string('status', 16)->default('AVAILABLE');
+            $table->string('status', 24)->default('AVAILABLE');
             $table->unsignedTinyInteger('idea_attempt_count')->default(0);
             $table->boolean('idea_generation_exhausted')->default(false);
             $table->timestamps();
             $table->unique(['subdomain_id', 'subject_name']);
         });
 
-        Schema::create('taxonomy_dominant_idea_bank', function (Blueprint $table) {
+        Schema::create('taxonomy_v11_ideas', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('subject_id')->constrained('taxonomy_subject_bank')->cascadeOnDelete();
+            $table->foreignId('subject_id')->constrained('taxonomy_v11_subjects')->cascadeOnDelete();
             $table->string('idea_value', 512);
             $table->string('validation_status', 8);
             $table->string('fail_reason', 64)->nullable();
             $table->string('fail_conflict_with', 512)->nullable();
             $table->string('status', 16);
             $table->timestamps();
-            $table->index(['subject_id', 'validation_status', 'status']);
+            $table->unique(['subject_id', 'idea_value']);
         });
 
-        Schema::create('taxonomy_generation_memory', function (Blueprint $table) {
+        Schema::create('taxonomy_v11_generation_memory', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('occurrence_id')->constrained('taxonomy_v11_occurrences')->cascadeOnDelete();
             $table->string('context_type', 16);
             $table->string('context_key', 512);
             $table->unsignedSmallInteger('attempt_number');
@@ -296,7 +305,35 @@ class SeededBankRotationBlueprintTest extends TestCase
             $table->json('covered_directions')->nullable();
             $table->boolean('generation_exhausted')->default(false);
             $table->timestamps();
-            $table->unique(['context_type', 'context_key', 'attempt_number']);
+            $table->unique(['occurrence_id', 'context_type', 'context_key', 'attempt_number']);
+        });
+
+        Schema::create('taxonomy_v11_terminal_facts', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('occurrence_id')->unique()
+                ->constrained('taxonomy_v11_occurrences')->cascadeOnDelete();
+            $table->string('fact_id', 128)->unique();
+            $table->unsignedTinyInteger('depth');
+            $table->string('domain_code', 32);
+            $table->string('status', 16)->default('PENDING');
+            $table->unsignedSmallInteger('delivery_attempts')->default(0);
+            $table->text('last_error')->nullable();
+            $table->timestamp('delivered_at')->nullable();
+            $table->timestamps();
+        });
+
+        Schema::create('taxonomy_v11_blueprint_assignments', function (Blueprint $table) {
+            $table->string('blueprint_id', 36)->primary();
+            $table->foreignId('occurrence_id')->constrained('taxonomy_v11_occurrences')->restrictOnDelete();
+            $table->foreignId('subdomain_id')->constrained('taxonomy_v11_subdomains')->restrictOnDelete();
+            $table->foreignId('subject_id')->constrained('taxonomy_v11_subjects')->restrictOnDelete();
+            $table->foreignId('idea_id')->constrained('taxonomy_v11_ideas')->restrictOnDelete();
+            $table->unsignedTinyInteger('depth');
+            $table->string('domain_code', 32);
+            $table->string('subdomain_active', 256);
+            $table->string('subject_active', 256);
+            $table->string('dominant_idea_active', 512);
+            $table->timestamps();
         });
     }
 }

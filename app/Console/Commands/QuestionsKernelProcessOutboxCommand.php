@@ -4,15 +4,16 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
-use App\Services\QuestionBank\KernelCodeEngine;
 use App\Services\QuestionBank\Rotation\KernelBlueprintFactory;
 use App\Services\QuestionBank\Rotation\KernelPipelineOrchestrator;
 use App\Services\QuestionBank\Rotation\KernelPipelineOutboxRepository;
 use App\Services\QuestionBank\Rotation\KernelRotationPlanner;
+use App\Services\QuestionBank\Rotation\KernelRotationStateRepository;
 use App\Services\QuestionBank\Rotation\ProcessKernelPipelineOutbox;
 use App\Services\QuestionBank\Taxonomy\TaxonomyBankRepository;
 use App\Services\QuestionBank\Taxonomy\TaxonomyGeminiClient;
 use App\Services\QuestionBank\Taxonomy\TaxonomyOrchestrator;
+use App\Services\QuestionBank\Taxonomy\TaxonomyPipelineBridge;
 use App\Services\QuestionBank\Taxonomy\ValidationDominantIdeas;
 use Illuminate\Console\Command;
 
@@ -36,7 +37,7 @@ class QuestionsKernelProcessOutboxCommand extends Command
                             {--batch=10 : Nombre maximum d\'événements traités par exécution}
                             {--dry-run  : Affiche les événements en attente sans les traiter}';
 
-    protected $description = 'V2 — Traite les événements CURRENT_KERNEL_RECEIVED de l\'Outbox Kernel et déclenche le Blueprint suivant (KRP-R11).';
+    protected $description = 'KRP v4.0 — Traite CURRENT_KERNEL_RECEIVED et déclenche le prochain Blueprint KRP.';
 
     public function handle(): int
     {
@@ -121,19 +122,19 @@ class QuestionsKernelProcessOutboxCommand extends Command
     {
         $outboxRepo = new KernelPipelineOutboxRepository();
 
+        $planner = new KernelRotationPlanner();
+        $taxonomyRepository = new TaxonomyBankRepository();
         $taxonomy = new TaxonomyOrchestrator(
-            new TaxonomyBankRepository(),
+            $taxonomyRepository,
             new TaxonomyGeminiClient(),
             new ValidationDominantIdeas(),
         );
 
-        $planner = new KernelRotationPlanner();
-
         $orchestrator = new KernelPipelineOrchestrator(
             new KernelBlueprintFactory(),
             $planner,
-            $taxonomy,
-            new KernelCodeEngine(),
+            new KernelRotationStateRepository(),
+            new TaxonomyPipelineBridge($taxonomy, $taxonomyRepository, $planner),
         );
 
         return new ProcessKernelPipelineOutbox($planner, $orchestrator, $outboxRepo);

@@ -4,24 +4,23 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
-use App\Services\QuestionBank\KernelCodeEngine;
 use App\Services\QuestionBank\Rotation\KernelBlueprintFactory;
 use App\Services\QuestionBank\Rotation\KernelPipelineOrchestrator;
 use App\Services\QuestionBank\Rotation\KernelRotationPlanner;
+use App\Services\QuestionBank\Rotation\KernelRotationStateRepository;
 use App\Services\QuestionBank\Taxonomy\TaxonomyBankRepository;
-use App\Services\QuestionBank\Taxonomy\TaxonomyGeminiClient;
 use App\Services\QuestionBank\Taxonomy\TaxonomyOrchestrator;
-use App\Services\QuestionBank\Taxonomy\ValidationDominantIdeas;
+use App\Services\QuestionBank\Taxonomy\TaxonomyPipelineBridge;
 use Illuminate\Console\Command;
 use RuntimeException;
 
 /**
  * questions:kernel:rotate
  *
- * Point d'entrée V3 pour déclencher une rotation Kernel.
+ * Point d'entrée KRP v4.0 pour déclencher une rotation Kernel.
  *
  * Ce que cette commande fait :
- *   1. Instancie KernelBlueprintFactory + KernelRotationPlanner V3 + TaxonomyOrchestrator
+ *   1. Instancie KernelBlueprintFactory + KernelRotationPlanner + état KRP
  *   2. Appelle KernelPipelineOrchestrator::run()
  *   3. Affiche le statut résultant (ROTATION_ASSIGNED | PRODUCTION_ON_HOLD)
  *
@@ -36,23 +35,20 @@ class QuestionsKernelRotateCommand extends Command
     protected $signature = 'questions:kernel:rotate
         {--dry-run : Afficher l\'état actuel sans créer de Blueprint}';
 
-    protected $description = 'V3 — Déclenche une rotation Kernel via KernelPipelineOrchestrator (gate V3.2 + Taxonomy).';
+    protected $description = 'KRP v4.0 — Crée le prochain Blueprint et lui attribue depth + domain.';
 
     public function handle(
         KernelBlueprintFactory $factory,
         KernelRotationPlanner  $planner,
-        KernelCodeEngine       $codeEngine,
+        KernelRotationStateRepository $stateRepository,
+        TaxonomyOrchestrator $taxonomy,
+        TaxonomyBankRepository $taxonomyRepository,
     ): int {
-        $taxonomy = new TaxonomyOrchestrator(
-            new TaxonomyBankRepository(),
-            new TaxonomyGeminiClient(),
-            new ValidationDominantIdeas(),
-        );
         $dryRun = (bool) $this->option('dry-run');
 
         $this->line('');
         $this->line('╔══════════════════════════════════════════════════════════════════╗');
-        $this->line('║   ROTATION V3 — KernelPipelineOrchestrator (KRP v3.2)          ║');
+        $this->line('║   ROTATION KRP v4.0 — Factory → Blueprint → KRP               ║');
         $this->line('╚══════════════════════════════════════════════════════════════════╝');
         $this->line('');
 
@@ -62,7 +58,12 @@ class QuestionsKernelRotateCommand extends Command
             return self::SUCCESS;
         }
 
-        $orchestrator = new KernelPipelineOrchestrator($factory, $planner, $taxonomy, $codeEngine);
+        $orchestrator = new KernelPipelineOrchestrator(
+            $factory,
+            $planner,
+            $stateRepository,
+            new TaxonomyPipelineBridge($taxonomy, $taxonomyRepository, $planner),
+        );
 
         try {
             $result = $orchestrator->run();

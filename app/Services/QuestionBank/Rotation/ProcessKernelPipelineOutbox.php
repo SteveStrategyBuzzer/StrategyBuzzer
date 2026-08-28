@@ -13,7 +13,7 @@ use Throwable;
  * ProcessKernelPipelineOutbox — processeur de l'Outbox du pipeline Kernel.
  *
  * ═══════════════════════════════════════════════════════════════════════════════
- * IMPLÉMENTATION CANONIQUE CURRENT_KERNEL_RECEIVED (V3.2 — 2026-08-14)
+ * IMPLÉMENTATION CANONIQUE CURRENT_KERNEL_RECEIVED (KRP v4.0)
  * ═══════════════════════════════════════════════════════════════════════════════
  *
  * Séquence pour chaque événement CURRENT_KERNEL_RECEIVED :
@@ -24,10 +24,9 @@ use Throwable;
  *        a. idempotence blueprint_id
  *        b. receipt INSERT
  *        c. kernel_received_total +1
- *        d. lecture pending_depth_exhausted_depth
- *        e. éventuelle transition Depth (applyDepthTransition)
- *        f. éventuel depth_state = PRODUCTION_ON_HOLD
- *   5. KernelPipelineOrchestrator::run() — déclenche le Blueprint suivant.
+ *   5. KernelPipelineOrchestrator::run() — crée le Blueprint suivant. KRP y
+ *      consomme éventuellement un fait terminal, puis exécute ses moteurs
+ *      internes DOMAIN_EXHAUSTED / DEPTH_EXHAUSTED.
  *   6. Marquer processed_at UNIQUEMENT après succès complet.
  *   7. En cas d'exception : conserver non traité, sauver last_error, laisser rejouable.
  *
@@ -92,7 +91,7 @@ final class ProcessKernelPipelineOutbox
      * Séquence :
      *   1. Incrémenter attempt_count (verrou optimiste)
      *   2. Reconstruire l'événement depuis payload
-     *   3. planner->receiveKernelReceivedV2() — CKR canonique (idempotence + compteur + transition)
+ *   3. planner->receiveKernelReceivedV2() — CKR canonique (idempotence + compteur)
      *   4. orchestrator->run() — Blueprint suivant
      *   5. Marquer processed_at (succès total)
      *   6. En cas d'erreur : sauver last_error
@@ -132,7 +131,7 @@ final class ProcessKernelPipelineOutbox
             $event = CurrentKernelReceived::fromPayload($payload);
 
             // ── 2. CKR canonique (DEC-093) — source unique de vérité ─────────
-            // Atomiquement : idempotence → receipt → compteur → pending check → transition
+            // Atomiquement : idempotence → receipt → compteur.
             $this->planner->receiveKernelReceivedV2(
                 $event->blueprintId,
                 $event->depth,

@@ -20,6 +20,13 @@ final class TaxonomyConfig
     /** Nombre maximum de Sujets générés par Sous-domaine. */
     public const MAX_SUBJECTS_PER_SUBDOMAIN = 50;
 
+    /**
+     * Capacité technique par appel Gemini pour la génération de Sujets (DEC-100).
+     * Nombre minimal d'appels pour N Sujets = ceil(N / MAX_SUBJECTS_PER_GEMINI_CALL).
+     * Les lots sont répartis aussi également que possible (écart maximal de 1 Sujet).
+     */
+    public const MAX_SUBJECTS_PER_GEMINI_CALL = 10;
+
     /** Nombre maximum d'Idées Dominantes PASS par Sujet (spec §2 : 1..5). */
     public const MAX_DOMINANT_IDEAS_PER_SUBJECT = 5;
 
@@ -37,7 +44,7 @@ final class TaxonomyConfig
     // ── Modèle Gemini ─────────────────────────────────────────────────────────
 
     /** Modèle Gemini utilisé pour la génération Taxonomy. */
-    public const GEMINI_MODEL = 'gemini-2.0-flash';
+    public const GEMINI_MODEL = 'gemini-3.6-flash';
 
     /** URL de base Gemini REST API. */
     public const GEMINI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/models';

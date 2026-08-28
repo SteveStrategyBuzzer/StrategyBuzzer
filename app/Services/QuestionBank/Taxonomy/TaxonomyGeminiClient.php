@@ -24,6 +24,8 @@ use RuntimeException;
  */
 class TaxonomyGeminiClient
 {
+    private const TECHNICAL_ATTEMPTS = 4;
+
     private string $apiKey;
 
     public function __construct()
@@ -42,6 +44,78 @@ class TaxonomyGeminiClient
     // =========================================================================
     // Génération de Sous-domaines
     // =========================================================================
+
+    /**
+     * Crée le seul Sous-domaine d'une occurrence avec ses Subjects PASS initiaux.
+     *
+     * Un Sous-domaine sans Subject exploitable n'est jamais persisté par
+     * TaxonomyOrchestrator. Les Subjects rejetés restent hors de la persistance.
+     *
+     * @param array<int, array{subdomain: string, subjects: array<int, array{subject: string, pass_ideas: string[], fail_ideas: array}>>>
+     *     $lookback
+     * @return array{status: string, subdomain: string|null, subjects: string[]}
+     */
+    public function generateOccurrence(
+        string $domain,
+        string $domainLabel,
+        DepthContract $contract,
+        array $lookback = [],
+    ): array {
+        $history = $this->formatOccurrenceLookback($lookback);
+        $maxFirstBatch = TaxonomyConfig::MAX_SUBJECTS_PER_GEMINI_CALL;
+
+        $prompt = <<<PROMPT
+Tu prépares une OCCURRENCE Taxonomy complète pour un pipeline pédagogique.
+
+{$contract->toPromptText()}
+
+DOMAINE : {$domainLabel}
+
+Retourne, dans le même travail intellectuel :
+- exactement 1 Sous-domaine officiel et viable;
+- entre 1 et {$maxFirstBatch} Subjects PASS qui appartiennent strictement à ce Sous-domaine
+  (ce premier lot pourra être complété par des appels supplémentaires si le
+  Sous-domaine peut porter davantage de Subjects conformes);
+- aucun Subject FAIL ou douteux.
+
+Contraintes :
+- Sous-domaine et Subjects doivent respecter le Depth et le Domaine.
+- Le Sous-domaine ne peut pas être un Sujet déguisé.
+- Chaque Subject doit pouvoir porter au moins une connaissance dominante.
+- Ne répète ni ne reformule les occurrences historiques.
+- N'invente aucun état de rotation, aucun prochain Domaine ou Depth.
+
+{$history}
+
+Si une occurrence exploitable est possible, retourne exactement :
+{"status":"CANDIDATES","subdomain":"...","subjects":[{"value":"..."}, {"value":"..."}]}
+
+Si aucune occurrence viable n'est possible, retourne :
+{"status":"NO_MORE_OCCURRENCES","subdomain":null,"subjects":[]}
+
+IMPORTANT : Retourne UNIQUEMENT du JSON valide, sans markdown ni explication.
+PROMPT;
+
+        $response = $this->callGemini($prompt, 'generateOccurrence', [
+            'domain' => $domain,
+            'depth' => $contract->depth,
+        ]);
+
+        $subdomain = $response['subdomain'] ?? null;
+        $subjects = $response['subjects'] ?? [];
+
+        return [
+            'status' => (string) ($response['status'] ?? 'NO_MORE_OCCURRENCES'),
+            'subdomain' => is_string($subdomain) && trim($subdomain) !== '' ? trim($subdomain) : null,
+            'subjects' => array_values(array_filter(
+                array_map(
+                    fn($subject) => is_string($subject) ? trim($subject) : '',
+                    is_array($subjects) ? $subjects : []
+                ),
+                fn(string $subject) => $subject !== ''
+            )),
+        ];
+    }
 
     /**
      * Génère des candidats Sous-domaines pour un Domaine + Depth.
@@ -264,6 +338,15 @@ RÈGLES STRICTES :
 - FORMAT_MINIMAL_IRREDUCTIBLE : pas de phrase, unité de sens minimale
 - Chaque Idée doit pointer une direction de connaissance DISTINCTE et DOMINANTE
 - Cherche de NOUVELLES DIRECTIONS, pas de nouvelles façons d'écrire une direction déjà rejetée
+- OUTSIDE_SUBDOMAIN : l'Idée doit appartenir réellement au Sous-domaine '{$subDomain}' et
+  au Sujet '{$subject}' transmis ; refuse-la si elle appartient plutôt à un autre
+  Sous-domaine, ou si son lien avec le Sous-domaine actif est seulement indirect
+- TOO_NARROW : l'Idée ne doit pas être un détail trop étroit, anecdotique ou impropre à
+  devenir une direction pédagogique dominante pour le Sujet ; une formulation courte ne
+  doit jamais être confondue avec une portée intellectuelle trop étroite
+- DISCRIMINATION SOUS-DOMAINE + SUJET : juge chaque Idée dans le couple EXACT
+  Sous-domaine '{$subDomain}' + Sujet '{$subject}' transmis ; une Idée générique au
+  Domaine, ou applicable indistinctement à plusieurs Sujets, doit être refusée
 
 EXEMPLE INTERDIT (direction déjà rejetée) :
   Après "Acte de l'Amérique du Nord britannique" → NE PAS proposer "AANB de 1867"
@@ -323,41 +406,45 @@ PROMPT;
             ],
         ];
 
-        try {
-            $response = Http::timeout($timeout)->post($url, $body);
+        $lastError = null;
 
-            if (! $response->successful()) {
-                Log::error('[TaxonomyGeminiClient] HTTP erreur', [
+        for ($attempt = 1; $attempt <= self::TECHNICAL_ATTEMPTS; $attempt++) {
+            try {
+                $response = Http::timeout($timeout)->post($url, $body);
+
+                if (! $response->successful()) {
+                    throw new \RuntimeException(
+                        "HTTP {$response->status()} pendant {$operation}."
+                    );
+                }
+
+                $json = $response->json();
+                $text = $json['candidates'][0]['content']['parts'][0]['text'] ?? null;
+
+                if (! is_string($text) || trim($text) === '') {
+                    throw new \RuntimeException("Réponse vide pendant {$operation}.");
+                }
+
+                return $this->parseGeminiResponse($text, $operation);
+            } catch (\Throwable $e) {
+                $lastError = $e;
+
+                Log::warning('[TaxonomyGeminiClient] Échec technique retryable', [
                     'operation' => $operation,
-                    'status'    => $response->status(),
+                    'attempt'   => $attempt,
+                    'max_attempts' => self::TECHNICAL_ATTEMPTS,
+                    'error'     => $e->getMessage(),
                     'context'   => $context,
                 ]);
-
-                return $this->fallbackResponse($operation);
             }
-
-            $json = $response->json();
-            $text = $json['candidates'][0]['content']['parts'][0]['text'] ?? null;
-
-            if (! is_string($text) || empty($text)) {
-                Log::warning('[TaxonomyGeminiClient] Réponse vide', [
-                    'operation' => $operation,
-                    'context'   => $context,
-                ]);
-
-                return $this->fallbackResponse($operation);
-            }
-
-            return $this->parseGeminiResponse($text, $operation);
-        } catch (\Throwable $e) {
-            Log::error('[TaxonomyGeminiClient] Exception', [
-                'operation' => $operation,
-                'error'     => $e->getMessage(),
-                'context'   => $context,
-            ]);
-
-            return $this->fallbackResponse($operation);
         }
+
+        throw new TaxonomyGeminiTechnicalException(
+            "Gemini indisponible après 1 tentative initiale et 3 retries pour {$operation}: "
+            . ($lastError?->getMessage() ?? 'erreur technique inconnue'),
+            $operation,
+            $context,
+        );
     }
 
     /**
@@ -373,12 +460,7 @@ PROMPT;
         $decoded = json_decode($cleaned, true);
 
         if (! is_array($decoded)) {
-            Log::warning('[TaxonomyGeminiClient] JSON invalide', [
-                'operation' => $operation,
-                'raw'       => substr($text, 0, 500),
-            ]);
-
-            return $this->fallbackResponse($operation);
+            throw new \RuntimeException("JSON Gemini invalide pendant {$operation}.");
         }
 
         $status     = $decoded['status'] ?? 'NO_MORE';
@@ -400,29 +482,30 @@ PROMPT;
             fn($c) => ! empty($c['value'])
         ));
 
-        return [
+        $result = [
             'status'     => $status,
             'candidates' => $normalized,
         ];
-    }
 
-    /**
-     * Réponse de repli en cas d'erreur — signal "épuisé" pour ne pas bloquer le pipeline.
-     *
-     * @return array{status: string, candidates: array}
-     */
-    private function fallbackResponse(string $operation): array
-    {
-        $statusMap = [
-            'generateSubdomains' => 'NO_MORE_SUBDOMAINS',
-            'generateSubjects'   => 'NO_MORE_SUBJECTS',
-            'generateIdeas'      => 'NO_MORE_IDEAS',
-        ];
+        if (isset($decoded['subdomain'])) {
+            $subdomain = $decoded['subdomain'];
+            $result['subdomain'] = is_array($subdomain)
+                ? ($subdomain['value'] ?? null)
+                : $subdomain;
+        }
 
-        return [
-            'status'     => $statusMap[$operation] ?? 'NO_MORE',
-            'candidates' => [],
-        ];
+        if (isset($decoded['subjects']) && is_array($decoded['subjects'])) {
+            $result['subjects'] = array_values(array_filter(array_map(
+                fn($subject) => is_string($subject)
+                    ? $subject
+                    : (is_array($subject) && is_string($subject['value'] ?? null)
+                        ? $subject['value']
+                        : null),
+                $decoded['subjects']
+            )));
+        }
+
+        return $result;
     }
 
     /**
@@ -459,6 +542,36 @@ PROMPT;
 
             if (! empty($covered)) {
                 $lines[] = '  Directions couvertes : ' . implode(', ', $covered);
+            }
+        }
+
+        return implode("\n", $lines);
+    }
+
+    /**
+     * @param array<int, array{subdomain: string, subjects: string[], ideas: string[]}> $lookback
+     */
+    private function formatOccurrenceLookback(array $lookback): string
+    {
+        if ($lookback === []) {
+            return 'Aucune occurrence historique exploitable.';
+        }
+
+        $lines = ['LOOKBACK-2 DES OCCURRENCES ANTÉRIEURES (ne pas répéter ni reformuler) :'];
+        foreach ($lookback as $index => $entry) {
+            $lines[] = '  Occurrence -' . ($index + 1) . ':';
+            $lines[] = '    Sous-domaine : ' . ($entry['subdomain'] ?: '—');
+            foreach (($entry['subjects'] ?? []) as $subject) {
+                $lines[] = '    Sujet : ' . ($subject['subject'] ?? '—');
+                $passIdeas = $subject['pass_ideas'] ?? [];
+                if ($passIdeas !== []) {
+                    $lines[] = '      PASS : ' . implode(', ', $passIdeas);
+                }
+                foreach (($subject['fail_ideas'] ?? []) as $failIdea) {
+                    $value = $failIdea['value'] ?? '—';
+                    $reason = $failIdea['reason'] ?? 'UNKNOWN';
+                    $lines[] = "      FAIL : {$value} ({$reason})";
+                }
             }
         }
 

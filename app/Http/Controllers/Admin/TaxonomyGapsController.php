@@ -28,7 +28,7 @@ class TaxonomyGapsController extends Controller
 
         try {
             $repo     = new TaxonomyBankRepository();
-            $subjects = $repo->findExhaustedWithOnlyFails(minFails: 1);
+            $subjects = $repo->findV11PreparationAnomalies(minFails: 1);
         } catch (\Throwable $e) {
             $error = 'Taxonomy schema unavailable: ' . $e->getMessage();
         }

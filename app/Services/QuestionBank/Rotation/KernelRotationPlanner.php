@@ -11,370 +11,276 @@ use Illuminate\Support\Str;
 use RuntimeException;
 
 /**
- * KernelRotationPlanner — machine d'état persistante de la rotation globale.
+ * KernelRotationPlanner — KRP v4.0 / DEC-119.
  *
- * ═══════════════════════════════════════════════════════════════════════════════
- * INTERFACE V3 (02_KernelRotationPlanner v3.2 — VERROUILLÉ 2026-08-13)
- * ═══════════════════════════════════════════════════════════════════════════════
+ * Taxonomy's future responsibility is limited to declaring an immutable terminal
+ * fact (fact_id, depth, domain). KRP validates it against its active Blueprint
+ * and captures the active tour internally, then consumes it only when a new
+ * Factory Blueprint is being prepared. KRP owns the whole lifecycle:
  *
- *   resolveNextRotation(?object $state) : RotationResolution
- *     Gate : lit l'état V2 (reçu verrouillé depuis l'orchestrateur).
- *     Retourne RotationResolution::available ou ::noRotation.
- *     NE déclenche JAMAIS DOMAIN_EXHAUSTED ni DEPTH_EXHAUSTED (DEC-087 / DEC-089).
+ *   terminal fact -> DOMAIN_EXHAUSTED -> VISIBLE/ESTOMPÉ
+ *                 -> DEPTH_EXHAUSTED (last visible Domain only)
+ *                 -> close tour + DepthNeedMatrix + next Depth or HOLD.
  *
- *   registerActiveBlueprintIdentity(string $blueprintId, ?object $state) : void
- *     Persiste active_blueprint_identity dans l'état V2.
- *     Crée la ligne si absente (premier appel absolu).
- *     DOIT être appelée à l'intérieur de la transaction FOR UPDATE de l'orchestrateur.
- *
- *   applyRotation(KernelBlueprint $blueprint, int $depth, string $domain, int $domainPosition) : void
- *     Appelée UNE SEULE FOIS (KRP-R01) quand Taxonomy confirme un territoire.
- *     Écrit depth + domain dans le Blueprint (fillRotation — write-once).
- *     Persiste active_depth + domain_position dans l'état V2.
- *
- *   receiveDomainExhausted(int $depth, string $domain) : void
- *     Reçoit le signal DOMAIN_EXHAUSTED de Taxonomy (LOT C → produit en V4).
- *     Marque domain_states[depth][domain] = DOMAIN_EXHAUSTED (idempotent).
- *
- *   receiveDepthExhausted(int $depth) : void
- *     Reçoit le signal DEPTH_EXHAUSTED de Taxonomy (LOT C → produit en V4).
- *     Mémorise pending_depth_exhausted_depth.
- *
- *   receiveKernelReceivedV2(string $blueprintId, int $depth, string $domain) : void
- *     Comptabilisation idempotente + vérification transition pending (DEC-093).
- *
- * ═══════════════════════════════════════════════════════════════════════════════
- * RÈGLES CLÉS
- * ═══════════════════════════════════════════════════════════════════════════════
- *
- *   KRP-R01  fillRotation = write-once ; appel unique dans applyRotation().
- *   DEC-087  KRP ne produit JAMAIS DOMAIN_EXHAUSTED.
- *   DEC-089  KRP ne produit JAMAIS DEPTH_EXHAUSTED.
- *   DEC-091  domain_position = index (0-7) du dernier domaine sélectionné.
- *            NULL = non démarré → prochain domaine = 'geographie' (index 0).
- *   DEC-093  Dans receiveKernelReceivedV2 : compteur AVANT vérification transition.
+ * KRP is the sole writer of Blueprint depth + domain.
  */
 final class KernelRotationPlanner
 {
-    // =========================================================================
-    // Tables
-    // =========================================================================
-
     private const STATE_TABLE_V2 = 'kernel_rotation_state_v2';
     private const RECEIPTS_TABLE = 'kernel_current_kernel_receipts';
 
-    // =========================================================================
-    // Constantes publiques
-    // =========================================================================
-
-    /** Résultat de resolveNextRotation : rotation disponible. */
-    public const RESULT_ROTATION_ASSIGNED  = 'ROTATION_ASSIGNED';
-
-    /** Résultat de resolveNextRotation : aucun besoin actif. */
+    public const RESULT_ROTATION_ASSIGNED = 'ROTATION_ASSIGNED';
     public const RESULT_PRODUCTION_ON_HOLD = 'PRODUCTION_ON_HOLD';
 
+    private const DEPTH_STATE_ACTIVE = 'ROTATION_ACTIVE';
+    private const DEPTH_STATE_HOLD = 'PRODUCTION_ON_HOLD';
+    private const TOUR_OPEN = 'OPEN';
+    private const TOUR_CLOSED = 'CLOSED';
+    private const DOMAIN_VISIBLE = 'VISIBLE';
+    private const DOMAIN_ESTOMPE = 'ESTOMPÉ';
+
+    private KernelRotationStateRepository $stateRepository;
+    private KernelTerminalFactRepository $terminalFactRepository;
+    private DepthNeedMatrix $depthNeedMatrix;
+
+    public function __construct(
+        ?KernelRotationStateRepository $stateRepository = null,
+        ?KernelTerminalFactRepository $terminalFactRepository = null,
+        ?DepthNeedMatrix $depthNeedMatrix = null,
+    ) {
+        $this->stateRepository = $stateRepository ?? new KernelRotationStateRepository();
+        $this->terminalFactRepository = $terminalFactRepository ?? new KernelTerminalFactRepository();
+        $this->depthNeedMatrix = $depthNeedMatrix ?? new DepthNeedMatrix();
+    }
+
     /**
-     * Séquence officielle de transition entre Depths (DepthCycle v3.2, VERROUILLÉ).
-     * null = PRODUCTION_ON_HOLD (Depth 10 est le dernier Depth du cycle).
+     * KRP's public boundary for the future Taxonomy v1.1 producer.
      *
-     * @var array<int, int|null>
+     * A replay with the same immutable fact identity is persisted as a NO-OP.
+     * The fact is deliberately not processed here: it is consumed only while
+     * preparing the next Factory Blueprint.
      */
-    private const DEPTH_CYCLE_NEXT = [
-        2  => 4,
-        4  => 6,
-        6  => 7,
-        7  => 8,
-        8  => 9,
-        9  => 10,
-        10 => null,
-    ];
+    public function receiveTaxonomyTerminalFact(string $factId, int $depth, string $domain): void
+    {
+        $this->assertDepth($depth);
+        $this->assertDomain($domain);
 
-    // =========================================================================
-    // V3 — Gate : résolution de la rotation
-    // =========================================================================
+        if ($factId === '') {
+            throw new RuntimeException('[KRP] fact_id terminal requis.');
+        }
+
+        DB::transaction(function () use ($factId, $depth, $domain) {
+            $existing = $this->terminalFactRepository->lockByFactId($factId);
+
+            if ($existing !== null) {
+                if ((int) $existing->depth !== $depth
+                    || (string) $existing->domain_code !== $domain) {
+                    throw new RuntimeException(
+                        "[KRP] Violation d'immuabilité du fait terminal {$factId}."
+                    );
+                }
+
+                return;
+            }
+
+            $state = $this->stateRepository->firstForUpdate();
+
+            if ($state === null
+                || $state->depth_state === self::DEPTH_STATE_HOLD
+                || $state->active_depth === null
+                || $state->active_tour_id === null
+                || $state->active_blueprint_identity === null) {
+                throw new RuntimeException(
+                    '[KRP] Fait terminal refusé : aucun Blueprint KRP actif à corréler.'
+                );
+            }
+
+            $activeDepth = (int) $state->active_depth;
+            $activePosition = $state->domain_position !== null
+                ? (int) $state->domain_position
+                : null;
+            $activeDomain = $activePosition !== null
+                ? DepthTourState::DOMAIN_CYCLE[$activePosition] ?? null
+                : null;
+
+            if ($activeDepth !== $depth || $activeDomain !== $domain) {
+                throw new RuntimeException(
+                    '[KRP] Fait terminal refusé : depth/domain ne correspondent pas '
+                    . 'au Blueprint KRP actif.'
+                );
+            }
+
+            $this->terminalFactRepository->record(
+                $factId,
+                $depth,
+                $domain,
+                (string) $state->active_tour_id,
+            );
+        });
+    }
 
     /**
-     * Résout la prochaine rotation disponible.
+     * Resolves a rotation without consuming terminal facts.
      *
-     * CONTRAT D'APPEL : doit être appelée DEPUIS UNE TRANSACTION avec verrou
-     * FOR UPDATE sur kernel_rotation_state_v2 (cf. KernelPipelineOrchestrator).
-     *
-     * @param object|null $state  Ligne verrouillée, ou null au premier appel absolu.
+     * This remains available for read-only callers. The production Factory path
+     * must use prepareNewBlueprint(), which consumes exactly one pending fact.
      */
     public function resolveNextRotation(?object $state): RotationResolution
     {
-        // ── Gate 1 : PRODUCTION_ON_HOLD explicite ─────────────────────────────
-        $depthState = $state?->depth_state ?? 'ROTATION_ACTIVE';
-
-        if ($depthState === 'PRODUCTION_ON_HOLD') {
-            return RotationResolution::noRotation('PRODUCTION_ON_HOLD');
+        if ($this->isProductionOnHold($state)) {
+            return RotationResolution::noRotation(self::RESULT_PRODUCTION_ON_HOLD);
         }
 
-        // ── Depth actif ───────────────────────────────────────────────────────
-        $activeDepth    = $state?->active_depth !== null ? (int) $state->active_depth : null;
-        $domainPosition = $state?->domain_position !== null ? (int) $state->domain_position : null;
-        $depth          = $activeDepth ?? DepthNeedMatrix::DEPTH_CYCLE[0]; // 2
+        if ($state === null) {
+            return RotationResolution::available(
+                DepthNeedMatrix::DEPTH_CYCLE[0],
+                DepthTourState::DOMAIN_CYCLE[0],
+                0,
+            );
+        }
 
-        // ── domain_states (nouveau schéma, initié en V3) ──────────────────────
+        $depth = $state->active_depth !== null
+            ? (int) $state->active_depth
+            : DepthNeedMatrix::DEPTH_CYCLE[0];
         $domainStates = $this->loadDomainStates($state);
-        $pendingDepth = $state?->pending_depth_exhausted_depth !== null
-                        ? (int) $state->pending_depth_exhausted_depth
-                        : null;
-
-        // ── Sélection du prochain Domaine dans le cycle ───────────────────────
-        $next = $this->selectNextDomain($depth, $domainPosition, $domainStates, $pendingDepth);
+        $next = $this->selectNextVisibleDomain(
+            $depth,
+            $state->domain_position !== null ? (int) $state->domain_position : null,
+            $domainStates,
+        );
 
         if ($next === null) {
-            return RotationResolution::noRotation('PENDING_DEPTH_TRANSITION');
+            throw new RuntimeException(
+                '[KRP] État de tour fermé rencontré hors de DOMAIN_EXHAUSTED.'
+            );
         }
 
         return RotationResolution::available($depth, $next['domain'], $next['index']);
     }
 
     /**
-     * Sélectionne le prochain Domaine disponible dans le DomainCycle.
-     *
-     * Règle (DEC-091) :
-     *   - Part de (domain_position ?? -1), avance de 1 circulairement.
-     *   - Ignore les domaines marqués DOMAIN_EXHAUSTED.
-     *   - Retourne null si tous DOMAIN_EXHAUSTED ET pending_depth_exhausted_depth ≠ null.
-     *
-     * @return array{domain: string, index: int}|null
-     * @throws RuntimeException INCOHÉRENCE_ÉTAT si tous exhausted mais sans pending.
+     * Returns true only when the persisted DEPTH_EXHAUSTED result is HOLD.
      */
-    private function selectNextDomain(
-        int   $depth,
-        ?int  $position,
-        array $domainStates,
-        ?int  $pendingDepth,
-    ): ?array {
-        $cycle    = DepthTourState::DOMAIN_CYCLE;
-        $pos      = $position ?? -1;
-        $depthKey = (string) $depth;
+    public function isProductionOnHold(?object $state): bool
+    {
+        return $state?->depth_state === self::DEPTH_STATE_HOLD;
+    }
 
-        for ($offset = 1; $offset <= 8; $offset++) {
-            $index     = ($pos + $offset) % 8;
-            $candidate = $cycle[$index];
-            $status    = $domainStates[$depthKey][$candidate] ?? 'ACTIF';
+    /**
+     * Factory -> KRP entry point. Must run in the transaction that owns the
+     * rotation-state row lock.
+     *
+     * It consumes one terminal fact for the active Depth, runs internal
+     * DOMAIN_EXHAUSTED / DEPTH_EXHAUSTED as required, selects the next visible
+     * Domain, and writes depth + domain once into this new Blueprint.
+     */
+    public function prepareNewBlueprint(KernelBlueprint $blueprint, ?object $lockedState): RotationResolution
+    {
+        $state = $this->ensureInitializedState($lockedState);
 
-            if ($status !== 'DOMAIN_EXHAUSTED') {
-                return ['domain' => $candidate, 'index' => $index];
-            }
+        if ($this->isProductionOnHold($state)) {
+            return RotationResolution::noRotation(self::RESULT_PRODUCTION_ON_HOLD);
         }
 
-        // Tous les 8 Domaines sont DOMAIN_EXHAUSTED
-        if ($pendingDepth === null) {
+        $state = $this->consumeOnePendingTerminalFact($state);
+
+        if ($this->isProductionOnHold($state)) {
+            return RotationResolution::noRotation(self::RESULT_PRODUCTION_ON_HOLD);
+        }
+
+        $depth = (int) $state->active_depth;
+        $domainStates = $this->loadDomainStates($state);
+        $next = $this->selectNextVisibleDomain(
+            $depth,
+            $state->domain_position !== null ? (int) $state->domain_position : null,
+            $domainStates,
+        );
+
+        if ($next === null) {
             throw new RuntimeException(
-                "[KRP] INCOHÉRENCE_ÉTAT : tous les domaines de Depth {$depth} sont DOMAIN_EXHAUSTED "
-                . "mais aucun signal DEPTH_EXHAUSTED n'est mémorisé. "
-                . "Taxonomy est l'unique producteur de ce signal (DEC-087/DEC-089)."
+                '[KRP] INCOHÉRENCE : aucun Domain VISIBLE après traitement du tour ouvert.'
             );
         }
 
-        return null; // PENDING_DEPTH_TRANSITION — attendre le prochain CKR
+        $blueprint->fillRotation($depth, $next['domain']);
+
+        $this->stateRepository->updateWithLock($state, [
+            'active_blueprint_identity' => $blueprint->blueprint_id,
+            'active_depth'              => $depth,
+            'domain_position'           => $next['index'],
+            'updated_at'                => now(),
+        ]);
+
+        return RotationResolution::available($depth, $next['domain'], $next['index']);
     }
 
-    // =========================================================================
-    // V3 — Enregistrement de l'identité Blueprint (à l'intérieur de la transaction)
-    // =========================================================================
-
     /**
-     * Enregistre l'identité du Blueprint dans kernel_rotation_state_v2.
-     *
-     * CONTRAT D'APPEL : doit être appelée DEPUIS LA MÊME TRANSACTION que
-     * resolveNextRotation (verrou FOR UPDATE maintenu).
-     *
-     * Si aucune ligne n'existe → INSERT (premier appel absolu) :
-     *   - depth_state = ROTATION_ACTIVE
-     *   - domain_states = 7 Depths × 8 Domaines × ACTIF (56 paires)
-     *   - tour_domain_states = DepthTourState initialisé (legacy EMPTY loop)
-     *   - active_depth = null (écrit par applyRotation après territoire confirmé)
-     *
-     * @param object|null $state  Ligne verrouillée lue par resolveNextRotation, ou null.
+     * Legacy compatibility entry. New production code uses prepareNewBlueprint.
      */
     public function registerActiveBlueprintIdentity(string $blueprintId, ?object $state): void
     {
-        if ($state === null) {
-            DB::table(self::STATE_TABLE_V2)->insert([
-                'depth_state'                    => 'ROTATION_ACTIVE',
-                'active_depth'                   => null,
-                'domain_position'                => null,
-                'domain_states'                  => json_encode($this->buildInitialDomainStates()),
-                'tour_domain_states'             => json_encode(DepthTourState::initTour()->toArray()),
-                'active_blueprint_identity'      => $blueprintId,
-                'last_counted_blueprint_identity' => null,
-                'pending_depth_exhausted_depth'  => null,
-                'lock_version'                   => 1,
-                'created_at'                     => now(),
-                'updated_at'                     => now(),
-            ]);
-        } else {
-            DB::table(self::STATE_TABLE_V2)->whereNotNull('id')->update([
-                'active_blueprint_identity' => $blueprintId,
-                'lock_version'              => (int) $state->lock_version + 1,
-                'updated_at'                => now(),
-            ]);
-        }
-    }
+        $state = $this->ensureInitializedState($state);
 
-    // =========================================================================
-    // V3 — Application finale de la rotation (write-once)
-    // =========================================================================
-
-    /**
-     * Applique la rotation confirmée sur le Blueprint et persiste l'état final.
-     *
-     * Appelée UNE SEULE FOIS (KRP-R01), après que Taxonomy a fourni un territoire
-     * non-null. Le Blueprint reçoit son depth + domain via fillRotation (write-once).
-     *
-     * @param int $domainPosition  Index (0-7) du domaine dans DepthTourState::DOMAIN_CYCLE.
-     */
-    public function applyRotation(
-        KernelBlueprint $blueprint,
-        int             $depth,
-        string          $domain,
-        int             $domainPosition,
-    ): void {
-        // Write-once sur le Blueprint (KRP-R01)
-        $blueprint->fillRotation($depth, $domain);
-
-        // Persister depth + domain_position dans l'état V2
-        DB::table(self::STATE_TABLE_V2)->whereNotNull('id')->update([
-            'active_depth'    => $depth,
-            'domain_position' => $domainPosition,
-            'updated_at'      => now(),
+        $this->stateRepository->updateWithLock($state, [
+            'active_blueprint_identity' => $blueprintId,
         ]);
     }
 
-    // =========================================================================
-    // V3 — Réception des signaux Taxonomy (LOT C — interfaces actives)
-    // =========================================================================
+    /**
+     * Legacy compatibility entry. New production code writes the Blueprint
+     * inside prepareNewBlueprint so its state update shares the same lock.
+     */
+    public function applyRotation(
+        KernelBlueprint $blueprint,
+        int $depth,
+        string $domain,
+        int $domainPosition,
+    ): void {
+        $this->assertDepth($depth);
+        $this->assertDomain($domain);
+
+        DB::transaction(function () use ($blueprint, $depth, $domain, $domainPosition) {
+            $state = $this->ensureInitializedState($this->stateRepository->firstForUpdate());
+            $blueprint->fillRotation($depth, $domain);
+
+            $this->stateRepository->updateWithLock($state, [
+                'active_depth'              => $depth,
+                'domain_position'           => $domainPosition,
+                'active_blueprint_identity' => $blueprint->blueprint_id,
+            ]);
+        });
+    }
 
     /**
-     * Reçoit le signal DOMAIN_EXHAUSTED émis par Taxonomy.
-     *
-     * Marque domain_states[depth][domain] = DOMAIN_EXHAUSTED dans une transaction
-     * atomique. Idempotent : un second appel pour le même (depth, domain) est un NO-OP.
-     *
-     * Taxonomy est l'unique producteur de ce signal (DEC-087).
-     *
-     * @throws RuntimeException domaine inconnu ou état non initialisé.
+     * v3 external signal is intentionally disabled. Future Taxonomy must call
+     * receiveTaxonomyTerminalFact() with its own immutable fact identity.
      */
     public function receiveDomainExhausted(int $depth, string $domain): void
     {
-        if (!in_array($domain, DepthTourState::DOMAIN_CYCLE, true)) {
-            throw new RuntimeException(
-                "[KRP] receiveDomainExhausted — domaine inconnu : '{$domain}'. "
-                . 'Domaines valides : ' . implode(', ', DepthTourState::DOMAIN_CYCLE) . '.'
-            );
-        }
-
-        DB::transaction(function () use ($depth, $domain) {
-            $state = DB::table(self::STATE_TABLE_V2)->lockForUpdate()->first();
-
-            if ($state === null) {
-                throw new RuntimeException(
-                    '[KRP] STOP — receiveDomainExhausted appelé sans état V2 initialisé.'
-                );
-            }
-
-            $domainStates = json_decode((string) ($state->domain_states ?? '{}'), true) ?: [];
-            $depthKey     = (string) $depth;
-
-            // Idempotence
-            if (($domainStates[$depthKey][$domain] ?? 'ACTIF') === 'DOMAIN_EXHAUSTED') {
-                return;
-            }
-
-            $domainStates[$depthKey][$domain] = 'DOMAIN_EXHAUSTED';
-
-            DB::table(self::STATE_TABLE_V2)->whereNotNull('id')->update([
-                'domain_states' => json_encode($domainStates),
-                'lock_version'  => (int) $state->lock_version + 1,
-                'updated_at'    => now(),
-            ]);
-        });
+        throw new RuntimeException(
+            '[KRP] Entrée v3 receiveDomainExhausted interdite. '
+            . 'Utiliser receiveTaxonomyTerminalFact(fact_id, depth, domain).'
+        );
     }
 
     /**
-     * Reçoit le signal DEPTH_EXHAUSTED émis par Taxonomy.
-     *
-     * Mémorise pending_depth_exhausted_depth. La transition vers le Depth suivant
-     * sera appliquée au prochain receiveKernelReceivedV2() (DEC-093).
-     *
-     * Taxonomy est l'unique producteur de ce signal (DEC-089).
-     *
-     * Invariants vérifiés :
-     *   - Si un autre pending est mémorisé → ERREUR D'INVARIANT (RuntimeException).
-     *   - Si active_depth ≠ depth (non null) → INCOHÉRENCE_ÉTAT (RuntimeException).
-     *   - Même depth déjà mémorisé → NO-OP idempotent.
-     *
-     * @throws RuntimeException violation d'invariant ou incohérence d'état.
+     * DEPTH_EXHAUSTED is internal to KRP in v4.0.
      */
     public function receiveDepthExhausted(int $depth): void
     {
-        DB::transaction(function () use ($depth) {
-            $state = DB::table(self::STATE_TABLE_V2)->lockForUpdate()->first();
-
-            if ($state === null) {
-                throw new RuntimeException(
-                    '[KRP] STOP — receiveDepthExhausted appelé sans état V2 initialisé.'
-                );
-            }
-
-            $pending     = $state->pending_depth_exhausted_depth !== null
-                           ? (int) $state->pending_depth_exhausted_depth
-                           : null;
-            $activeDepth = $state->active_depth !== null ? (int) $state->active_depth : null;
-
-            // Idempotence — même signal reçu deux fois pour le même Depth
-            if ($pending === $depth) {
-                return;
-            }
-
-            // Invariant : un seul signal pending à la fois
-            if ($pending !== null) {
-                throw new RuntimeException(
-                    "[KRP] ERREUR D'INVARIANT — receiveDepthExhausted(depth={$depth}) "
-                    . "mais pending_depth_exhausted_depth={$pending} déjà mémorisé. "
-                    . "Taxonomy doit émettre les signaux en ordre strict."
-                );
-            }
-
-            // Cohérence : le Depth du signal doit correspondre au Depth actif
-            if ($activeDepth !== null && $activeDepth !== $depth) {
-                throw new RuntimeException(
-                    "[KRP] INCOHÉRENCE_ÉTAT — receiveDepthExhausted(depth={$depth}) "
-                    . "mais active_depth={$activeDepth}. "
-                    . "Le signal DEPTH_EXHAUSTED doit correspondre au Depth actif (DEC-090)."
-                );
-            }
-
-            DB::table(self::STATE_TABLE_V2)->whereNotNull('id')->update([
-                'pending_depth_exhausted_depth' => $depth,
-                'lock_version'                  => (int) $state->lock_version + 1,
-                'updated_at'                    => now(),
-            ]);
-        });
+        throw new RuntimeException(
+            '[KRP] DEPTH_EXHAUSTED est interne à KRP v4.0 et ne peut pas être reçu.'
+        );
     }
 
     /**
-     * Comptabilise la réception d'un Blueprint par ReadyBank.
-     *
-     * Idempotent via kernel_current_kernel_receipts (PK blueprint_id — DEC-063).
-     *
-     * ORDRE OBLIGATOIRE (DEC-093) :
-     *   1. INSERT receipt (idempotence)
-     *   2. incrementKernelReceived (compteur)
-     *   3. Mise à jour last_counted_blueprint_identity
-     *   4. Vérification transition pending_depth_exhausted_depth → applyDepthTransition
-     *
-     * Chemin production : ProcessKernelPipelineOutbox → receiveKernelReceivedV2 (DEC-093).
+     * READY_BANK receipt accounting remains idempotent and does not decide any
+     * lifecycle transition. DEPTH_EXHAUSTED is processed only from a terminal
+     * fact during the next Factory Blueprint preparation.
      */
     public function receiveKernelReceivedV2(string $blueprintId, int $depth, string $domain): void
     {
         DB::transaction(function () use ($blueprintId, $depth, $domain) {
-            // ── 1. Idempotence ────────────────────────────────────────────────
             $alreadyReceived = DB::table(self::RECEIPTS_TABLE)
                 ->where('blueprint_id', $blueprintId)
                 ->exists();
@@ -383,12 +289,6 @@ final class KernelRotationPlanner
                 return;
             }
 
-            // ── 2. Insérer le reçu (SAVEPOINT contre la race concurrente) ────────
-            // En PostgreSQL, si deux workers passent le EXISTS check simultanément,
-            // le second INSERT échoue (UniqueConstraintViolationException) et
-            // avorte toute la transaction.  Le SAVEPOINT isole cet INSERT :
-            // en cas d'échec → ROLLBACK TO SAVEPOINT (transaction reste valide)
-            // → retour idempotent, comme si $alreadyReceived était vrai.
             DB::statement('SAVEPOINT ckr_receipt_insert');
             try {
                 DB::table(self::RECEIPTS_TABLE)->insert([
@@ -399,117 +299,290 @@ final class KernelRotationPlanner
                     'received_at'  => now(),
                 ]);
             } catch (UniqueConstraintViolationException) {
-                // Worker concurrent a inséré en premier — PK UNIQUE protège les données.
-                // ROLLBACK TO SAVEPOINT évite l'état "aborted" de la transaction PG.
                 DB::statement('ROLLBACK TO SAVEPOINT ckr_receipt_insert');
                 return;
             }
 
-            // ── 3. Incrémenter kernel_received_total (AVANT transition) ────────
-            (new DepthNeedMatrix())->incrementKernelReceived($depth, $domain);
+            $this->depthNeedMatrix->incrementKernelReceived($depth, $domain);
 
-            // ── 4. Mettre à jour last_counted_blueprint_identity ──────────────
-            DB::table(self::STATE_TABLE_V2)->whereNotNull('id')->update([
-                'last_counted_blueprint_identity' => $blueprintId,
-                'updated_at'                      => now(),
-            ]);
-
-            // ── 5. Vérifier si une transition de Depth est en attente ─────────
-            $state   = DB::table(self::STATE_TABLE_V2)->first();
-            $pending = $state?->pending_depth_exhausted_depth !== null
-                       ? (int) $state->pending_depth_exhausted_depth
-                       : null;
-
-            if ($pending !== null && $pending === $depth) {
-                $this->applyDepthTransition($state, $pending);
+            $state = $this->stateRepository->firstForUpdate();
+            if ($state !== null) {
+                $this->stateRepository->updateWithLock($state, [
+                    'last_counted_blueprint_identity' => $blueprintId,
+                ]);
             }
         });
     }
 
-    // =========================================================================
-    // Helpers privés
-    // =========================================================================
-
     /**
-     * Applique la transition vers le Depth suivant selon le DepthCycle officiel.
-     *
-     * Appelé depuis receiveKernelReceivedV2() uniquement (DEC-093).
-     * Réinitialise domain_position et pending_depth_exhausted_depth.
-     *
-     * Contrat v3.2 figé :
-     *   2→4 | 4→6 | 6→7 | 7→8 | 8→9 | 9→10 | 10→PRODUCTION_ON_HOLD
-     *
-     * Aucune consultation de DepthNeedMatrix :
-     *   cycle_target et cycle_completed ne sont PAS autorisés comme autorité
-     *   de transition de Depth dans la spec v3.2 verrouillée.
-     *
-     * @throws RuntimeException si $exhaustedDepth est hors DepthCycle officiel.
+     * Consumes at most one pending fact for the active Depth. A fact belonging
+     * to a later Depth remains pending until that Depth becomes active.
      */
-    private function applyDepthTransition(object $state, int $exhaustedDepth): void
+    private function consumeOnePendingTerminalFact(object $state): object
     {
-        if (!array_key_exists($exhaustedDepth, self::DEPTH_CYCLE_NEXT)) {
+        $activeDepth = (int) $state->active_depth;
+        $fact = $this->terminalFactRepository->lockNextPendingForTour(
+            $activeDepth,
+            (string) $state->active_tour_id,
+        );
+
+        if ($fact === null) {
+            return $state;
+        }
+
+        $domain = (string) $fact->domain_code;
+        $this->assertDomain($domain);
+
+        $domainStates = $this->loadDomainStates($state);
+        $depthKey = (string) $activeDepth;
+        $currentStatus = $domainStates[$depthKey][$domain] ?? self::DOMAIN_VISIBLE;
+
+        if ($currentStatus === self::DOMAIN_ESTOMPE) {
+            $this->terminalFactRepository->markConsumed((string) $fact->fact_id);
+            return $state;
+        }
+
+        if ($currentStatus !== self::DOMAIN_VISIBLE) {
             throw new RuntimeException(
-                "[KRP] INVARIANT — applyDepthTransition : Depth {$exhaustedDepth} hors DepthCycle officiel. "
-                . 'DepthCycle : ' . implode('→', array_keys(self::DEPTH_CYCLE_NEXT)) . '.'
+                "[KRP] État Domain inconnu pour {$activeDepth}/{$domain}: {$currentStatus}."
             );
         }
 
-        $nextDepth    = self::DEPTH_CYCLE_NEXT[$exhaustedDepth]; // null = PRODUCTION_ON_HOLD
-        $domainStates = json_decode((string) ($state->domain_states ?? '{}'), true) ?: [];
+        // DOMAIN_EXHAUSTED: VISIBLE -> ESTOMPÉ, persisted before any depth work.
+        $domainStates[$depthKey][$domain] = self::DOMAIN_ESTOMPE;
+        $this->stateRepository->updateWithLock($state, [
+            'domain_states' => json_encode($domainStates, JSON_UNESCAPED_UNICODE),
+        ]);
 
-        $updates = [
-            'pending_depth_exhausted_depth' => null,
-            'domain_position'               => null,
-            'lock_version'                  => (int) $state->lock_version + 1,
-            'updated_at'                    => now(),
-        ];
+        $state = $this->requireLockedState();
 
-        if ($nextDepth !== null) {
-            // Réinitialiser domain_states pour le nouveau Depth (tous Domaines → ACTIF)
-            $newDepthKey = (string) $nextDepth;
-            foreach (DepthTourState::DOMAIN_CYCLE as $d) {
-                $domainStates[$newDepthKey][$d] = 'ACTIF';
-            }
-            $updates['active_depth']  = $nextDepth;
-            $updates['domain_states'] = json_encode($domainStates);
-            $updates['depth_state']   = 'ROTATION_ACTIVE';
-        } else {
-            $updates['depth_state'] = 'PRODUCTION_ON_HOLD';
+        if (! $this->hasVisibleDomain($activeDepth, $domainStates)) {
+            // DOMAIN_EXHAUSTED calls the internal DEPTH_EXHAUSTED engine only
+            // after the final visible Domain has been persisted as ESTOMPÉ.
+            $state = $this->applyDepthExhausted($state, $activeDepth, $domainStates);
         }
 
-        DB::table(self::STATE_TABLE_V2)->whereNotNull('id')->update($updates);
+        $this->terminalFactRepository->markConsumed((string) $fact->fact_id);
+
+        return $state;
     }
 
     /**
-     * Charge et décode domain_states depuis l'état V2.
+     * Internal DEPTH_EXHAUSTED engine.
      *
+     * It closes the current tour idempotently in the same transaction, advances
+     * the matrix, finds the next required Depth in the circular cycle, resets a
+     * fresh DomainRotation, or persists HOLD when no need remains.
+     */
+    private function applyDepthExhausted(object $state, int $closedDepth, array $domainStates): object
+    {
+        if ($state->tour_state === self::TOUR_CLOSED
+            && (int) ($state->last_closed_depth ?? 0) === $closedDepth) {
+            return $state;
+        }
+
+        if ($this->hasVisibleDomain($closedDepth, $domainStates)) {
+            throw new RuntimeException(
+                '[KRP] DEPTH_EXHAUSTED interdit tant qu’un Domain VISIBLE existe.'
+            );
+        }
+
+        $nextDepth = $this->depthNeedMatrix->completeTourAndFindNextDepth($closedDepth);
+
+        $updates = [
+            'last_closed_tour_id' => $state->active_tour_id,
+            'last_closed_depth'   => $closedDepth,
+            'domain_position'     => null,
+            'pending_depth_exhausted_depth' => null,
+        ];
+
+        if ($nextDepth === null) {
+            $updates['depth_state'] = self::DEPTH_STATE_HOLD;
+            $updates['tour_state'] = self::TOUR_CLOSED;
+            $updates['active_blueprint_identity'] = null;
+
+            $this->stateRepository->updateWithLock($state, $updates);
+
+            return $this->requireLockedState();
+        }
+
+        $domainStates[(string) $nextDepth] = $this->freshVisibleDomainStates();
+        $updates['active_depth'] = $nextDepth;
+        $updates['active_tour_id'] = (string) Str::orderedUuid();
+        $updates['tour_state'] = self::TOUR_OPEN;
+        $updates['depth_state'] = self::DEPTH_STATE_ACTIVE;
+        $updates['domain_states'] = json_encode($domainStates, JSON_UNESCAPED_UNICODE);
+        $updates['active_blueprint_identity'] = null;
+
+        $this->stateRepository->updateWithLock($state, $updates);
+
+        return $this->requireLockedState();
+    }
+
+    private function ensureInitializedState(?object $state): object
+    {
+        if ($state === null) {
+            $this->stateRepository->insert([
+                'depth_state'                    => self::DEPTH_STATE_ACTIVE,
+                'active_depth'                   => DepthNeedMatrix::DEPTH_CYCLE[0],
+                'active_tour_id'                 => (string) Str::orderedUuid(),
+                'tour_state'                     => self::TOUR_OPEN,
+                'last_closed_tour_id'            => null,
+                'last_closed_depth'              => null,
+                'domain_position'                => null,
+                'domain_states'                  => json_encode($this->buildInitialDomainStates(), JSON_UNESCAPED_UNICODE),
+                'active_blueprint_identity'      => null,
+                'last_counted_blueprint_identity' => null,
+                'pending_depth_exhausted_depth'  => null,
+                'lock_version'                   => 1,
+                'created_at'                     => now(),
+                'updated_at'                     => now(),
+            ]);
+
+            return $this->requireLockedState();
+        }
+
+        $updates = [];
+
+        if ($state->active_depth === null && $state->depth_state !== self::DEPTH_STATE_HOLD) {
+            $updates['active_depth'] = DepthNeedMatrix::DEPTH_CYCLE[0];
+        }
+
+        if ($state->active_tour_id === null && $state->depth_state !== self::DEPTH_STATE_HOLD) {
+            $updates['active_tour_id'] = (string) Str::orderedUuid();
+        }
+
+        if ($state->tour_state === null) {
+            $updates['tour_state'] = self::TOUR_OPEN;
+        }
+
+        if (empty($state->domain_states)) {
+            $updates['domain_states'] = json_encode($this->buildInitialDomainStates(), JSON_UNESCAPED_UNICODE);
+        }
+
+        if ($updates !== []) {
+            $this->stateRepository->updateWithLock($state, $updates);
+            return $this->requireLockedState();
+        }
+
+        return $state;
+    }
+
+    private function requireLockedState(): object
+    {
+        $state = $this->stateRepository->firstForUpdate();
+
+        if ($state === null) {
+            throw new RuntimeException('[KRP] État de rotation absent après écriture.');
+        }
+
+        return $state;
+    }
+
+    /**
      * @return array<string, array<string, string>>
      */
     private function loadDomainStates(?object $state): array
     {
-        if ($state === null || empty($state->domain_states)) {
-            return [];
+        $decoded = [];
+
+        if ($state !== null && ! empty($state->domain_states)) {
+            $value = json_decode((string) $state->domain_states, true);
+            $decoded = is_array($value) ? $value : [];
         }
-        $decoded = json_decode((string) $state->domain_states, true);
-        return is_array($decoded) ? $decoded : [];
+
+        foreach (DepthNeedMatrix::DEPTH_CYCLE as $depth) {
+            $depthKey = (string) $depth;
+            foreach (DepthTourState::DOMAIN_CYCLE as $domain) {
+                $status = $decoded[$depthKey][$domain] ?? self::DOMAIN_VISIBLE;
+
+                // One-way compatibility for state rows created under KRP v3.x.
+                $decoded[$depthKey][$domain] = match ($status) {
+                    'ACTIF', 'ON', self::DOMAIN_VISIBLE => self::DOMAIN_VISIBLE,
+                    'DOMAIN_EXHAUSTED', 'OFF', self::DOMAIN_ESTOMPE => self::DOMAIN_ESTOMPE,
+                    default => (string) $status,
+                };
+            }
+        }
+
+        return $decoded;
     }
 
     /**
-     * Construit domain_states initiaux : 7 Depths × 8 Domaines = 56 entrées ACTIF.
-     *
      * @return array<string, array<string, string>>
      */
     private function buildInitialDomainStates(): array
     {
         $states = [];
+
         foreach (DepthNeedMatrix::DEPTH_CYCLE as $depth) {
-            $key          = (string) $depth;
-            $states[$key] = [];
-            foreach (DepthTourState::DOMAIN_CYCLE as $domain) {
-                $states[$key][$domain] = 'ACTIF';
-            }
+            $states[(string) $depth] = $this->freshVisibleDomainStates();
         }
-        return $states; // 7 × 8 = 56 paires
+
+        return $states;
     }
 
+    /**
+     * @return array<string, string>
+     */
+    private function freshVisibleDomainStates(): array
+    {
+        return array_fill_keys(DepthTourState::DOMAIN_CYCLE, self::DOMAIN_VISIBLE);
+    }
+
+    /**
+     * @return array{domain: string, index: int}|null
+     */
+    private function selectNextVisibleDomain(int $depth, ?int $position, array $domainStates): ?array
+    {
+        $cycle = DepthTourState::DOMAIN_CYCLE;
+        $count = count($cycle);
+        $start = $position ?? -1;
+
+        if ($start < -1 || $start >= $count) {
+            $start = -1;
+        }
+
+        foreach (range(1, $count) as $offset) {
+            $index = ($start + $offset) % $count;
+            $domain = $cycle[$index];
+
+            if (($domainStates[(string) $depth][$domain] ?? self::DOMAIN_VISIBLE) === self::DOMAIN_VISIBLE) {
+                return ['domain' => $domain, 'index' => $index];
+            }
+        }
+
+        return null;
+    }
+
+    private function hasVisibleDomain(int $depth, array $domainStates): bool
+    {
+        foreach (DepthTourState::DOMAIN_CYCLE as $domain) {
+            if (($domainStates[(string) $depth][$domain] ?? self::DOMAIN_VISIBLE) === self::DOMAIN_VISIBLE) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function assertDepth(int $depth): void
+    {
+        if (! in_array($depth, DepthNeedMatrix::DEPTH_CYCLE, true)) {
+            throw new RuntimeException(
+                '[KRP] Depth invalide : ' . $depth . '. Cycle : '
+                . implode('→', DepthNeedMatrix::DEPTH_CYCLE) . '.'
+            );
+        }
+    }
+
+    private function assertDomain(string $domain): void
+    {
+        if (! in_array($domain, DepthTourState::DOMAIN_CYCLE, true)) {
+            throw new RuntimeException(
+                "[KRP] Domain invalide : '{$domain}'. DomainCycle : "
+                . implode(', ', DepthTourState::DOMAIN_CYCLE) . '.'
+            );
+        }
+    }
 }

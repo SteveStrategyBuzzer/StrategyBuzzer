@@ -4,35 +4,23 @@ declare(strict_types=1);
 
 namespace App\Services\QuestionBank\Taxonomy;
 
-use App\Services\QuestionBank\Rotation\DomainExhaustionChecker;
-use App\Services\QuestionBank\Rotation\TaxonomyNavigatorInterface;
+use App\Services\QuestionBank\KernelBlueprint;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use RuntimeException;
 
 /**
- * TaxonomyOrchestrator — seule implémentation active de TaxonomyNavigatorInterface.
- *
- * Remplace TaxonomyProgressManager (supprimé) comme propriétaire de :
- *   - la progression Taxonomy (peekNext / confirmConsumed)
- *   - la détection d'épuisement (isExhausted)
- *   - l'orchestration du pipeline Gemini → Validation → Banque
- *
- * Logique migérée de TaxonomyProgressManager :
- *   - peekNext() idempotent : retourne toujours le même triplet sans avancer
- *   - confirmConsumed() avance d'une Idée Dominante (au lieu d'un Sujet)
- *   - isExhausted() : vérification DB pure, sans appel Gemini
- *   - Transactions DB pour éviter les race conditions
+ * TaxonomyOrchestrator — orchestration active Taxonomy v1.1.
  *
  * Invariants :
- *   - peekNext() ne retourne null que si le domaine est réellement épuisé
- *   - confirmConsumed() n'avance que si un triplet était disponible
+ *   - assignToBlueprint() est l'unique chemin d'attribution.
+ *   - La sélection, l'écriture au Blueprint et la consommation sont atomiques.
+ *   - L'épuisement est un fait terminal persistant, jamais une interrogation.
  *   - Gemini est appelé par TaxonomyGeminiClient, jamais directement ici
  *   - ValidationDominantIdeas décide PASS/FAIL, jamais Gemini ni cet orchestrateur
  */
-final class TaxonomyOrchestrator implements DomainExhaustionChecker, TaxonomyNavigatorInterface
+final class TaxonomyOrchestrator
 {
-    /** Garde anti-boucle infinie dans fillBank(). */
+    /** Garde anti-boucle infinie du warm-up v1.1. */
     private const MAX_FILL_ITERATIONS = 32;
 
     /**
@@ -58,618 +46,621 @@ final class TaxonomyOrchestrator implements DomainExhaustionChecker, TaxonomyNav
     ) {}
 
     // =========================================================================
-    // TaxonomyNavigatorInterface
+    // Taxonomy v1.1 — attribution atomique au Blueprint engagé
     // =========================================================================
 
     /**
-     * Retourne le prochain triplet disponible (sub_domain, subject, dominant_idea_active).
+     * Attribue le triplet Taxonomy v1.1 au Blueprint déjà engagé.
      *
-     * Idempotent : deux appels successifs sans confirmConsumed() retournent le même triplet.
-     * Retourne null si le domaine est entièrement épuisé.
-     *
-     * {@inheritdoc}
+     * L'attribution est idempotente par blueprint_id et consomme exactement le
+     * même IdeaSlot qui est écrit dans le Blueprint. Aucun signal de rotation
+     * n'est lu ni produit ici.
      */
-    public function peekNext(int $depth, string $domainCode): ?array
+    public function assignToBlueprint(KernelBlueprint $blueprint): void
     {
-        // Fail-closed : lève une exception si le Depth est inconnu
-        $contract = DepthContractRegistry::get($depth);
+        if (! $blueprint->isRotationFilled()) {
+            throw new RuntimeException(
+                'Taxonomy v1.1 requiert un Blueprint dont depth et domain sont déjà remplis.'
+            );
+        }
 
-        // Étape 1 : chercher un triplet déjà disponible (IDEMPOTENT)
-        $existing = $this->repo->findFirstAvailableIdea($depth, $domainCode);
+        if ($blueprint->isTaxonomyFilled()) {
+            return;
+        }
 
+        $blueprintId = (string) $blueprint->blueprint_id;
+        $depth = (int) $blueprint->depth;
+        $domainCode = (string) $blueprint->domain;
+
+        $assignment = $this->repo->findV11BlueprintAssignment($blueprintId);
+        if ($assignment !== null) {
+            $this->fillBlueprintFromV11Assignment($blueprint, $assignment);
+            return;
+        }
+
+        $occurrence = $this->repo->findOrCreateV11Occurrence($depth, $domainCode);
+        if ($occurrence->status === 'BLOCKED') {
+            throw new TaxonomyBlockedException(
+                "Taxonomy v1.1 est BLOCKED pour Depth {$depth} / Domaine {$domainCode}."
+            );
+        }
+
+        try {
+            $occurrence = $this->ensureV11Content(
+                $occurrence,
+                $depth,
+                $domainCode,
+                DepthContractRegistry::get($depth),
+            );
+
+            DB::transaction(function () use ($blueprint, $blueprintId, $occurrence, $depth, $domainCode) {
+                $lockedOccurrence = $this->repo->lockV11Occurrence((int) $occurrence->id);
+                if ($lockedOccurrence === null || $lockedOccurrence->status === 'BLOCKED') {
+                    throw new TaxonomyBlockedException(
+                        "Taxonomy v1.1 est BLOCKED pour Depth {$depth} / Domaine {$domainCode}."
+                    );
+                }
+
+                $existing = $this->repo->findV11BlueprintAssignment($blueprintId);
+                if ($existing !== null) {
+                    $this->fillBlueprintFromV11Assignment($blueprint, $existing);
+                    return;
+                }
+
+                $idea = $this->repo->claimV11FirstAvailableIdea((int) $lockedOccurrence->id);
+                if ($idea === null) {
+                    throw new TaxonomyPreparationException(
+                        "Taxonomy v1.1: aucun IdeaSlot disponible pour occurrence={$occurrence->id}."
+                    );
+                }
+
+                $created = $this->repo->createV11BlueprintAssignment(
+                    $blueprintId,
+                    (int) $occurrence->id,
+                    $idea,
+                    $depth,
+                    $domainCode,
+                );
+
+                if (! $created) {
+                    $winner = $this->repo->findV11BlueprintAssignment($blueprintId);
+                    if ($winner === null) {
+                        throw new RuntimeException(
+                            "Taxonomy v1.1: assignation {$blueprintId} absente après conflit d'idempotence."
+                        );
+                    }
+
+                    $this->fillBlueprintFromV11Assignment($blueprint, $winner);
+                    return;
+                }
+
+                $this->fillBlueprintFromV11Idea($blueprint, $idea);
+                $this->repo->markV11IdeaConsumed((int) $idea->idea_id);
+                $this->repo->markV11SubjectUsedIfNoAvailableIdeas((int) $idea->subject_id);
+
+                if (
+                    $this->repo->remainingV11Ideas((int) $lockedOccurrence->id) === 0
+                    && $this->repo->remainingV11Subjects((int) $lockedOccurrence->id) === 0
+                ) {
+                    $this->repo->markV11OccurrenceExhausted(
+                        (int) $lockedOccurrence->id,
+                        $depth,
+                        $domainCode,
+                    );
+                }
+            });
+
+            $this->repo->resetV11TechnicalFailures((int) $occurrence->id);
+        } catch (TaxonomyGeminiTechnicalException|TaxonomyPreparationException $exception) {
+            $blocked = $this->repo->recordV11TechnicalFailure(
+                (int) $occurrence->id,
+                $exception->getMessage(),
+            );
+
+            if ($blocked) {
+                throw new TaxonomyBlockedException(
+                    "Taxonomy v1.1 a atteint trois opérations intellectuelles non résolues "
+                    . "pour Depth {$depth} / Domaine {$domainCode}.",
+                    0,
+                    $exception,
+                );
+            }
+
+            throw $exception;
+        }
+    }
+
+    /**
+     * Prépare une occurrence jusqu'à disposer d'un IdeaSlot PASS sélectionnable.
+     *
+     * @return object occurrence ouverte contenant au moins un IdeaSlot disponible
+     */
+    private function ensureV11Content(
+        object $occurrence,
+        int $depth,
+        string $domainCode,
+        DepthContract $contract,
+    ): object {
+        for ($pass = 0; $pass < 2; $pass++) {
+            if ($this->repo->findV11FirstAvailableIdea((int) $occurrence->id) !== null) {
+                return $occurrence;
+            }
+
+            $subdomain = $this->ensureV11SubdomainAndSubjects(
+                $occurrence,
+                $domainCode,
+                $contract,
+            );
+
+            if ($this->repo->findV11FirstAvailableIdea((int) $occurrence->id) !== null) {
+                return $occurrence;
+            }
+
+            $subject = $this->repo->findV11SubjectNeedingIdeas((int) $occurrence->id);
+            if ($subject !== null) {
+                $this->generateV11IdeasForSubject(
+                    $occurrence,
+                    $subdomain,
+                    $subject,
+                    $domainCode,
+                    $contract,
+                );
+
+                if ($this->repo->findV11FirstAvailableIdea((int) $occurrence->id) !== null) {
+                    return $occurrence;
+                }
+            }
+
+            // Une occurrence réellement consommée est terminale. Une anomalie de
+            // préparation, elle, lève une exception plus haut et ne devient jamais
+            // une fausse fin de contenu.
+            if ($this->repo->remainingV11Subjects((int) $occurrence->id) === 0) {
+                $this->repo->markV11OccurrenceExhausted(
+                    (int) $occurrence->id,
+                    $depth,
+                    $domainCode,
+                );
+                $occurrence = $this->repo->findOrCreateV11Occurrence($depth, $domainCode);
+
+                if ($occurrence->status === 'BLOCKED') {
+                    throw new TaxonomyBlockedException(
+                        "Taxonomy v1.1 est BLOCKED pour Depth {$depth} / Domaine {$domainCode}."
+                    );
+                }
+
+                continue;
+            }
+
+            throw new TaxonomyPreparationException(
+                "Taxonomy v1.1: l'occurrence {$occurrence->id} ne produit aucun IdeaSlot exploitable."
+            );
+        }
+
+        throw new TaxonomyPreparationException(
+            "Taxonomy v1.1: aucune occurrence exploitable après deux tentatives de préparation."
+        );
+    }
+
+    private function ensureV11SubdomainAndSubjects(
+        object $occurrence,
+        string $domainCode,
+        DepthContract $contract,
+    ): object {
+        $existing = $this->repo->findV11Subdomain((int) $occurrence->id);
         if ($existing !== null) {
-            return $this->buildTerritory($existing);
+            return $existing;
         }
 
-        // Étape 2 : remplir la banque
-        $filled = $this->fillBank($depth, $domainCode, $contract);
+        $response = $this->gemini->generateOccurrence(
+            $domainCode,
+            $this->domainLabel($domainCode),
+            $contract,
+            $this->repo->v11Lookback((int) $contract->depth, $domainCode),
+        );
 
-        if (! $filled) {
-            return null; // domaine épuisé
+        if (
+            $response['status'] !== 'CANDIDATES'
+            || $response['subdomain'] === null
+            || $response['subjects'] === []
+        ) {
+            throw new TaxonomyPreparationException(
+                "Taxonomy v1.1: Gemini n'a pas produit de Sous-domaine + Subjects exploitables "
+                . "pour Depth {$contract->depth} / Domaine {$domainCode}."
+            );
         }
 
-        // Étape 3 : retourner le triplet nouvellement généré
-        $idea = $this->repo->findFirstAvailableIdea($depth, $domainCode);
+        // DEC-100 : capacité technique = MAX_SUBJECTS_PER_GEMINI_CALL Subjects par appel.
+        // Le premier lot persisté avec le Sous-domaine ne dépasse jamais cette capacité ;
+        // le reste (si le Sous-domaine peut en porter davantage, jusqu'à 50) est complété
+        // ci-dessous par des appels supplémentaires en lots équilibrés.
+        $firstBatch = array_slice($response['subjects'], 0, TaxonomyConfig::MAX_SUBJECTS_PER_GEMINI_CALL);
 
-        return $idea !== null ? $this->buildTerritory($idea) : null;
-    }
-
-    /**
-     * Marque l'idée active courante comme CONSUMED et avance vers la suivante.
-     *
-     * Sémantique : l'Idée Dominante active a été entièrement consommée par le pipeline.
-     * Idempotent si appelé quand aucune idée n'est disponible (no-op).
-     *
-     * {@inheritdoc}
-     */
-    public function confirmConsumed(int $depth, string $domainCode): void
-    {
-        DB::transaction(function () use ($depth, $domainCode) {
-            // claimFirstAvailableIdea() pose un SELECT … FOR UPDATE sur la ligne
-            // choisie. Deux transactions concurrentes ne peuvent pas sélectionner
-            // la même idée : la seconde attend le COMMIT de la première, puis
-            // re-lit et tombe sur l'idée suivante (ou null si épuisé).
-            $idea = $this->repo->claimFirstAvailableIdea($depth, $domainCode);
-
-            if ($idea === null) {
-                return; // No-op : bassin épuisé ou non initialisé
+        $subdomain = DB::transaction(function () use ($occurrence, $response, $firstBatch) {
+            $locked = $this->repo->lockV11Occurrence((int) $occurrence->id);
+            if ($locked === null) {
+                throw new RuntimeException("Occurrence Taxonomy {$occurrence->id} introuvable.");
             }
 
-            $this->repo->markIdeaConsumed($idea->idea_id);
+            $subdomain = $this->repo->findV11Subdomain((int) $occurrence->id);
+            if ($subdomain !== null) {
+                return $subdomain;
+            }
+
+            $subdomain = $this->repo->createV11Subdomain(
+                (int) $occurrence->id,
+                $response['subdomain'],
+            );
+            $this->repo->createV11Subjects((int) $subdomain->id, $firstBatch);
+            $this->repo->markV11OccurrenceOpen((int) $occurrence->id);
+
+            return $subdomain;
         });
+
+        $this->completeV11SubjectsInBalancedBatches($occurrence, $subdomain, $domainCode, $contract);
+
+        return $subdomain;
     }
 
-    // =========================================================================
-    // DomainExhaustionChecker
-    // =========================================================================
-
     /**
-     * Retourne true si le bassin Taxonomy pour ce couple est entièrement épuisé.
+     * DEC-100 : complète le SubjectBank d'un Sous-domaine V11 en lots équilibrés
+     * d'au plus MAX_SUBJECTS_PER_GEMINI_CALL Subjects par appel Gemini, jusqu'à
+     * MAX_SUBJECTS_PER_SUBDOMAIN ou jusqu'à ce que Gemini déclare NO_MORE_SUBJECTS.
      *
-     * Vérification DB pure — sans appel Gemini.
-     * Retourne false si le bassin n'a jamais été initialisé.
-     *
-     * {@inheritdoc}
+     * DEC-098 : ne force jamais un quota — un lot vide ou NO_MORE_SUBJECTS arrête
+     * la complétion sans erreur ; un Sous-domaine avec moins de 50 Subjects
+     * n'est jamais une anomalie.
      */
-    public function isExhausted(int $depth, string $domainCode): bool
-    {
-        // Si aucun sous-domaine n'existe → jamais initialisé → pas épuisé
-        $subdomains = $this->repo->getSubdomains($depth, $domainCode);
-        if (empty($subdomains)) {
-            return false;
-        }
+    private function completeV11SubjectsInBalancedBatches(
+        object $occurrence,
+        object $subdomain,
+        string $domainCode,
+        DepthContract $contract,
+    ): void {
+        $contextType = 'SUBJECTS';
+        $contextKey  = 'subdomain:' . $subdomain->id;
 
-        // S'il reste une idée PASS disponible → pas épuisé
-        $hasAvailableIdea = $this->repo->findFirstAvailableIdea($depth, $domainCode);
-        if ($hasAvailableIdea !== null) {
-            return false;
-        }
-
-        // S'il reste un sous-domaine pouvant générer des sujets → pas épuisé
-        foreach ($subdomains as $sd) {
-            if (! $sd->generation_exhausted) {
-                return false;
-            }
-
-            // S'il reste un sujet pouvant encore générer des idées
-            $subjects = $this->repo->getSubjectsForSubdomain($sd->id);
-            foreach ($subjects as $s) {
-                if (! $s->idea_generation_exhausted) {
-                    return false;
-                }
-            }
-        }
-
-        return true;
-    }
-
-    // =========================================================================
-    // Warm-up public — pré-remplissage sans consommation
-    // =========================================================================
-
-    /**
-     * Pré-remplit la banque pour une cellule (Depth × Domaine) sans jamais consommer
-     * d'idées déjà disponibles pour le gameplay.
-     *
-     * Contrairement à peekNext() + confirmConsumed() :
-     *   - Ne marque aucune idée CONSUMED.
-     *   - Cible uniquement les sujets qui n'ont ENCORE AUCUNE idée PASS+AVAILABLE.
-     *   - Idempotent : si $targetSubjectsWithIdeas sujets sont déjà initialisés, retourne
-     *     immédiatement sans appel Gemini.
-     *
-     * @param  int    $targetSubjectsWithIdeas  Nombre minimum de sujets à avoir avec au
-     *                                          moins 1 idée PASS+AVAILABLE (défaut 1).
-     * @return int    Nombre de sujets ayant au moins 1 idée PASS+AVAILABLE après l'appel.
-     */
-    public function warmUpCell(int $depth, string $domainCode, int $targetSubjectsWithIdeas = 1): int
-    {
-        $contract    = DepthContractRegistry::get($depth);
-        $domainLabel = self::DOMAIN_LABELS[$domainCode] ?? ucfirst($domainCode);
-        // Guard: consecutive iterations without progress (no new AVAILABLE idea seeded).
-        // Resets to 0 whenever a subject gains ≥ 1 new AVAILABLE idea.
-        // Using a no-progress streak instead of a total-iteration cap allows
-        // targets well above MAX_FILL_ITERATIONS to be reached as long as
-        // Gemini keeps producing valid ideas.
-        $noProgressStreak = 0;
-
-        while ($noProgressStreak < self::MAX_FILL_ITERATIONS) {
-            // Re-read from DB — the only correct source of truth.
-            // generateIdeasForSubject() can return true for subjects whose PASS
-            // ideas are all CONSUMED; those must NOT be counted as seeded.
-            $seededCount = $this->repo->countSubjectsWithAvailableIdeas($depth, $domainCode);
-
-            if ($seededCount >= $targetSubjectsWithIdeas) {
-                break;
-            }
-
-            $seededBefore = $seededCount;
-
-            // 1. Trouver ou générer un sous-domaine actif
-            $subdomain = $this->repo->findActiveSubdomain($depth, $domainCode);
-
-            if ($subdomain === null) {
-                $subdomain = $this->generateNewSubdomain($depth, $domainCode, $domainLabel, $contract);
-                if ($subdomain === null) {
-                    break; // domaine vraiment épuisé
-                }
-            }
-
-            // 2. Cibler un sujet qui n'a ENCORE AUCUNE idée PASS+AVAILABLE.
-            //    Un sujet dont toutes les idées PASS sont CONSUMED sera marqué
-            //    idea_generation_exhausted=true par generateIdeasForSubject() ci-dessous,
-            //    puis exclu des appels suivants par findSubjectWithNoAvailableIdeas().
-            $subject = $this->repo->findSubjectWithNoAvailableIdeas($subdomain->id);
-
-            if ($subject === null) {
-                // Ce sous-domaine a déjà tous ses sujets initialisés → générer un nouveau sujet
-                $newSubject = $this->generateNewSubject($subdomain, $depth, $domainCode, $domainLabel, $contract);
-                if ($newSubject !== null) {
-                    $subject = $newSubject;
-                } else {
-                    // Ce sous-domaine ne peut plus produire de sujets
-                    $this->repo->markSubdomainGenerationExhausted($subdomain->id);
-                    $noProgressStreak++;
-                    continue; // essayer le sous-domaine suivant
-                }
-            }
-
-            // 3. Générer des idées pour ce sujet — sans toucher aux idées déjà AVAILABLE.
-            //    Ne pas utiliser la valeur de retour bool pour incrémenter le compteur :
-            //    elle peut être true même si aucune idée AVAILABLE n'a été créée.
-            //    La progression est mesurée en comparant les comptes DB avant/après.
-            $this->generateIdeasForSubject(
-                $subject, $subdomain, $depth, $domainCode, $domainLabel, $contract
+        while (true) {
+            $existingSubjects = array_map(
+                fn($s) => $s->subject_name,
+                $this->repo->getV11SubjectsForSubdomain((int) $subdomain->id)
             );
 
-            // Progress check: did this iteration add at least one new seeded subject?
-            $seededAfter = $this->repo->countSubjectsWithAvailableIdeas($depth, $domainCode);
-            if ($seededAfter > $seededBefore) {
-                $noProgressStreak = 0; // real progress — reset the guard
-            } else {
-                $noProgressStreak++; // no new AVAILABLE idea — advance toward the guard limit
-            }
-        }
-
-        // Always return the authoritative DB count, never a local variable.
-        return $this->repo->countSubjectsWithAvailableIdeas($depth, $domainCode);
-    }
-
-    // =========================================================================
-    // Pipeline interne — remplissage de la banque
-    // =========================================================================
-
-    /**
-     * Tente de remplir la banque jusqu'à ce qu'une idée PASS soit disponible.
-     *
-     * Parcourt les sous-domaines existants puis en génère de nouveaux si nécessaire.
-     * Retourne true si au moins une idée PASS a été générée.
-     */
-    private function fillBank(int $depth, string $domainCode, DepthContract $contract): bool
-    {
-        $domainLabel = self::DOMAIN_LABELS[$domainCode] ?? ucfirst($domainCode);
-        $iterations  = 0;
-
-        while ($iterations++ < self::MAX_FILL_ITERATIONS) {
-            // 1. Chercher un sous-domaine actif (non exhausted ou avec sujets restants)
-            $subdomain = $this->repo->findActiveSubdomain($depth, $domainCode);
-
-            if ($subdomain === null) {
-                // Tenter de générer un nouveau sous-domaine
-                $subdomain = $this->generateNewSubdomain($depth, $domainCode, $domainLabel, $contract);
-
-                if ($subdomain === null) {
-                    return false; // Impossible de générer plus de sous-domaines
-                }
+            $remaining = TaxonomyConfig::MAX_SUBJECTS_PER_SUBDOMAIN - count($existingSubjects);
+            if ($remaining <= 0) {
+                return;
             }
 
-            // 2. Chercher un sujet nécessitant des idées
-            $subject = $this->repo->findSubjectNeedingIdeas($subdomain->id);
+            // DEC-100 : "préparation équilibrée des lots avec minimum d'appels" —
+            // pas seulement un plafond technique par appel. callsRemaining est le
+            // nombre MINIMAL d'appels nécessaires pour couvrir $remaining (inchangé) ;
+            // batchSize répartit $remaining aussi également que possible sur ces
+            // appels (écart de taille ≤ 1 entre lots), recalculé à chaque itération
+            // sur le $remaining réellement observé — jamais 10+10+3, mais 8+8+7.
+            $callsRemaining = (int) ceil($remaining / TaxonomyConfig::MAX_SUBJECTS_PER_GEMINI_CALL);
+            $batchSize      = (int) ceil($remaining / $callsRemaining);
+            $memory    = $this->repo->getV11Memory((int) $occurrence->id, $contextType, $contextKey);
+            $attempt   = $this->repo->nextV11AttemptNumber((int) $occurrence->id, $contextType, $contextKey);
 
-            if ($subject === null) {
-                // Tenter de générer de nouveaux sujets pour ce sous-domaine
-                $newSubject = $this->generateNewSubject($subdomain, $depth, $domainCode, $domainLabel, $contract);
-
-                if ($newSubject !== null) {
-                    $subject = $newSubject;
-                } else {
-                    // Ce sous-domaine ne peut plus produire de sujets
-                    $this->repo->markSubdomainGenerationExhausted($subdomain->id);
-                    continue; // Essayer le prochain sous-domaine
-                }
-            }
-
-            // 3. Générer des idées pour ce sujet
-            $ideaGenerated = $this->generateIdeasForSubject(
-                $subject, $subdomain, $depth, $domainCode, $domainLabel, $contract
+            $response = $this->gemini->generateSubjects(
+                domain: $domainCode,
+                domainLabel: $this->domainLabel($domainCode),
+                subDomain: (string) $subdomain->subdomain_name,
+                contract: $contract,
+                existingSubjects: $existingSubjects,
+                consumedSubjects: [],
+                remainingCapacity: $batchSize,
+                cumulativeMemory: $memory,
             );
 
-            if ($ideaGenerated) {
-                return true; // Au moins une idée PASS générée
+            $newNames = [];
+            foreach ($response['candidates'] as $candidate) {
+                $value = trim($candidate['value'] ?? '');
+                if ($value === '' || in_array($value, $existingSubjects, true) || in_array($value, $newNames, true)) {
+                    continue;
+                }
+                $newNames[] = $value;
             }
 
-            // Sujet épuisé → continuer avec le suivant
-            // (markSubjectIdeaGenerationExhausted déjà appelé dans generateIdeasForSubject)
-        }
+            if ($newNames !== []) {
+                $this->repo->createV11Subjects((int) $subdomain->id, $newNames);
+            }
 
-        return false; // Garde anti-boucle infinie
+            $this->repo->persistV11Memory(
+                (int) $occurrence->id,
+                $contextType,
+                $contextKey,
+                $attempt,
+                array_column($response['candidates'], 'value'),
+                $newNames,
+                [],
+                $newNames,
+                $response['status'] === 'NO_MORE_SUBJECTS',
+            );
+
+            if ($response['status'] === 'NO_MORE_SUBJECTS' || $newNames === []) {
+                return;
+            }
+        }
     }
 
-    /**
-     * Génère un nouveau sous-domaine via Gemini (avec mémoire cumulative).
-     * Retourne null si impossible (tentatives épuisées ou Gemini ne peut plus).
-     */
-    private function generateNewSubdomain(
-        int           $depth,
-        string        $domainCode,
-        string        $domainLabel,
+    private function generateV11IdeasForSubject(
+        object $occurrence,
+        object $subdomain,
+        object $subject,
+        string $domainCode,
         DepthContract $contract,
-    ): ?object {
-        $contextKey = TaxonomyBankRepository::subdomainContextKey($depth, $domainCode);
-        $attemptNum = $this->repo->getNextAttemptNumber('SUBDOMAIN', $contextKey);
+    ): void {
+        $contextType = 'IDEAS';
+        $contextKey = 'subject:' . $subject->id;
+        $memory = $this->repo->getV11Memory((int) $occurrence->id, $contextType, $contextKey);
+        $attempt = $this->repo->nextV11AttemptNumber((int) $occurrence->id, $contextType, $contextKey);
+        $passIdeas = $this->repo->getV11PassIdeaValues((int) $subject->id);
+        $failDetails = $this->repo->getV11FailIdeaDetails((int) $subject->id);
+        $failIdeas = array_values(array_filter(array_column($failDetails, 'value')));
+        $coveredDirections = [];
 
-        if ($attemptNum > TaxonomyConfig::MAX_SUBDOMAIN_GENERATION_ATTEMPTS) {
-            return null; // Tentatives épuisées
+        foreach ($memory as $entry) {
+            $coveredDirections = array_merge($coveredDirections, $entry['covered_directions']);
         }
 
-        // Récupérer sous-domaines existants + mémoire cumulative
-        $existingSubdomains = array_map(
-            fn($sd) => $sd->subdomain_name,
-            $this->repo->getSubdomains($depth, $domainCode)
-        );
-
-        $remaining        = TaxonomyConfig::MAX_SUBDOMAINS_PER_DOMAIN - count($existingSubdomains);
-        $cumulativeMemory = $this->repo->getCumulativeMemory('SUBDOMAIN', $contextKey);
-
-        if ($remaining <= 0) {
-            return null; // Capacité maximale atteinte
-        }
-
-        $response = $this->gemini->generateSubdomains(
-            domain: $domainCode,
-            domainLabel: $domainLabel,
-            contract: $contract,
-            existingSubdomains: $existingSubdomains,
-            remainingCapacity: $remaining,
-            cumulativeMemory: $cumulativeMemory,
-        );
-
-        $candidates   = $response['candidates'] ?? [];
-        $passSubdomains = [];
-
-        foreach ($candidates as $c) {
-            $value = trim($c['value'] ?? '');
-            if (empty($value)) {
-                continue;
-            }
-
-            if (! in_array($value, $existingSubdomains, true)) {
-                $passSubdomains[] = $value;
-            }
-        }
-
-        // Persister la mémoire cumulative
-        $this->repo->persistMemoryEntry(
-            contextType: 'SUBDOMAIN',
-            contextKey: $contextKey,
-            attemptNumber: $attemptNum,
-            candidates: array_column($candidates, 'value'),
-            passItems: $passSubdomains,
-            failDetails: [],
-            coveredDirections: $passSubdomains,
-            generationExhausted: $response['status'] === 'NO_MORE_SUBDOMAINS',
-        );
-
-        // Créer les sous-domaines en DB
-        foreach ($passSubdomains as $sdName) {
-            $this->repo->findOrCreateSubdomain($depth, $domainCode, $sdName);
-        }
-
-        if (empty($passSubdomains)) {
-            return null; // Gemini n'a pas pu en générer
-        }
-
-        // Retourner le premier nouveau sous-domaine
-        return $this->repo->findActiveSubdomain($depth, $domainCode);
-    }
-
-    /**
-     * Génère de nouveaux sujets pour un sous-domaine via Gemini (avec mémoire cumulative).
-     * Retourne le premier nouveau sujet créé, ou null si impossible.
-     */
-    private function generateNewSubject(
-        object        $subdomain,
-        int           $depth,
-        string        $domainCode,
-        string        $domainLabel,
-        DepthContract $contract,
-    ): ?object {
-        $contextKey = TaxonomyBankRepository::subjectContextKey($depth, $domainCode, $subdomain->subdomain_name);
-        $attemptNum = $this->repo->getNextAttemptNumber('SUBJECT', $contextKey);
-
-        if ($attemptNum > TaxonomyConfig::MAX_SUBJECT_GENERATION_ATTEMPTS) {
-            return null; // Tentatives épuisées
-        }
-
-        $existingSubjects = array_map(
-            fn($s) => $s->subject_name,
-            $this->repo->getSubjectsForSubdomain($subdomain->id)
-        );
-
-        $remaining        = TaxonomyConfig::MAX_SUBJECTS_PER_SUBDOMAIN - count($existingSubjects);
-        $cumulativeMemory = $this->repo->getCumulativeMemory('SUBJECT', $contextKey);
-
-        if ($remaining <= 0) {
-            return null;
-        }
-
-        // Incrémenter le compteur de tentatives du sous-domaine
-        $this->repo->incrementSubdomainSubjectAttemptCount($subdomain->id);
-
-        $response = $this->gemini->generateSubjects(
-            domain: $domainCode,
-            domainLabel: $domainLabel,
-            subDomain: $subdomain->subdomain_name,
-            contract: $contract,
-            existingSubjects: $existingSubjects,
-            consumedSubjects: [],
-            remainingCapacity: $remaining,
-            cumulativeMemory: $cumulativeMemory,
-        );
-
-        $candidates    = $response['candidates'] ?? [];
-        $newSubjectNames = [];
-
-        foreach ($candidates as $c) {
-            $value = trim($c['value'] ?? '');
-            if (empty($value) || in_array($value, $existingSubjects, true)) {
-                continue;
-            }
-            $newSubjectNames[] = $value;
-        }
-
-        // Persister la mémoire cumulative
-        $this->repo->persistMemoryEntry(
-            contextType: 'SUBJECT',
-            contextKey: $contextKey,
-            attemptNumber: $attemptNum,
-            candidates: array_column($candidates, 'value'),
-            passItems: $newSubjectNames,
-            failDetails: [],
-            coveredDirections: $newSubjectNames,
-            generationExhausted: $response['status'] === 'NO_MORE_SUBJECTS',
-        );
-
-        // Créer les sujets en DB
-        $firstNew = null;
-        foreach ($newSubjectNames as $sName) {
-            $s = $this->repo->findOrCreateSubject($subdomain->id, $sName);
-            $firstNew ??= $s;
-        }
-
-        return $firstNew;
-    }
-
-    /**
-     * Génère des Idées Dominantes pour un sujet via Gemini + ValidationDominantIdeas.
-     *
-     * Retourne true si au moins une idée PASS a été générée.
-     * Marque le sujet comme idea_generation_exhausted si les tentatives sont épuisées.
-     */
-    private function generateIdeasForSubject(
-        object        $subject,
-        object        $subdomain,
-        int           $depth,
-        string        $domainCode,
-        string        $domainLabel,
-        DepthContract $contract,
-    ): bool {
-        $contextKey = TaxonomyBankRepository::ideaContextKey(
-            $depth, $domainCode, $subdomain->subdomain_name, $subject->subject_name
-        );
-
-        $attemptNum = $this->repo->getNextAttemptNumber('IDEA', $contextKey);
-
-        if ($attemptNum > TaxonomyConfig::MAX_DOMINANT_IDEA_GENERATION_ATTEMPTS) {
-            // All attempts already consumed in previous calls — subject is done.
-            // Check for zero-PASS so we can emit the observability warning before returning.
-            $this->repo->markSubjectIdeaGenerationExhausted($subject->id);
-            $passCount = count($this->repo->getPassIdeaValues($subject->id));
-            $failCount = count($this->repo->getFailIdeaDetails($subject->id));
-            $this->warnIfZeroPass($subject, $subdomain, $depth, $domainCode, $passCount, $failCount, $attemptNum, 'MAX_ATTEMPTS_ALREADY_REACHED');
-            return false;
-        }
-
-        // Incrémenter le compteur de tentatives du sujet
-        $this->repo->incrementSubjectIdeaAttemptCount($subject->id);
-
-        // Récupérer l'état courant
-        $passIdeas       = $this->repo->getPassIdeaValues($subject->id);
-        $failDetails     = $this->repo->getFailIdeaDetails($subject->id);
-        $failIdeas       = array_column($failDetails, 'value');
-        $cumulativeMemory = $this->repo->getCumulativeMemory('IDEA', $contextKey);
-
+        // DEC-102 : plafond 1..5 Idées PASS par Sujet. Un Sujet ayant déjà atteint
+        // le plafond n'appelle plus Gemini — il est simplement marqué épuisé sans
+        // que cela soit traité comme une anomalie (des idées PASS existent déjà).
         $remainingSlots = TaxonomyConfig::MAX_DOMINANT_IDEAS_PER_SUBJECT - count($passIdeas);
-
         if ($remainingSlots <= 0) {
-            $this->repo->markSubjectIdeaGenerationExhausted($subject->id);
-            return ! empty($passIdeas);
+            $this->repo->markV11SubjectIdeaGenerationExhausted((int) $subject->id);
+            return;
         }
 
         $response = $this->gemini->generateIdeas(
             domain: $domainCode,
-            domainLabel: $domainLabel,
-            subDomain: $subdomain->subdomain_name,
-            subject: $subject->subject_name,
+            domainLabel: $this->domainLabel($domainCode),
+            subDomain: (string) $subdomain->subdomain_name,
+            subject: (string) $subject->subject_name,
             contract: $contract,
             passIdeas: $passIdeas,
             failIdeas: $failIdeas,
             failDetails: $failDetails,
             remainingSlots: $remainingSlots,
-            cumulativeMemory: $cumulativeMemory,
+            cumulativeMemory: $memory,
         );
 
-        $candidates     = $response['candidates'] ?? [];
-        $newPassIdeas   = [];
+        $newPassIdeas = [];
         $newFailDetails = [];
-
-        foreach ($candidates as $c) {
-            $value = trim($c['value'] ?? '');
-            if (empty($value)) {
+        foreach ($response['candidates'] as $candidate) {
+            // Les candidats Gemini sont normalisés en {value: string} par
+            // TaxonomyGeminiClient::parseGeminiResponse() — extraire la valeur
+            // avant toute validation ou persistance (validateOne() et
+            // persistV11*Idea() attendent une string, pas un tableau).
+            $value = trim($candidate['value'] ?? '');
+            if ($value === '') {
                 continue;
             }
 
-            // Stopper si on a déjà atteint la capacité maximale
+            // DEC-102 : ne jamais dépasser le plafond de 5 Idées PASS par Sujet,
+            // même si Gemini a proposé plus de candidats que de slots restants.
             if (count($passIdeas) + count($newPassIdeas) >= TaxonomyConfig::MAX_DOMINANT_IDEAS_PER_SUBJECT) {
                 break;
             }
 
-            // ── Étape 1 : validation individuelle (PHP-enforced rules) ────────
             $result = $this->validator->validateOne(
-                candidate: $value,
-                domain: $domainLabel,
-                subDomain: $subdomain->subdomain_name,
-                subject: $subject->subject_name,
-                contract: $contract,
-                passIdeas: array_merge($passIdeas, $newPassIdeas),
-                failIdeas: $failIdeas,
-                coveredDirections: [],
+                $value,
+                $this->domainLabel($domainCode),
+                (string) $subdomain->subdomain_name,
+                (string) $subject->subject_name,
+                $contract,
+                array_merge($passIdeas, $newPassIdeas),
+                array_merge($failIdeas, array_column($newFailDetails, 'value')),
+                $coveredDirections,
             );
 
-            if ($result->isFail()) {
-                $newFailDetails[] = [
-                    'value'        => $value,
-                    'reason'       => $result->reason,
-                    'conflict_with'=> $result->conflictWith,
-                ];
-                $this->repo->persistFailIdea($subject->id, $value, $result->reason ?? '', $result->conflictWith);
+            if ($result->isPass()) {
+                $newPassIdeas[] = $value;
+                $coveredDirections[] = $value;
                 continue;
             }
 
-            // ── Étape 2 : validation collective de diversité AVANT persistance ─
-            // INVARIANT : une idée n'est jamais persistée comme PASS si elle
-            // cause une collision de diversité. La validation collective intervient
-            // avant l'écriture en DB pour éviter tout état incohérent.
-            $prospectiveSet  = array_merge($passIdeas, $newPassIdeas, [$value]);
-            $diversityResult = $this->validator->validateDiversity($prospectiveSet);
-
-            if ($diversityResult !== null && $diversityResult->isFail()) {
-                // Diversité FAIL → persister comme FAIL, jamais comme PASS
-                $newFailDetails[] = [
-                    'value'        => $value,
-                    'reason'       => FailReason::SET_DIVERSITY_COLLISION,
-                    'conflict_with'=> $diversityResult->conflictWith,
-                ];
-                $this->repo->persistFailIdea(
-                    $subject->id,
-                    $value,
-                    FailReason::SET_DIVERSITY_COLLISION,
-                    $diversityResult->conflictWith,
-                );
-                continue;
-            }
-
-            // ── Étape 3 : validation individuelle + diversité = PASS ──────────
-            $newPassIdeas[] = $value;
-            $this->repo->persistPassIdea($subject->id, $value);
+            $newFailDetails[] = [
+                'value'         => $value,
+                'reason'        => $result->reason ?? 'UNKNOWN',
+                'conflict_with' => $result->conflictWith,
+            ];
         }
 
-        // Persister la mémoire cumulative
-        $this->repo->persistMemoryEntry(
-            contextType: 'IDEA',
-            contextKey: $contextKey,
-            attemptNumber: $attemptNum,
-            candidates: array_column($candidates, 'value'),
-            passItems: $newPassIdeas,
-            failDetails: $newFailDetails,
-            coveredDirections: array_merge($passIdeas, $newPassIdeas),
-            generationExhausted: $response['status'] === 'NO_MORE_IDEAS',
-        );
-
-        // Marquer épuisé si NO_MORE_IDEAS ou si MAX_ATTEMPTS atteint
-        if (
-            $response['status'] === 'NO_MORE_IDEAS'
-            || $attemptNum >= TaxonomyConfig::MAX_DOMINANT_IDEA_GENERATION_ATTEMPTS
+        $roundState = DB::transaction(function () use (
+            $occurrence,
+            $subject,
+            $contextType,
+            $contextKey,
+            $attempt,
+            $response,
+            $newPassIdeas,
+            $newFailDetails,
+            $coveredDirections,
         ) {
-            $this->repo->markSubjectIdeaGenerationExhausted($subject->id);
+            foreach ($newPassIdeas as $idea) {
+                $this->repo->persistV11PassIdea((int) $subject->id, $idea);
+            }
 
-            // ── Alerte : sujet épuisé sans aucune idée PASS ───────────────────
-            $totalPass = count(array_merge($passIdeas, $newPassIdeas));
-            $totalFail = count($failDetails) + count($newFailDetails);
-            $this->warnIfZeroPass($subject, $subdomain, $depth, $domainCode, $totalPass, $totalFail, $attemptNum, $response['status']);
+            foreach ($newFailDetails as $failure) {
+                $this->repo->persistV11FailIdea(
+                    (int) $subject->id,
+                    $failure['value'],
+                    $failure['reason'],
+                    $failure['conflict_with'],
+                );
+            }
+
+            // DEC-102 : la décision porte sur le total réellement persisté,
+            // jamais uniquement sur les nouvelles PASS de ce round.
+            $totalPass = count($this->repo->getV11PassIdeaValues((int) $subject->id));
+            $generationExhausted = (
+                $totalPass >= TaxonomyConfig::MAX_DOMINANT_IDEAS_PER_SUBJECT
+                || (
+                    $totalPass > 0
+                    && (
+                        $response['status'] === 'NO_MORE_IDEAS'
+                        || $attempt >= TaxonomyConfig::MAX_DOMINANT_IDEA_GENERATION_ATTEMPTS
+                    )
+                )
+            );
+
+            $this->repo->incrementV11SubjectIdeaAttempts((int) $subject->id);
+            $this->repo->persistV11Memory(
+                (int) $occurrence->id,
+                $contextType,
+                $contextKey,
+                $attempt,
+                array_column($response['candidates'], 'value'),
+                $newPassIdeas,
+                $newFailDetails,
+                $coveredDirections,
+                $generationExhausted,
+            );
+
+            if ($generationExhausted) {
+                $this->repo->markV11SubjectIdeaGenerationExhausted((int) $subject->id);
+            }
+
+            return [
+                'total_pass'          => $totalPass,
+                'generation_exhausted' => $generationExhausted,
+            ];
+        });
+
+        if ($roundState['total_pass'] === 0) {
+            throw new TaxonomyPreparationException(
+                "Taxonomy v1.1: zéro Idea PASS total pour Subject {$subject->id}; "
+                . "ce n'est pas un épuisement."
+            );
         }
 
-        return ! empty($newPassIdeas);
-    }
-
-    // =========================================================================
-    // Helpers
-    // =========================================================================
-
-    /**
-     * Émet un Log::warning si un sujet est épuisé sans aucune idée PASS.
-     *
-     * Gemini a systématiquement renvoyé des idées invalides — le sujet est
-     * silencieusement abandonné. Ce warning est l'unique signal ops disponible
-     * avant qu'un opérateur lance `php artisan questions:taxonomy:exhausted-subjects`.
-     */
-    private function warnIfZeroPass(
-        object $subject,
-        object $subdomain,
-        int    $depth,
-        string $domainCode,
-        int    $passCount,
-        int    $failCount,
-        int    $attemptNumber,
-        string $status,
-    ): void {
-        if ($passCount === 0 && $failCount > 0) {
-            Log::warning('taxonomy.subject_exhausted_with_zero_pass', [
-                'depth'          => $depth,
-                'domain_code'    => $domainCode,
-                'subdomain_name' => $subdomain->subdomain_name,
-                'subject_id'     => $subject->id,
-                'subject_name'   => $subject->subject_name,
-                'fail_count'     => $failCount,
-                'attempt_number' => $attemptNumber,
-                'status'         => $status,
-                'message'        => "Subject exhausted with {$failCount} FAIL idea(s) and 0 PASS — "
-                                   . "Gemini returned unusable ideas for all {$attemptNumber} attempt(s). "
-                                   . "Run `php artisan questions:taxonomy:exhausted-subjects` for a full report.",
-            ]);
+        // Avec 1..4 PASS, une reprise possible sans nouveau PASS reste une
+        // anomalie. NO_MORE_IDEAS et la limite de tentatives sont, eux, normaux.
+        if (! $roundState['generation_exhausted'] && $newPassIdeas === []) {
+            throw new TaxonomyPreparationException(
+                "Taxonomy v1.1: aucune nouvelle Idea PASS exploitable pour Subject {$subject->id}; "
+                . "une reprise reste nécessaire."
+            );
         }
     }
 
-    /**
-     * Construit le tableau de territoire à retourner depuis une ligne d'idée.
-     *
-     * @return array{sub_domain: string, subject: string, dominant_idea_active: string}
-     */
-    private function buildTerritory(object $idea): array
+    private function fillBlueprintFromV11Idea(KernelBlueprint $blueprint, object $idea): void
     {
-        return [
-            'sub_domain'           => $idea->subdomain_name,
-            'subject'              => $idea->subject_name,
-            'dominant_idea_active' => $idea->idea_value,
-        ];
+        $blueprint->fillTaxonomy(
+            (string) $idea->subdomain_name,
+            (string) $idea->subject_name,
+            (string) $idea->idea_value,
+        );
+    }
+
+    private function fillBlueprintFromV11Assignment(KernelBlueprint $blueprint, object $assignment): void
+    {
+        $blueprint->fillTaxonomy(
+            (string) $assignment->subdomain_active,
+            (string) $assignment->subject_active,
+            (string) $assignment->dominant_idea_active,
+        );
+    }
+
+    /**
+     * Warm-up opérateur v1.1: prépare une occurrence et au moins le nombre
+     * demandé de Subjects avec une Idea PASS disponible, sans sélectionner ni
+     * consommer d'IdeaSlot et sans écrire de Blueprint.
+     */
+    public function warmUpV11Cell(int $depth, string $domainCode, int $targetSubjectsWithIdeas = 1): int
+    {
+        $contract = DepthContractRegistry::get($depth);
+        $target = max(1, $targetSubjectsWithIdeas);
+        $iterations = 0;
+
+        while (
+            $this->repo->countV11SubjectsWithAvailableIdeas($depth, $domainCode) < $target
+            && $iterations++ < self::MAX_FILL_ITERATIONS
+        ) {
+            $occurrence = $this->repo->findOrCreateV11Occurrence($depth, $domainCode);
+            if ($occurrence->status === 'BLOCKED') {
+                throw new TaxonomyBlockedException(
+                    "Taxonomy v1.1 est BLOCKED pour Depth {$depth} / Domaine {$domainCode}."
+                );
+            }
+
+            try {
+                $subdomain = $this->ensureV11SubdomainAndSubjects($occurrence, $domainCode, $contract);
+                $subject = $this->repo->findV11SubjectNeedingIdeas((int) $occurrence->id);
+
+                if ($subject === null) {
+                    break;
+                }
+
+                $this->generateV11IdeasForSubject(
+                    $occurrence,
+                    $subdomain,
+                    $subject,
+                    $domainCode,
+                    $contract,
+                );
+                $this->repo->resetV11TechnicalFailures((int) $occurrence->id);
+            } catch (TaxonomyGeminiTechnicalException|TaxonomyPreparationException $exception) {
+                $blocked = $this->repo->recordV11TechnicalFailure(
+                    (int) $occurrence->id,
+                    $exception->getMessage(),
+                );
+
+                if ($blocked) {
+                    throw new TaxonomyBlockedException(
+                        "Taxonomy v1.1 a atteint trois opérations intellectuelles non résolues "
+                        . "pour Depth {$depth} / Domaine {$domainCode}.",
+                        0,
+                        $exception,
+                    );
+                }
+
+                throw $exception;
+            }
+        }
+
+        return $this->repo->countV11SubjectsWithAvailableIdeas($depth, $domainCode);
+    }
+
+    /**
+     * TOMBSTONE v1.0 — ne pas utiliser, ne pas restaurer.
+     * Chemin officiel : assignToBlueprint().
+     */
+    public function peekNext(int $depth, string $domainCode): ?array
+    {
+        throw new RuntimeException(
+            'Taxonomy v1.0 (peekNext) est un chemin interdit. '
+            . 'assignToBlueprint() est le seul chemin Taxonomy v1.1 autorisé.'
+        );
+    }
+
+    /**
+     * TOMBSTONE v1.0 — ne pas utiliser, ne pas restaurer.
+     * Chemin officiel : assignToBlueprint().
+     */
+    public function confirmConsumed(int $depth, string $domainCode): void
+    {
+        throw new RuntimeException(
+            'Taxonomy v1.0 (confirmConsumed) est un chemin interdit. '
+            . 'assignToBlueprint() est le seul chemin Taxonomy v1.1 autorisé.'
+        );
+    }
+
+    /**
+     * TOMBSTONE v1.0 — ne pas utiliser, ne pas restaurer.
+     * Chemin officiel : assignToBlueprint().
+     */
+    public function isExhausted(int $depth, string $domainCode): bool
+    {
+        throw new RuntimeException(
+            'Taxonomy v1.0 (isExhausted) est un chemin interdit. '
+            . 'assignToBlueprint() est le seul chemin Taxonomy v1.1 autorisé.'
+        );
+    }
+
+    private function domainLabel(string $domainCode): string
+    {
+        return self::DOMAIN_LABELS[$domainCode] ?? ucfirst($domainCode);
     }
 }

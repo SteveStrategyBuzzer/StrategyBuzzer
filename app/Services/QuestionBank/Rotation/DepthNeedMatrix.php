@@ -73,14 +73,19 @@ final class DepthNeedMatrix
             ->get()
             ->keyBy('depth');
 
+        // Une matrice partielle est un état persistant indéterminable :
+        // aucun Depth ne peut être sélectionné dans ce cas.
+        foreach (self::DEPTH_CYCLE as $depth) {
+            $this->requireExistingMatrixRow($rows->get($depth), $depth);
+        }
+
         $cycle = self::DEPTH_CYCLE;
         $count = count($cycle);
 
         if ($afterDepth === null) {
             // Commence au début du cycle
             foreach ($cycle as $depth) {
-                $row       = $rows->get($depth);
-                $completed = $row ? (int) $row->cycle_completed : 0;
+                $completed = (int) $rows->get($depth)->cycle_completed;
 
                 if ($completed < self::CYCLE_TARGET[$depth]) {
                     return $depth;
@@ -99,9 +104,7 @@ final class DepthNeedMatrix
 
         for ($offset = 1; $offset <= $count; $offset++) {
             $depth = $cycle[($startIndex + $offset) % $count];
-            $row   = $rows->get($depth);
-
-            $completed = $row ? (int) $row->cycle_completed : 0;
+            $completed = (int) $rows->get($depth)->cycle_completed;
 
             if ($completed < self::CYCLE_TARGET[$depth]) {
                 return $depth;
@@ -111,12 +114,35 @@ final class DepthNeedMatrix
         return null;
     }
 
+    /**
+     * DEPTH_EXHAUSTED boundary: closes one completed Depth tour in the matrix,
+     * then finds the next Depth that still needs a tour.
+     *
+     * The call is intentionally made only by KernelRotationPlanner's internal
+     * DEPTH_EXHAUSTED engine. The search is circular and can return the same
+     * Depth after traversing the complete cycle.
+     */
+    public function completeTourAndFindNextDepth(int $closedDepth): ?int
+    {
+        if (! in_array($closedDepth, self::DEPTH_CYCLE, true)) {
+            throw new RuntimeException(
+                '[DepthNeedMatrix] Depth hors cycle officiel : ' . $closedDepth . '.'
+            );
+        }
+
+        $this->incrementCycleCompleted($closedDepth);
+
+        return $this->nextRequiredDepth($closedDepth);
+    }
+
     // =========================================================================
     // cycle_completed
     // =========================================================================
 
     /**
-     * Retourne cycle_completed pour un Depth (0 si la ligne n'existe pas).
+     * Retourne cycle_completed pour un Depth.
+     *
+     * @throws RuntimeException si la ligne persistante du Depth est absente.
      */
     public function getCycleCompleted(int $depth): int
     {
@@ -124,16 +150,24 @@ final class DepthNeedMatrix
             ->where('depth', $depth)
             ->first();
 
-        return $row ? (int) $row->cycle_completed : 0;
+        return (int) $this->requireExistingMatrixRow($row, $depth)->cycle_completed;
     }
 
     /**
      * Incrémente cycle_completed[depth] de 1.
      *
      * Appelé par KRP à la fermeture d'un Tour (8/8).
+     *
+     * @throws RuntimeException si la ligne persistante du Depth est absente.
      */
     public function incrementCycleCompleted(int $depth): void
     {
+        $row = DB::table(self::DEPTH_MATRIX_TABLE)
+            ->where('depth', $depth)
+            ->first();
+
+        $this->requireExistingMatrixRow($row, $depth);
+
         DB::table(self::DEPTH_MATRIX_TABLE)
             ->where('depth', $depth)
             ->increment('cycle_completed');
@@ -210,12 +244,15 @@ final class DepthNeedMatrix
      *     remaining:      int,
      *     domains:        array<string, int>
      * }
+     *
+     * @throws RuntimeException si la ligne persistante du Depth est absente.
      */
     public function getProgress(int $depth): array
     {
         $matrixRow = DB::table(self::DEPTH_MATRIX_TABLE)
             ->where('depth', $depth)
             ->first();
+        $matrixRow = $this->requireExistingMatrixRow($matrixRow, $depth);
 
         $totals = DB::table(self::DEPTH_TOTALS_TABLE)
             ->where('depth', $depth)
@@ -223,8 +260,8 @@ final class DepthNeedMatrix
             ->pluck('kernel_received_total', 'domain_code')
             ->toArray();
 
-        $target    = self::CYCLE_TARGET[$depth] ?? 0;
-        $completed = $matrixRow ? (int) $matrixRow->cycle_completed : 0;
+        $target    = self::CYCLE_TARGET[$depth];
+        $completed = (int) $matrixRow->cycle_completed;
 
         return [
             'depth'           => $depth,
@@ -233,5 +270,20 @@ final class DepthNeedMatrix
             'remaining'       => max(0, $target - $completed),
             'domains'         => $totals,
         ];
+    }
+
+    /**
+     * @throws RuntimeException si une ligne officielle de la matrice est absente.
+     */
+    private function requireExistingMatrixRow(?object $row, int $depth): object
+    {
+        if ($row === null) {
+            throw new RuntimeException(
+                '[DepthNeedMatrix] Ligne persistante absente pour le Depth '
+                . $depth . ' dans kernel_depth_matrix.'
+            );
+        }
+
+        return $row;
     }
 }

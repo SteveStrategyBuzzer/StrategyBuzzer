@@ -10,21 +10,20 @@ use App\Services\QuestionBank\Taxonomy\TaxonomyGeminiClient;
 use App\Services\QuestionBank\Taxonomy\TaxonomyOrchestrator;
 use App\Services\QuestionBank\Taxonomy\ValidationDominantIdeas;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\DB;
 use Throwable;
 
 /**
  * questions:taxonomy:seed
  *
- * One-shot warm-up command that populates the Taxonomy bank so that
- * KernelPipelineOrchestrator can call peekNext() without hitting an empty bank.
+ * One-shot warm-up command that prepares Taxonomy v1.1 occurrences without
+ * selecting or consuming an IdeaSlot.
  *
  * What it does:
  *   For each (Depth × Domain) cell (63 cells = 7 depths × 9 domains):
  *     1. Counts subjects already seeded (≥ 1 PASS+AVAILABLE idea) for this cell.
  *     2. If fewer than --subjects-per-cell subjects are seeded, calls
- *        TaxonomyOrchestrator::warmUpCell() to fill the gap.
- *     3. warmUpCell() only targets subjects with ZERO available ideas —
+ *        TaxonomyOrchestrator::warmUpV11Cell() to fill the gap.
+ *     3. warmUpV11Cell() only targets subjects with ZERO available ideas —
  *        it never touches or consumes existing AVAILABLE ideas.
  *
  * Idempotence:
@@ -126,7 +125,7 @@ class QuestionsTaxonomySeedCommand extends Command
         foreach ($depths as $depth) {
             foreach ($domains as $domainCode) {
                 $cellLabel    = "D{$depth}/{$domainCode}";
-                $seededBefore = $repo->countSubjectsWithAvailableIdeas($depth, $domainCode);
+                $seededBefore = $repo->countV11SubjectsWithAvailableIdeas($depth, $domainCode);
 
                 if ($seededBefore >= $subjectsPerCell) {
                     $this->line("  ▶ <fg=cyan>{$cellLabel}</> — <fg=green>déjà {$seededBefore} sujet(s) initialisé(s)</> ≥ cible ({$subjectsPerCell}). Ignoré.");
@@ -137,7 +136,7 @@ class QuestionsTaxonomySeedCommand extends Command
                 $this->line("  ▶ <fg=cyan>{$cellLabel}</> — {$seededBefore}/{$subjectsPerCell} sujet(s) initialisé(s). Remplissage…");
 
                 try {
-                    $seededAfter = $orchestrator->warmUpCell($depth, $domainCode, $subjectsPerCell);
+                    $seededAfter = $orchestrator->warmUpV11Cell($depth, $domainCode, $subjectsPerCell);
                 } catch (Throwable $e) {
                     $this->warn("    ↳ <fg=red>Erreur</> pour {$cellLabel} : " . $e->getMessage());
                     $failedCells++;
@@ -174,7 +173,7 @@ class QuestionsTaxonomySeedCommand extends Command
             return self::FAILURE;
         }
 
-        $this->info('  ✅  Taxonomy Bank warm-up terminé. Le pipeline KRP peut maintenant appeler peekNext() sans banque vide.');
+        $this->info('  ✅  Warm-up Taxonomy v1.1 terminé. Aucun IdeaSlot n’a été consommé.');
         $this->line('');
 
         return self::SUCCESS;
@@ -197,9 +196,9 @@ class QuestionsTaxonomySeedCommand extends Command
 
         foreach ($depths as $depth) {
             foreach ($domains as $domainCode) {
-                $subdomains  = $this->countSubdomains($depth, $domainCode);
-                $subjects    = $this->countSubjects($depth, $domainCode);
-                $seeded      = $repo->countSubjectsWithAvailableIdeas($depth, $domainCode);
+                $subdomains  = $repo->countV11Subdomains($depth, $domainCode);
+                $subjects    = $repo->countV11Subjects($depth, $domainCode);
+                $seeded      = $repo->countV11SubjectsWithAvailableIdeas($depth, $domainCode);
                 $ok          = $seeded >= $subjectsPerCell;
                 $statusLabel = $ok
                     ? "<fg=green>OK ({$seeded}/{$subjectsPerCell})</>"
@@ -229,24 +228,4 @@ class QuestionsTaxonomySeedCommand extends Command
         return self::SUCCESS;
     }
 
-    // =========================================================================
-    // DB helpers (direct read-only queries for the audit view)
-    // =========================================================================
-
-    private function countSubdomains(int $depth, string $domainCode): int
-    {
-        return (int) DB::table('taxonomy_subdomain_bank')
-            ->where('depth', $depth)
-            ->where('domain_code', $domainCode)
-            ->count();
-    }
-
-    private function countSubjects(int $depth, string $domainCode): int
-    {
-        return (int) DB::table('taxonomy_subject_bank as s')
-            ->join('taxonomy_subdomain_bank as sd', 'sd.id', '=', 's.subdomain_id')
-            ->where('sd.depth', $depth)
-            ->where('sd.domain_code', $domainCode)
-            ->count();
-    }
 }

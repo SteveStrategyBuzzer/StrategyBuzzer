@@ -8,7 +8,7 @@ namespace App\Services\QuestionBank\Taxonomy;
  * FailReason — raisons structurées de rejet d'une Idée Dominante.
  *
  * Chaque constante est un code machine utilisé par ValidationResult et
- * persisté dans taxonomy_dominant_idea_bank.fail_reason.
+ * persisté dans taxonomy_v11_ideas.fail_reason.
  *
  * Ces codes sont transmis dans la mémoire cumulative Gemini pour guider
  * les appels suivants.

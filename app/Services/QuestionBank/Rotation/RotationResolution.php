@@ -13,11 +13,9 @@ namespace App\Services\QuestionBank\Rotation;
  *   - Rotation disponible : depth + domain + domainPosition définis, noRotationReason = null.
  *   - Pas de rotation      : depth/domain/domainPosition = null, noRotationReason défini.
  *
- * Motifs d'indisponibilité (noRotationReason) :
- *   PRODUCTION_ON_HOLD      — depth_state persisté = PRODUCTION_ON_HOLD.
- *   PENDING_DEPTH_TRANSITION — tous les domaines du Depth actif sont DOMAIN_EXHAUSTED
- *                              et pending_depth_exhausted_depth est mémorisé ;
- *                              la transition sera appliquée au prochain CKR.
+ * Motif d'indisponibilité (noRotationReason) :
+ *   PRODUCTION_ON_HOLD — DEPTH_EXHAUSTED a confirmé qu'aucun Depth ne possède
+ *                        encore de besoin. Aucun Blueprint ne doit être créé.
  */
 final class RotationResolution
 {
@@ -61,7 +59,7 @@ final class RotationResolution
     /**
      * Aucune rotation disponible.
      *
-     * @param string $reason  PRODUCTION_ON_HOLD | PENDING_DEPTH_TRANSITION
+     * @param string $reason  PRODUCTION_ON_HOLD
      */
     public static function noRotation(string $reason): self
     {

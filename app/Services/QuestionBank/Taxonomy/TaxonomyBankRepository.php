@@ -9,11 +9,14 @@ use Illuminate\Support\Facades\DB;
 /**
  * TaxonomyBankRepository — accès DB exclusif pour la couche Taxonomy.
  *
- * Couvre les 4 tables :
- *   - taxonomy_subdomain_bank
- *   - taxonomy_subject_bank
- *   - taxonomy_dominant_idea_bank
- *   - taxonomy_generation_memory
+ * Couvre les tables Taxonomy v1.1 :
+ *   - taxonomy_v11_occurrences
+ *   - taxonomy_v11_subdomains
+ *   - taxonomy_v11_subjects
+ *   - taxonomy_v11_ideas
+ *   - taxonomy_v11_generation_memory
+ *   - taxonomy_v11_terminal_facts
+ *   - taxonomy_v11_blueprint_assignments
  *
  * Idempotence : toutes les insertions sont protégées par insertOrIgnore()
  * ou par firstOrCreate équivalent sur l'identité métier.
@@ -22,300 +25,316 @@ use Illuminate\Support\Facades\DB;
  */
 final class TaxonomyBankRepository
 {
-    private const TABLE_SUBDOMAINS = 'taxonomy_subdomain_bank';
-    private const TABLE_SUBJECTS   = 'taxonomy_subject_bank';
-    private const TABLE_IDEAS      = 'taxonomy_dominant_idea_bank';
-    private const TABLE_MEMORY     = 'taxonomy_generation_memory';
+    private const V11_OCCURRENCES  = 'taxonomy_v11_occurrences';
+    private const V11_SUBDOMAINS   = 'taxonomy_v11_subdomains';
+    private const V11_SUBJECTS     = 'taxonomy_v11_subjects';
+    private const V11_IDEAS        = 'taxonomy_v11_ideas';
+    private const V11_MEMORY       = 'taxonomy_v11_generation_memory';
+    private const V11_FACTS        = 'taxonomy_v11_terminal_facts';
+    private const V11_ASSIGNMENTS  = 'taxonomy_v11_blueprint_assignments';
 
     // =========================================================================
-    // Sous-domaines
-    // =========================================================================
-
-    /**
-     * Trouve ou crée un sous-domaine par identité métier (depth + domain + nom).
-     * Idempotent.
-     */
-    public function findOrCreateSubdomain(int $depth, string $domainCode, string $subdomainName): object
-    {
-        $existing = DB::table(self::TABLE_SUBDOMAINS)
-            ->where('depth', $depth)
-            ->where('domain_code', $domainCode)
-            ->where('subdomain_name', $subdomainName)
-            ->first();
-
-        if ($existing !== null) {
-            return $existing;
-        }
-
-        DB::table(self::TABLE_SUBDOMAINS)->insertOrIgnore([
-            'depth'                    => $depth,
-            'domain_code'              => $domainCode,
-            'subdomain_name'           => $subdomainName,
-            'status'                   => 'ACTIVE',
-            'generation_exhausted'     => false,
-            'subject_attempt_count'    => 0,
-            'created_at'               => now(),
-            'updated_at'               => now(),
-        ]);
-
-        $row = DB::table(self::TABLE_SUBDOMAINS)
-            ->where('depth', $depth)
-            ->where('domain_code', $domainCode)
-            ->where('subdomain_name', $subdomainName)
-            ->first();
-
-        if ($row === null) {
-            throw new \RuntimeException("TaxonomyBankRepository: subdomain not found after insert: depth={$depth} domain={$domainCode} name={$subdomainName}");
-        }
-
-        return $row;
-    }
-
-    /**
-     * Retourne tous les sous-domaines pour (depth, domain) ordonnés par ID.
-     *
-     * @return object[]
-     */
-    public function getSubdomains(int $depth, string $domainCode): array
-    {
-        return DB::table(self::TABLE_SUBDOMAINS)
-            ->where('depth', $depth)
-            ->where('domain_code', $domainCode)
-            ->orderBy('id')
-            ->get()
-            ->all();
-    }
-
-    /**
-     * Retourne le premier sous-domaine non exhausted (peut encore produire des sujets ou a des sujets avec idées).
-     */
-    public function findActiveSubdomain(int $depth, string $domainCode): ?object
-    {
-        // Sous-domaine avec génération non épuisée OU ayant des sujets avec idées restantes
-        return DB::table(self::TABLE_SUBDOMAINS . ' as sd')
-            ->where('sd.depth', $depth)
-            ->where('sd.domain_code', $domainCode)
-            ->where(function ($q) {
-                $q->where('sd.generation_exhausted', false)
-                  ->orWhereExists(function ($q2) {
-                      $q2->select(DB::raw(1))
-                         ->from(self::TABLE_SUBJECTS . ' as s')
-                         ->whereColumn('s.subdomain_id', 'sd.id')
-                         ->where('s.idea_generation_exhausted', false);
-                  });
-            })
-            ->orderBy('sd.id')
-            ->first(['sd.*']);
-    }
-
-    /**
-     * Marque un sous-domaine comme "génération épuisée" (plus de sujets possibles).
-     */
-    public function markSubdomainGenerationExhausted(int $subdomainId): void
-    {
-        DB::table(self::TABLE_SUBDOMAINS)
-            ->where('id', $subdomainId)
-            ->update([
-                'generation_exhausted' => true,
-                'updated_at'           => now(),
-            ]);
-    }
-
-    /**
-     * Incrémente le compteur de tentatives de génération de sujets.
-     */
-    public function incrementSubdomainSubjectAttemptCount(int $subdomainId): void
-    {
-        DB::table(self::TABLE_SUBDOMAINS)
-            ->where('id', $subdomainId)
-            ->increment('subject_attempt_count', 1, ['updated_at' => now()]);
-    }
-
-    /**
-     * Vérifie si tous les sous-domaines sont génération-épuisés pour (depth, domain).
-     */
-    public function allSubdomainsExhausted(int $depth, string $domainCode): bool
-    {
-        $hasActive = DB::table(self::TABLE_SUBDOMAINS)
-            ->where('depth', $depth)
-            ->where('domain_code', $domainCode)
-            ->where('generation_exhausted', false)
-            ->exists();
-
-        return ! $hasActive;
-    }
-
-    // =========================================================================
-    // Sujets
+    // Taxonomy v1.1 — occurrences et slots exacts
     // =========================================================================
 
     /**
-     * Trouve ou crée un sujet par identité métier (subdomain_id + nom).
-     * Idempotent.
+     * Retourne la plus récente occurrence non terminale du bassin.
      */
-    public function findOrCreateSubject(int $subdomainId, string $subjectName): object
+    public function findV11ActiveOccurrence(int $depth, string $domainCode): ?object
     {
-        $existing = DB::table(self::TABLE_SUBJECTS)
-            ->where('subdomain_id', $subdomainId)
-            ->where('subject_name', $subjectName)
+        return DB::table(self::V11_OCCURRENCES)
+            ->where('depth', $depth)
+            ->where('domain_code', $domainCode)
+            ->whereIn('status', ['PREPARING', 'OPEN', 'BLOCKED'])
+            ->orderByDesc('id')
             ->first();
-
-        if ($existing !== null) {
-            return $existing;
-        }
-
-        DB::table(self::TABLE_SUBJECTS)->insertOrIgnore([
-            'subdomain_id'              => $subdomainId,
-            'subject_name'              => $subjectName,
-            'status'                    => 'AVAILABLE',
-            'idea_attempt_count'        => 0,
-            'idea_generation_exhausted' => false,
-            'created_at'                => now(),
-            'updated_at'                => now(),
-        ]);
-
-        $row = DB::table(self::TABLE_SUBJECTS)
-            ->where('subdomain_id', $subdomainId)
-            ->where('subject_name', $subjectName)
-            ->first();
-
-        if ($row === null) {
-            throw new \RuntimeException("TaxonomyBankRepository: subject not found after insert: subdomain={$subdomainId} name={$subjectName}");
-        }
-
-        return $row;
     }
 
-    /**
-     * Retourne tous les sujets d'un sous-domaine ordonnés par ID.
-     *
-     * @return object[]
-     */
-    public function getSubjectsForSubdomain(int $subdomainId): array
+    public function countV11Subdomains(int $depth, string $domainCode): int
     {
-        return DB::table(self::TABLE_SUBJECTS)
-            ->where('subdomain_id', $subdomainId)
-            ->orderBy('id')
-            ->get()
-            ->all();
-    }
-
-    /**
-     * Retourne le premier sujet pour lequel des idées peuvent encore être générées.
-     */
-    public function findSubjectNeedingIdeas(int $subdomainId): ?object
-    {
-        return DB::table(self::TABLE_SUBJECTS . ' as s')
-            ->where('s.subdomain_id', $subdomainId)
-            ->where('s.idea_generation_exhausted', false)
-            ->where(function ($q) {
-                // Soit moins de MAX_IDEAS PASS disponibles, soit aucune idée générée encore
-                $q->whereRaw('(SELECT COUNT(*) FROM ' . self::TABLE_IDEAS . ' di '
-                    . 'WHERE di.subject_id = s.id AND di.validation_status = ? AND di.status = ?)'
-                    . ' < ?', ['PASS', 'AVAILABLE', TaxonomyConfig::MAX_DOMINANT_IDEAS_PER_SUBJECT]);
-            })
-            ->orderBy('s.id')
-            ->first(['s.*']);
-    }
-
-    /**
-     * Marque un sujet comme "génération idées épuisée".
-     */
-    public function markSubjectIdeaGenerationExhausted(int $subjectId): void
-    {
-        DB::table(self::TABLE_SUBJECTS)
-            ->where('id', $subjectId)
-            ->update([
-                'idea_generation_exhausted' => true,
-                'updated_at'                => now(),
-            ]);
-    }
-
-    /**
-     * Incrémente le compteur de tentatives de génération d'idées.
-     */
-    public function incrementSubjectIdeaAttemptCount(int $subjectId): void
-    {
-        DB::table(self::TABLE_SUBJECTS)
-            ->where('id', $subjectId)
-            ->increment('idea_attempt_count', 1, ['updated_at' => now()]);
-    }
-
-    /**
-     * Marque un sujet comme CONSUMED.
-     */
-    public function markSubjectConsumed(int $subjectId): void
-    {
-        DB::table(self::TABLE_SUBJECTS)
-            ->where('id', $subjectId)
-            ->update([
-                'status'     => 'CONSUMED',
-                'updated_at' => now(),
-            ]);
-    }
-
-    /**
-     * Nombre de sujets AVAILABLE dans un sous-domaine.
-     */
-    public function countAvailableSubjects(int $subdomainId): int
-    {
-        return (int) DB::table(self::TABLE_SUBJECTS)
-            ->where('subdomain_id', $subdomainId)
-            ->where('status', 'AVAILABLE')
+        return (int) DB::table(self::V11_SUBDOMAINS . ' as subdomain')
+            ->join(self::V11_OCCURRENCES . ' as occurrence', 'occurrence.id', '=', 'subdomain.occurrence_id')
+            ->where('occurrence.depth', $depth)
+            ->where('occurrence.domain_code', $domainCode)
             ->count();
     }
 
-    // =========================================================================
-    // Idées Dominantes
-    // =========================================================================
+    public function countV11Subjects(int $depth, string $domainCode): int
+    {
+        return (int) DB::table(self::V11_SUBJECTS . ' as subject')
+            ->join(self::V11_SUBDOMAINS . ' as subdomain', 'subdomain.id', '=', 'subject.subdomain_id')
+            ->join(self::V11_OCCURRENCES . ' as occurrence', 'occurrence.id', '=', 'subdomain.occurrence_id')
+            ->where('occurrence.depth', $depth)
+            ->where('occurrence.domain_code', $domainCode)
+            ->count();
+    }
+
+    public function countV11SubjectsWithAvailableIdeas(int $depth, string $domainCode): int
+    {
+        return (int) DB::table(self::V11_SUBJECTS . ' as subject')
+            ->join(self::V11_SUBDOMAINS . ' as subdomain', 'subdomain.id', '=', 'subject.subdomain_id')
+            ->join(self::V11_OCCURRENCES . ' as occurrence', 'occurrence.id', '=', 'subdomain.occurrence_id')
+            ->where('occurrence.depth', $depth)
+            ->where('occurrence.domain_code', $domainCode)
+            ->whereExists(function ($query) {
+                $query->select(DB::raw(1))
+                    ->from(self::V11_IDEAS . ' as idea')
+                    ->whereColumn('idea.subject_id', 'subject.id')
+                    ->where('idea.validation_status', 'PASS')
+                    ->where('idea.status', 'AVAILABLE');
+            })
+            ->count();
+    }
 
     /**
-     * Persiste une idée PASS (idempotent par subject_id + valeur).
+     * Ouvre une occurrence propre seulement si aucune occurrence exploitable
+     * ou bloquée n'existe déjà pour le même bassin.
      */
-    public function persistPassIdea(int $subjectId, string $ideaValue): object
+    public function findOrCreateV11Occurrence(int $depth, string $domainCode): object
     {
-        $existing = DB::table(self::TABLE_IDEAS)
-            ->where('subject_id', $subjectId)
-            ->where('idea_value', $ideaValue)
-            ->first();
-
+        $existing = $this->findV11ActiveOccurrence($depth, $domainCode);
         if ($existing !== null) {
             return $existing;
         }
 
-        DB::table(self::TABLE_IDEAS)->insertOrIgnore([
-            'subject_id'        => $subjectId,
-            'idea_value'        => $ideaValue,
-            'validation_status' => 'PASS',
-            'fail_reason'       => null,
-            'fail_conflict_with'=> null,
-            'status'            => 'AVAILABLE',
-            'created_at'        => now(),
-            'updated_at'        => now(),
+        return DB::transaction(function () use ($depth, $domainCode) {
+            $lockedExisting = DB::table(self::V11_OCCURRENCES)
+                ->where('depth', $depth)
+                ->where('domain_code', $domainCode)
+                ->whereIn('status', ['PREPARING', 'OPEN', 'BLOCKED'])
+                ->orderByDesc('id')
+                ->lockForUpdate()
+                ->first();
+
+            if ($lockedExisting !== null) {
+                return $lockedExisting;
+            }
+
+            $ordinal = (int) DB::table(self::V11_OCCURRENCES)
+                ->where('depth', $depth)
+                ->where('domain_code', $domainCode)
+                ->max('ordinal') + 1;
+
+            DB::table(self::V11_OCCURRENCES)->insertOrIgnore([
+                'depth'                            => $depth,
+                'domain_code'                      => $domainCode,
+                'ordinal'                          => $ordinal,
+                'status'                           => 'PREPARING',
+                'consecutive_technical_failures'   => 0,
+                'last_error'                       => null,
+                'created_at'                       => now(),
+                'updated_at'                       => now(),
+            ]);
+
+            $created = DB::table(self::V11_OCCURRENCES)
+                ->where('depth', $depth)
+                ->where('domain_code', $domainCode)
+                ->where('ordinal', $ordinal)
+                ->first();
+
+            if ($created === null) {
+                throw new \RuntimeException(
+                    "Taxonomy v1.1: occurrence introuvable après création ({$depth}/{$domainCode})."
+                );
+            }
+
+            return $created;
+        });
+    }
+
+    public function lockV11Occurrence(int $occurrenceId): ?object
+    {
+        return DB::table(self::V11_OCCURRENCES)
+            ->where('id', $occurrenceId)
+            ->lockForUpdate()
+            ->first();
+    }
+
+    public function findV11Subdomain(int $occurrenceId): ?object
+    {
+        return DB::table(self::V11_SUBDOMAINS)
+            ->where('occurrence_id', $occurrenceId)
+            ->first();
+    }
+
+    public function createV11Subdomain(int $occurrenceId, string $subdomainName): object
+    {
+        DB::table(self::V11_SUBDOMAINS)->insertOrIgnore([
+            'occurrence_id'  => $occurrenceId,
+            'subdomain_name' => $subdomainName,
+            'status'         => 'ACTIVE',
+            'created_at'     => now(),
+            'updated_at'     => now(),
         ]);
 
-        $row = DB::table(self::TABLE_IDEAS)
-            ->where('subject_id', $subjectId)
-            ->where('idea_value', $ideaValue)
-            ->first();
-
-        if ($row === null) {
-            throw new \RuntimeException("TaxonomyBankRepository: idea not found after insert: subject={$subjectId} value={$ideaValue}");
+        $subdomain = $this->findV11Subdomain($occurrenceId);
+        if ($subdomain === null) {
+            throw new \RuntimeException(
+                "Taxonomy v1.1: sous-domaine introuvable après création pour occurrence={$occurrenceId}."
+            );
         }
 
-        return $row;
+        return $subdomain;
     }
 
     /**
-     * Persiste une idée FAIL (idempotent par subject_id + valeur).
+     * @param string[] $subjectNames
      */
-    public function persistFailIdea(
-        int     $subjectId,
-        string  $ideaValue,
-        string  $reason,
+    public function createV11Subjects(int $subdomainId, array $subjectNames): void
+    {
+        $now = now();
+        $rows = [];
+
+        foreach (array_slice(array_values(array_unique($subjectNames)), 0, TaxonomyConfig::MAX_SUBJECTS_PER_SUBDOMAIN) as $name) {
+            $name = trim($name);
+            if ($name === '') {
+                continue;
+            }
+
+            $rows[] = [
+                'subdomain_id'              => $subdomainId,
+                'subject_name'              => $name,
+                'status'                    => 'AVAILABLE',
+                'idea_attempt_count'        => 0,
+                'idea_generation_exhausted' => false,
+                'created_at'                => $now,
+                'updated_at'                => $now,
+            ];
+        }
+
+        if ($rows !== []) {
+            DB::table(self::V11_SUBJECTS)->insertOrIgnore($rows);
+        }
+    }
+
+    public function findV11FirstAvailableIdea(int $occurrenceId): ?object
+    {
+        return DB::table(self::V11_IDEAS . ' as idea')
+            ->join(self::V11_SUBJECTS . ' as subject', 'subject.id', '=', 'idea.subject_id')
+            ->join(self::V11_SUBDOMAINS . ' as subdomain', 'subdomain.id', '=', 'subject.subdomain_id')
+            ->where('subdomain.occurrence_id', $occurrenceId)
+            ->where('subject.status', 'AVAILABLE')
+            ->where('idea.validation_status', 'PASS')
+            ->where('idea.status', 'AVAILABLE')
+            ->orderBy('subject.id')
+            ->orderBy('idea.id')
+            ->select([
+                'idea.id as idea_id',
+                'idea.idea_value',
+                'subject.id as subject_id',
+                'subject.subject_name',
+                'subdomain.id as subdomain_id',
+                'subdomain.subdomain_name',
+            ])
+            ->first();
+    }
+
+    public function claimV11FirstAvailableIdea(int $occurrenceId): ?object
+    {
+        return DB::table(self::V11_IDEAS . ' as idea')
+            ->join(self::V11_SUBJECTS . ' as subject', 'subject.id', '=', 'idea.subject_id')
+            ->join(self::V11_SUBDOMAINS . ' as subdomain', 'subdomain.id', '=', 'subject.subdomain_id')
+            ->where('subdomain.occurrence_id', $occurrenceId)
+            ->where('subject.status', 'AVAILABLE')
+            ->where('idea.validation_status', 'PASS')
+            ->where('idea.status', 'AVAILABLE')
+            ->orderBy('subject.id')
+            ->orderBy('idea.id')
+            ->select([
+                'idea.id as idea_id',
+                'idea.idea_value',
+                'subject.id as subject_id',
+                'subject.subject_name',
+                'subdomain.id as subdomain_id',
+                'subdomain.subdomain_name',
+            ])
+            ->lockForUpdate()
+            ->first();
+    }
+
+    /**
+     * @return object[] Lignes Subject V11 (id, subject_name, ...) pour un Sous-domaine, triées par id.
+     */
+    public function getV11SubjectsForSubdomain(int $subdomainId): array
+    {
+        return DB::table(self::V11_SUBJECTS)
+            ->where('subdomain_id', $subdomainId)
+            ->orderBy('id')
+            ->get()
+            ->all();
+    }
+
+    public function findV11SubjectNeedingIdeas(int $occurrenceId): ?object
+    {
+        return DB::table(self::V11_SUBJECTS . ' as subject')
+            ->join(self::V11_SUBDOMAINS . ' as subdomain', 'subdomain.id', '=', 'subject.subdomain_id')
+            ->where('subdomain.occurrence_id', $occurrenceId)
+            ->where('subject.status', 'AVAILABLE')
+            ->where('subject.idea_generation_exhausted', false)
+            ->whereNotExists(function ($query) {
+                $query->select(DB::raw(1))
+                    ->from(self::V11_IDEAS . ' as idea')
+                    ->whereColumn('idea.subject_id', 'subject.id')
+                    ->where('idea.validation_status', 'PASS')
+                    ->where('idea.status', 'AVAILABLE');
+            })
+            ->orderBy('subject.id')
+            ->select(['subject.*', 'subdomain.subdomain_name', 'subdomain.id as subdomain_id'])
+            ->first();
+    }
+
+    /**
+     * @return string[]
+     */
+    public function getV11PassIdeaValues(int $subjectId): array
+    {
+        return DB::table(self::V11_IDEAS)
+            ->where('subject_id', $subjectId)
+            ->where('validation_status', 'PASS')
+            ->orderBy('id')
+            ->pluck('idea_value')
+            ->all();
+    }
+
+    /**
+     * @return array<array{value: string, reason: string, conflict_with: string|null}>
+     */
+    public function getV11FailIdeaDetails(int $subjectId): array
+    {
+        return DB::table(self::V11_IDEAS)
+            ->where('subject_id', $subjectId)
+            ->where('validation_status', 'FAIL')
+            ->orderBy('id')
+            ->get(['idea_value', 'fail_reason', 'fail_conflict_with'])
+            ->map(fn(object $row) => [
+                'value'         => $row->idea_value,
+                'reason'        => $row->fail_reason ?? 'UNKNOWN',
+                'conflict_with' => $row->fail_conflict_with,
+            ])
+            ->all();
+    }
+
+    public function persistV11PassIdea(int $subjectId, string $ideaValue): void
+    {
+        DB::table(self::V11_IDEAS)->insertOrIgnore([
+            'subject_id'         => $subjectId,
+            'idea_value'         => $ideaValue,
+            'validation_status'  => 'PASS',
+            'fail_reason'        => null,
+            'fail_conflict_with' => null,
+            'status'             => 'AVAILABLE',
+            'created_at'         => now(),
+            'updated_at'         => now(),
+        ]);
+    }
+
+    public function persistV11FailIdea(
+        int $subjectId,
+        string $ideaValue,
+        string $reason,
         ?string $conflictWith = null,
     ): void {
-        DB::table(self::TABLE_IDEAS)->insertOrIgnore([
+        DB::table(self::V11_IDEAS)->insertOrIgnore([
             'subject_id'         => $subjectId,
             'idea_value'         => $ideaValue,
             'validation_status'  => 'FAIL',
@@ -327,229 +346,57 @@ final class TaxonomyBankRepository
         ]);
     }
 
-    /**
-     * Trouve la première idée PASS + AVAILABLE pour (depth, domain).
-     * Ordonnée : subdomain.id ASC, subject.id ASC, idea.id ASC.
-     * → Garantit l'idempotence de peekNext().
-     */
-    public function findFirstAvailableIdea(int $depth, string $domainCode): ?object
+    public function nextV11AttemptNumber(int $occurrenceId, string $contextType, string $contextKey): int
     {
-        return DB::table(self::TABLE_IDEAS . ' as di')
-            ->join(self::TABLE_SUBJECTS . ' as s', 's.id', '=', 'di.subject_id')
-            ->join(self::TABLE_SUBDOMAINS . ' as sd', 'sd.id', '=', 's.subdomain_id')
-            ->where('sd.depth', $depth)
-            ->where('sd.domain_code', $domainCode)
-            ->where('di.validation_status', 'PASS')
-            ->where('di.status', 'AVAILABLE')
-            ->orderBy('sd.id')
-            ->orderBy('s.id')
-            ->orderBy('di.id')
-            ->select([
-                'di.id as idea_id',
-                'di.idea_value',
-                'di.subject_id',
-                's.subject_name',
-                's.subdomain_id',
-                'sd.subdomain_name',
-            ])
-            ->first();
+        $max = DB::table(self::V11_MEMORY)
+            ->where('occurrence_id', $occurrenceId)
+            ->where('context_type', $contextType)
+            ->where('context_key', $contextKey)
+            ->max('attempt_number');
+
+        return $max === null ? 1 : (int) $max + 1;
     }
 
     /**
-     * Trouve la première idée PASS + AVAILABLE pour (depth, domain) en posant
-     * un verrou pessimiste (SELECT … FOR UPDATE) sur la ligne sélectionnée.
-     *
-     * À appeler UNIQUEMENT à l'intérieur d'une DB::transaction() — le verrou
-     * est libéré au COMMIT / ROLLBACK. Garantit que deux transactions
-     * concurrentes ne sélectionnent pas la même idée : la seconde attend que
-     * la première commite, puis re-lit et tombe sur l'idée suivante.
-     *
-     * Sur SQLite (tests) lockForUpdate() est un no-op (pas de verrous ligne) ;
-     * la sérialisation s'effectue via le verrou de base de données SQLite.
-     */
-    public function claimFirstAvailableIdea(int $depth, string $domainCode): ?object
-    {
-        return DB::table(self::TABLE_IDEAS . ' as di')
-            ->join(self::TABLE_SUBJECTS . ' as s', 's.id', '=', 'di.subject_id')
-            ->join(self::TABLE_SUBDOMAINS . ' as sd', 'sd.id', '=', 's.subdomain_id')
-            ->where('sd.depth', $depth)
-            ->where('sd.domain_code', $domainCode)
-            ->where('di.validation_status', 'PASS')
-            ->where('di.status', 'AVAILABLE')
-            ->orderBy('sd.id')
-            ->orderBy('s.id')
-            ->orderBy('di.id')
-            ->select([
-                'di.id as idea_id',
-                'di.idea_value',
-                'di.subject_id',
-                's.subject_name',
-                's.subdomain_id',
-                'sd.subdomain_name',
-            ])
-            ->lockForUpdate()
-            ->first();
-    }
-
-    /**
-     * Marque la première idée AVAILABLE comme CONSUMED (idempotent).
-     */
-    public function markIdeaConsumed(int $ideaId): void
-    {
-        DB::table(self::TABLE_IDEAS)
-            ->where('id', $ideaId)
-            ->where('status', 'AVAILABLE')
-            ->update([
-                'status'     => 'CONSUMED',
-                'updated_at' => now(),
-            ]);
-    }
-
-    /**
-     * Retourne toutes les idées PASS pour un sujet (peu importe le statut AVAILABLE/CONSUMED).
-     *
-     * @return string[]
-     */
-    public function getPassIdeaValues(int $subjectId): array
-    {
-        return DB::table(self::TABLE_IDEAS)
-            ->where('subject_id', $subjectId)
-            ->where('validation_status', 'PASS')
-            ->orderBy('id')
-            ->pluck('idea_value')
-            ->all();
-    }
-
-    /**
-     * Retourne toutes les idées FAIL pour un sujet avec leurs détails.
-     *
-     * @return array<array{value: string, reason: string, conflict_with: string|null}>
-     */
-    public function getFailIdeaDetails(int $subjectId): array
-    {
-        return DB::table(self::TABLE_IDEAS)
-            ->where('subject_id', $subjectId)
-            ->where('validation_status', 'FAIL')
-            ->orderBy('id')
-            ->get(['idea_value', 'fail_reason', 'fail_conflict_with'])
-            ->map(fn($r) => [
-                'value'        => $r->idea_value,
-                'reason'       => $r->fail_reason ?? 'UNKNOWN',
-                'conflict_with'=> $r->fail_conflict_with,
-            ])
-            ->all();
-    }
-
-    /**
-     * Compte les idées PASS disponibles pour un sujet.
-     */
-    public function countAvailablePassIdeas(int $subjectId): int
-    {
-        return (int) DB::table(self::TABLE_IDEAS)
-            ->where('subject_id', $subjectId)
-            ->where('validation_status', 'PASS')
-            ->where('status', 'AVAILABLE')
-            ->count();
-    }
-
-    /**
-     * Compte le nombre de sujets ayant au moins une idée PASS+AVAILABLE pour (depth, domain).
-     *
-     * Utilisé par warmUpCell() pour savoir combien de sujets sont déjà initialisés.
-     */
-    public function countSubjectsWithAvailableIdeas(int $depth, string $domainCode): int
-    {
-        return (int) DB::table(self::TABLE_SUBJECTS . ' as s')
-            ->join(self::TABLE_SUBDOMAINS . ' as sd', 'sd.id', '=', 's.subdomain_id')
-            ->where('sd.depth', $depth)
-            ->where('sd.domain_code', $domainCode)
-            ->whereExists(function ($q) {
-                $q->select(DB::raw(1))
-                  ->from(self::TABLE_IDEAS . ' as di')
-                  ->whereColumn('di.subject_id', 's.id')
-                  ->where('di.validation_status', 'PASS')
-                  ->where('di.status', 'AVAILABLE');
-            })
-            ->count();
-    }
-
-    /**
-     * Retourne le premier sujet d'un sous-domaine qui n'a encore AUCUNE idée PASS+AVAILABLE.
-     *
-     * Utilisé par warmUpCell() pour cibler uniquement les sujets non encore initialisés,
-     * sans jamais toucher aux idées déjà disponibles pour le gameplay.
-     */
-    public function findSubjectWithNoAvailableIdeas(int $subdomainId): ?object
-    {
-        return DB::table(self::TABLE_SUBJECTS . ' as s')
-            ->where('s.subdomain_id', $subdomainId)
-            ->where('s.idea_generation_exhausted', false)
-            ->whereNotExists(function ($q) {
-                $q->select(DB::raw(1))
-                  ->from(self::TABLE_IDEAS . ' as di')
-                  ->whereColumn('di.subject_id', 's.id')
-                  ->where('di.validation_status', 'PASS')
-                  ->where('di.status', 'AVAILABLE');
-            })
-            ->orderBy('s.id')
-            ->first(['s.*']);
-    }
-
-    // =========================================================================
-    // Mémoire cumulative
-    // =========================================================================
-
-    /**
-     * Retourne la mémoire cumulative complète pour un contexte donné.
-     * Ordonnée par numéro d'appel croissant.
-     *
      * @return array<array{attempt: int, candidates: array, pass: array, fail_details: array, covered_directions: array}>
      */
-    public function getCumulativeMemory(string $contextType, string $contextKey): array
+    public function getV11Memory(int $occurrenceId, string $contextType, string $contextKey): array
     {
-        $rows = DB::table(self::TABLE_MEMORY)
+        return DB::table(self::V11_MEMORY)
+            ->where('occurrence_id', $occurrenceId)
             ->where('context_type', $contextType)
             ->where('context_key', $contextKey)
             ->orderBy('attempt_number')
-            ->get(['attempt_number', 'candidates', 'pass_items', 'fail_items', 'covered_directions'])
-            ->all();
-
-        return array_map(function (object $row) {
-            return [
+            ->get()
+            ->map(fn(object $row) => [
                 'attempt'            => $row->attempt_number,
-                'candidates'         => json_decode($row->candidates, true) ?? [],
-                'pass'               => json_decode($row->pass_items, true) ?? [],
-                'fail_details'       => json_decode($row->fail_items, true) ?? [],
-                'covered_directions' => json_decode($row->covered_directions, true) ?? [],
-            ];
-        }, $rows);
+                'candidates'         => json_decode($row->candidates ?? '[]', true) ?: [],
+                'pass'               => json_decode($row->pass_items ?? '[]', true) ?: [],
+                'fail_details'       => json_decode($row->fail_items ?? '[]', true) ?: [],
+                'covered_directions' => json_decode($row->covered_directions ?? '[]', true) ?: [],
+            ])
+            ->all();
     }
 
-    /**
-     * Persiste une entrée de mémoire cumulative (idempotente par context_type + context_key + attempt_number).
-     *
-     * @param string[] $candidates      Candidats proposés par Gemini
-     * @param string[] $passItems       Valeurs PASS après validation
-     * @param array    $failDetails     FAIL avec raisons [{value, reason, conflict_with}]
-     * @param string[] $coveredDirections Directions maintenant couvertes
-     */
-    public function persistMemoryEntry(
+    public function persistV11Memory(
+        int $occurrenceId,
         string $contextType,
         string $contextKey,
-        int    $attemptNumber,
-        array  $candidates,
-        array  $passItems,
-        array  $failDetails,
-        array  $coveredDirections,
-        bool   $generationExhausted = false,
+        int $attemptNumber,
+        array $candidates,
+        array $passItems,
+        array $failItems,
+        array $coveredDirections,
+        bool $generationExhausted,
     ): void {
-        DB::table(self::TABLE_MEMORY)->insertOrIgnore([
+        DB::table(self::V11_MEMORY)->insertOrIgnore([
+            'occurrence_id'       => $occurrenceId,
             'context_type'        => $contextType,
             'context_key'         => $contextKey,
             'attempt_number'      => $attemptNumber,
             'candidates'          => json_encode($candidates),
             'pass_items'          => json_encode($passItems),
-            'fail_items'          => json_encode($failDetails),
+            'fail_items'          => json_encode($failItems),
             'covered_directions'  => json_encode($coveredDirections),
             'generation_exhausted'=> $generationExhausted,
             'created_at'          => now(),
@@ -557,110 +404,336 @@ final class TaxonomyBankRepository
         ]);
     }
 
-    /**
-     * Retourne le prochain numéro d'appel pour un contexte donné (1-indexed).
-     */
-    public function getNextAttemptNumber(string $contextType, string $contextKey): int
+    public function incrementV11SubjectIdeaAttempts(int $subjectId): void
     {
-        $max = DB::table(self::TABLE_MEMORY)
-            ->where('context_type', $contextType)
-            ->where('context_key', $contextKey)
-            ->max('attempt_number');
-
-        return ($max === null) ? 1 : (int) $max + 1;
+        DB::table(self::V11_SUBJECTS)
+            ->where('id', $subjectId)
+            ->increment('idea_attempt_count', 1, ['updated_at' => now()]);
     }
 
-    // =========================================================================
-    // Observabilité — sujets épuisés sans PASS
-    // =========================================================================
-
-    /**
-     * Retourne les sujets marqués idea_generation_exhausted qui ont ≥ $minFails
-     * idées FAIL et 0 idée PASS (= Gemini a systématiquement échoué).
-     *
-     * Utilisé par le /health endpoint et la commande questions:taxonomy:exhausted-subjects.
-     *
-     * @param  int  $minFails  Seuil minimum d'idées FAIL (défaut : 1)
-     * @return array<object>   Lignes avec subdomain_name, subject_name, depth,
-     *                         domain_code, fail_count, exhausted_at
-     */
-    public function findExhaustedWithOnlyFails(int $minFails = 1): array
+    public function markV11SubjectIdeaGenerationExhausted(int $subjectId): void
     {
-        return DB::table(self::TABLE_SUBJECTS . ' as s')
-            ->join(self::TABLE_SUBDOMAINS . ' as sd', 'sd.id', '=', 's.subdomain_id')
-            ->where('s.idea_generation_exhausted', true)
-            ->whereRaw(
-                '(SELECT COUNT(*) FROM ' . self::TABLE_IDEAS . ' di'
-                . ' WHERE di.subject_id = s.id AND di.validation_status = ?) = 0',
-                ['PASS']
-            )
-            ->whereRaw(
-                '(SELECT COUNT(*) FROM ' . self::TABLE_IDEAS . ' di'
-                . ' WHERE di.subject_id = s.id AND di.validation_status = ?) >= ?',
-                ['FAIL', $minFails]
-            )
-            ->orderBy('sd.depth')
-            ->orderBy('sd.domain_code')
-            ->orderBy('s.id')
-            ->get([
-                'sd.depth',
-                'sd.domain_code',
-                'sd.subdomain_name',
-                's.id as subject_id',
-                's.subject_name',
-                's.updated_at as exhausted_at',
-                DB::raw(
-                    '(SELECT COUNT(*) FROM ' . self::TABLE_IDEAS . ' di'
-                    . ' WHERE di.subject_id = s.id AND di.validation_status = \'FAIL\') as fail_count'
-                ),
-            ])
-            ->all();
+        DB::table(self::V11_SUBJECTS)
+            ->where('id', $subjectId)
+            ->update(['idea_generation_exhausted' => true, 'updated_at' => now()]);
     }
 
-    /**
-     * Retourne le nombre de sujets épuisés sans aucune idée PASS.
-     */
-    public function countExhaustedWithOnlyFails(): int
+    public function markV11IdeaConsumed(int $ideaId): void
     {
-        return count($this->findExhaustedWithOnlyFails(minFails: 1));
+        DB::table(self::V11_IDEAS)
+            ->where('id', $ideaId)
+            ->where('status', 'AVAILABLE')
+            ->update(['status' => 'CONSUMED', 'updated_at' => now()]);
     }
 
-    /**
-     * Retourne le nombre d'appels déjà effectués pour un contexte.
-     */
-    public function getAttemptCount(string $contextType, string $contextKey): int
+    public function markV11SubjectUsedIfNoAvailableIdeas(int $subjectId): void
     {
-        return (int) DB::table(self::TABLE_MEMORY)
-            ->where('context_type', $contextType)
-            ->where('context_key', $contextKey)
+        $available = DB::table(self::V11_IDEAS)
+            ->where('subject_id', $subjectId)
+            ->where('validation_status', 'PASS')
+            ->where('status', 'AVAILABLE')
+            ->exists();
+
+        if (! $available) {
+            DB::table(self::V11_SUBJECTS)
+                ->where('id', $subjectId)
+                ->where('idea_generation_exhausted', true)
+                ->update(['status' => 'USED', 'updated_at' => now()]);
+        }
+    }
+
+    public function remainingV11Ideas(int $occurrenceId): int
+    {
+        return (int) DB::table(self::V11_IDEAS . ' as idea')
+            ->join(self::V11_SUBJECTS . ' as subject', 'subject.id', '=', 'idea.subject_id')
+            ->join(self::V11_SUBDOMAINS . ' as subdomain', 'subdomain.id', '=', 'subject.subdomain_id')
+            ->where('subdomain.occurrence_id', $occurrenceId)
+            ->where('idea.validation_status', 'PASS')
+            ->where('idea.status', 'AVAILABLE')
             ->count();
     }
 
-    // =========================================================================
-    // Helpers de clés de contexte
-    // =========================================================================
-
-    /**
-     * Génère la clé de contexte pour la mémoire Sous-domaine.
-     */
-    public static function subdomainContextKey(int $depth, string $domainCode): string
+    public function remainingV11Subjects(int $occurrenceId): int
     {
-        return "sd:{$depth}:{$domainCode}";
+        return (int) DB::table(self::V11_SUBJECTS . ' as subject')
+            ->join(self::V11_SUBDOMAINS . ' as subdomain', 'subdomain.id', '=', 'subject.subdomain_id')
+            ->where('subdomain.occurrence_id', $occurrenceId)
+            ->where('subject.status', 'AVAILABLE')
+            ->where(function ($query) {
+                $query->where('subject.idea_generation_exhausted', false)
+                    ->orWhereExists(function ($subquery) {
+                        $subquery->select(DB::raw(1))
+                            ->from(self::V11_IDEAS . ' as idea')
+                            ->whereColumn('idea.subject_id', 'subject.id')
+                            ->where('idea.validation_status', 'PASS')
+                            ->where('idea.status', 'AVAILABLE');
+                    });
+            })
+            ->count();
+    }
+
+    public function markV11OccurrenceExhausted(int $occurrenceId, int $depth, string $domainCode): void
+    {
+        DB::table(self::V11_OCCURRENCES)
+            ->where('id', $occurrenceId)
+            ->where('status', 'OPEN')
+            ->update([
+                'status'       => 'EXHAUSTED',
+                'exhausted_at' => now(),
+                'updated_at'   => now(),
+            ]);
+
+        DB::table(self::V11_SUBDOMAINS)
+            ->where('occurrence_id', $occurrenceId)
+            ->update(['status' => 'USED', 'updated_at' => now()]);
+
+        DB::table(self::V11_FACTS)->insertOrIgnore([
+            'occurrence_id'    => $occurrenceId,
+            'fact_id'          => 'taxonomy-v11-occurrence-' . $occurrenceId,
+            'depth'            => $depth,
+            'domain_code'      => $domainCode,
+            'status'           => 'PENDING',
+            'delivery_attempts'=> 0,
+            'last_error'       => null,
+            'created_at'       => now(),
+            'updated_at'       => now(),
+        ]);
+    }
+
+    public function findV11BlueprintAssignment(string $blueprintId): ?object
+    {
+        return DB::table(self::V11_ASSIGNMENTS)
+            ->where('blueprint_id', $blueprintId)
+            ->first();
+    }
+
+    public function createV11BlueprintAssignment(
+        string $blueprintId,
+        int $occurrenceId,
+        object $idea,
+        int $depth,
+        string $domainCode,
+    ): bool {
+        return DB::table(self::V11_ASSIGNMENTS)->insertOrIgnore([
+            'blueprint_id'          => $blueprintId,
+            'occurrence_id'         => $occurrenceId,
+            'subdomain_id'          => $idea->subdomain_id,
+            'subject_id'            => $idea->subject_id,
+            'idea_id'               => $idea->idea_id,
+            'depth'                 => $depth,
+            'domain_code'           => $domainCode,
+            'subdomain_active'      => $idea->subdomain_name,
+            'subject_active'        => $idea->subject_name,
+            'dominant_idea_active'  => $idea->idea_value,
+            'created_at'            => now(),
+            'updated_at'            => now(),
+        ]) === 1;
     }
 
     /**
-     * Génère la clé de contexte pour la mémoire Sujet.
+     * @return object[]
      */
-    public static function subjectContextKey(int $depth, string $domainCode, string $subdomainName): string
+    public function pendingV11TerminalFacts(): array
     {
-        return "sub:{$depth}:{$domainCode}:" . md5($subdomainName);
+        return DB::table(self::V11_FACTS)
+            ->where('status', 'PENDING')
+            ->orderBy('id')
+            ->get()
+            ->all();
+    }
+
+    public function markV11TerminalFactDelivered(int $factRowId): void
+    {
+        DB::table(self::V11_FACTS)
+            ->where('id', $factRowId)
+            ->where('status', 'PENDING')
+            ->update([
+                'status'            => 'DELIVERED',
+                'delivery_attempts' => DB::raw('delivery_attempts + 1'),
+                'last_error'        => null,
+                'delivered_at'      => now(),
+                'updated_at'        => now(),
+            ]);
+    }
+
+    public function recordV11TerminalDeliveryFailure(int $factRowId, string $error): void
+    {
+        DB::table(self::V11_FACTS)
+            ->where('id', $factRowId)
+            ->where('status', 'PENDING')
+            ->update([
+                'delivery_attempts' => DB::raw('delivery_attempts + 1'),
+                'last_error'        => mb_substr($error, 0, 2000),
+                'updated_at'        => now(),
+            ]);
+    }
+
+    public function recordV11TechnicalFailure(int $occurrenceId, string $error): bool
+    {
+        return DB::transaction(function () use ($occurrenceId, $error) {
+            $occurrence = $this->lockV11Occurrence($occurrenceId);
+            if ($occurrence === null) {
+                return false;
+            }
+
+            $count = (int) $occurrence->consecutive_technical_failures + 1;
+            $status = $count >= 3 ? 'BLOCKED' : (string) $occurrence->status;
+
+            DB::table(self::V11_OCCURRENCES)
+                ->where('id', $occurrenceId)
+                ->update([
+                    'consecutive_technical_failures' => $count,
+                    'status'                         => $status,
+                    'last_error'                     => mb_substr($error, 0, 2000),
+                    'updated_at'                     => now(),
+                ]);
+
+            return $status === 'BLOCKED';
+        });
+    }
+
+    public function resetV11TechnicalFailures(int $occurrenceId): void
+    {
+        DB::table(self::V11_OCCURRENCES)
+            ->where('id', $occurrenceId)
+            ->whereIn('status', ['PREPARING', 'OPEN'])
+            ->update([
+                'consecutive_technical_failures' => 0,
+                'last_error'                     => null,
+                'updated_at'                     => now(),
+            ]);
+    }
+
+    public function markV11OccurrenceOpen(int $occurrenceId): void
+    {
+        DB::table(self::V11_OCCURRENCES)
+            ->where('id', $occurrenceId)
+            ->where('status', 'PREPARING')
+            ->update([
+                'status'     => 'OPEN',
+                'updated_at' => now(),
+            ]);
     }
 
     /**
-     * Génère la clé de contexte pour la mémoire Idée.
+     * LOOKBACK-2 : mémoire persistante et séparée par couple (Depth, Domain).
+     *
+     * Transmet les deux occurrences EXHAUSTED antérieures les plus récentes du
+     * MÊME Depth et du MÊME Domain (filtre Depth jamais retiré), selon l'ordre
+     * chronologique réel de production (id croissant = ordre de création).
+     *
+     * Pour chaque occurrence retenue, transmet au minimum : le Subdomain
+     * historique, et pour chaque Subject la paire complète Idées PASS +
+     * Idées FAIL (valeur + raison) — nécessaire à l'anti-doublon exact
+     * Subject+Idea, jamais un simple pool d'idées mélangées sans Subject.
+     *
+     * @return array<int, array{
+     *     subdomain: string,
+     *     subjects: array<int, array{
+     *         subject: string,
+     *         pass_ideas: string[],
+     *         fail_ideas: array<int, array{value: string, reason: string}>,
+     *     }>,
+     * }>
      */
-    public static function ideaContextKey(int $depth, string $domainCode, string $subdomainName, string $subjectName): string
+    public function v11Lookback(int $depth, string $domainCode, int $limit = 2): array
     {
-        return "idea:{$depth}:{$domainCode}:" . md5($subdomainName . '|' . $subjectName);
+        $occurrences = DB::table(self::V11_OCCURRENCES)
+            ->where('depth', $depth)
+            ->where('domain_code', $domainCode)
+            ->where('status', 'EXHAUSTED')
+            ->orderByDesc('id')
+            ->limit($limit)
+            ->get();
+
+        return $occurrences->map(function (object $occurrence) {
+            $subdomain = $this->findV11Subdomain((int) $occurrence->id);
+            if ($subdomain === null) {
+                return ['subdomain' => '', 'subjects' => []];
+            }
+
+            $subjects = DB::table(self::V11_SUBJECTS)
+                ->where('subdomain_id', $subdomain->id)
+                ->orderBy('id')
+                ->get(['id', 'subject_name']);
+
+            $subjectIds = $subjects->pluck('id')->all();
+
+            $ideasBySubject = [];
+            if ($subjectIds !== []) {
+                $ideas = DB::table(self::V11_IDEAS)
+                    ->whereIn('subject_id', $subjectIds)
+                    ->whereIn('validation_status', ['PASS', 'FAIL'])
+                    ->orderBy('id')
+                    ->get(['subject_id', 'idea_value', 'validation_status', 'fail_reason']);
+
+                foreach ($ideas as $idea) {
+                    $ideasBySubject[$idea->subject_id]['pass'] ??= [];
+                    $ideasBySubject[$idea->subject_id]['fail'] ??= [];
+
+                    if ($idea->validation_status === 'PASS') {
+                        $ideasBySubject[$idea->subject_id]['pass'][] = $idea->idea_value;
+                    } else {
+                        $ideasBySubject[$idea->subject_id]['fail'][] = [
+                            'value'  => $idea->idea_value,
+                            'reason' => $idea->fail_reason ?? 'UNKNOWN',
+                        ];
+                    }
+                }
+            }
+
+            $subjectsPayload = $subjects->map(function (object $subject) use ($ideasBySubject) {
+                return [
+                    'subject'    => $subject->subject_name,
+                    'pass_ideas' => $ideasBySubject[$subject->id]['pass'] ?? [],
+                    'fail_ideas' => $ideasBySubject[$subject->id]['fail'] ?? [],
+                ];
+            })->all();
+
+            return [
+                'subdomain' => $subdomain->subdomain_name,
+                'subjects'  => $subjectsPayload,
+            ];
+        })->all();
     }
+
+    /**
+     * Retourne les anomalies de préparation v1.1 : au moins un FAIL et aucun PASS.
+     *
+     * @return array<int, object>
+     */
+    public function findV11PreparationAnomalies(int $minFails = 1): array
+    {
+        return DB::table(self::V11_SUBJECTS . ' as s')
+            ->join(self::V11_SUBDOMAINS . ' as sd', 'sd.id', '=', 's.subdomain_id')
+            ->join(self::V11_OCCURRENCES . ' as o', 'o.id', '=', 'sd.occurrence_id')
+            ->leftJoin(self::V11_IDEAS . ' as i', 'i.subject_id', '=', 's.id')
+            ->select([
+                'o.depth',
+                'o.domain_code',
+                'sd.subdomain_name',
+                's.id as subject_id',
+                's.subject_name',
+                's.idea_attempt_count',
+                'o.status as occurrence_status',
+            ])
+            ->selectRaw("SUM(CASE WHEN i.validation_status = 'FAIL' THEN 1 ELSE 0 END) as fail_count")
+            ->selectRaw("SUM(CASE WHEN i.validation_status = 'PASS' THEN 1 ELSE 0 END) as pass_count")
+            ->whereIn('o.status', ['PREPARING', 'BLOCKED'])
+            ->groupBy([
+                'o.depth',
+                'o.domain_code',
+                'sd.subdomain_name',
+                's.id',
+                's.subject_name',
+                's.idea_attempt_count',
+                'o.status',
+            ])
+            ->havingRaw("SUM(CASE WHEN i.validation_status = 'PASS' THEN 1 ELSE 0 END) = 0")
+            ->havingRaw("SUM(CASE WHEN i.validation_status = 'FAIL' THEN 1 ELSE 0 END) >= ?", [$minFails])
+            ->orderByDesc('fail_count')
+            ->get()
+            ->all();
+    }
+
 }
