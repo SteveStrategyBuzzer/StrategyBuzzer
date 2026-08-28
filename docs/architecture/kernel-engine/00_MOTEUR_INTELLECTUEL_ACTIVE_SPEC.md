@@ -61,8 +61,7 @@ Une seule spécification est travaillée à la fois.
 02_KernelRotationPlanner
 ↓
 03_Taxonomy
-↓
-04_ValidationDominantIdeas
+  ↳ applique pendant la création Gemini les règles VDI / KEY_STRUCTURE / KEY_LEARNING_DIRECTION
 ↓
 05_QuestionIntent
 ↓
@@ -88,8 +87,8 @@ Une seule spécification est travaillée à la fois.
 | 01 KernelBlueprint | 100 % intellectuel | 100 % | Section 1 alignée | terminale globale différée | contrat d’entrée disponible |
 | 02 KernelRotationPlanner | **100 % intellectuel v4.0** | **100 %** | implantation KRP seulement, par micro-blocs | NON | **VERROUILLÉ — DEC-119 OFFICIAL** |
 | 03 Taxonomy | **100 % intellectuel v1.1** | **100 %** | non à poursuivre avant validation KRP | NON | **VERROUILLÉ — DEC-120 OFFICIAL** |
-| 04 ValidationDominantIdeas | brides actives | règles utilisées par Gemini | non | non | à spécifier |
-| 05 QuestionIntent | historique verrouillé | historique verrouillé | historique | historique | verrouillé selon certificat |
+| 04 ValidationDominantIdeas | règles absorbées par Taxonomy v1.1 | contrat de règles | aucun moteur autonome | N/A | **SUPERSEDED comme étape autonome — DEC-101** |
+| 05 QuestionIntent | **100 % intellectuel v2.0** | **100 %** | à auditer | NON | **VERROUILLÉ — DEC-121 OFFICIAL** |
 | 06 Phase1 | brides seulement | non verrouillé | non | non | à venir |
 | 07 ValidationPhase1 | brides seulement | non verrouillé | non | non | à venir |
 | 08 Phase2 | brides seulement | non verrouillé | non | non | à venir |
@@ -498,3 +497,12 @@ certificates/02_KernelRotationPlanner/02_KernelRotationPlanner_CERTIFICAT_VERROU
 ```
 
 DEC-115 à DEC-118 : REJECTED, historique seulement. Anciennes versions KRP : historiques/superseded.
+
+
+## Référence canonique QuestionIntent
+
+```text
+05 → specifications/05_QuestionIntent.md v2.0 / DEC-121
+```
+
+Le contrat sépare `kernel_code` (QuestionIntent) de `question_code` (`kernel_code-COG-VAR`, Phase 1) et impose à la frontière Gameplay un maximum de trois cognitifs distincts par joueur pour une même identité conceptuelle.
