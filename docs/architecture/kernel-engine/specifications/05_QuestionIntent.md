@@ -11,12 +11,14 @@
 
 # 1. Mission
 
-QuestionIntent reçoit le même `KernelBlueprint` canonique après l’écriture du territoire Taxonomy et construit son identité intellectuelle stable.
+QuestionIntent reçoit le même `KernelBlueprint` canonique après la construction progressive de ses cinq segments intellectuels et finalise son identité stable en attribuant uniquement le suffixe `VVVV`.
 
 QuestionIntent :
 
 - lit le territoire déjà décidé;
-- produit et verrouille `kernel_code`;
+- vérifie les cinq segments déjà projetés par le KernelBlueprint;
+- alloue uniquement `VVVV`;
+- assemble et verrouille le `kernel_code` complet;
 - ne modifie aucune donnée intellectuelle;
 - ne choisit aucun cognitif;
 - ne crée aucune question;
@@ -36,10 +38,13 @@ Le `kernel_code` permet :
 KernelBlueprint canonique
 ↓
 KRP écrit depth + domain
+  ↳ le KernelBlueprint projette DD + DO
 ↓
 Taxonomy écrit subdomain_active + subject_active + dominant_idea_active
+  ↳ le KernelBlueprint projette SUB + SUJ + IDE
 ↓
-QuestionIntent écrit kernel_code
+QuestionIntent / KernelCodeEngine alloue VVVV
+  ↳ assemble et verrouille kernel_code
 ↓
 Phase 1 crée les cognitifs et les questions
 ↓
@@ -79,11 +84,20 @@ Aucune Bank Taxonomy, mémoire Gemini, rotation KRP, donnée joueur ou donnée c
 
 # 4. Sortie et propriété
 
+Le KernelBlueprint construit progressivement les emplacements du code au moment où chaque propriétaire écrit ses propres slots :
+
+```text
+KRP       → DD + DO
+Taxonomy  → SUB + SUJ + IDE
+```
+
 QuestionIntent écrit exactement :
 
 ```text
-kernel_code
+VVVV
 ```
+
+Puis `KernelCodeEngine` assemble et verrouille atomiquement le `kernel_code` complet. KRP et Taxonomy ne deviennent jamais writers du code final : ils restent propriétaires de leurs slots métier, dont le KernelBlueprint projette les segments.
 
 Format logique officiel :
 
@@ -93,12 +107,12 @@ DD-DO-SUB-SUJ-IDE-VVVV
 
 | Segment | Signification |
 |---|---|
-| `DD` | Depth |
-| `DO` | Domain |
-| `SUB` | Subdomain |
-| `SUJ` | Subject |
-| `IDE` | Dominant Idea |
-| `VVVV` | version physique du noyau |
+| `DD` | KRP via `depth` | Depth sur 2 caractères, par exemple `2 → 02` |
+| `DO` | KRP via `domain` | 3 premières lettres normalisées du Domain |
+| `SUB` | Taxonomy via `subdomain_active` | 3 premières lettres normalisées du Subdomain |
+| `SUJ` | Taxonomy via `subject_active` | 3 premières lettres normalisées du Subject |
+| `IDE` | Taxonomy via `dominant_idea_active` | 3 premières lettres normalisées de la Dominant Idea |
+| `VVVV` | QuestionIntent / KernelCodeEngine | compteur base36 du bassin `Depth + Domain` |
 
 Le format décrit des segments logiques. Les tables d’encodage et les règles exactes de longueur doivent être déterministes, versionnées et testées par `KernelCodeEngine`; elles ne peuvent modifier la signification métier des segments.
 
@@ -108,7 +122,55 @@ Le stockage canonique demeure :
 kernel_blueprint_runs.kernel_code
 ```
 
-Le slot `KernelBlueprint.kernel_code` appartient à QuestionIntent et devient immuable après sa première écriture réussie.
+Le slot final `KernelBlueprint.kernel_code` est verrouillé par QuestionIntent après l’allocation de `VVVV`. Avant ce verrouillage, le KernelBlueprint conserve la projection progressive des cinq segments émis par les écritures KRP et Taxonomy.
+
+## 4.1 Construction progressive
+
+```text
+KernelBlueprint créé
+→ __-___-___-___-___-____
+
+KRP écrit depth=2 + domain=Histoire
+→ 02-HIS-___-___-___-____
+
+Taxonomy écrit Rome + César + Conquête
+→ 02-HIS-ROM-CES-CON-____
+
+QuestionIntent alloue VVVV
+→ 02-HIS-ROM-CES-CON-0000
+→ code complet verrouillé
+```
+
+Chaque propriétaire écrit uniquement ses données métier. La projection dans les emplacements du code est une responsabilité du KernelBlueprint; aucun moteur ne reconstruit les segments appartenant aux autres.
+
+## 4.2 Règles VVVV
+
+`VVVV` respecte exactement :
+
+- 4 caractères en base36;
+- alphabet `0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ`;
+- séquence `0000 → ZZZZ`;
+- capacité de 1 679 616 valeurs par bassin;
+- compteur indépendant pour chaque couple `Depth + Domain`;
+- première allocation de chaque bassin = `0000`;
+- incrément persistant à l’intérieur du même bassin;
+- aucun reset lors d’un changement de cycle;
+- aucune dépendance envers `SUB-SUJ-IDE` pour choisir le compteur;
+- allocation transactionnelle avec verrou;
+- aucune collision sous concurrence;
+- suffixe immuable et jamais recyclé;
+- replay du même Blueprint finalisé = même code, sans nouvelle allocation.
+
+Exemples de bassins indépendants :
+
+```text
+premier noyau 02 + HIS → 02-HIS-...-...-...-0000
+premier noyau 02 + GEO → 02-GEO-...-...-...-0000
+premier noyau 04 + HIS → 04-HIS-...-...-...-0000
+deuxième noyau 02 + HIS → 02-HIS-...-...-...-0001
+```
+
+Deux noyaux distincts du même bassin ne peuvent jamais recevoir le même `VVVV`.
 
 ---
 
@@ -229,7 +291,7 @@ dominant_idea_active
 
 ## QI-C02 — Encodage déterministe
 
-Les mêmes entrées canoniques et la même version produisent le même `kernel_code`.
+Le même Blueprint déjà finalisé produit le même `kernel_code`. Un nouveau Blueprint du même bassin reçoit la prochaine valeur `VVVV`, même si ses segments intellectuels sont identiques.
 
 ## QI-C03 — Idempotence
 
@@ -247,7 +309,7 @@ Le `kernel_code` complet identifie une seule version physique de noyau.
 
 ## QI-C06 — Séparation cognitive
 
-QuestionIntent ne produit ni `COG`, ni `VAR`, ni `question_code`.
+QuestionIntent ne produit ni `DD`, ni `DO`, ni `SUB`, ni `SUJ`, ni `IDE`, ni `COG`, ni `VAR`, ni `question_code`. Il alloue uniquement `VVVV` et verrouille l’assemblage final.
 
 ## QI-C07 — Limite joueur
 
@@ -302,12 +364,18 @@ Les copies de travail et éléments de Quarantine conservent la référence au n
 
 # 12. Tests contractuels minimaux
 
-1. territoire complet → `kernel_code` créé;
-2. territoire incomplet → aucun code;
-3. format logique `DD-DO-SUB-SUJ-IDE-VVVV`;
-4. replay identique → NO-OP;
-5. replay divergent → refus;
-6. concurrence → une seule identité persistée;
+1. écriture KRP → projection immédiate de `DD-DO`;
+2. écriture Taxonomy → projection immédiate de `SUB-SUJ-IDE`;
+3. territoire complet → QuestionIntent alloue uniquement `VVVV` et verrouille `kernel_code`;
+4. territoire incomplet → aucune finalisation;
+5. format logique `DD-DO-SUB-SUJ-IDE-VVVV`;
+6. premier noyau de chaque bassin `Depth + Domain` → `0000`;
+7. deuxième noyau du même bassin → `0001`;
+8. changement de Domain au même Depth → bassin indépendant démarrant à `0000`;
+9. même Domain à un autre Depth → bassin indépendant démarrant à `0000`;
+10. replay identique → NO-OP;
+11. replay divergent → refus;
+12. concurrence → une seule identité persistée;
 7. QuestionIntent ne modifie aucun slot amont;
 8. QuestionIntent ne produit aucun cognitif;
 9. Phase 1 prolonge l’identité avec `COG-VAR`;
