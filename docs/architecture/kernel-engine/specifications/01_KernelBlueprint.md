@@ -1,6 +1,6 @@
 # StrategyBuzzer — 01_KernelBlueprint
 
-**Version :** 2.0  
+**Version :** 2.1  
 **Date :** 2026-08-19  
 **Statut documentaire :** **VERROUILLÉ**  
 **Architecture :** **100 %**  
@@ -76,7 +76,7 @@ KernelBlueprint doit :
 8. réserver la Section 2 — création gameplay ;
 9. réserver la Section 3 — traduction ;
 10. rester distinct des réservoirs, curseurs, banques et mécanismes internes des moteurs ;
-11. permettre une correction contrôlée future par Quarantine sans transformer l’objet canonique en structure librement réinscriptible ;
+11. permettre la réconciliation contrôlée dans ReadyBank avec une copie complète corrigée par Quarantine, sans transformer l’objet canonique en structure librement réinscriptible ;
 12. demeurer lisible par les modules aval selon leurs contrats.
 
 ---
@@ -451,7 +451,7 @@ kernel_code
 
 Un second remplissage normal est refusé même si la nouvelle valeur est identique.
 
-Une correction Quarantine future passe par un contrat distinct et contrôlé.
+Une correction Quarantine passe par un contrat distinct et contrôlé : copie complète, reprise ciblée du pipeline, puis fusion atomique avec le canonique dans ReadyBank.
 
 ## 10.3 Contrat d’atomicité logique
 
@@ -813,3 +813,150 @@ découpage des écarts en micro-blocs IMPL-01-XX
 ```
 
 Aucune réécriture de `02_KernelRotationPlanner` et aucune implantation KRP v3.3 ne doivent commencer avant la fermeture implantation + validation de `01_KernelBlueprint` selon la méthode officielle en vigueur.
+
+---
+
+# 19. Blueprint complet, copie Quarantine et réconciliation ReadyBank — DEC-122
+
+## 19.1 Un seul Blueprint canonique
+
+Le même Blueprint canonique contient progressivement :
+
+```text
+1 identité intellectuelle
++
+7 CognitiveSlots dans la langue source
++
+pour chaque CognitiveSlot :
+  question
+  réponse correcte
+  choix
+  SV
++
+pour chaque langue supplémentaire :
+  traduction de la question
+  traduction de la réponse correcte
+  traduction des choix
+  traduction du SV
+```
+
+Une traduction n’est jamais un nouveau CognitiveSlot. Elle est une représentation linguistique du même CognitiveSlot dans le même Blueprint.
+
+## 19.2 Parcours du canonique
+
+Le Blueprint canonique poursuit toutes les phases normales jusqu’à ReadyBank, y compris lorsqu’une suspicion a provoqué la création d’une copie Quarantine.
+
+```text
+Blueprint canonique
+→ Phase1
+→ ValidationPhase1
+→ Phase2 / Traductions
+→ ValidationPhase2
+→ ReadyBank
+```
+
+Quarantine ne retire pas le canonique du pipeline et ne suspend pas globalement sa progression.
+
+Les slots suspects ou dépendants non créés ne deviennent cependant jamais exploitables par le gameplay avant leur correction et leur fusion validée.
+
+## 19.3 Copie complète Quarantine
+
+Quarantine reçoit une copie complète du Blueprint tel qu’il existe au moment de la suspicion.
+
+La copie conserve :
+
+- l’identité complète;
+- les sept CognitiveSlots;
+- leurs contenus source;
+- toutes les traductions déjà produites;
+- les slots vides;
+- les résultats SV;
+- les références nécessaires à la réconciliation avec le canonique.
+
+Les éléments soupçonnés sont identifiés par des marqueurs structurés permettant à l’interface de les afficher en rouge. La couleur n’est pas l’état métier persistant.
+
+Les éléments valides restent visibles normalement.
+
+Les créations dépendantes qui n’ont pas pu être produites sont marquées comme non créées ou bloquées, jamais comme réussies.
+
+## 19.4 Reprise ciblée de la copie
+
+Après correction, la copie complète reprend le pipeline au propriétaire du premier slot corrigé.
+
+```text
+erreur création source
+→ correction dans la copie
+→ reprise Phase1 pour le CognitiveSlot ciblé
+→ validations
+→ traductions de ce CognitiveSlot
+→ validations
+→ ReadyBank
+
+erreur traduction
+→ correction dans la copie
+→ reprise Phase2 pour la langue et le CognitiveSlot ciblés
+→ validation traduction
+→ ReadyBank
+```
+
+Les slots déjà valides ne sont pas recréés.
+
+## 19.5 Réconciliation dans ReadyBank
+
+La copie corrigée rejoint le Blueprint canonique dans ReadyBank.
+
+ReadyBank vérifie l’identité canonique puis, de façon contrôlée :
+
+- remplace les slots explicitement soupçonnés et corrigés;
+- corrige les valeurs ciblées;
+- copie dans le canonique les slots restés vides;
+- conserve sans modification tous les slots valides non ciblés;
+- refuse une copie qui ne correspond pas au même Blueprint;
+- conserve la traçabilité avant/après;
+- ne rend le contenu concerné exploitable qu’après réussite des validations requises.
+
+La copie ne devient jamais un second noyau canonique et ne reçoit jamais un nouveau `kernel_code`.
+
+## 19.6 Clé de ciblage
+
+Toute suspicion ou correction cible au minimum :
+
+```text
+blueprint_id
++ kernel_code
++ cognitive_slot
++ couche source ou traduction
++ langue si traduction
++ chemin(s) de champ soupçonné(s)
+```
+
+Exemples :
+
+```text
+cognitive_slots.QCM_RECOGNITION.source.question
+
+cognitive_slots.QCM_RECOGNITION.translations.el.answer
+```
+
+## 19.7 Invariants
+
+- un seul Blueprint canonique;
+- une copie Quarantine complète;
+- le canonique termine son parcours jusqu’à ReadyBank;
+- la copie corrigée reprend uniquement le travail nécessaire;
+- aucune traduction d’un contenu source non validé;
+- aucune recréation des slots déjà valides;
+- fusion uniquement dans ReadyBank;
+- remplacement/correction/remplissage uniquement des slots ciblés ou vides;
+- même `blueprint_id` et même `kernel_code`;
+- aucune exposition gameplay d’un slot suspect, vide ou non validé.
+
+Référence propriétaire :
+
+```text
+06_Phase1
+08_Phase2
+10_Quarantine
+11_ReadyBank
+DEC-122
+```
