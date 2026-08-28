@@ -88,7 +88,7 @@ Une seule spécification est travaillée à la fois.
 | 02 KernelRotationPlanner | **100 % intellectuel v4.0** | **100 %** | implantation KRP seulement, par micro-blocs | NON | **VERROUILLÉ — DEC-119 OFFICIAL** |
 | 03 Taxonomy | **100 % intellectuel v1.1** | **100 %** | non à poursuivre avant validation KRP | NON | **VERROUILLÉ — DEC-120 OFFICIAL** |
 | 04 ValidationDominantIdeas | règles absorbées par Taxonomy v1.1 | contrat de règles | aucun moteur autonome | N/A | **SUPERSEDED comme étape autonome — DEC-101** |
-| 05 QuestionIntent | **100 % intellectuel v2.0** | **100 %** | à auditer | NON | **VERROUILLÉ — DEC-121 OFFICIAL** |
+| 05 QuestionIntent | **100 % intellectuel v2.1** | **100 %** | à réaligner sur construction progressive | NON | **VERROUILLÉ — DEC-121 OFFICIAL** |
 | 06 Phase1 | brides seulement | non verrouillé | non | non | à venir |
 | 07 ValidationPhase1 | brides seulement | non verrouillé | non | non | à venir |
 | 08 Phase2 | brides seulement | non verrouillé | non | non | à venir |
@@ -144,8 +144,9 @@ Taxonomy
 ↓
 Taxonomy FIN
 ↓
-QuestionIntent
-  ↳ écrit kernel_code
+QuestionIntent / KernelCodeEngine
+  ↳ alloue uniquement VVVV
+  ↳ assemble et verrouille le kernel_code dont DD-DO et SUB-SUJ-IDE ont été projetés progressivement par le KernelBlueprint
 ↓
 FIN PHASE INTELLECTUELLE
 ```
@@ -502,7 +503,7 @@ DEC-115 à DEC-118 : REJECTED, historique seulement. Anciennes versions KRP : hi
 ## Référence canonique QuestionIntent
 
 ```text
-05 → specifications/05_QuestionIntent.md v2.0 / DEC-121
+05 → specifications/05_QuestionIntent.md v2.1 / DEC-121
 ```
 
-Le contrat sépare `kernel_code` (QuestionIntent) de `question_code` (`kernel_code-COG-VAR`, Phase 1) et impose à la frontière Gameplay un maximum de trois cognitifs distincts par joueur pour une même identité conceptuelle.
+Le KernelBlueprint projette progressivement `DD-DO` lors des écritures KRP puis `SUB-SUJ-IDE` lors des écritures Taxonomy. QuestionIntent/KernelCodeEngine alloue uniquement le compteur base36 `VVVV`, indépendant par bassin `Depth + Domain`, puis assemble et verrouille le code final. Le contrat sépare ce `kernel_code` du `question_code` (`kernel_code-COG-VAR`, Phase 1) et impose à la frontière Gameplay un maximum de trois cognitifs distincts par joueur pour une même identité conceptuelle.
