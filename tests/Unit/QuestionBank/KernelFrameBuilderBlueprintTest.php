@@ -3,6 +3,7 @@
 namespace Tests\Unit\QuestionBank;
 
 use App\Models\QuestionIntent;
+use App\Services\QuestionBank\KernelBlueprint;
 use App\Services\QuestionBank\KernelFrameBuilder;
 use PHPUnit\Framework\TestCase;
 
@@ -20,7 +21,7 @@ use PHPUnit\Framework\TestCase;
  *   C — MÉCANISMES      : kld_result, ks_result, ks_hash (null)
  *   D — INTENT          : semantic_key, intent_hash, intent_keys ([])
  *   E — COGNITIFS       : cognitive_slots (7 coquilles vides)
- *   F — IDENTITÉ        : kernel_code (null)
+ *   F — IDENTITÉ        : kernel_code (null, ou valeur du Blueprint canonique fourni)
  *   G — PIPELINE        : statuses (10 étapes null), traces ([])
  *   LEGACY              : kernel_core, translation_constraints, variants
  *
@@ -429,6 +430,19 @@ class KernelFrameBuilderBlueprintTest extends TestCase
     public function test_section_f_kernel_code_is_null_at_construction(): void
     {
         $this->assertNull($this->skeleton()['kernel_code']);
+    }
+
+    public function test_section_f_uses_canonical_blueprint_kernel_code_when_available(): void
+    {
+        $blueprint = new KernelBlueprint();
+        $blueprint->initializeBlueprintId('bp-frame-0001');
+        $blueprint->fillRotation(4, 'Science');
+        $blueprint->fillTaxonomy('Physique', 'Lumière', 'Réfraction');
+        $blueprint->fillKernelCode('04-SCI-PHY-LUM-REF-0001');
+
+        $frame = $this->builder->buildSkeleton($this->intent, $blueprint);
+
+        $this->assertSame('04-SCI-PHY-LUM-REF-0001', $frame['kernel_code']);
     }
 
     // =========================================================================

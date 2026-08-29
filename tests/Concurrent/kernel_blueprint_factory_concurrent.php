@@ -53,7 +53,7 @@ DB::statement("
         execution_state VARCHAR(64)  NOT NULL DEFAULT 'CREATED_UNENGAGED',
         depth           SMALLINT     NULL,
         domain_code     VARCHAR(64)  NULL,
-        kernel_code     VARCHAR(22)  NULL,
+        kernel_code     VARCHAR(23)  NULL,
         engaged_at      TIMESTAMP    NULL,
         received_at     TIMESTAMP    NULL,
         created_at      TIMESTAMP    NOT NULL,

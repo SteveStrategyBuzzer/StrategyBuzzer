@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\QuestionBank\Taxonomy;
 
+use App\Services\QuestionBank\KernelCodeEngine;
 use App\Services\QuestionBank\KernelBlueprint;
 use App\Services\QuestionBank\Rotation\DepthNeedMatrix;
 use App\Services\QuestionBank\Rotation\KernelBlueprintFactory;
@@ -97,7 +98,12 @@ class SeededBankRotationBlueprintTest extends TestCase
             new KernelBlueprintFactory(),
             new KernelRotationPlanner(),
             new KernelRotationStateRepository(),
-            new TaxonomyPipelineBridge($taxonomy, $this->repo, new KernelRotationPlanner()),
+            new TaxonomyPipelineBridge(
+                $taxonomy,
+                $this->repo,
+                new KernelRotationPlanner(),
+                new KernelCodeEngine(),
+            ),
         );
     }
 
@@ -149,6 +155,8 @@ class SeededBankRotationBlueprintTest extends TestCase
         $this->assertSame('Paris', $blueprint->subject_active);
         $this->assertSame('Paris est traversée par la Seine', $blueprint->dominant_idea_active);
         $this->assertTrue($blueprint->isTaxonomyFilled(), 'Les slots Taxonomy doivent être remplis');
+        $this->assertNotNull($blueprint->kernel_code);
+        $this->assertSame($blueprint->kernel_code, $blueprint->kernelCodeProjection());
 
         // ── 4. Blueprint engagé en DB ─────────────────────────────────────────
         $run = DB::table('kernel_blueprint_runs')
@@ -158,6 +166,7 @@ class SeededBankRotationBlueprintTest extends TestCase
         $this->assertSame('ENGAGED_IN_PIPELINE', $run->execution_state);
         $this->assertSame($this->firstDepth, (int) $run->depth);
         $this->assertSame(self::FIRST_DOMAIN, $run->domain_code);
+        $this->assertSame($blueprint->kernel_code, $run->kernel_code);
     }
 
     // =========================================================================
@@ -182,7 +191,7 @@ class SeededBankRotationBlueprintTest extends TestCase
             $table->string('execution_state', 64)->default('CREATED_UNENGAGED');
             $table->smallInteger('depth')->nullable();
             $table->string('domain_code', 64)->nullable();
-            $table->string('kernel_code', 22)->nullable()->unique();
+            $table->string('kernel_code', 23)->nullable()->unique();
             $table->timestamp('engaged_at')->nullable();
             $table->timestamp('received_at')->nullable();
             $table->timestamps();
@@ -190,7 +199,7 @@ class SeededBankRotationBlueprintTest extends TestCase
 
         Schema::create('kernel_code_sequences', function (Blueprint $table) {
             $table->unsignedSmallInteger('depth');
-            $table->char('domain_code', 2);
+            $table->char('domain_code', 3);
             $table->unsignedInteger('next_value')->default(0);
             $table->timestamps();
             $table->primary(['depth', 'domain_code']);

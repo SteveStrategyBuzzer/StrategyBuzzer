@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use App\Services\QuestionBank\KernelCodeEngine;
 use App\Services\QuestionBank\Rotation\KernelBlueprintFactory;
 use App\Services\QuestionBank\Rotation\KernelPipelineOrchestrator;
 use App\Services\QuestionBank\Rotation\KernelPipelineOutboxRepository;
@@ -134,7 +135,12 @@ class QuestionsKernelProcessOutboxCommand extends Command
             new KernelBlueprintFactory(),
             $planner,
             new KernelRotationStateRepository(),
-            new TaxonomyPipelineBridge($taxonomy, $taxonomyRepository, $planner),
+            new TaxonomyPipelineBridge(
+                $taxonomy,
+                $taxonomyRepository,
+                $planner,
+                new KernelCodeEngine(),
+            ),
         );
 
         return new ProcessKernelPipelineOutbox($planner, $orchestrator, $outboxRepo);

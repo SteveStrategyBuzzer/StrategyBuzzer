@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\QuestionBank\Taxonomy;
 
 use App\Services\QuestionBank\KernelBlueprint;
+use App\Services\QuestionBank\KernelCodeEngine;
 use App\Services\QuestionBank\Rotation\KernelRotationPlanner;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -22,11 +23,13 @@ final class TaxonomyPipelineBridge
         private readonly TaxonomyOrchestrator $taxonomy,
         private readonly TaxonomyBankRepository $repo,
         private readonly KernelRotationPlanner $planner,
+        private readonly KernelCodeEngine $kernelCodeEngine,
     ) {}
 
     public function process(KernelBlueprint $blueprint): KernelBlueprint
     {
         $this->taxonomy->assignToBlueprint($blueprint);
+        $this->kernelCodeEngine->assignKernelCode($blueprint);
         $this->deliverPendingTerminalFacts();
 
         return $blueprint;

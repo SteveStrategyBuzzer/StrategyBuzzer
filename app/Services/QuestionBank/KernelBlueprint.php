@@ -223,6 +223,15 @@ class KernelBlueprint
             );
         }
 
+        $prefix = $this->kernelCodePrefix();
+        if (! preg_match(KernelCodeFormat::FORMAT_REGEX, $kernelCode)
+            || $prefix === null
+            || ! str_starts_with($kernelCode, $prefix . '-')) {
+            throw new \LogicException(
+                '[KernelBlueprint] kernel_code invalide ou divergent de la projection canonique.'
+            );
+        }
+
         $this->kernel_code = $kernelCode;
     }
 
@@ -257,6 +266,43 @@ class KernelBlueprint
     public function isIdentityComplete(): bool
     {
         return $this->isRotationFilled() && $this->isTaxonomyFilled();
+    }
+
+    /**
+     * Projection dérivée DEC-121 v2.2. Aucune chaîne partielle n'est persistée.
+     */
+    public function kernelCodeProjection(): string
+    {
+        if ($this->kernel_code !== null) {
+            return $this->kernel_code;
+        }
+
+        return implode('-', [
+            $this->depth !== null ? KernelCodeFormat::depth($this->depth) : '__',
+            $this->domain !== null ? KernelCodeFormat::domain($this->domain) : '___',
+            $this->subdomain_active !== null ? KernelCodeFormat::segment($this->subdomain_active) : '___',
+            $this->subject_active !== null ? KernelCodeFormat::segment($this->subject_active) : '___',
+            $this->dominant_idea_active !== null ? KernelCodeFormat::segment($this->dominant_idea_active) : '___',
+            '____',
+        ]);
+    }
+
+    /**
+     * Retourne les cinq segments intellectuels projetés, sans VVVV.
+     */
+    public function kernelCodePrefix(): ?string
+    {
+        if (! $this->isIdentityComplete()) {
+            return null;
+        }
+
+        return implode('-', [
+            KernelCodeFormat::depth((int) $this->depth),
+            KernelCodeFormat::domain((string) $this->domain),
+            KernelCodeFormat::segment((string) $this->subdomain_active),
+            KernelCodeFormat::segment((string) $this->subject_active),
+            KernelCodeFormat::segment((string) $this->dominant_idea_active),
+        ]);
     }
 
     /**

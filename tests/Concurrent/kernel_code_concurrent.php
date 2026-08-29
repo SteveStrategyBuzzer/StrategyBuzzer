@@ -24,8 +24,8 @@ declare(strict_types=1);
 
 define('N_WORKERS', 20);
 define('TEST_DEPTH', 2);           // Depth officiel (DepthCycle)
-define('TEST_DOMAIN', 'Science');  // → domain_code = 'SC'
-define('TEST_DC', 'SC');
+define('TEST_DOMAIN', 'Science');  // → domain_code = 'SCI'
+define('TEST_DC', 'SCI');
 define('TEST_SUB', 'Physique quantique');      // normalize → PHY
 define('TEST_SUJ', 'Principe incertitude');    // normalize → PRI
 define('TEST_IDE', 'Mesure simultanee');       // normalize → MES
@@ -87,7 +87,7 @@ DB::statement("
         execution_state   VARCHAR(50)  NOT NULL,
         depth             INTEGER,
         domain_code       VARCHAR(100),
-        kernel_code       VARCHAR(22),
+        kernel_code       VARCHAR(23),
         created_at        TIMESTAMP,
         updated_at        TIMESTAMP
     )

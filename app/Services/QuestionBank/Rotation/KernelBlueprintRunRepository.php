@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\QuestionBank\Rotation;
 
 use Illuminate\Support\Facades\DB;
+use RuntimeException;
 
 /**
  * KernelBlueprintRunRepository — accès à kernel_blueprint_runs.
@@ -118,18 +119,13 @@ final class KernelBlueprintRunRepository
     }
 
     /**
-     * Persiste le kernel_code attribué par KernelCodeEngine.
-     *
-     * NOTE : KernelCodeEngine écrit kernel_code dans sa propre transaction
-     * (avec row-lock sur la séquence). Cette méthode est fournie pour les
-     * orchestrateurs qui souhaitent persister le code en dehors d'une
-     * transaction KernelCodeEngine — usage secondaire, pas le chemin principal.
+     * Tombstone conservé pour compatibilité de signature.
      */
     public function markKernelCodeAssigned(string $blueprintId, string $kernelCode): void
     {
-        DB::table(self::TABLE)
-            ->where('blueprint_id', $blueprintId)
-            ->update(['kernel_code' => $kernelCode, 'updated_at' => now()]);
+        throw new RuntimeException(
+            'KernelCodeEngine est l’unique writer canonique de kernel_blueprint_runs.kernel_code.'
+        );
     }
 
     /**

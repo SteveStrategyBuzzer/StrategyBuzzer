@@ -76,6 +76,11 @@ class KernelBlueprintPart1Test extends TestCase
         $this->assertNull($this->blueprint()->kernel_code);
     }
 
+    public function test_empty_blueprint_exposes_empty_kernel_code_projection(): void
+    {
+        $this->assertSame('__-___-___-___-___-____', $this->blueprint()->kernelCodeProjection());
+    }
+
     public function test_blueprint_id_is_null_at_construction(): void
     {
         $this->assertNull($this->blueprint()->blueprint_id);
@@ -202,6 +207,14 @@ class KernelBlueprintPart1Test extends TestCase
         $this->assertNull($bp->kernel_code, 'fillRotation ne doit pas toucher kernel_code');
     }
 
+    public function test_fillRotation_projects_depth_and_domain(): void
+    {
+        $bp = $this->identifiedBlueprint();
+        $bp->fillRotation(2, 'histoire');
+
+        $this->assertSame('02-HIS-___-___-___-____', $bp->kernelCodeProjection());
+    }
+
     public function test_fillRotation_accepts_all_valid_depths(): void
     {
         foreach (range(1, 10) as $depth) {
@@ -269,6 +282,15 @@ class KernelBlueprintPart1Test extends TestCase
         $this->assertNull($bp->kernel_code, 'fillTaxonomy ne doit pas toucher kernel_code');
     }
 
+    public function test_fillTaxonomy_projects_complete_intellectual_identity(): void
+    {
+        $bp = $this->identifiedBlueprint();
+        $bp->fillRotation(2, 'histoire');
+        $bp->fillTaxonomy('Rome', 'César', 'Conquête');
+
+        $this->assertSame('02-HIS-ROM-CES-CON-____', $bp->kernelCodeProjection());
+    }
+
     public function test_fillTaxonomy_requires_rotation(): void
     {
         $this->expectException(\LogicException::class);
@@ -286,9 +308,10 @@ class KernelBlueprintPart1Test extends TestCase
         $bp = $this->identifiedBlueprint();
         $bp->fillRotation(4, 'science');
         $bp->fillTaxonomy('Physique', 'Lumière', 'réfraction');
-        $bp->fillKernelCode('04-sc-phy-lum-ref-01');
+        $bp->fillKernelCode('04-SCI-PHY-LUM-REF-0001');
 
-        $this->assertSame('04-sc-phy-lum-ref-01', $bp->kernel_code);
+        $this->assertSame('04-SCI-PHY-LUM-REF-0001', $bp->kernel_code);
+        $this->assertSame($bp->kernel_code, $bp->kernelCodeProjection());
     }
 
     public function test_fillKernelCode_does_not_overwrite_rotation_fields(): void
@@ -296,7 +319,7 @@ class KernelBlueprintPart1Test extends TestCase
         $bp = $this->identifiedBlueprint();
         $bp->fillRotation(4, 'science');
         $bp->fillTaxonomy('Physique', 'Lumière', 'réfraction');
-        $bp->fillKernelCode('04-sc-phy-lum-ref-01');
+        $bp->fillKernelCode('04-SCI-PHY-LUM-REF-0001');
 
         $this->assertSame(4,         $bp->depth,  'fillKernelCode ne doit pas modifier depth');
         $this->assertSame('science', $bp->domain, 'fillKernelCode ne doit pas modifier domain');
@@ -307,7 +330,7 @@ class KernelBlueprintPart1Test extends TestCase
         $bp = $this->identifiedBlueprint();
         $bp->fillRotation(4, 'science');
         $bp->fillTaxonomy('Physique', 'Lumière', 'réfraction');
-        $bp->fillKernelCode('04-sc-phy-lum-ref-01');
+        $bp->fillKernelCode('04-SCI-PHY-LUM-REF-0001');
 
         $this->assertSame('Physique',    $bp->subdomain_active,     'fillKernelCode ne doit pas modifier subdomain_active');
         $this->assertSame('Lumière',     $bp->subject_active,        'fillKernelCode ne doit pas modifier subject_active');
@@ -321,7 +344,7 @@ class KernelBlueprintPart1Test extends TestCase
 
         $bp = $this->identifiedBlueprint();
         $bp->fillRotation(4, 'science');
-        $bp->fillKernelCode('04-sc-phy-lum-ref-01');
+        $bp->fillKernelCode('04-SCI-PHY-LUM-REF-0001');
     }
 
     // =========================================================================
@@ -392,7 +415,7 @@ class KernelBlueprintPart1Test extends TestCase
         $bp = $this->identifiedBlueprint();
         $bp->fillRotation(4, 'science');
         $bp->fillTaxonomy('Physique', 'Lumière', 'réfraction');
-        $bp->fillKernelCode('04-sc-phy-lum-ref-01');
+        $bp->fillKernelCode('04-SCI-PHY-LUM-REF-0001');
 
         $this->assertTrue($bp->isComplete());
     }
@@ -422,10 +445,10 @@ class KernelBlueprintPart1Test extends TestCase
         $this->assertFalse($bp->isComplete());
 
         // Étape 3 — KernelCodeEngine
-        $bp->fillKernelCode('06-hi-rev-bas-pr1-01');
+        $bp->fillKernelCode('06-HIS-REV-BAS-PRI-0001');
 
         $this->assertTrue($bp->isComplete());
-        $this->assertSame('06-hi-rev-bas-pr1-01', $bp->kernel_code);
+        $this->assertSame('06-HIS-REV-BAS-PRI-0001', $bp->kernel_code);
     }
 
     public function test_full_pipeline_toArray_reflects_all_writes(): void
@@ -433,7 +456,7 @@ class KernelBlueprintPart1Test extends TestCase
         $bp = $this->identifiedBlueprint();
         $bp->fillRotation(6, 'histoire');
         $bp->fillTaxonomy('Révolutions', 'Bastille', 'prise_1789');
-        $bp->fillKernelCode('06-hi-rev-bas-pr1-01');
+        $bp->fillKernelCode('06-HIS-REV-BAS-PRI-0001');
 
         $arr = $bp->toArray();
 
@@ -442,7 +465,7 @@ class KernelBlueprintPart1Test extends TestCase
         $this->assertSame('Révolutions',         $arr['subdomain_active']);
         $this->assertSame('Bastille',            $arr['subject_active']);
         $this->assertSame('prise_1789',          $arr['dominant_idea_active']);
-        $this->assertSame('06-hi-rev-bas-pr1-01', $arr['kernel_code']);
+        $this->assertSame('06-HIS-REV-BAS-PRI-0001', $arr['kernel_code']);
         $this->assertSame('bp-section-1',         $arr['blueprint_id']);
     }
 
@@ -522,8 +545,8 @@ class KernelBlueprintPart1Test extends TestCase
         $bp = $this->identifiedBlueprint();
         $bp->fillRotation(4, 'science');
         $bp->fillTaxonomy('SD1', 'S1', 'I1');
-        $bp->fillKernelCode('04-sc-phy-lum-ref-01');
-        $bp->fillKernelCode('04-sc-phy-lum-ref-02'); // doit lever une LogicException
+        $bp->fillKernelCode('04-SCI-SD1-S1X-I1X-0001');
+        $bp->fillKernelCode('04-SCI-SD1-S1X-I1X-0002'); // doit lever une LogicException
     }
 
     public function test_read_via_magic_get_works_before_fill(): void

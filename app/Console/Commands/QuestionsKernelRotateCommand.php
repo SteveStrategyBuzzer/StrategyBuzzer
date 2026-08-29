@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use App\Services\QuestionBank\KernelCodeEngine;
 use App\Services\QuestionBank\Rotation\KernelBlueprintFactory;
 use App\Services\QuestionBank\Rotation\KernelPipelineOrchestrator;
 use App\Services\QuestionBank\Rotation\KernelRotationPlanner;
@@ -43,6 +44,7 @@ class QuestionsKernelRotateCommand extends Command
         KernelRotationStateRepository $stateRepository,
         TaxonomyOrchestrator $taxonomy,
         TaxonomyBankRepository $taxonomyRepository,
+        KernelCodeEngine $kernelCodeEngine,
     ): int {
         $dryRun = (bool) $this->option('dry-run');
 
@@ -62,7 +64,7 @@ class QuestionsKernelRotateCommand extends Command
             $factory,
             $planner,
             $stateRepository,
-            new TaxonomyPipelineBridge($taxonomy, $taxonomyRepository, $planner),
+            new TaxonomyPipelineBridge($taxonomy, $taxonomyRepository, $planner, $kernelCodeEngine),
         );
 
         try {

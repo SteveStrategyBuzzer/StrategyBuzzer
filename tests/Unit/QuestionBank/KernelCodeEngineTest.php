@@ -37,7 +37,7 @@ class KernelCodeEngineTest extends TestCase
             $t->string('execution_state', 64)->default('CREATED_UNENGAGED');
             $t->smallInteger('depth')->nullable();
             $t->string('domain_code', 64)->nullable();
-            $t->string('kernel_code', 22)->nullable()->unique();
+            $t->string('kernel_code', 23)->nullable()->unique();
             $t->timestamp('engaged_at')->nullable();
             $t->timestamp('received_at')->nullable();
             $t->timestamps();
@@ -45,7 +45,7 @@ class KernelCodeEngineTest extends TestCase
 
         Schema::create('kernel_code_sequences', function (Blueprint $t) {
             $t->unsignedSmallInteger('depth');
-            $t->char('domain_code', 2);
+            $t->char('domain_code', 3);
             $t->unsignedInteger('next_value')->default(0);
             $t->timestamps();
             $t->primary(['depth', 'domain_code']);
@@ -200,14 +200,14 @@ class KernelCodeEngineTest extends TestCase
     public static function domainProvider(): array
     {
         return [
-            ['Géographie', 'GE'],
-            ['Histoire',   'HI'],
-            ['Faune',      'FA'],
-            ['Art',        'AR'],
-            ['Sport',      'SP'],
-            ['Cinéma',     'CI'],
-            ['Cuisine',    'CU'],
-            ['Science',    'SC'],
+            ['Géographie', 'GEO'],
+            ['Histoire',   'HIS'],
+            ['Faune',      'FAU'],
+            ['Art',        'ART'],
+            ['Sport',      'SPO'],
+            ['Cinéma',     'CIN'],
+            ['Cuisine',    'CUI'],
+            ['Science',    'SCI'],
         ];
     }
 
@@ -272,8 +272,8 @@ class KernelCodeEngineTest extends TestCase
 
         // Format structurel
         $this->assertMatchesRegularExpression(KernelCodeEngine::FORMAT_REGEX, $code);
-        $this->assertSame(22, strlen($code));
-        $this->assertSame('04-GE-CAN-CON-ACT-0000', $code);
+        $this->assertSame(23, strlen($code));
+        $this->assertSame('04-GEO-CAN-CON-ACT-0000', $code);
         $this->assertSame($code, $bp->kernel_code);
     }
 
@@ -283,7 +283,7 @@ class KernelCodeEngineTest extends TestCase
         $this->engine->assignKernelCode($bp);
 
         $row = DB::table('kernel_blueprint_runs')->where('blueprint_id', 'bp-test-0001')->first();
-        $this->assertSame('04-GE-CAN-CON-ACT-0000', $row->kernel_code);
+        $this->assertSame('04-GEO-CAN-CON-ACT-0000', $row->kernel_code);
     }
 
     public function test_idempotence_same_blueprint_twice(): void
@@ -304,7 +304,7 @@ class KernelCodeEngineTest extends TestCase
 
         // Le compteur ne doit avoir avancé qu'une seule fois
         $seq = DB::table('kernel_code_sequences')
-            ->where('depth', 4)->where('domain_code', 'GE')->first();
+            ->where('depth', 4)->where('domain_code', 'GEO')->first();
         $this->assertSame(1, (int) $seq->next_value);
     }
 
@@ -331,8 +331,8 @@ class KernelCodeEngineTest extends TestCase
         // Chaque bassin commence à 0000
         $this->assertStringEndsWith('-0000', $codeGe);
         $this->assertStringEndsWith('-0000', $codeHi);
-        $this->assertStringContainsString('02-GE-', $codeGe);
-        $this->assertStringContainsString('02-HI-', $codeHi);
+        $this->assertStringContainsString('02-GEO-', $codeGe);
+        $this->assertStringContainsString('02-HIS-', $codeHi);
     }
 
     public function test_basin_independence_depth_differs(): void
@@ -345,20 +345,20 @@ class KernelCodeEngineTest extends TestCase
 
         $this->assertStringEndsWith('-0000', $code4);
         $this->assertStringEndsWith('-0000', $code6);
-        $this->assertStringStartsWith('04-GE-', $code4);
-        $this->assertStringStartsWith('06-GE-', $code6);
+        $this->assertStringStartsWith('04-GEO-', $code4);
+        $this->assertStringStartsWith('06-GEO-', $code6);
     }
 
     public function test_immutability_cannot_reassign(): void
     {
-        $bp = $this->makeBlueprint('bp-imm', existingCode: '04-GE-CAN-CON-ACT-000A');
+        $bp = $this->makeBlueprint('bp-imm', existingCode: '04-GEO-CAN-CON-ACT-000A');
         $code = $this->engine->assignKernelCode($bp);
 
         // Retourne l'existant, ne consomme pas de nouveau suffixe
-        $this->assertSame('04-GE-CAN-CON-ACT-000A', $code);
+        $this->assertSame('04-GEO-CAN-CON-ACT-000A', $code);
         $this->assertNull(
             DB::table('kernel_code_sequences')
-                ->where('depth', 4)->where('domain_code', 'GE')->first()
+                ->where('depth', 4)->where('domain_code', 'GEO')->first()
         );
     }
 
@@ -447,7 +447,7 @@ class KernelCodeEngineTest extends TestCase
         // Forcer le bassin au-delà de ZZZZ
         DB::table('kernel_code_sequences')->insert([
             'depth'       => 4,
-            'domain_code' => 'GE',
+            'domain_code' => 'GEO',
             'next_value'  => KernelCodeEngine::MAX_SUFFIX + 1,
             'created_at'  => now(),
             'updated_at'  => now(),
@@ -455,6 +455,23 @@ class KernelCodeEngineTest extends TestCase
 
         $this->expectException(KernelCodeEngineException::class);
         $this->expectExceptionMessage('QUESTION_INTENT_SUFFIX_EXHAUSTED');
+        $this->engine->assignKernelCode($bp);
+    }
+
+    public function test_legacy_two_character_basin_blocks_new_allocation(): void
+    {
+        $bp = $this->makeBlueprint();
+
+        DB::table('kernel_code_sequences')->insert([
+            'depth'       => 4,
+            'domain_code' => 'GE',
+            'next_value'  => 42,
+            'created_at'  => now(),
+            'updated_at'  => now(),
+        ]);
+
+        $this->expectException(KernelCodeEngineException::class);
+        $this->expectExceptionMessage('réconciliation requise');
         $this->engine->assignKernelCode($bp);
     }
 

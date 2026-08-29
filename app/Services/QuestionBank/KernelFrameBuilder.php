@@ -89,11 +89,11 @@ class KernelFrameBuilder
      *
      * Sections A–D : tous null/[] à la construction — remplis par les briques pipeline.
      * Section E    : cognitive_slots = 7 coquilles vides — remplies par Phase1-4.
-     * Section F    : kernel_code = null — construit progressivement (KRP→Taxonomy→KS→KLD).
+     * Section F    : lit kernel_code du Blueprint canonique lorsqu'il est fourni.
      * Section G    : statuses = 10 étapes null, traces = [].
      * LEGACY       : kernel_core, translation_constraints, variants pré-remplis depuis l'intent.
      */
-    public function buildSkeleton(QuestionIntent $intent): array
+    public function buildSkeleton(QuestionIntent $intent, ?KernelBlueprint $blueprint = null): array
     {
         $band = ReadingBandConfig::defaultBandForDepth((int) $intent->difficulty_depth);
 
@@ -127,7 +127,7 @@ class KernelFrameBuilder
             'cognitive_slots'     => $this->buildCognitiveSlots($band),
 
             // ══ F — IDENTITÉ NOYAU ════════════════════════════════════════════
-            'kernel_code'         => null,  // format yy-xx-xxx-xxx-xxx-zz
+            'kernel_code'         => $blueprint?->kernel_code,
 
             // ══ G — PIPELINE STATUS & TRACES ══════════════════════════════════
             'statuses'            => $this->buildStatuses(),

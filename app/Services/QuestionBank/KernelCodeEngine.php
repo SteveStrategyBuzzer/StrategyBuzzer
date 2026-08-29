@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Services\QuestionBank;
 
 use App\Exceptions\QuestionBank\KernelCodeEngineException;
-use App\Services\QuestionBank\Taxonomy\DepthContractRegistry;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -24,16 +23,16 @@ use Illuminate\Support\Facades\DB;
  *
  * ── Format ──────────────────────────────────────────────────────────────────
  *
- *   DD-DO-SUB-SUJ-IDE-VVVV   (22 caractères)
+ *   DD-DO-SUB-SUJ-IDE-VVVV   (23 caractères)
  *
  *   DD   = Depth, 2 chiffres zero-padded
- *   DO   = code Domaine, 2 lettres majuscules
+ *   DO   = code Domaine, 3 caractères majuscules
  *   SUB  = 3 chars issus du sous-domaine (normalisés)
  *   SUJ  = 3 chars issus du sujet (normalisés)
  *   IDE  = 3 chars issus de l'idée dominante (normalisés)
  *   VVVV = suffixe séquentiel base36, 4 chars (0000..ZZZZ)
  *
- *   Regex : ^[0-9]{2}-[A-Z]{2}-[A-Z0-9]{3}-[A-Z0-9]{3}-[A-Z0-9]{3}-[0-9A-Z]{4}$
+ *   Regex : ^[0-9]{2}-[A-Z0-9]{3}-[A-Z0-9]{3}-[A-Z0-9]{3}-[A-Z0-9]{3}-[0-9A-Z]{4}$
  *
  * ── Invariants ───────────────────────────────────────────────────────────────
  *
@@ -59,35 +58,8 @@ final class KernelCodeEngine
     private const SEQ_TABLE  = 'kernel_code_sequences';
 
     // ── Format ────────────────────────────────────────────────────────────────
-    public const FORMAT_REGEX = '/^[0-9]{2}-[A-Z]{2}-[A-Z0-9]{3}-[A-Z0-9]{3}-[A-Z0-9]{3}-[0-9A-Z]{4}$/';
-    public const CODE_LENGTH  = 22;
-
-    // ── Domaines officiels (DEC-071) ──────────────────────────────────────────
-    // Forme canonique française (ex. 'Géographie') et slug lowercase (ex. 'geographie')
-    // acceptés tous les deux — KRP stocke les slugs, la spec métier utilise les noms canoniques.
-    private const DOMAIN_CODES = [
-        // Noms canoniques français
-        'Géographie' => 'GE',
-        'Histoire'   => 'HI',
-        'Faune'      => 'FA',
-        'Art'        => 'AR',
-        'Sport'      => 'SP',
-        'Cinéma'     => 'CI',
-        'Cuisine'    => 'CU',
-        'Science'    => 'SC',
-        // Slugs lowercase (sortie de KRP / DomainCycle)
-        'geographie' => 'GE',
-        'histoire'   => 'HI',
-        'faune'      => 'FA',
-        'art'        => 'AR',
-        'sport'      => 'SP',
-        'cinema'     => 'CI',
-        'cuisine'    => 'CU',
-        'science'    => 'SC',
-        // Variante accentuée possible de 'cinéma'
-        'cinéma'     => 'CI',
-        // 'Général' n'est pas un domaine de création — refusé explicitement
-    ];
+    public const FORMAT_REGEX = KernelCodeFormat::FORMAT_REGEX;
+    public const CODE_LENGTH  = KernelCodeFormat::CODE_LENGTH;
 
     // ── Base36 ────────────────────────────────────────────────────────────────
     private const SUFFIX_CHARS = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
@@ -122,7 +94,16 @@ final class KernelCodeEngine
                 );
             }
 
-            // ── 2. Idempotence ───────────────────────────────────────────────
+            // ── 2. Vérifier la projection intellectuelle complète ───────────
+            $prefix = $blueprint->kernelCodePrefix();
+            if ($prefix === null) {
+                throw new KernelCodeEngineException(
+                    KernelCodeEngineException::MISSING_INPUT,
+                    'Projection DD-DO-SUB-SUJ-IDE incomplète.'
+                );
+            }
+
+            // ── 3. Idempotence ───────────────────────────────────────────────
             if ($run->kernel_code !== null) {
                 $code = (string) $run->kernel_code;
                 if (! preg_match(self::FORMAT_REGEX, $code)) {
@@ -131,30 +112,40 @@ final class KernelCodeEngine
                         "kernel_code persisté non conforme au format : {$code}"
                     );
                 }
+                if (! str_starts_with($code, $prefix . '-')) {
+                    throw new KernelCodeEngineException(
+                        KernelCodeEngineException::IDENTITY_CONFLICT,
+                        "kernel_code persisté divergent de la projection du Blueprint : {$code}"
+                    );
+                }
                 $blueprint->fillKernelCode($code);
                 return $code;
             }
 
-            // ── 3. Valider les 5 entrées obligatoires ────────────────────────
-            foreach (['depth', 'domain', 'subdomain_active', 'subject_active', 'dominant_idea_active'] as $field) {
-                if ($blueprint->$field === null || $blueprint->$field === '') {
-                    throw new KernelCodeEngineException(
-                        KernelCodeEngineException::MISSING_INPUT,
-                        "Champ obligatoire absent ou vide : {$field}"
-                    );
-                }
-            }
-
-            // ── 4. Depth → DD ────────────────────────────────────────────────
+            // ── 4. Depth → DD pour le bassin et les erreurs ──────────────────
             $dd = $this->resolveDepth((int) $blueprint->depth);
 
-            // ── 5. Domaine → DO (2 chars) ────────────────────────────────────
+            // ── 5. Domaine → DO (3 chars), bassin Depth + Domain ─────────────
             $domainCode = $this->resolveDomainCode((string) $blueprint->domain);
 
-            // ── 6. Normaliser SUB / SUJ / IDE ────────────────────────────────
-            $sub = $this->normalizeSegment((string) $blueprint->subdomain_active);
-            $suj = $this->normalizeSegment((string) $blueprint->subject_active);
-            $ide = $this->normalizeSegment((string) $blueprint->dominant_idea_active);
+            // ── 6. Refuser un reset silencieux depuis un bassin legacy ───────
+            $legacyDomainCode = KernelCodeFormat::legacyDomain((string) $blueprint->domain);
+            $newSequenceExists = DB::table(self::SEQ_TABLE)
+                ->where('depth', $blueprint->depth)
+                ->where('domain_code', $domainCode)
+                ->exists();
+
+            if (! $newSequenceExists
+                && $legacyDomainCode !== null
+                && DB::table(self::SEQ_TABLE)
+                    ->where('depth', $blueprint->depth)
+                    ->where('domain_code', $legacyDomainCode)
+                    ->exists()) {
+                throw new KernelCodeEngineException(
+                    KernelCodeEngineException::IDENTITY_CONFLICT,
+                    "Bassin legacy {$dd}-{$legacyDomainCode} présent : réconciliation requise avant allocation {$dd}-{$domainCode}."
+                );
+            }
 
             // ── 7. Obtenir ou créer la ligne de séquence ─────────────────────
             DB::table(self::SEQ_TABLE)->insertOrIgnore([
@@ -183,7 +174,7 @@ final class KernelCodeEngine
             $suffix = $this->toBase36((int) $seq->next_value);
 
             // ── 10. Construire le kernel_code ────────────────────────────────
-            $kernelCode = "{$dd}-{$domainCode}-{$sub}-{$suj}-{$ide}-{$suffix}";
+            $kernelCode = "{$prefix}-{$suffix}";
 
             // ── 11. Écrire dans kernel_blueprint_runs ────────────────────────
             $updated = DB::table(self::RUNS_TABLE)
@@ -233,30 +224,18 @@ final class KernelCodeEngine
      */
     public function resolveDepth(int $depth): string
     {
-        if (! DepthContractRegistry::isKnown($depth)) {
-            throw new KernelCodeEngineException(
-                KernelCodeEngineException::INVALID_DEPTH,
-                "Depth non reconnu par DepthContractRegistry : {$depth}"
-            );
-        }
-        return str_pad((string) $depth, 2, '0', STR_PAD_LEFT);
+        return KernelCodeFormat::depth($depth);
     }
 
     /**
-     * Résout le code Domaine 2 chars à partir du nom canonique.
+     * Résout le code Domaine 3 chars à partir du nom canonique.
      * Refuse explicitement "Général" (non domaine de création).
      *
      * @throws KernelCodeEngineException INVALID_DOMAIN si le domaine est inconnu.
      */
     public function resolveDomainCode(string $domain): string
     {
-        if (! array_key_exists($domain, self::DOMAIN_CODES)) {
-            throw new KernelCodeEngineException(
-                KernelCodeEngineException::INVALID_DOMAIN,
-                "Domaine non reconnu ou non autorisé en création : «{$domain}»"
-            );
-        }
-        return self::DOMAIN_CODES[$domain];
+        return KernelCodeFormat::domain($domain);
     }
 
     /**
@@ -272,30 +251,7 @@ final class KernelCodeEngine
      */
     public function normalizeSegment(string $value): string
     {
-        // NFD + suppression des marques diacritiques combinantes (U+0300-U+036F)
-        if (function_exists('normalizer_normalize')) {
-            $nfd   = (string) normalizer_normalize($value, \Normalizer::NFD);
-            $ascii = (string) preg_replace('/[\x{0300}-\x{036f}]/u', '', $nfd);
-        } else {
-            // Fallback : iconv TRANSLIT
-            $ascii = (string) (iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $value) ?: $value);
-        }
-
-        // UPPERCASE
-        $upper = strtoupper($ascii);
-
-        // Conserver uniquement A-Z 0-9
-        $clean = (string) preg_replace('/[^A-Z0-9]/', '', $upper);
-
-        if ($clean === '') {
-            throw new KernelCodeEngineException(
-                KernelCodeEngineException::INVALID_SEGMENT,
-                "Aucun caractère exploitable dans le segment : «{$value}»"
-            );
-        }
-
-        // 3 premiers caractères, right-pad avec 'X' si nécessaire
-        return str_pad(substr($clean, 0, 3), 3, 'X');
+        return KernelCodeFormat::segment($value);
     }
 
     /**

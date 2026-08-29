@@ -256,7 +256,7 @@ class ProcessKernelPipelineOutboxTest extends TestCase
             $table->string('execution_state', 64)->default('CREATED_UNENGAGED');
             $table->smallInteger('depth')->nullable();
             $table->string('domain_code', 64)->nullable();
-            $table->string('kernel_code', 22)->nullable()->unique();
+            $table->string('kernel_code', 23)->nullable()->unique();
             $table->timestamp('engaged_at')->nullable();
             $table->timestamp('received_at')->nullable();
             $table->timestamps();
@@ -264,7 +264,7 @@ class ProcessKernelPipelineOutboxTest extends TestCase
 
         Schema::create('kernel_code_sequences', function (Blueprint $table) {
             $table->unsignedSmallInteger('depth');
-            $table->char('domain_code', 2);
+            $table->char('domain_code', 3);
             $table->unsignedInteger('next_value')->default(0);
             $table->timestamps();
             $table->primary(['depth', 'domain_code']);
