@@ -7,58 +7,19 @@ namespace Tests\Integration\QuestionBank\Rotation;
 use App\Services\QuestionBank\KernelBlueprint;
 use App\Services\QuestionBank\Rotation\DepthNeedMatrix;
 use App\Services\QuestionBank\Rotation\DepthTourState;
-use App\Services\QuestionBank\Rotation\KernelBlueprintFactory;
-use App\Services\QuestionBank\Rotation\KernelPipelineOrchestrator;
 use App\Services\QuestionBank\Rotation\KernelRotationPlanner;
 use App\Services\QuestionBank\Rotation\KernelRotationStateRepository;
+use Illuminate\Database\ConnectionInterface;
+use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
-use PDO;
+use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 /**
- * #159B — VALIDATION POSTGRESQL KRP STRICTE
+ * PostgreSQL strict validation for the DEC-119 terminal-fact boundary.
  *
- * Chaque test prouve réellement le mécanisme KRP qu'il prétend valider.
- *
- * ─────────────────────────────────────────────────────────────────────────
- * Isolation — deux régimes selon le test
- * ─────────────────────────────────────────────────────────────────────────
- *
- * Régime A (outer txn active) — T-PGB-03, T-PGB-05, T-PGB-06 :
- *   setUp : DB::beginTransaction()
- *   tearDown : DB::rollBack()
- *   Aucun commit réel sur Neon.
- *
- * Régime B (outer txn suspendue) — T-PGB-01, T-PGB-02, T-PGB-04 :
- *   Le test suspend l'outer txn au départ via DB::rollBack() (exactement
- *   comme T-PG-01 dans la classe précédente).
- *   Les données commitées sur Neon par Worker A et/ou l'orchestrateur sont
- *   nettoyées dans un bloc finally avant de rétablir DB::beginTransaction().
- *
- *   Pourquoi : un FOR UPDATE dans DB::transaction() tient le verrou jusqu'au
- *   COMMIT de l'outer txn.  Si l'outer txn est active pendant le finally,
- *   le DELETE de cleanup via raw PDO se retrouve bloqué à attendre ce verrou
- *   → deadlock → timeout.  Suspendre l'outer txn avant tout commit raw PDO
- *   évite ce blocage.
- *
- * ─────────────────────────────────────────────────────────────────────────
- * Mécanismes prouvés
- * ─────────────────────────────────────────────────────────────────────────
- *   T-PGB-01  receiveDomainExhausted — deux connexions réelles, Worker A commit,
- *             Worker B (KRP API) = NO-OP idempotent via FOR UPDATE.
- *   T-PGB-02  receiveDepthExhausted — même schéma deux connexions.
- *   T-PGB-03  Signal Depth contradictoire rejeté sur Neon (active_depth ≠ signal).
- *   T-PGB-04  FOR UPDATE contention observée (NOWAIT) + Factory guard
- *             empêche deux Blueprints sur orchestrations séquentielles.
- *   T-PGB-05  Rollback vrai chemin après Factory = PREUVE IMPASSE-KRP-001 :
- *             Transaction 1 commitée (SAVEPOINT releasé), Taxonomy throw →
- *             Blueprint CREATED_UNENGAGED durable, active_blueprint_identity set,
- *             active_depth = NULL.
- *   T-PGB-06  Rollback vrai chemin après fillRotation :
- *             SAVEPOINT → applyRotation() écrit active_depth + domain_position
- *             → ROLLBACK TO SAVEPOINT → état restauré, Blueprint toujours
- *             CREATED_UNENGAGED.
+ * Every test owns a random schema. Both simulated workers use independent
+ * connections whose search_path contains only that schema.
  */
 class KernelRotationPlannerPostgresStrictTest extends TestCase
 {
@@ -66,498 +27,435 @@ class KernelRotationPlannerPostgresStrictTest extends TestCase
         'geographie', 'histoire', 'faune', 'art', 'sport', 'cinema', 'cuisine', 'science',
     ];
 
-    private KernelRotationPlanner      $planner;
-    private KernelPipelineOrchestrator $orchestrator;
-    private KernelRotationStateRepository $stateRepository;
+    private string $schemaName;
+    private string $originalDefaultConnection;
+    private mixed $originalPgsqlSearchPath;
+    private bool $schemaCreated = false;
 
-    /** @var array<string, mixed> */
-    private array $pgCfg;
+    /** @var array<int, array{relation_name: string, relation_oid: string}> */
+    private array $publicRelationOids = [];
 
     protected function setUp(): void
     {
         parent::setUp();
 
+        $this->originalDefaultConnection = (string) config('database.default');
+        $this->originalPgsqlSearchPath = config('database.connections.pgsql.search_path');
+
         config(['database.default' => 'pgsql']);
+        DB::purge('pgsql');
+        DB::reconnect('pgsql');
 
-        $this->assertSame(0, (int) DB::connection('pgsql')
-            ->table('kernel_rotation_state_v2')->count(),
-            'Précondition #159B : kernel_rotation_state_v2 doit être vide avant chaque test'
-        );
+        $this->assertSame('pgsql', DB::connection('pgsql')->getDriverName());
+        $this->publicRelationOids = $this->snapshotPublicRelationOids();
+        $this->schemaName = 'test_krp_v4_strict_' . bin2hex(random_bytes(6));
 
-        DB::beginTransaction();   // outer txn — annulée dans tearDown (Régime A)
+        DB::connection('pgsql')->statement('CREATE SCHEMA ' . $this->quotedSchemaName());
+        $this->schemaCreated = true;
 
-        $this->pgCfg    = config('database.connections.pgsql');
-        $this->planner  = new KernelRotationPlanner();
-        $this->stateRepository = new KernelRotationStateRepository();
-        $factory        = new KernelBlueprintFactory();
+        $this->configureIsolatedConnection('pgsql');
+        $this->configureIsolatedConnection('krp_worker_a');
+        $this->configureIsolatedConnection('krp_worker_b');
+        DB::setDefaultConnection('pgsql');
 
-        $this->orchestrator = new KernelPipelineOrchestrator(
-            $factory,
-            $this->planner,
-            $this->stateRepository,
-        );
+        $this->assertIsolatedSchemaActive(DB::connection('pgsql'));
+        $this->assertIsolatedSchemaActive(DB::connection('krp_worker_a'));
+        $this->assertIsolatedSchemaActive(DB::connection('krp_worker_b'));
+
+        $this->createKrpV4Schema();
+        $this->seedDepthMatrix();
     }
 
     protected function tearDown(): void
     {
-        if (DB::transactionLevel() > 0) {
-            DB::rollBack();
-        }
-        parent::tearDown();
-    }
-
-    // =========================================================================
-    // T-PGB-01 — receiveDomainExhausted : deux connexions réelles (Régime B)
-    // =========================================================================
-
-    /**
-     * Worker A (connexion PDO séparée, commit réel) exécute la sémantique
-     * receiveDomainExhausted manuellement et persiste DOMAIN_EXHAUSTED sur Neon.
-     *
-     * Worker B (KRP API, DB::transaction() réel sans outer txn) acquiert FOR UPDATE,
-     * lit DOMAIN_EXHAUSTED, retourne sans écriture (NO-OP idempotent).
-     *
-     * Preuve : lock_version inchangé après Worker B, 0 exception exposée.
-     * Deux vraies connexions PostgreSQL distinctes.  Outer txn suspendue pour
-     * éviter le deadlock raw-PDO / FOR UPDATE (voir note d'isolation en tête).
-     */
-    public function test_receive_domain_exhausted_two_real_workers(): void
-    {
-        // Suspendre l'outer txn — Régime B
-        DB::rollBack();
-
-        $connA       = $this->openRawPdo();
-        $lvAfterA    = null;
-        $stateRowId  = null;
-
         try {
-            // ── Worker A : INSERT état + marque DOMAIN_EXHAUSTED, commit réel ─
-            $domainStates = $this->buildDomainStates();
-            $stmt = $connA->prepare(
-                "INSERT INTO kernel_rotation_state_v2
-                  (depth_state, active_depth, domain_position, domain_states,
-                   tour_domain_states, active_blueprint_identity,
-                   last_counted_blueprint_identity, pending_depth_exhausted_depth,
-                   lock_version, created_at, updated_at)
-                 VALUES
-                  ('ROTATION_ACTIVE', 2, 0, ?, ?, NULL, NULL, NULL, 1, NOW(), NOW())
-                 RETURNING id"
-            );
-            $stmt->execute([
-                json_encode($domainStates),
-                json_encode(DepthTourState::initTour()->toArray()),
-            ]);
-            $stateRowId = (int) $stmt->fetchColumn();
-
-            // Worker A : BEGIN → FOR UPDATE → marque DOMAIN_EXHAUSTED → COMMIT
-            $connA->beginTransaction();
-            $row = $connA->query(
-                "SELECT domain_states, lock_version
-                 FROM kernel_rotation_state_v2 FOR UPDATE"
-            )->fetch(PDO::FETCH_ASSOC);
-            $ds          = json_decode((string) $row['domain_states'], true);
-            $ds['2']['histoire'] = 'DOMAIN_EXHAUSTED';
-            $lvAfterA    = (int) $row['lock_version'] + 1;
-            $connA->prepare(
-                "UPDATE kernel_rotation_state_v2
-                 SET domain_states = ?, lock_version = ?, updated_at = NOW()
-                 WHERE id IS NOT NULL"
-            )->execute([json_encode($ds), $lvAfterA]);
-            $connA->commit();   // ← lock FOR UPDATE libéré ici
-
-            // ── Worker B : KRP API (DB::transaction() RÉEL, pas un SAVEPOINT) ─
-            // L'outer txn est suspendue → DB::transaction() démarre une vraie
-            // transaction, acquiert FOR UPDATE, voit DOMAIN_EXHAUSTED → NO-OP,
-            // commet (lock libéré immédiatement après).
-            $exceptionRaised = false;
-            try {
-                $this->planner->receiveDomainExhausted(2, 'histoire');
-            } catch (\Throwable) {
-                $exceptionRaised = true;
-            }
-
-            $this->assertFalse($exceptionRaised,
-                'Worker B : receiveDomainExhausted ne doit PAS lever d\'exception (NO-OP idempotent)'
-            );
-
-            // lock_version inchangé après Worker B (Worker B n'a rien écrit)
-            $finalState = DB::connection('pgsql')->table('kernel_rotation_state_v2')->first();
-            $this->assertSame($lvAfterA, (int) $finalState->lock_version,
-                'Worker B NO-OP : lock_version inchangé — receiveDomainExhausted idempotent sous deux connexions réelles'
-            );
-            $finalDs = json_decode((string) $finalState->domain_states, true);
-            $this->assertSame('DOMAIN_EXHAUSTED', $finalDs['2']['histoire'],
-                'histoire = DOMAIN_EXHAUSTED préservé après Worker B'
-            );
-
+            $this->dropIsolatedSchema();
         } finally {
-            // Nettoyage des données committées sur Neon (Worker A + Worker B)
-            // Lock FOR UPDATE libéré avant d'arriver ici (Worker B a committé)
-            $connA->exec('DELETE FROM kernel_rotation_state_v2');
-            // Rétablir l'outer txn pour tearDown
-            DB::beginTransaction();
-        }
-    }
-
-    // =========================================================================
-    // T-PGB-02 — receiveDepthExhausted : deux connexions réelles (Régime B)
-    // =========================================================================
-
-    /**
-     * Worker A (PDO séparé, commit réel) persiste pending_depth_exhausted_depth = 2.
-     * Worker B (KRP API, transaction réelle) acquiert FOR UPDATE, voit même
-     * pending → NO-OP idempotent (lock_version inchangé).
-     *
-     * Deux vraies connexions PostgreSQL distinctes.  Outer txn suspendue.
-     */
-    public function test_receive_depth_exhausted_two_real_workers(): void
-    {
-        DB::rollBack();   // Régime B
-
-        $connA    = $this->openRawPdo();
-        $lvAfterA = null;
-
-        try {
-            // ── Worker A : INSERT état + mémorise pending=2, commit réel ─────
-            $domainStates = $this->buildDomainStates();
-            $connA->prepare(
-                "INSERT INTO kernel_rotation_state_v2
-                  (depth_state, active_depth, domain_position, domain_states,
-                   tour_domain_states, active_blueprint_identity,
-                   last_counted_blueprint_identity, pending_depth_exhausted_depth,
-                   lock_version, created_at, updated_at)
-                 VALUES ('ROTATION_ACTIVE', 2, 0, ?, ?, NULL, NULL, NULL, 1, NOW(), NOW())"
-            )->execute([
-                json_encode($domainStates),
-                json_encode(DepthTourState::initTour()->toArray()),
+            DB::setDefaultConnection($this->originalDefaultConnection);
+            config([
+                'database.default' => $this->originalDefaultConnection,
+                'database.connections.pgsql.search_path' => $this->originalPgsqlSearchPath,
             ]);
 
-            $connA->beginTransaction();
-            $row  = $connA->query(
-                "SELECT lock_version FROM kernel_rotation_state_v2 FOR UPDATE"
-            )->fetch(PDO::FETCH_ASSOC);
-            $lvAfterA = (int) $row['lock_version'] + 1;
-            $connA->prepare(
-                "UPDATE kernel_rotation_state_v2
-                 SET pending_depth_exhausted_depth = 2, lock_version = ?, updated_at = NOW()
-                 WHERE id IS NOT NULL"
-            )->execute([$lvAfterA]);
-            $connA->commit();
-
-            // ── Worker B : KRP API (transaction réelle) — NO-OP ──────────────
-            $exceptionRaised = false;
-            try {
-                $this->planner->receiveDepthExhausted(2);
-            } catch (\Throwable) {
-                $exceptionRaised = true;
+            foreach (['pgsql', 'krp_worker_a', 'krp_worker_b'] as $connection) {
+                DB::purge($connection);
             }
 
-            $this->assertFalse($exceptionRaised,
-                'Worker B : receiveDepthExhausted ne doit PAS lever d\'exception (NO-OP idempotent)'
-            );
-
-            $finalState = DB::connection('pgsql')->table('kernel_rotation_state_v2')->first();
-            $this->assertSame($lvAfterA, (int) $finalState->lock_version,
-                'Worker B NO-OP : lock_version inchangé — receiveDepthExhausted idempotent sous deux connexions réelles'
-            );
-            $this->assertSame(2, (int) $finalState->pending_depth_exhausted_depth,
-                'pending_depth_exhausted_depth = 2 préservé après Worker B (idempotent)'
-            );
-
-        } finally {
-            $connA->exec('DELETE FROM kernel_rotation_state_v2');
-            DB::beginTransaction();
+            parent::tearDown();
         }
     }
 
-    // =========================================================================
-    // T-PGB-03 — Signal Depth contradictoire rejeté sur Neon (Régime A)
-    // =========================================================================
-
-    /**
-     * État avec active_depth = 4.
-     * Appel receiveDepthExhausted(6) → signal ne correspond pas au Depth actif.
-     * KRP doit lever RuntimeException INCOHÉRENCE_ÉTAT (DEC-090).
-     *
-     * Prouve la garde de cohérence sur PostgreSQL/Neon réel.
-     * Régime A : outer txn active, tearDown rollback nettoie.
-     */
-    public function test_contradictory_depth_signal_rejected_on_neon(): void
+    public function test_taxonomy_terminal_fact_replay_is_consumed_once_by_two_workers(): void
     {
-        DB::table('kernel_rotation_state_v2')->insert([
-            'depth_state'                    => 'ROTATION_ACTIVE',
-            'active_depth'                   => 4,
-            'domain_position'                => 0,
-            'domain_states'                  => json_encode($this->buildDomainStates()),
-            'tour_domain_states'             => json_encode(DepthTourState::initTour()->toArray()),
-            'active_blueprint_identity'      => null,
-            'last_counted_blueprint_identity' => null,
-            'pending_depth_exhausted_depth'  => null,
-            'lock_version'                   => 1,
-            'created_at'                     => now(),
-            'updated_at'                     => now(),
-        ]);
+        $tourId = '01995d4c-4ab0-7000-8000-000000000001';
+        $this->insertActiveState(2, 'geographie', $tourId, 'bp-active-domain');
 
-        $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessageMatches('/INCOHÉRENCE_ÉTAT/');
+        $this->runAsWorker('krp_worker_a', static function (KernelRotationPlanner $planner): void {
+            $planner->receiveTaxonomyTerminalFact('fact-domain-geographie', 2, 'geographie');
+        });
+        $this->runAsWorker('krp_worker_b', static function (KernelRotationPlanner $planner): void {
+            $planner->receiveTaxonomyTerminalFact('fact-domain-geographie', 2, 'geographie');
+        });
 
-        $this->planner->receiveDepthExhausted(6);
+        $this->assertSame(1, DB::table('kernel_taxonomy_terminal_facts')->count());
+        $this->assertNull(
+            DB::table('kernel_taxonomy_terminal_facts')
+                ->where('fact_id', 'fact-domain-geographie')
+                ->value('consumed_at')
+        );
+
+        $firstBlueprint = $this->newBlueprint('bp-next-domain-a');
+        $firstResolution = $this->prepareAsWorker('krp_worker_a', $firstBlueprint);
+
+        $this->assertSame(2, $firstResolution->depth);
+        $this->assertSame('histoire', $firstResolution->domain);
+        $this->assertSame('histoire', $firstBlueprint->domain);
+
+        $consumedAt = DB::table('kernel_taxonomy_terminal_facts')
+            ->where('fact_id', 'fact-domain-geographie')
+            ->value('consumed_at');
+        $this->assertNotNull($consumedAt);
+
+        $stateAfterFirstConsumption = DB::table('kernel_rotation_state_v2')->first();
+        $domainStates = json_decode((string) $stateAfterFirstConsumption->domain_states, true);
+        $this->assertSame('ESTOMPÉ', $domainStates['2']['geographie']);
+        $this->assertSame('OPEN', $stateAfterFirstConsumption->tour_state);
+        $this->assertNull($stateAfterFirstConsumption->last_closed_tour_id);
+
+        $this->runAsWorker('krp_worker_b', static function (KernelRotationPlanner $planner): void {
+            $planner->receiveTaxonomyTerminalFact('fact-domain-geographie', 2, 'geographie');
+        });
+        $secondBlueprint = $this->newBlueprint('bp-next-domain-b');
+        $secondResolution = $this->prepareAsWorker('krp_worker_b', $secondBlueprint);
+
+        $this->assertSame('faune', $secondResolution->domain);
+        $this->assertSame(1, DB::table('kernel_taxonomy_terminal_facts')->count());
+        $this->assertSame(
+            $consumedAt,
+            DB::table('kernel_taxonomy_terminal_facts')
+                ->where('fact_id', 'fact-domain-geographie')
+                ->value('consumed_at')
+        );
+        $this->assertSame(
+            0,
+            (int) DB::table('kernel_depth_matrix')->where('depth', 2)->value('cycle_completed')
+        );
+        $this->assertNull(DB::table('kernel_rotation_state_v2')->value('last_closed_tour_id'));
     }
 
-    // =========================================================================
-    // T-PGB-04 — FOR UPDATE contention + Factory guard (Régime B)
-    // =========================================================================
-
-    /**
-     * Partie A — FOR UPDATE contention observée (NOWAIT) :
-     *   Une ligne d'état est insérée via auto-commit raw PDO.
-     *   Connexion A : BEGIN + SELECT FOR UPDATE (verrou acquis).
-     *   Connexion B : SELECT FOR UPDATE NOWAIT → PDOException (contention prouvée).
-     *   Connexion A : ROLLBACK.  Ligne supprimée.
-     *
-     * Partie B — deux orchestrations séquentielles via KRP réel :
-     *   Orchestration 1 → STATUS_ROTATION_ASSIGNED (Blueprint ENGAGED, domain_position=0).
-     *   Orchestration 2 → RuntimeException Factory guard (Blueprint actif existe).
-     *   Blueprints finaux = 1.  Résolution stale impossible (FOR UPDATE gate).
-     *
-     * Outer txn suspendue pour Partie A ; Partie B tourne sans outer txn
-     * (commits réels → cleanup en finally).
-     */
-    public function test_two_concurrent_orchestrations_for_update_and_factory_guard(): void
+    public function test_last_visible_domain_closes_tour_once_and_advances_depth_with_two_workers(): void
     {
-        DB::rollBack();   // Régime B
+        $closedTourId = '01995d4c-4ab0-7000-8000-000000000002';
+        $domainStates = $this->visibleDomainStates();
+        foreach (self::DOMAINS as $domain) {
+            $domainStates['2'][$domain] = $domain === 'science' ? 'VISIBLE' : 'ESTOMPÉ';
+        }
 
-        $connA        = $this->openRawPdo();
-        $connB        = $this->openRawPdo();
-        $rowInserted  = false;
-        $orchestrated = false;
+        $this->insertActiveState(
+            2,
+            'science',
+            $closedTourId,
+            'bp-active-final-domain',
+            $domainStates,
+        );
+
+        $this->runAsWorker('krp_worker_a', static function (KernelRotationPlanner $planner): void {
+            $planner->receiveTaxonomyTerminalFact('fact-final-science', 2, 'science');
+        });
+        $this->runAsWorker('krp_worker_b', static function (KernelRotationPlanner $planner): void {
+            $planner->receiveTaxonomyTerminalFact('fact-final-science', 2, 'science');
+        });
+
+        $firstBlueprint = $this->newBlueprint('bp-depth-four-a');
+        $firstResolution = $this->prepareAsWorker('krp_worker_a', $firstBlueprint);
+
+        $stateAfterClosure = DB::table('kernel_rotation_state_v2')->first();
+        $newTourId = (string) $stateAfterClosure->active_tour_id;
+
+        $this->assertSame(4, $firstResolution->depth);
+        $this->assertSame('geographie', $firstResolution->domain);
+        $this->assertSame('geographie', $firstBlueprint->domain);
+        $this->assertSame($closedTourId, $stateAfterClosure->last_closed_tour_id);
+        $this->assertSame(2, (int) $stateAfterClosure->last_closed_depth);
+        $this->assertSame('OPEN', $stateAfterClosure->tour_state);
+        $this->assertNotSame($closedTourId, $newTourId);
+        $this->assertSame(
+            1,
+            (int) DB::table('kernel_depth_matrix')->where('depth', 2)->value('cycle_completed')
+        );
+        $this->assertNotNull(
+            DB::table('kernel_taxonomy_terminal_facts')
+                ->where('fact_id', 'fact-final-science')
+                ->value('consumed_at')
+        );
+
+        $this->runAsWorker('krp_worker_b', static function (KernelRotationPlanner $planner): void {
+            $planner->receiveTaxonomyTerminalFact('fact-final-science', 2, 'science');
+        });
+        $secondBlueprint = $this->newBlueprint('bp-depth-four-b');
+        $secondResolution = $this->prepareAsWorker('krp_worker_b', $secondBlueprint);
+
+        $stateAfterReplay = DB::table('kernel_rotation_state_v2')->first();
+        $this->assertSame(4, $secondResolution->depth);
+        $this->assertSame('histoire', $secondResolution->domain);
+        $this->assertSame($newTourId, $stateAfterReplay->active_tour_id);
+        $this->assertSame($closedTourId, $stateAfterReplay->last_closed_tour_id);
+        $this->assertSame(
+            1,
+            (int) DB::table('kernel_depth_matrix')->where('depth', 2)->value('cycle_completed')
+        );
+        $this->assertSame(1, DB::table('kernel_taxonomy_terminal_facts')->count());
+    }
+
+    public function test_taxonomy_terminal_fact_with_contradictory_depth_is_rejected_on_postgres(): void
+    {
+        $this->insertActiveState(
+            4,
+            'geographie',
+            '01995d4c-4ab0-7000-8000-000000000003',
+            'bp-active-depth-four',
+        );
 
         try {
-            // ── Partie A : FOR UPDATE contention sur state table ──────────────
-            $connA->exec(
-                "INSERT INTO kernel_rotation_state_v2
-                  (depth_state, active_depth, domain_position, domain_states,
-                   tour_domain_states, active_blueprint_identity,
-                   last_counted_blueprint_identity, pending_depth_exhausted_depth,
-                   lock_version, created_at, updated_at)
-                 VALUES ('ROTATION_ACTIVE', 2, NULL, '{}', '{}',
-                         NULL, NULL, NULL, 1, NOW(), NOW())"
-            );
-            $rowInserted = true;
-
-            $connA->beginTransaction();
-            $connA->query('SELECT id FROM kernel_rotation_state_v2 FOR UPDATE')->fetchAll();
-
-            $contentionObserved = false;
-            $connBStarted = false;
-            try {
-                $connB->beginTransaction();
-                $connBStarted = true;
-                $connB->query('SELECT id FROM kernel_rotation_state_v2 FOR UPDATE NOWAIT');
-            } catch (\PDOException) {
-                $contentionObserved = true;
-            } finally {
-                if ($connBStarted && $connB->inTransaction()) {
-                    $connB->rollBack();
-                }
-            }
-
-            $connA->rollBack();  // libère le verrou
-
-            $this->assertTrue($contentionObserved,
-                'FOR UPDATE contention observée : NOWAIT échoue quand Connexion A tient le verrou'
-            );
-
-            // Supprimer la ligne de la Partie A (commit auto-commit)
-            $connA->exec('DELETE FROM kernel_rotation_state_v2');
-            $rowInserted = false;
-
-            // ── Partie B : deux orchestrations via KRP réel ───────────────────
-            // Orchestration 1 → succès (commit réel sur Neon)
-            $result1 = $this->orchestrator->run(null);
-            $orchestrated = true;
-            $this->assertSame(KernelPipelineOrchestrator::STATUS_ROTATION_ASSIGNED, $result1['status'],
-                'Orchestration 1 : STATUS_ROTATION_ASSIGNED'
-            );
-
-            // domain_position = 0 (geographie = index 0 dans DOMAIN_CYCLE)
-            $state = DB::connection('pgsql')->table('kernel_rotation_state_v2')->first();
-            $this->assertSame(0, (int) $state->domain_position,
-                'domain_position = 0 après la première orchestration (geographie)'
-            );
-            $this->assertSame(2, (int) $state->active_depth,
-                'active_depth = 2 (Depth initial du DepthCycle)'
-            );
-
-            // Orchestration 2 → Factory guard
-            $guardCaught = false;
-            try {
-                $this->orchestrator->run(null);
-            } catch (\RuntimeException $e) {
-                $this->assertStringContainsString('Blueprint actif existe', $e->getMessage(),
-                    'Factory guard stoppe la deuxième orchestration'
+            $this->runAsWorker('krp_worker_a', static function (KernelRotationPlanner $planner): void {
+                $planner->receiveTaxonomyTerminalFact(
+                    'fact-contradictory-depth',
+                    6,
+                    'geographie',
                 );
-                $guardCaught = true;
-            }
-            $this->assertTrue($guardCaught, 'RuntimeException Factory guard attendue');
-
-            // Blueprints finaux = 1
-            $this->assertSame(1, (int) DB::connection('pgsql')->table('kernel_blueprint_runs')->count(),
-                'Blueprints finaux = 1 (Factory guard efficace)'
+            });
+            $this->fail('A contradictory terminal fact must be rejected.');
+        } catch (\RuntimeException $exception) {
+            $this->assertStringContainsString(
+                'depth/domain ne correspondent pas au Blueprint KRP actif',
+                $exception->getMessage(),
             );
+        }
 
-        } finally {
-            if ($rowInserted) {
-                $connA->exec('DELETE FROM kernel_rotation_state_v2');
-            }
-            if ($orchestrated) {
-                // Nettoyer les commits réels de la Partie B
-                DB::connection('pgsql')->table('kernel_blueprint_runs')->delete();
-                DB::connection('pgsql')->table('kernel_rotation_state_v2')->delete();
-                // kernel_code_sequences : KernelCodeEngine a peut-être inséré des lignes
-                // On ne supprime que les lignes de la Partie B pour ne pas perturber
-                // les séquences existantes.  Puisque le Blueprint est supprimé, les
-                // séquences orphelines ne bloquent pas les prochains tests.
-            }
-            DB::beginTransaction();
+        $this->assertSame(0, DB::table('kernel_taxonomy_terminal_facts')->count());
+        $this->assertSame(4, (int) DB::table('kernel_rotation_state_v2')->value('active_depth'));
+    }
+
+    private function configureIsolatedConnection(string $connectionName): void
+    {
+        $configuration = config('database.connections.pgsql');
+        $configuration['search_path'] = $this->quotedSchemaName();
+
+        config(["database.connections.{$connectionName}" => $configuration]);
+        DB::purge($connectionName);
+        DB::reconnect($connectionName);
+    }
+
+    private function createKrpV4Schema(): void
+    {
+        $this->assertIsolatedSchemaActive(DB::connection('pgsql'));
+
+        Schema::connection('pgsql')->create('kernel_rotation_state_v2', function (Blueprint $table): void {
+            $table->id();
+            $table->smallInteger('active_depth')->nullable();
+            $table->uuid('active_tour_id')->nullable();
+            $table->string('tour_state', 16)->default('OPEN');
+            $table->uuid('last_closed_tour_id')->nullable();
+            $table->unsignedTinyInteger('last_closed_depth')->nullable();
+            $table->string('depth_state', 64)->default('ROTATION_ACTIVE');
+            $table->json('domain_states')->nullable();
+            $table->integer('domain_position')->nullable();
+            $table->string('active_blueprint_identity', 36)->nullable();
+            $table->string('last_counted_blueprint_identity', 36)->nullable();
+            $table->integer('pending_depth_exhausted_depth')->nullable();
+            $table->unsignedBigInteger('lock_version')->default(1);
+            $table->timestampsTz();
+        });
+
+        Schema::connection('pgsql')->create('kernel_taxonomy_terminal_facts', function (Blueprint $table): void {
+            $table->id();
+            $table->string('fact_id', 128)->unique();
+            $table->unsignedTinyInteger('depth');
+            $table->string('domain_code', 32);
+            $table->uuid('tour_id');
+            $table->timestampTz('received_at');
+            $table->timestampTz('consumed_at')->nullable();
+            $table->timestampsTz();
+            $table->index(
+                ['depth', 'tour_id', 'consumed_at', 'received_at'],
+                'kttf_pending_tour_idx',
+            );
+        });
+
+        Schema::connection('pgsql')->create('kernel_depth_matrix', function (Blueprint $table): void {
+            $table->smallInteger('depth')->primary();
+            $table->integer('cycle_target');
+            $table->integer('cycle_completed')->default(0);
+            $table->smallInteger('empty_progress_current_tour')->default(0);
+            $table->string('current_tour_id', 36)->nullable();
+            $table->timestampsTz();
+        });
+    }
+
+    private function seedDepthMatrix(): void
+    {
+        foreach (DepthNeedMatrix::DEPTH_CYCLE as $depth) {
+            DB::table('kernel_depth_matrix')->insert([
+                'depth' => $depth,
+                'cycle_target' => DepthNeedMatrix::CYCLE_TARGET[$depth],
+                'cycle_completed' => 0,
+                'empty_progress_current_tour' => 0,
+                'current_tour_id' => null,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
         }
     }
 
-    // =========================================================================
-    // T-PGB-05 — Rollback vrai chemin après Factory = PREUVE IMPASSE-KRP-001
-    //            (Régime A — SAVEPOINT model)
-    // =========================================================================
-
-    // =========================================================================
-    // T-PGB-06 — Rollback vrai chemin après fillRotation (Régime A — SAVEPOINT)
-    // =========================================================================
-
     /**
-     * Prouve que les écritures de applyRotation() peuvent être rollbackées
-     * proprement via un SAVEPOINT PostgreSQL.
-     *
-     * applyRotation() fait deux choses :
-     *   1. blueprint.fillRotation(depth, domain) — écriture IN-MEMORY (write-once)
-     *   2. DB UPDATE active_depth + domain_position   — écriture DB rollbackable
-     *
-     * Chemin testé :
-     *   SAVEPOINT before_apply_rotation
-     *   → applyRotation(blueprint, depth=2, domain='geographie', pos=0)
-     *      ├─ fillRotation in-memory : blueprint.depth = 2
-     *      └─ DB UPDATE active_depth=2, domain_position=0
-     *   [vérification : DB écrit]
-     *   ROLLBACK TO SAVEPOINT before_apply_rotation
-     *   [vérification : DB revenu à active_depth=NULL, domain_position=NULL]
-     *
-     *   Blueprint durable après rollback B = 1 CREATED_UNENGAGED
-     *     (applyRotation ne change pas execution_state ; le Blueprint persiste)
-     *   RotationState après rollback B = active_depth=NULL, domain_position=NULL
+     * @param array<string, array<string, string>>|null $domainStates
      */
-    public function test_rollback_real_path_after_fill_rotation(): void
-    {
-        $blueprintId = (string) Str::orderedUuid();
-
-        // Setup : Blueprint CREATED_UNENGAGED + état initial (active_depth = NULL)
-        DB::table('kernel_blueprint_runs')->insert([
-            'blueprint_id'    => $blueprintId,
-            'execution_state' => 'CREATED_UNENGAGED',
-            'depth'           => null,
-            'domain_code'     => null,
-            'engaged_at'      => null,
-            'received_at'     => null,
-            'created_at'      => now(),
-            'updated_at'      => now(),
-        ]);
+    private function insertActiveState(
+        int $depth,
+        string $domain,
+        string $tourId,
+        string $blueprintId,
+        ?array $domainStates = null,
+    ): void {
+        $position = array_search($domain, DepthTourState::DOMAIN_CYCLE, true);
+        $this->assertIsInt($position);
 
         DB::table('kernel_rotation_state_v2')->insert([
-            'depth_state'                    => 'ROTATION_ACTIVE',
-            'active_depth'                   => null,
-            'domain_position'                => null,
-            'domain_states'                  => json_encode($this->buildDomainStates()),
-            'tour_domain_states'             => json_encode(DepthTourState::initTour()->toArray()),
-            'active_blueprint_identity'      => $blueprintId,
+            'active_depth' => $depth,
+            'active_tour_id' => $tourId,
+            'tour_state' => 'OPEN',
+            'last_closed_tour_id' => null,
+            'last_closed_depth' => null,
+            'depth_state' => 'ROTATION_ACTIVE',
+            'domain_states' => json_encode($domainStates ?? $this->visibleDomainStates()),
+            'domain_position' => $position,
+            'active_blueprint_identity' => $blueprintId,
             'last_counted_blueprint_identity' => null,
-            'pending_depth_exhausted_depth'  => null,
-            'lock_version'                   => 1,
-            'created_at'                     => now(),
-            'updated_at'                     => now(),
+            'pending_depth_exhausted_depth' => null,
+            'lock_version' => 1,
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
-
-        // Blueprint object (in-memory, pas encore fillRotation)
-        $blueprint = new KernelBlueprint();
-        $blueprint->initializeBlueprintId($blueprintId);
-
-        // ── SAVEPOINT avant applyRotation ─────────────────────────────────────
-        DB::statement('SAVEPOINT before_apply_rotation');
-
-        $this->planner->applyRotation($blueprint, 2, 'geographie', 0);
-
-        // applyRotation a écrit sur Neon (dans l'outer txn via SAVEPOINT)
-        $stateAfterApply = DB::table('kernel_rotation_state_v2')->first();
-        $this->assertSame(2, (int) $stateAfterApply->active_depth,
-            'applyRotation : active_depth = 2 écrit dans DB (avant rollback)'
-        );
-        $this->assertSame(0, (int) $stateAfterApply->domain_position,
-            'applyRotation : domain_position = 0 écrit dans DB (avant rollback)'
-        );
-        $this->assertSame(2,            $blueprint->depth,  'fillRotation in-memory : depth = 2');
-        $this->assertSame('geographie', $blueprint->domain, 'fillRotation in-memory : domain = geographie');
-
-        // ── ROLLBACK TO SAVEPOINT ─────────────────────────────────────────────
-        DB::statement('ROLLBACK TO SAVEPOINT before_apply_rotation');
-
-        // ── RotationState après rollback B ────────────────────────────────────
-        $stateAfterRollback = DB::table('kernel_rotation_state_v2')->first();
-        $this->assertNull($stateAfterRollback->active_depth,
-            'RotationState après rollback B : active_depth = NULL (DB write annulé)'
-        );
-        $this->assertNull($stateAfterRollback->domain_position,
-            'RotationState après rollback B : domain_position = NULL (rollback confirmé)'
-        );
-        $this->assertSame($blueprintId, $stateAfterRollback->active_blueprint_identity,
-            'RotationState après rollback B : active_blueprint_identity préservé'
-        );
-
-        // ── Blueprint durable après rollback B ────────────────────────────────
-        $persistedBp = DB::table('kernel_blueprint_runs')
-            ->where('blueprint_id', $blueprintId)->first();
-        $this->assertNotNull($persistedBp,
-            'Blueprint durable après rollback B : Blueprint toujours présent'
-        );
-        $this->assertSame('CREATED_UNENGAGED', $persistedBp->execution_state,
-            'Blueprint durable après rollback B : execution_state = CREATED_UNENGAGED'
-        );
     }
 
-    // =========================================================================
-    // Helpers
-    // =========================================================================
-
-    /** @return array<string, array<string, string>> */
-    private function buildDomainStates(): array
+    /**
+     * @return array<string, array<string, string>>
+     */
+    private function visibleDomainStates(): array
     {
         $states = [];
         foreach (DepthNeedMatrix::DEPTH_CYCLE as $depth) {
-            $key = (string) $depth;
-            foreach (self::DOMAINS as $domain) {
-                $states[$key][$domain] = 'ACTIF';
-            }
+            $states[(string) $depth] = array_fill_keys(self::DOMAINS, 'VISIBLE');
         }
+
         return $states;
     }
 
-    private function openRawPdo(): PDO
+    private function newBlueprint(string $blueprintId): KernelBlueprint
     {
-        $cfg = $this->pgCfg;
-        $dsn = sprintf(
-            'pgsql:host=%s;port=%s;dbname=%s;sslmode=%s',
-            $cfg['host'],
-            $cfg['port'],
-            $cfg['database'],
-            $cfg['sslmode'] ?? 'prefer',
+        $blueprint = new KernelBlueprint();
+        $blueprint->initializeBlueprintId($blueprintId);
+
+        return $blueprint;
+    }
+
+    private function prepareAsWorker(string $connection, KernelBlueprint $blueprint): object
+    {
+        return $this->runAsWorker(
+            $connection,
+            static function (KernelRotationPlanner $planner) use ($blueprint): object {
+                return DB::transaction(static function () use ($planner, $blueprint): object {
+                    $state = (new KernelRotationStateRepository())->firstForUpdate();
+
+                    return $planner->prepareNewBlueprint($blueprint, $state);
+                });
+            },
         );
-        return new PDO($dsn, (string) $cfg['username'], (string) $cfg['password'], [
-            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-        ]);
+    }
+
+    private function runAsWorker(string $connection, callable $callback): mixed
+    {
+        $previous = DB::getDefaultConnection();
+        DB::setDefaultConnection($connection);
+
+        try {
+            $this->assertIsolatedSchemaActive(DB::connection($connection));
+
+            return $callback(new KernelRotationPlanner());
+        } finally {
+            DB::setDefaultConnection($previous);
+        }
+    }
+
+    private function assertIsolatedSchemaActive(ConnectionInterface $connection): void
+    {
+        $activeSchema = $connection->selectOne(
+            'SELECT current_schema() AS schema_name'
+        )->schema_name ?? null;
+        $searchPath = $connection->selectOne('SHOW search_path')->search_path ?? '';
+
+        if ($activeSchema !== $this->schemaName || str_contains(strtolower($searchPath), 'public')) {
+            throw new \RuntimeException(
+                'KRP v4 tests require an exclusively isolated PostgreSQL schema.',
+            );
+        }
+
+        $this->assertSame($this->schemaName, $activeSchema);
+    }
+
+    private function dropIsolatedSchema(): void
+    {
+        if (! $this->schemaCreated) {
+            return;
+        }
+
+        DB::setDefaultConnection('pgsql');
+        DB::connection('pgsql')->statement(
+            'DROP SCHEMA IF EXISTS ' . $this->quotedSchemaName() . ' CASCADE'
+        );
+        $this->schemaCreated = false;
+
+        $schemaCount = (int) (DB::connection('pgsql')->selectOne(
+            'SELECT COUNT(*) AS schema_count '
+            . 'FROM pg_catalog.pg_namespace WHERE nspname = ?',
+            [$this->schemaName],
+        )->schema_count ?? -1);
+
+        $this->assertSame(0, $schemaCount, 'The temporary PostgreSQL schema must be removed.');
+        $this->assertSame(
+            $this->publicRelationOids,
+            $this->snapshotPublicRelationOids(),
+            'Relations in the public schema must remain untouched.',
+        );
+    }
+
+    /**
+     * @return array<int, array{relation_name: string, relation_oid: string}>
+     */
+    private function snapshotPublicRelationOids(): array
+    {
+        return array_map(
+            static fn (object $row): array => [
+                'relation_name' => (string) $row->relation_name,
+                'relation_oid' => (string) $row->relation_oid,
+            ],
+            DB::connection('pgsql')->select(<<<'SQL'
+SELECT relation.relname AS relation_name, relation.oid::text AS relation_oid
+FROM pg_catalog.pg_class AS relation
+INNER JOIN pg_catalog.pg_namespace AS namespace ON namespace.oid = relation.relnamespace
+WHERE namespace.nspname = 'public'
+  AND relation.relname IN (
+      'kernel_rotation_state_v2',
+      'kernel_taxonomy_terminal_facts',
+      'kernel_depth_matrix'
+  )
+ORDER BY relation.relname
+SQL),
+        );
+    }
+
+    private function quotedSchemaName(): string
+    {
+        return '"' . $this->schemaName . '"';
     }
 }
