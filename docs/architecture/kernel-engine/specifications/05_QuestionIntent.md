@@ -1,6 +1,6 @@
 # STRATEGYBUZZER — 05_QUESTIONINTENT / KERNELCODEENGINE
 
-**Version :** 2.1  
+**Version :** 2.2  
 **Date :** 28 août 2026  
 **Statut :** OFFICIAL — CONTRAT ARCHITECTURAL VERROUILLÉ  
 **Décision :** DEC-121  
@@ -202,76 +202,52 @@ Deux versions physiques peuvent partager la même identité conceptuelle.
 
 QuestionIntent ne connaît et ne choisit aucun cognitif.
 
-Phase 1 reçoit le Blueprint portant `kernel_code`, puis produit les questions cognitives. Chaque question reçoit une identité complète distincte :
+Phase1 reçoit le même Blueprint portant le `kernel_code` final et remplit exactement les sept CognitiveSlots définis par `06_Phase1`.
 
-```text
-question_code = DD-DO-SUB-SUJ-IDE-VVVV-COG-VAR
-```
+Aucun segment `COG`, `VAR` ou `question_code` n’est ajouté au `kernel_code` par QuestionIntent.
 
-| Segment ajouté | Propriétaire | Signification |
-|---|---|---|
-| `COG` | Phase 1 | type cognitif utilisé |
-| `VAR` | Phase 1 | original ou variante physique de la question |
-
-`question_code` n’est pas un remplacement de `kernel_code`.
-
-- `kernel_code` identifie le noyau;
-- `question_code` identifie une question cognitive précise issue de ce noyau.
-
-Une variante `VAR` différente du même `COG` ne constitue pas un nouveau cognitif.
+Les CognitiveSlots restent identifiés par leur emplacement permanent dans le Blueprint.
 
 ---
 
-# 7. Contrat READY_BANK
+# 7. Frontière ReadyBank
 
-`READY_BANK` doit conserver et rendre interrogeables au minimum :
+QuestionIntent ne crée aucune donnée ReadyBank.
 
-```text
-kernel_code
-question_code
-depth
-domain
-subdomain
-subject
-dominant_idea
-cognitive_code
-variant_code
-```
+ReadyBank reçoit ultérieurement le Blueprint complet avec :
 
-Les champs indexables peuvent être matérialisés séparément. Le gameplay ne doit pas dépendre d’un découpage fragile de chaîne si les segments sont déjà disponibles sous forme de colonnes structurées.
+- son identité intellectuelle;
+- ses sept CognitiveSlots source;
+- leurs traductions;
+- leurs validations;
+- les éventuelles réconciliations Quarantine.
 
-La chaîne complète demeure l’identité vérifiable; les colonnes servent à la sélection performante.
+La responsabilité détaillée appartient à `11_ReadyBank` et DEC-122.
 
 ---
 
-# 8. Contrat gameplay et historique joueur
+# 8. Frontière gameplay et historique joueur
 
-Le gameplay applique successivement :
+Le `kernel_code` demeure commun à tous les joueurs et immuable.
 
-1. `DD-DO-SUB` pour trouver rapidement les noyaux admissibles selon la partie;
-2. `SUJ-IDE` pour reconnaître l’identité conceptuelle;
-3. `COG` pour savoir quel traitement cognitif le joueur a déjà reçu;
-4. `VVVV-VAR` pour identifier la question physique exacte.
-
-Clé logique anti-répétition :
+L’état cognitif cumulatif est externe au Blueprint et peut être projeté visuellement après le code :
 
 ```text
-player_id
-+ DD-DO-SUB-SUJ-IDE
-+ COG
+kernel_code + masque joueur
+
+06-HIS-TIT-RAP-EVA-0000-00n
 ```
 
-Règles verrouillées :
+Le masque `00n → 11o` appartient au contrat ReadyBank/Gameplay :
 
-- même identité conceptuelle + même `COG` déjà joué : interdit;
-- même identité conceptuelle + nouveau `COG` : permis tant que le plafond n’est pas atteint;
-- maximum de **3 cognitifs distincts** par joueur pour une même identité `DD-DO-SUB-SUJ-IDE`;
-- après trois `COG` distincts, cette identité conceptuelle est fermée pour ce joueur;
-- changer `VVVV` ne remet pas le compteur cognitif à zéro;
-- changer `VAR` ne remet pas le compteur cognitif à zéro;
-- une variante du même cognitif ne contourne jamais l’anti-répétition.
+- premier caractère : famille QCM_RECOGNITION/QCM_REASONING;
+- deuxième caractère : famille des quatre Vrai/Faux;
+- troisième caractère : QCM_TRAP;
+- maximum un cognitif par famille;
+- maximum trois cognitifs par joueur pour la même identité conceptuelle;
+- aucune remise à zéro par un changement de `VVVV`.
 
-Toute politique exceptionnelle de remise en circulation appartient à un futur contrat Gameplay explicite. Elle ne peut être supposée par QuestionIntent, Phase 1 ou `READY_BANK`.
+QuestionIntent ne lit, n’écrit et ne modifie jamais ce masque.
 
 ---
 
@@ -309,11 +285,11 @@ Le `kernel_code` complet identifie une seule version physique de noyau.
 
 ## QI-C06 — Séparation cognitive
 
-QuestionIntent ne produit ni `DD`, ni `DO`, ni `SUB`, ni `SUJ`, ni `IDE`, ni `COG`, ni `VAR`, ni `question_code`. Il alloue uniquement `VVVV` et verrouille l’assemblage final.
+QuestionIntent ne produit ni `DD`, ni `DO`, ni `SUB`, ni `SUJ`, ni `IDE`, ni CognitiveSlot, ni masque joueur. Il alloue uniquement `VVVV` et verrouille l’assemblage final.
 
 ## QI-C07 — Limite joueur
 
-Le plafond de trois cognitifs est appliqué par le gameplay à partir de l’historique joueur; il n’est pas appliqué par QuestionIntent.
+Le plafond d’un cognitif par famille et de trois familles au total est appliqué par le gameplay à partir de l’historique joueur; il n’est pas appliqué par QuestionIntent.
 
 ## QI-C08 — Aucune seconde validation
 
@@ -378,13 +354,12 @@ Les copies de travail et éléments de Quarantine conservent la référence au n
 12. concurrence → une seule identité persistée;
 13. QuestionIntent ne modifie aucun slot amont;
 14. QuestionIntent ne produit aucun cognitif;
-15. Phase 1 prolonge l’identité avec `COG-VAR`;
-16. même concept + même COG → exclusion joueur;
-17. même concept + nouveau COG → permis jusqu’à trois;
-18. quatrième COG distinct → exclusion;
-19. nouvelle version `VVVV` → compteur non réinitialisé;
-20. nouvelle variante `VAR` → compteur non réinitialisé;
-21. `READY_BANK` permet le filtrage structuré sans dépendre uniquement du parsing de chaîne.
+15. Phase1 remplit les sept CognitiveSlots sans modifier `kernel_code`;
+16. le masque joueur reste externe au Blueprint;
+17. même famille cognitive déjà utilisée → famille exclue pour ce joueur;
+18. trois familles utilisées → identité conceptuelle fermée pour ce joueur;
+19. nouvelle version `VVVV` → masque non réinitialisé;
+20. ReadyBank permet le filtrage structuré sans dépendre uniquement du parsing de chaîne.
 
 ---
 
@@ -411,7 +386,7 @@ Ces contrats devront respecter les identités et invariants définis ici.
 ```text
 Architecture :        VERROUILLÉE
 Contrat :             VERROUILLÉ
-Spécification :       OFFICIAL v2.1 / DEC-121
+Spécification :       OFFICIAL v2.2 / DEC-121 + DEC-122
 Implémentation :      À AUDITER
 Validation terminale : NON
 ```
