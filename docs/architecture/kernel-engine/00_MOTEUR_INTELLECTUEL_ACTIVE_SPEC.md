@@ -72,10 +72,14 @@ Une seule spécification est travaillée à la fois.
 08_Phase2
 ↓
 09_ValidationPhase2
-↓
-10_Quarantine
-↓
-11_ReadyBank
+├── canonique poursuit → 11_ReadyBank
+└── suspicion → copie complète → 10_Quarantine
+                           ↓ correction ciblée
+                    reprise 06/07 ou 08/09
+                           ↓
+                       11_ReadyBank
+                           ↓
+             fusion ciblée avec le canonique
 ```
 
 ---
@@ -84,17 +88,17 @@ Une seule spécification est travaillée à la fois.
 
 | Module | Architecture | Contrat | Implémentation | Validation | Statut |
 |---|---:|---:|---:|---:|---|
-| 01 KernelBlueprint | 100 % intellectuel | 100 % | Section 1 alignée | terminale globale différée | contrat d’entrée disponible |
+| 01 KernelBlueprint | **100 % intellectuel v2.1** | **100 %** | à auditer contre DEC-122 | NON | **VERROUILLÉ — DEC-113 + DEC-122** |
 | 02 KernelRotationPlanner | **100 % intellectuel v4.0** | **100 %** | implantation KRP seulement, par micro-blocs | NON | **VERROUILLÉ — DEC-119 OFFICIAL** |
 | 03 Taxonomy | **100 % intellectuel v1.1** | **100 %** | non à poursuivre avant validation KRP | NON | **VERROUILLÉ — DEC-120 OFFICIAL** |
 | 04 ValidationDominantIdeas | règles absorbées par Taxonomy v1.1 | contrat de règles | aucun moteur autonome | N/A | **SUPERSEDED comme étape autonome — DEC-101** |
-| 05 QuestionIntent | **100 % intellectuel v2.1** | **100 %** | à réaligner sur construction progressive | NON | **VERROUILLÉ — DEC-121 OFFICIAL** |
-| 06 Phase1 | brides seulement | non verrouillé | non | non | à venir |
-| 07 ValidationPhase1 | brides seulement | non verrouillé | non | non | à venir |
-| 08 Phase2 | brides seulement | non verrouillé | non | non | à venir |
-| 09 ValidationPhase2 | brides seulement | non verrouillé | non | non | à venir |
-| 10 Quarantine | frontière connue | non verrouillé | à auditer plus tard | non | à venir |
-| 11 ReadyBank | frontière lifecycle connue | non verrouillé | à auditer plus tard | non | à venir |
+| 05 QuestionIntent | **100 % intellectuel v2.2** | **100 %** | à réaligner sur construction progressive | NON | **VERROUILLÉ — DEC-121 + DEC-122** |
+| 06 Phase1 | règles structurelles DEC-122 | partiel v0.1 | non | non | sept CognitiveSlots + frontière Quarantine verrouillés |
+| 07 ValidationPhase1 | frontière DEC-122 | partiel v0.1 | non | non | signalement source + copie complète verrouillés |
+| 08 Phase2 | règles traductions DEC-122 | partiel v0.1 | non | non | traductions imbriquées + reprise ciblée verrouillées |
+| 09 ValidationPhase2 | frontière DEC-122 | partiel v0.1 | non | non | signalement traduction + copie complète verrouillés |
+| 10 Quarantine | copie complète DEC-122 | partiel v0.1 | non | non | copie rouge structurée + reprise ciblée verrouillées |
+| 11 ReadyBank | fusion DEC-122 | partiel v0.1 | non | non | réconciliation canonique + masque joueur verrouillés |
 
 ---
 
@@ -503,7 +507,22 @@ DEC-115 à DEC-118 : REJECTED, historique seulement. Anciennes versions KRP : hi
 ## Référence canonique QuestionIntent
 
 ```text
-05 → specifications/05_QuestionIntent.md v2.1 / DEC-121
+05 → specifications/05_QuestionIntent.md v2.2 / DEC-121 + DEC-122
 ```
 
-Le KernelBlueprint projette progressivement `DD-DO` lors des écritures KRP puis `SUB-SUJ-IDE` lors des écritures Taxonomy. QuestionIntent/KernelCodeEngine alloue uniquement le compteur base36 `VVVV`, indépendant par bassin `Depth + Domain`, puis assemble et verrouille le code final. Le contrat sépare ce `kernel_code` du `question_code` (`kernel_code-COG-VAR`, Phase 1) et impose à la frontière Gameplay un maximum de trois cognitifs distincts par joueur pour une même identité conceptuelle.
+Le KernelBlueprint projette progressivement `DD-DO` lors des écritures KRP puis `SUB-SUJ-IDE` lors des écritures Taxonomy. QuestionIntent/KernelCodeEngine alloue uniquement le compteur base36 `VVVV`, indépendant par bassin `Depth + Domain`, puis assemble et verrouille le code final. Phase1 remplit ensuite les sept CognitiveSlots du même Blueprint. L’état cognitif joueur `00n→11o` reste externe au Blueprint.
+
+
+## Référence canonique DEC-122
+
+```text
+01 → specifications/01_KernelBlueprint.md v2.1
+06 → specifications/06_Phase1.md v0.1
+07 → specifications/07_ValidationPhase1.md v0.1
+08 → specifications/08_Phase2.md v0.1
+09 → specifications/09_ValidationPhase2.md v0.1
+10 → specifications/10_Quarantine.md v0.1
+11 → specifications/11_ReadyBank.md v0.1
+```
+
+Le Blueprint canonique atteint ReadyBank. Une suspicion crée une copie complète Quarantine avec ciblage structuré affichable en rouge. La copie corrigée reprend uniquement les phases nécessaires puis fusionne avec le canonique dans ReadyBank pour remplacer/corriger/remplir les slots ciblés ou vides.
