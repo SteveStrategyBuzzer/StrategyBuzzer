@@ -379,7 +379,6 @@ class KernelCodeEngineTest extends TestCase
         // Rotation non remplie (depth + domain = null) → engine doit refuser.
         $bp = new KernelBlueprint();
         $bp->initializeBlueprintId('bp-miss-rot');
-        $bp->fillTaxonomy('Canada', 'Sujet', 'Idée');
 
         DB::table('kernel_blueprint_runs')->insert([
             'blueprint_id'    => 'bp-miss-rot',

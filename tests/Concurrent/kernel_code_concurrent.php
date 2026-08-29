@@ -123,7 +123,7 @@ function normalizeSegment(string $value): string
 
 // ─── Pre-calculer les segments attendus ────────────────────────────────────
 $expDD  = '02';
-$expDO  = 'SC';
+$expDO  = 'SCI';
 $expSUB = normalizeSegment(TEST_SUB);  // PHY
 $expSUJ = normalizeSegment(TEST_SUJ);  // PRI
 $expIDE = normalizeSegment(TEST_IDE);  // MES
@@ -138,7 +138,7 @@ echo "Schema isolé: {$schema}\n";
 echo "search_path : {$currentPath}\n";
 echo "Isolation   : " . ($isolationActive ? "ACTIVE ✓" : "INCONNUE — continuer quand même") . "\n";
 echo "N workers   : " . N_WORKERS . "\n";
-echo "Basin       : depth=" . TEST_DEPTH . " (DD=02) / domain=Science (DO=SC)\n";
+echo "Basin       : depth=" . TEST_DEPTH . " (DD=02) / domain=Science (DO=SCI)\n";
 echo "Prefix code : {$expPrefix}VVVV\n\n";
 
 // ─── SETUP : créer N blueprints de test ───────────────────────────────────
@@ -562,6 +562,7 @@ $allOk = ($driver === 'pgsql')
     && $noErrors
     && $uniquenessOk
     && $isSequential
+    && $prefixOk
     && $nextValueOk
     && $idempotenceOk
     && $persistenceOk
@@ -577,6 +578,7 @@ echo "Concurrency algorithm          : " . ($noErrors && $uniquenessOk ? 'PASS' 
 echo "PostgreSQL row locking         : " . ($driver === 'pgsql' ? 'PASS' : 'FAIL') . "\n";
 echo "Unique kernel_code             : " . (count($uniqueCodes) === N_WORKERS ? 'PASS' : 'FAIL') . "\n";
 echo "Gapless base36 sequence        : " . ($isSequential ? 'PASS' : 'FAIL') . "\n";
+echo "Official kernel_code prefix    : " . ($prefixOk ? 'PASS' : 'FAIL') . "\n";
 echo "Counter exactness              : " . ($nextValueOk ? 'PASS' : 'FAIL') . "\n";
 echo "Idempotence                    : " . ($idempotenceOk ? 'PASS' : 'FAIL') . "\n";
 echo "Persistence                    : " . ($persistenceOk ? 'PASS' : 'FAIL') . "\n";
