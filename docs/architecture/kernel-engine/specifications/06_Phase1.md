@@ -249,6 +249,6 @@ Restent à spécifier avant Build terminal de Phase1 :
 - preuves intellectuelles attendues;
 - états détaillés des CognitiveSlots.
 
-L’ancienne hypothèse consistant à créer un `QCM_RECOGNITION` master puis à dériver mécaniquement les six autres cognitifs n’est pas rétablie par cette version. Elle demeure non résolue jusqu’à comparaison avec les règles propres aux sept cognitifs.
+Le modèle consistant à créer un `QCM_RECOGNITION` master puis à dériver les six autres cognitifs est définitivement rejeté. Les sept cognitifs sont créés comme sept mécanismes intellectuels autonomes à partir de la même identité du Blueprint. Aucun cognitif ne sert de master textuel, structurel ou sémantique aux six autres.
 
 La présente version verrouille les décisions confirmées sans déclarer Phase1 terminée.
