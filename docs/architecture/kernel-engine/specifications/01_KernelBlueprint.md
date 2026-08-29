@@ -5,8 +5,8 @@
 **Statut documentaire :** **VERROUILLÉ**  
 **Architecture :** **100 %**  
 **Contrat :** **100 %**  
-**Implémentation :** hors statut de ce document — audit v2.0 obligatoire avant toute correction de code  
-**Validation code :** à refaire contre v2.0 après audit/implantation
+**Implémentation :** hors statut de ce document — audit v2.1 obligatoire avant toute correction de code  
+**Validation code :** à refaire contre v2.1 après audit/implantation
 
 > Réécriture canonique complète de la spécification KernelBlueprint. Cette version remplace la reconstruction active et harmonise les décisions encore valides avec la frontière actuelle `KernelBlueprintFactory → nouveau KernelBlueprint → KernelRotationPlanner`. Le code historique ne définit pas cette architecture.
 
@@ -138,7 +138,7 @@ Phase2
 → contenu des TranslationSlots correspondants
 ```
 
-Les moteurs de validation et Quarantine peuvent faire évoluer les états/contenus uniquement selon leurs futurs contrats propriétaires ; ces mécanismes ne sont pas inventés par `01_KernelBlueprint`.
+Les moteurs de validation et Quarantine font évoluer les états/contenus uniquement selon les contrats propriétaires 07, 09 et 10 ainsi que DEC-122; `01_KernelBlueprint` en transporte la structure sans devenir l’autorité de validation.
 
 ---
 
@@ -633,7 +633,7 @@ Le même Blueprint ne doit jamais déclencher deux créations effectives du noya
 
 Les méthodes write-once normales ne peuvent pas être détournées pour corriger silencieusement un slot déjà rempli.
 
-La future correction passe par le contrat contrôlé de `10_Quarantine`.
+La correction passe par le contrat contrôlé de `10_Quarantine` et rejoint le canonique uniquement selon `11_ReadyBank`.
 
 ## 13.10 Réservoirs
 
@@ -751,7 +751,7 @@ Les tests de contenu détaillé Phase1, validations, traductions et Quarantine s
 
 # 17. Architecture Register
 
-Décisions structurantes récupérées et compatibles avec v2.0 :
+Décisions structurantes récupérées et compatibles avec v2.1 :
 
 ```text
 DEC-034  immutabilité/write-once
@@ -766,6 +766,7 @@ Décision de fermeture documentaire :
 
 ```text
 DEC-113 — Spécification KernelBlueprint v2.0 verrouillée
+DEC-122 — Blueprint complet, copie Quarantine et fusion ciblée ReadyBank
 ```
 
 Cette réécriture ne restaure aucune ancienne décision `KRP crée le Blueprint` et ne restaure aucune boucle de réutilisation du même Blueprint.
@@ -799,7 +800,7 @@ Architecture : 100 %
 Contrat :      100 %
 
 STATUT DOCUMENTAIRE :
-VERROUILLÉ v2.0
+VERROUILLÉ v2.1
 ```
 
 Prochaine étape autorisée :
