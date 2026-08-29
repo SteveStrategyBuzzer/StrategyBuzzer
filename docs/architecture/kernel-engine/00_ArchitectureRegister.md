@@ -57,7 +57,8 @@ REJECTED
 | DEC-118 | 3.7 | 2026-08-23 | REJECTED | Révision documentaire non autorisée : conservait à tort le même Domain tant qu’il restait `VISIBLE` | 02 + frontières | AUCUNE | DEC-119 |
 | DEC-119 | 4.0 | 2026-08-24 | OFFICIAL | KRP v4.0 : cadran Domain restauré; `DOMAIN_EXHAUSTED` et `DEPTH_EXHAUSTED` sont deux moteurs internes KRP; `DEPTH_EXHAUSTED` contient `DepthNeedMatrix` et la rotation des Depths | 02 + frontière 03 | DEC-114 sur ownership + rejet DEC-115..118 | AUCUNE |
 | DEC-120 | 1.1 | 2026-08-24 | OFFICIAL | Taxonomy v1.1 : conserve ses Banks et sa consommation exacte; transmet seulement le fait terminal « dernière Dominant Idea du dernier Subject de ce Domain utilisée »; aucun moteur `DOMAIN_EXHAUSTED`, aucun `DEPTH_EXHAUSTED`, aucune DepthNeedMatrix ni rotation globale dans Taxonomy | 03 + frontière 02 | DEC-112 + DEC-107/108 sur frontière | AUCUNE |
-| DEC-121 | 2.1 | 2026-08-28 | OFFICIAL | `kernel_code` se construit progressivement dans le même KernelBlueprint : écritures KRP → projection `DD-DO`; écritures Taxonomy → projection `SUB-SUJ-IDE`; QuestionIntent/KernelCodeEngine alloue uniquement `VVVV`, assemble et verrouille le code final. `VVVV` est un compteur base36 persistant, transactionnel, jamais recyclé, indépendant par bassin `Depth + Domain`, chaque bassin démarrant à `0000`. Phase 1 produit ensuite `question_code = kernel_code-COG-VAR`; Gameplay limite à 3 cognitifs distincts par joueur et identité conceptuelle sans reset par `VVVV`/`VAR` | 01,02,03,05 + frontières Phase 1/READY_BANK/Gameplay | formulation DEC-121 v2.0 où QuestionIntent construisait seul les six segments | AUCUNE |
+| DEC-121 | 2.2 | 2026-08-29 | OFFICIAL | `kernel_code` se construit progressivement dans le même KernelBlueprint : écritures KRP → projection `DD-DO`; écritures Taxonomy → projection `SUB-SUJ-IDE`; QuestionIntent/KernelCodeEngine alloue uniquement `VVVV`, assemble et verrouille le code final. `VVVV` est un compteur base36 persistant, transactionnel, jamais recyclé et indépendant par bassin `Depth + Domain`. Phase1 remplit ensuite les sept CognitiveSlots sans modifier `kernel_code`; l’état cognitif joueur demeure externe | 01,02,03,05 + frontière 06/11 | formulations DEC-121 v2.0/v2.1 portant `question_code-COG-VAR` | DEC-122 |
+| DEC-122 | 1.0 | 2026-08-29 | OFFICIAL | Un seul Blueprint canonique contient l’identité, les 7 CognitiveSlots source et leurs traductions. Le canonique poursuit toutes les phases jusqu’à ReadyBank. Quarantine reçoit une copie complète avec chemins soupçonnés affichables en rouge; la copie corrigée reprend le pipeline de façon ciblée puis rejoint le canonique uniquement dans ReadyBank, qui remplace/corrige/remplit les slots ciblés ou vides sans toucher aux slots valides. L’état joueur `00n→11o` reste externe au Blueprint et autorise au maximum un cognitif par chacune des trois familles | 01,05,06,07,08,09,10,11 + Gameplay | anciennes formulations fragment Quarantine et `question_code-COG-VAR` | AUCUNE |
 
 ---
 
@@ -225,7 +226,22 @@ Ne jamais demander à Replit d’implanter KRP et Taxonomy dans le même bloc.
 # DEC-121 — Construction progressive, suffixe VVVV et anti-répétition joueur
 
 ```text
-05 → specifications/05_QuestionIntent.md v2.1 / DEC-121
+05 → specifications/05_QuestionIntent.md v2.2 / DEC-121 + DEC-122
 ```
 
 Le document historique `docs/architecture/05_QuestionIntent.md` est SUPERSEDED et retiré de l’arbre actif. Son historique demeure récupérable dans Git.
+
+
+# DEC-122 — Blueprint complet, copie Quarantine et fusion ReadyBank
+
+```text
+01 → specifications/01_KernelBlueprint.md v2.1
+06 → specifications/06_Phase1.md v0.1
+07 → specifications/07_ValidationPhase1.md v0.1
+08 → specifications/08_Phase2.md v0.1
+09 → specifications/09_ValidationPhase2.md v0.1
+10 → specifications/10_Quarantine.md v0.1
+11 → specifications/11_ReadyBank.md v0.1
+```
+
+Les versions 0.1 verrouillent uniquement les décisions DEC-122 et leurs frontières. Elles ne déclarent pas les modules 06 à 11 entièrement spécifiés, implantés ou validés.
