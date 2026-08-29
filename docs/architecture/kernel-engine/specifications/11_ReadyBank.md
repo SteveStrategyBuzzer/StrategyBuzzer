@@ -1,6 +1,6 @@
 # STRATEGYBUZZER — 11_READYBANK
 
-**Version :** 0.1  
+**Version :** 0.2  
 **Date :** 29 août 2026  
 **Statut :** RÈGLES OFFICIELLES VERROUILLÉES — MODULE À COMPLÉTER  
 **Décision :** DEC-122  
@@ -112,21 +112,53 @@ ReadyBank doit permettre une projection administrative complète montrant :
 
 Les champs soupçonnés peuvent être affichés en rouge à partir des chemins persistés.
 
-# 7. État cognitif cumulatif du joueur
+# 7. Historique cognitif durable du joueur
 
 L’état joueur ne fait pas partie du `kernel_code` canonique et ne modifie jamais le Blueprint partagé.
 
-Il est conservé séparément par joueur et par identité conceptuelle :
+Le masque seul ne suffit pas à identifier quel cognitif exact a été joué. L’historique durable conserve donc au minimum :
 
 ```text
 player_id
-+ DD-DO-SUB-SUJ-IDE
-+ masque cognitif
++ identité conceptuelle DD-DO-SUB-SUJ-IDE
++ cognitive_type exact
++ played_at
++ game_id si disponible
 ```
 
-`VVVV` ne réinitialise jamais cet état.
+L’identité conceptuelle est utilisée afin qu’un changement de `VVVV` ne remette jamais l’historique à zéro.
 
-## 7.1 Masque à trois familles
+La persistance doit empêcher une deuxième consommation logique du même cognitif par le même joueur et la même identité conceptuelle :
+
+```text
+UNIQUE (
+  player_id,
+  conceptual_identity,
+  cognitive_type
+)
+```
+
+Le `kernel_code` physique effectivement joué demeure conservable pour la traçabilité, mais il ne remplace pas l’identité conceptuelle utilisée par la règle de non-répétition.
+
+## 7.1 Types cognitifs suivis
+
+```text
+QCM_RECOGNITION
+QCM_REASONING
+QCM_TRAP
+TRUE_FALSE_RECOGNITION_TRUE
+TRUE_FALSE_RECOGNITION_FALSE
+TRUE_FALSE_REASONING_TRUE
+TRUE_FALSE_REASONING_FALSE
+```
+
+L’historique détaillé permet de savoir précisément lequel de ces sept types a été joué.
+
+Aucun `question_code`, segment `COG` ou segment `VAR` n’est nécessaire pour cette identification.
+
+## 7.2 Masque dérivé à trois familles
+
+Le masque est une projection rapide calculée depuis l’historique détaillé. Il n’est pas la source de vérité.
 
 Format visuel :
 
@@ -176,7 +208,22 @@ Le joueur reçoit au maximum :
 
 Maximum total : trois cognitifs, un par famille.
 
-## 7.2 Projection gameplay
+## 7.3 Sélection gameplay
+
+Avant de sélectionner un cognitif, le gameplay lit l’historique détaillé du joueur pour l’identité conceptuelle demandée.
+
+Il doit :
+
+1. exclure toute famille déjà consommée;
+2. identifier le `cognitive_type` exact déjà joué;
+3. choisir uniquement un slot admissible dans une famille encore disponible;
+4. enregistrer atomiquement la consommation réussie;
+5. recalculer le masque dérivé;
+6. fermer l’identité pour ce joueur lorsque le masque atteint `11o`.
+
+Le masque accélère le filtrage des familles. L’historique détaillé garantit l’exactitude et l’audit.
+
+## 7.4 Projection gameplay
 
 Une interface peut afficher :
 
@@ -209,20 +256,23 @@ ReadyBank peut produire les faits définis par son contrat lifecycle vers KRP, m
 - slots vides remplissables après reprise;
 - aucune copie comptée comme nouveau noyau;
 - état joueur externe au Blueprint;
+- historique détaillé par joueur, identité conceptuelle et `cognitive_type`;
+- masque dérivé, jamais source de vérité;
 - maximum trois familles cognitives;
-- aucun reset par `VVVV`.
+- aucun reset par `VVVV`;
+- aucun `question_code`, `COG` ou `VAR` requis.
 
 # 10. Statut restant
 
 Restent à spécifier :
 
-- schéma persistant exact;
+- schéma SQL persistant exact de l’historique joueur;
 - transactions et verrous de fusion;
 - états détaillés d’exploitabilité;
 - signal lifecycle exact vers KRP;
 - conservation/archivage des copies fusionnées;
 - interface administrative;
-- durée et persistance de l’historique joueur;
+- durée et politique d’archivage de l’historique joueur;
 - comportement multijoueur lorsque plusieurs historiques doivent être combinés.
 
-La présente version verrouille les responsabilités de réconciliation et la frontière gameplay sans déclarer ReadyBank terminé.
+La présente version verrouille les responsabilités de réconciliation, l’identification exacte du cognitif joué et la frontière gameplay sans déclarer ReadyBank terminé.
