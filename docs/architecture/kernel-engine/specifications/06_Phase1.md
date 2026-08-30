@@ -630,18 +630,18 @@ Phase1 ciblée
 8. chaque réponse QCM = un mot, une valeur courte ou une expression représentant une seule idée;
 9. phrase, justification, énumération ou plusieurs idées dans un choix → refus;
 10. Vrai/Faux : deux choix et polarité exacte;
-9. QCM_TRAP exige `trap_basis`;
-10. question au-dessus de 8 secondes → refus technique ou suspicion;
-11. SV au-dessus de 30 secondes → refus technique ou suspicion;
-12. aucune limite minimale de caractères;
-13. Depth élevé avec question courte → accepté;
-14. incohérence sous-domaine → suspicion;
-15. identité divergente → aucun write;
-16. un slot invalide n’efface pas les autres;
-17. aucun slot partiel déclaré `CREATED`;
-18. retries plafonnés à trois;
-19. replay idempotent;
-20. aucune mutation Section 1.
+11. QCM_TRAP exige `trap_basis`;
+12. question au-dessus de 8 secondes → refus technique ou suspicion;
+13. SV au-dessus de 30 secondes → refus technique ou suspicion;
+14. aucune limite minimale de caractères;
+15. Depth élevé avec question courte → accepté;
+16. incohérence sous-domaine → suspicion;
+17. identité divergente → aucun write;
+18. un slot invalide n’efface pas les autres;
+19. aucun slot partiel déclaré `CREATED`;
+20. retries plafonnés à trois;
+21. replay idempotent;
+22. aucune mutation Section 1.
 
 # 18. Statut
 
