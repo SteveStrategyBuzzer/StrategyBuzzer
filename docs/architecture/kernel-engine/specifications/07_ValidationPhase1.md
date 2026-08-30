@@ -268,6 +268,22 @@ CREATION_FAILED
 
 Elle ne produit ni `READY` ni `CONSUMED`.
 
+## 10.1 Frontière de persistance
+
+Le `KernelBlueprint` demeure l’unique agrégat canonique. Sa Section 1 est
+persistée dans `kernel_blueprint_runs`; les sept slots sont persistés
+séparément dans `kernel_blueprint_cognitive_slots` sous la clé
+`(blueprint_id, cognitive_type)`.
+
+La contrainte d’unicité garantit une seule occurrence de chaque type cognitif
+par Blueprint. ValidationPhase1 valide et met à jour le slot ciblé sans
+réécrire un frame global ni modifier la Section 1.
+
+`question_intents.frame_en` est legacy et non autoritaire. Ni Phase1 ni
+ValidationPhase1 n’y trouvent la source canonique des slots. Les traductions,
+le masque joueur, le mélange des choix et les données joueur restent hors de
+la persistance Phase1.
+
 # 11. Échec technique de validation
 
 Clé d’idempotence :

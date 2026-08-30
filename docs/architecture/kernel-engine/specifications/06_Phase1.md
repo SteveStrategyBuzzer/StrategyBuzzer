@@ -554,6 +554,26 @@ L’écriture est atomique par CognitiveSlot :
 - les autres slots valides ne sont pas supprimés;
 - la Section 1 reste immuable.
 
+## 11.1 Frontière de persistance canonique
+
+Phase1 écrit dans l’agrégat `KernelBlueprint` sans en modifier la Section 1.
+La Section 1 est persistée dans `kernel_blueprint_runs`; chaque création
+source est persistée séparément dans `kernel_blueprint_cognitive_slots` sous
+la clé :
+
+```text
+(blueprint_id, cognitive_type)
+```
+
+Une contrainte unique garantit une occurrence de chaque type cognitif par
+Blueprint. L’écriture est atomique par slot : Phase1 peut créer ou marquer
+`CREATION_FAILED` un slot sans réécrire ni supprimer les six autres.
+
+`question_intents.frame_en` reste legacy et non autoritaire. Phase1 ne
+réécrit jamais un frame global, ne persiste aucune traduction et ne persiste
+aucune donnée joueur. Le masque joueur et le mélange des choix appartiennent
+exclusivement aux couches externes de gameplay et d’historique.
+
 # 12. Contrôles techniques locaux
 
 Phase1 vérifie avant écriture :

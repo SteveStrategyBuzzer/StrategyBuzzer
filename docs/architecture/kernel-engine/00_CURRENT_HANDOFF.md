@@ -104,6 +104,27 @@ READY
 CONSUMED
 ```
 
+# 3.1 Frontière de persistance canonique
+
+Le `KernelBlueprint` est l’unique agrégat canonique.
+
+```text
+kernel_blueprint_runs
+→ Section 1 immuable
+
+kernel_blueprint_cognitive_slots
+→ sept CognitiveSlots persistés séparément
+```
+
+Chaque slot est identifié par `(blueprint_id, cognitive_type)` et une
+contrainte unique garantit une seule occurrence de chaque type par Blueprint.
+L’écriture est atomique par slot.
+
+`question_intents.frame_en` est legacy et non autoritaire. Phase1 ne réécrit
+jamais un frame global, ne persiste aucune traduction et ne persiste aucune
+donnée joueur. Le masque joueur et le mélange des choix restent externes au
+Blueprint.
+
 # 4. Contrat intellectuel obligatoire
 
 - sept mécanismes cognitifs autonomes;

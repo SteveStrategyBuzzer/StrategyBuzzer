@@ -83,6 +83,22 @@ Après fusion, le résultat demeure le Blueprint canonique original, complété 
 
 La copie ne devient jamais un deuxième canonique.
 
+## 4.1 Frontière de persistance canonique
+
+ReadyBank manipule le seul agrégat canonique `KernelBlueprint`.
+`kernel_blueprint_runs` conserve sa Section 1 immuable et
+`kernel_blueprint_cognitive_slots` conserve séparément ses sept slots.
+
+Chaque slot est identifié par `(blueprint_id, cognitive_type)` et une
+contrainte unique garantit une seule occurrence de chaque type par Blueprint.
+Les écritures et réconciliations sont atomiques par slot; aucune opération ne
+réécrit un frame global.
+
+`question_intents.frame_en` est legacy et non autoritaire. ReadyBank ne
+l’utilise pas comme source de vérité canonique. Les traductions restent
+imbriquées dans leur slot, tandis que le masque joueur, le mélange des choix
+et les autres données joueur restent externes au Blueprint.
+
 # 5. Exploitabilité gameplay
 
 Le gameplay peut lire uniquement :

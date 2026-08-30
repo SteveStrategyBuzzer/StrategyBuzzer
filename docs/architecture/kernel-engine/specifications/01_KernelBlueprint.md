@@ -667,6 +667,39 @@ Les données internes des autres moteurs restent persistées dans leurs propres 
 
 Le Blueprint ne duplique pas ces sources de vérité.
 
+## 14.6 Agrégat canonique et persistance Phase1
+
+Le `KernelBlueprint` est l’unique agrégat canonique. Les tables qui le
+persistent ne créent ni un second Blueprint ni une autre identité intellectuelle.
+
+```text
+kernel_blueprint_runs
+└── Section 1 immuable
+
+kernel_blueprint_cognitive_slots
+└── exactement sept CognitiveSlots persistés séparément
+```
+
+`kernel_blueprint_runs` conserve la Section 1 sous le `blueprint_id`
+immuable. Les sept slots sont persistés dans
+`kernel_blueprint_cognitive_slots`, chacun étant identifié par :
+
+```text
+(blueprint_id, cognitive_type)
+```
+
+Une contrainte unique garantit une seule occurrence de chaque type cognitif
+par Blueprint. L’écriture d’un slot est atomique et indépendante des six
+autres slots. Les sept lignes appartiennent toujours au même agrégat
+`KernelBlueprint`.
+
+`question_intents.frame_en` est une structure legacy non autoritaire. Elle ne
+constitue ni la source de vérité du Blueprint ni la persistance Phase1.
+Phase1 ne réécrit jamais un frame global.
+
+Phase1 ne persiste aucune traduction ni donnée joueur. Le masque joueur, le
+mélange des choix et la position affichée restent externes au Blueprint.
+
 ---
 
 # 15. Validation architecturale
