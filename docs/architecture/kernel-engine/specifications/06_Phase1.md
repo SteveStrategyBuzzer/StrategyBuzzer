@@ -293,11 +293,39 @@ correct_answer_key ∈ {a,b,c,d}
 exactement une bonne réponse
 ```
 
+La bonne réponse et chaque distracteur constituent une unité de réponse courte.
+
+Une unité de réponse est :
+
+- un mot;
+- un nom propre;
+- une valeur courte, notamment un nombre ou une date;
+- ou une expression courte représentant une seule idée indivisible, comme un mot composé, un titre ou un nom complet.
+
+Exemples conformes :
+
+```text
+Protée anguillard
+Empire romain
+Océan Atlantique
+15 avril 1912
+```
+
+Interdictions :
+
+- aucune phrase explicative comme choix;
+- aucune justification intégrée à la réponse;
+- aucune combinaison de plusieurs idées;
+- aucune énumération;
+- aucune proposition contenant sa propre conclusion;
+- aucun choix artificiellement plus long pour signaler la bonne réponse.
+
 Les distracteurs :
 
 - restent dans le même sous-domaine;
 - sont plausibles sans devenir ambigus;
-- appartiennent à une catégorie grammaticale comparable;
+- appartiennent à la même catégorie sémantique et à une forme grammaticale comparable;
+- présentent une concision comparable;
 - ne révèlent pas la bonne réponse par leur longueur, leur précision ou leur forme;
 - ne sont ni absurdes ni hors contexte.
 
@@ -330,6 +358,8 @@ Cette règle s’applique à tous les Depths.
 Le Depth représente la complexité intellectuelle de la connaissance ou du raisonnement. Il ne donne jamais l’autorisation d’allonger artificiellement la question.
 
 Aucun minimum ou maximum de caractères n’est contractuel.
+
+La limite de huit secondes concerne le texte de la question. Les choix obéissent séparément au contrat d’unité de réponse courte de la section 6.
 
 ## 7.2 SV — Saviez-vous
 
@@ -509,7 +539,9 @@ Phase1 vérifie avant écriture :
 - polarité Vrai/Faux;
 - aucun champ obligatoire vide;
 - aucun doublon textuel exact après normalisation;
-- temps de lecture estimé;
+- temps de lecture estimé de la question et du SV;
+- chaque choix respecte le contrat d’unité de réponse courte;
+- homogénéité sémantique et grammaticale des choix;
 - `trap_basis` conforme;
 - aucune mutation de la Section 1.
 
@@ -576,7 +608,8 @@ Phase1 ciblée
 - aucune traduction;
 - aucun contenu joueur;
 - aucun `question_code`, `COG` ou `VAR`;
-- question ≤ 8 secondes;
+- question seule ≤ 8 secondes;
+- réponses et distracteurs = unités courtes représentant chacune une seule idée;
 - SV ≤ 30 secondes;
 - difficulté jamais créée par la longueur;
 - cohérence jusqu’au sous-domaine;
@@ -593,8 +626,10 @@ Phase1 ciblée
 4. aucune dérivation master;
 5. aucun QCM converti mécaniquement en Vrai/Faux;
 6. aucun faux obtenu par négation mécanique;
-7. QCM : quatre choix, une bonne réponse;
-8. Vrai/Faux : deux choix et polarité exacte;
+7. QCM : quatre choix courts, une bonne réponse;
+8. chaque réponse QCM = un mot, une valeur courte ou une expression représentant une seule idée;
+9. phrase, justification, énumération ou plusieurs idées dans un choix → refus;
+10. Vrai/Faux : deux choix et polarité exacte;
 9. QCM_TRAP exige `trap_basis`;
 10. question au-dessus de 8 secondes → refus technique ou suspicion;
 11. SV au-dessus de 30 secondes → refus technique ou suspicion;
