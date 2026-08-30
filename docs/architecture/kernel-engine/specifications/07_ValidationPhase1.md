@@ -1,65 +1,91 @@
 # STRATEGYBUZZER — 07_VALIDATIONPHASE1
 
-**Version :** 0.2  
-**Date :** 29 août 2026  
-**Statut :** FRONTIÈRE OFFICIELLE VERROUILLÉE — MODULE À COMPLÉTER  
+**Version :** 1.0  
+**Date :** 30 août 2026  
+**Statut :** CONTRAT DE BUILD VERROUILLÉ — IMPLANTATION À AUDITER/RÉALIGNER  
 **Décision :** DEC-122  
-**Implémentation :** À AUDITER  
+**Implémentation :** À AUDITER CONTRE v1.0  
 **Validation terminale :** NON
 
 ---
 
-# 1. Mission verrouillée
+# 1. Mission
 
-ValidationPhase1 valide officiellement les contenus source des sept CognitiveSlots du même KernelBlueprint.
+ValidationPhase1 valide officiellement les contenus source des sept `CognitiveSlots` du même `KernelBlueprint`.
 
-Elle n’ajoute aucun cognitif, ne traduit rien et ne modifie jamais l’identité intellectuelle.
+Elle :
 
-Les autocontrôles retournés pendant l’appel de création Phase1 sont des éléments de preuve préventifs. Ils ne remplacent jamais la décision indépendante de ValidationPhase1.
+- n’ajoute aucun cognitif;
+- ne traduit rien;
+- ne corrige jamais silencieusement une création;
+- ne modifie jamais l’identité intellectuelle;
+- ne modifie jamais `kernel_code`;
+- ne crée aucun état joueur.
 
-# 2. Entrées validées
+Les `self_checks` de Phase1 sont préventifs. Ils ne constituent jamais le PASS officiel.
 
-Pour chaque CognitiveSlot, ValidationPhase1 lit au minimum :
+# 2. Entrées
+
+Pour chaque slot créé :
 
 ```text
 cognitive_type
 question
-correct_answer
 choices
+correct_answer_key
 sv
-self_checks de création
+creation_evidence
+creation_status
+validation_status
 depth
 domain
 subdomain_active
 subject_active
 dominant_idea_active
+source_language
 kernel_code
 ```
 
-Elle ne modifie aucune donnée de la Section 1.
+ValidationPhase1 reçoit ensemble les slots créés du Blueprint afin de vérifier leurs distinctions croisées.
 
-# 3. Contrôles officiels
+# 3. Contrôles déterministes locaux
 
-ValidationPhase1 contrôle au minimum :
+- schéma et version reconnus;
+- identité conforme au Blueprint;
+- type cognitif officiel;
+- champs obligatoires présents;
+- nombres de choix conformes;
+- bonne réponse présente dans les choix;
+- une seule bonne réponse;
+- polarité Vrai/Faux conforme au type;
+- aucune option vide;
+- aucune option dupliquée après normalisation;
+- aucun doublon exact de question;
+- temps de lecture estimé;
+- aucune mutation de la Section 1.
 
-- présence et structure des champs obligatoires;
-- conformité au `cognitive_type`;
-- factualité de la question et de la bonne réponse;
-- bonne réponse répondant exactement à la question;
-- bonne réponse présente parmi les choix;
-- exactement quatre choix et une bonne réponse pour un QCM;
-- exactement deux choix pour un Vrai/Faux;
-- plausibilité et qualité des choix;
-- absence d’ambiguïté créant plusieurs bonnes réponses;
-- absence de doublon textuel direct;
-- absence de répétition conceptuelle interdite entre les sept slots;
-- question lisible en moins de huit secondes par une personne lisant normalement à légèrement lentement;
-- SV lisible en moins de trente secondes;
-- SV expliquant la bonne réponse dans le contexte cognitif;
+# 4. Contrôles intellectuels officiels
+
+ValidationPhase1 contrôle :
+
+- factualité de la question;
+- factualité de la bonne réponse;
+- conformité à l’opération mentale du `cognitive_type`;
+- réponse exacte à la question;
+- plausibilité des distracteurs;
+- absence de seconde bonne réponse;
+- absence d’ambiguïté;
+- SV expliquant réellement la bonne réponse;
+- question lisible en huit secondes ou moins;
+- SV lisible en trente secondes ou moins;
 - absence de remplissage artificiel;
-- cohérence contextuelle complète.
+- cohérence contextuelle complète;
+- distinction sémantique entre les sept slots;
+- absence de conversion mécanique QCM ↔ Vrai/Faux;
+- absence de négation mécanique vrai ↔ faux;
+- piège cognitif loyal et non typographique.
 
-Chaîne de cohérence obligatoire :
+Chaîne contextuelle obligatoire :
 
 ```text
 question
@@ -71,77 +97,273 @@ question
 → subdomain_active
 ```
 
-Une information vraie mais appartenant à un autre sous-domaine ou à un autre contexte intellectuel est refusée.
+Une information vraie mais appartenant à un autre sous-domaine est refusée.
 
-Le Depth détermine la difficulté intellectuelle. Il ne justifie jamais une question ou un SV inutilement plus long.
+Le Depth détermine la difficulté intellectuelle, jamais une longueur minimale.
 
-# 4. Autorité de décision
+# 5. Critères par cognitif
 
-ValidationPhase1 est l’autorité qui décide officiellement :
+## QCM_RECOGNITION
 
-```text
-PASS
-ou
-SUSPICION → QUARANTINE
+PASS seulement si la réponse provient d’un rappel factuel direct, sans inférence.
+
+## QCM_REASONING
+
+PASS seulement si la réponse exige au moins un lien causal, comparatif, conséquentiel ou déductif.
+
+## QCM_TRAP
+
+PASS seulement si le piège cible une intuition ou confusion plausible liée au contenu. Une ambiguïté de formulation, une double négation ou un détail typographique produit SUSPICION.
+
+## TRUE_FALSE_RECOGNITION_TRUE
+
+PASS seulement pour un fait atomique entièrement vrai et directement reconnaissable.
+
+## TRUE_FALSE_RECOGNITION_FALSE
+
+PASS seulement pour un fait atomique faux mais plausible, avec une erreur décisive claire. Une absurdité ou plusieurs erreurs produisent SUSPICION.
+
+## TRUE_FALSE_REASONING_TRUE
+
+PASS seulement pour une relation logique vraie nécessitant un raisonnement.
+
+## TRUE_FALSE_REASONING_FALSE
+
+PASS seulement si la fausseté réside dans un lien logique plausible mais incorrect. Un simple changement de nom, date ou lieu ne suffit pas.
+
+# 6. Validation indépendante
+
+Un appel de revue indépendant peut contrôler les sept slots ensemble.
+
+Le reviewer :
+
+- reçoit les créations sans pouvoir les modifier;
+- reçoit les règles v1.0;
+- retourne uniquement PASS ou des findings structurés;
+- ne génère aucun remplacement;
+- ne modifie aucune identité;
+- ne déclenche aucune traduction.
+
+Sortie de revue :
+
+```json
+{
+  "schema_version": "validation-phase1.v1",
+  "blueprint_id": "...",
+  "kernel_code": "...",
+  "slots": [
+    {
+      "cognitive_type": "QCM_RECOGNITION",
+      "decision": "PASS",
+      "findings": []
+    }
+  ],
+  "cross_slot_findings": []
+}
 ```
 
-Une déclaration `self_checks=true` produite par le même appel de création ne suffit jamais à établir PASS.
+Chaque finding contient :
 
-Les contrôles déterministes sont exécutés localement lorsque possible. Un contrôle intellectuel additionnel peut être nécessaire pour la factualité, la conformité cognitive, la qualité des distracteurs ou la répétition conceptuelle.
+```text
+reason_code
+field_paths
+explanation
+evidence
+related_cognitive_types si comparaison croisée
+```
 
-# 5. Sortie sans suspicion
+# 7. Codes de raisons officiels
 
-Un CognitiveSlot source validé peut poursuivre vers Phase2 / Traductions.
+```text
+SOURCE_SCHEMA_INVALID
+SOURCE_SLOT_MISSING
+SOURCE_FIELD_MISSING
+SOURCE_IDENTITY_MISMATCH
+SOURCE_COGNITIVE_TYPE_MISMATCH
+SOURCE_CHOICE_COUNT_INVALID
+SOURCE_ANSWER_NOT_IN_CHOICES
+SOURCE_MULTIPLE_CORRECT_ANSWERS
+SOURCE_TRUE_FALSE_POLARITY_INVALID
+SOURCE_QUESTION_READ_TIME_EXCEEDED
+SOURCE_SV_READ_TIME_EXCEEDED
+SOURCE_FACTUAL_SUSPICION
+SOURCE_ANSWER_INCOHERENT
+SOURCE_DISTRACTOR_INVALID
+SOURCE_AMBIGUOUS
+SOURCE_SV_INVALID
+SOURCE_CONTEXT_MISMATCH
+SOURCE_COGNITIVE_MECHANISM_MISMATCH
+SOURCE_CROSS_SLOT_DUPLICATE
+SOURCE_MECHANICAL_QCM_TF_CONVERSION
+SOURCE_MECHANICAL_TRUE_FALSE_NEGATION
+SOURCE_TRAP_UNFAIR
+SOURCE_VALIDATION_TECHNICAL_FAILURE
+```
 
-Aucune traduction ne commence pour un CognitiveSlot source qui n’a pas obtenu la validation requise.
+# 8. Anti-répétition entre slots
 
-# 6. Sortie avec suspicion
+ValidationPhase1 compare les sept questions et leurs propositions intellectuelles.
 
-Toute suspicion source :
+SUSPICION si :
 
-- identifie exactement le CognitiveSlot et les champs concernés;
-- conserve la raison SV et les preuves disponibles;
-- déclenche une copie complète du Blueprint vers Quarantine;
-- permet l’affichage en rouge des chemins soupçonnés;
-- bloque la création des traductions dépendantes de ce CognitiveSlot;
-- n’empêche pas le Blueprint canonique de poursuivre jusqu’à ReadyBank;
-- ne marque pas les traductions non créées comme erreurs de traduction.
+- même question reformulée;
+- même proposition convertie dans un autre format;
+- même relation logique répétée;
+- vrai et faux obtenus par négation mécanique;
+- QCM_TRAP réutilisant seulement un distracteur d’un autre QCM;
+- justification de différence absente ou non défendable.
 
-Un champ absent, une structure technique invalide ou un slot non créé est ciblé comme source non admissible. Aucun contenu partiel n’est validé silencieusement.
+Aucun seuil numérique unique n’est déclaré comme vérité métier. Le contrôle associe :
 
-# 7. Revalidation d’une copie corrigée
+1. normalisation exacte locale;
+2. comparaison structurée des opérations mentales;
+3. revue sémantique avec findings explicables.
 
-Une copie corrigée reprend ValidationPhase1 uniquement pour les slots et champs ciblés.
+# 9. Décision par slot
 
-Après PASS, le CognitiveSlot peut poursuivre vers Phase2 pour produire les traductions manquantes.
+```text
+aucun finding
+→ PASS
 
-Les slots déjà validés et non ciblés ne sont pas rejoués.
+au moins un finding intellectuel ou structurel
+→ SUSPICION
+```
 
-# 8. Invariants
+Un slot PASS peut poursuivre vers Phase2.
 
-- copie Quarantine complète;
-- ciblage structuré;
-- source suspecte non traduite;
-- slots valides non rejoués;
+Un slot SUSPICION :
+
+- n’est pas traduit;
+- demeure non exploitable;
+- est ciblé dans une copie complète Quarantine;
+- n’empêche pas les autres slots PASS de poursuivre.
+
+# 10. États et ownership
+
+ValidationPhase1 écrit uniquement :
+
+```text
+NOT_VALIDATED
+PASS
+SUSPICION
+```
+
+Elle ne modifie pas :
+
+```text
+EMPTY
+CREATED
+CREATION_FAILED
+```
+
+Elle ne produit ni `READY` ni `CONSUMED`.
+
+# 11. Échec technique de validation
+
+Clé d’idempotence :
+
+```text
+blueprint_id + validation-phase1.v1 + validation_contract_version
+```
+
+Politique :
+
+- maximum trois tentatives techniques au total;
+- retry sur timeout, transport, JSON illisible ou identité divergente;
+- aucun PASS par défaut;
+- après épuisement : `SOURCE_VALIDATION_TECHNICAL_FAILURE`;
+- traductions du slot concerné bloquées;
+- contenu non exploitable;
+- incident traçable;
+- aucun contenu source réécrit.
+
+# 12. Quarantine
+
+Toute SUSPICION :
+
+- identifie exactement le slot et les champs;
+- conserve les raisons et preuves;
+- crée une copie complète du Blueprint;
+- permet l’affichage rouge des chemins ciblés;
+- conserve normalement les slots valides;
+- ne transforme pas les traductions non créées en erreurs de traduction.
+
+Exemple :
+
+```text
+cognitive_slots.QCM_REASONING.source.correct_answer_key
+```
+
+# 13. Revalidation ciblée
+
+Une copie corrigée reprend uniquement les slots et champs ciblés.
+
+```text
+correction Phase1
+→ ValidationPhase1 ciblée
+→ PASS
+→ Phase2 ciblée
+```
+
+Les slots PASS non ciblés ne sont pas rejoués.
+
+# 14. Invariants
+
 - même `blueprint_id`;
 - même `kernel_code`;
-- aucun accès gameplay avant validations requises;
-- aucun `question_code`, `COG` ou `VAR` créé;
-- temps de lecture évalué sans minimum artificiel de caractères;
-- sous-domaine utilisé comme frontière contextuelle finale;
-- autocontrôle Gemini distinct de la validation officielle.
+- aucune réécriture silencieuse;
+- validation indépendante des `self_checks`;
+- question ≤ 8 secondes;
+- SV ≤ 30 secondes;
+- difficulté indépendante de la longueur;
+- sous-domaine comme frontière contextuelle finale;
+- validation cognitive propre à chaque type;
+- comparaison croisée des sept slots;
+- PASS/SUSPICION par slot;
+- copie Quarantine complète;
+- aucune traduction d’une source non PASS;
+- aucun `question_code`, `COG` ou `VAR`.
 
-# 9. Statut restant
+# 15. Tests contractuels de Build
 
-Restent à spécifier :
+1. chaque mécanisme cognitif conforme → PASS;
+2. mécanisme voisin mal étiqueté → SUSPICION;
+3. rappel direct étiqueté reasoning → SUSPICION;
+4. raisonnement étiqueté recognition → SUSPICION;
+5. piège typographique → SUSPICION;
+6. faux absurde → SUSPICION;
+7. reasoning false fondé seulement sur une date changée → SUSPICION;
+8. réponse absente des choix → SUSPICION;
+9. deux bonnes réponses → SUSPICION;
+10. question > 8 secondes → SUSPICION;
+11. SV > 30 secondes → SUSPICION;
+12. question courte de Depth élevé → PASS si intellectuellement conforme;
+13. contexte hors sous-domaine → SUSPICION;
+14. doublon exact → SUSPICION;
+15. reformulation sémantique → SUSPICION;
+16. conversion QCM/TF mécanique → SUSPICION;
+17. négation vrai/faux mécanique → SUSPICION;
+18. un slot suspect ne bloque pas les slots PASS;
+19. retry plafonné;
+20. aucune correction automatique;
+21. aucune traduction d’une source non PASS;
+22. Section 1 immuable.
 
-- règles intellectuelles détaillées de chacun des sept cognitifs;
-- codes de raisons PASS/SUSPICION;
-- seuil et mécanisme anti-répétition sémantique;
-- méthode versionnée d’estimation du temps de lecture par langue;
-- règles détaillées des distracteurs;
-- schémas de preuve;
-- retries et escalade technique;
-- états détaillés des CognitiveSlots.
+# 16. Statut
 
-La présente version verrouille les validations déjà autorisées sans déclarer ValidationPhase1 terminée.
+```text
+Architecture :          VERROUILLÉE
+Contrat :               VERROUILLÉ v1.0
+Spécification :         BUILD-READY
+Implémentation :        À AUDITER/RÉALIGNER
+Validation terminale :  NON
+```
+
+Prochaine opération :
+
+```text
+ALIGN-AUDIT-07-v1.0
+→ audit du code après ou avec Phase1
+→ KEEP / MODIFY / REMOVE / MISSING / UNRESOLVED
+→ patch minimal séparé de Phase1 si nécessaire
+```
