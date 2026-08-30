@@ -116,7 +116,10 @@ CONSUMED
 - QCM_TRAP = intuition/confusion plausible, jamais piège typographique;
 - TF_RECOGNITION = fait atomique vrai/faux;
 - TF_REASONING = relation logique vraie/fausse;
-- question lisible en huit secondes ou moins;
+- texte de la question lisible en huit secondes ou moins;
+- chaque bonne réponse et distracteur QCM = un mot, un nom propre, une valeur courte ou une expression courte représentant une seule idée indivisible;
+- aucune phrase explicative, justification, énumération ou combinaison de plusieurs idées dans un choix;
+- quatre choix QCM de même catégorie sémantique, forme grammaticale et concision comparables;
 - SV explicatif lisible en trente secondes ou moins;
 - difficulté portée par la connaissance ou le raisonnement;
 - cohérence jusqu’au sous-domaine;
