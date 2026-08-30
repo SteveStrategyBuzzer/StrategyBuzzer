@@ -22,9 +22,11 @@ return new class extends Migration
             $table->string('blueprint_id', 36);
             $table->string('cognitive_type', 64);
             $table->jsonb('source')->nullable();
+            $table->jsonb('creation_failure')->nullable();
             $table->jsonb('translations')->default('{}');
             $table->string('creation_status', 32)->default('EMPTY');
             $table->string('validation_status', 32)->default('NOT_VALIDATED');
+            $table->jsonb('validation_findings')->default('[]');
             $table->timestamps();
 
             $table->primary(
@@ -84,28 +86,78 @@ return new class extends Migration
 
         DB::statement(
             "ALTER TABLE kernel_blueprint_cognitive_slots
+             ADD CONSTRAINT kbcs_creation_failure_object_check
+             CHECK (
+                 creation_failure IS NULL
+                 OR jsonb_typeof(creation_failure) = 'object'
+             )"
+        );
+
+        DB::statement(
+            "ALTER TABLE kernel_blueprint_cognitive_slots
+             ADD CONSTRAINT kbcs_validation_findings_array_check
+             CHECK (jsonb_typeof(validation_findings) = 'array')"
+        );
+
+        DB::statement(
+            "ALTER TABLE kernel_blueprint_cognitive_slots
              ADD CONSTRAINT kbcs_translations_object_check
              CHECK (jsonb_typeof(translations) = 'object')"
         );
 
         DB::statement(
             "ALTER TABLE kernel_blueprint_cognitive_slots
-             ADD CONSTRAINT kbcs_creation_source_check
+             ADD CONSTRAINT kbcs_creation_state_check
              CHECK (
-                 (creation_status = 'CREATED' AND source IS NOT NULL)
+                 (
+                     creation_status = 'EMPTY'
+                     AND source IS NULL
+                     AND creation_failure IS NULL
+                     AND validation_status = 'NOT_VALIDATED'
+                     AND jsonb_array_length(validation_findings) = 0
+                 )
                  OR
-                 (creation_status IN ('EMPTY', 'CREATION_FAILED') AND source IS NULL)
+                 (
+                     creation_status = 'CREATED'
+                     AND source IS NOT NULL
+                     AND creation_failure IS NULL
+                 )
+                 OR
+                 (
+                     creation_status = 'CREATION_FAILED'
+                     AND source IS NULL
+                     AND creation_failure IS NOT NULL
+                     AND validation_status = 'NOT_VALIDATED'
+                     AND jsonb_array_length(validation_findings) = 0
+                 )
              )"
         );
 
         DB::statement(
             "ALTER TABLE kernel_blueprint_cognitive_slots
-             ADD CONSTRAINT kbcs_validation_requires_source_check
+             ADD CONSTRAINT kbcs_validation_state_check
              CHECK (
-                 creation_status = 'CREATED'
-                 OR validation_status = 'NOT_VALIDATED'
+                 (
+                     validation_status = 'NOT_VALIDATED'
+                     AND jsonb_array_length(validation_findings) = 0
+                 )
+                 OR
+                 (
+                     validation_status = 'PASS'
+                     AND creation_status = 'CREATED'
+                     AND source IS NOT NULL
+                     AND jsonb_array_length(validation_findings) = 0
+                 )
+                 OR
+                 (
+                     validation_status = 'SUSPICION'
+                     AND creation_status = 'CREATED'
+                     AND source IS NOT NULL
+                     AND jsonb_array_length(validation_findings) > 0
+                 )
              )"
         );
+
     }
 
     public function down(): void
