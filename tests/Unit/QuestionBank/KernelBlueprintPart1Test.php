@@ -95,9 +95,9 @@ class KernelBlueprintPart1Test extends TestCase
         $this->assertIsArray($this->blueprint()->toArray());
     }
 
-    public function test_toArray_has_exactly_7_keys(): void
+    public function test_toArray_has_exactly_8_keys(): void
     {
-        $this->assertCount(7, $this->blueprint()->toArray());
+        $this->assertCount(8, $this->blueprint()->toArray());
     }
 
     public function test_toArray_contains_identity_and_the_6_official_keys(): void
@@ -106,6 +106,7 @@ class KernelBlueprintPart1Test extends TestCase
             'blueprint_id',
             'depth', 'domain', 'subdomain_active',
             'subject_active', 'dominant_idea_active', 'kernel_code',
+            'cognitive_slots',
         ];
 
         $actual = array_keys($this->blueprint()->toArray());
@@ -118,8 +119,42 @@ class KernelBlueprintPart1Test extends TestCase
     public function test_toArray_all_values_null_at_construction(): void
     {
         foreach ($this->blueprint()->toArray() as $key => $value) {
+            if ($key === 'cognitive_slots') {
+                $this->assertSame([], $value);
+                continue;
+            }
             $this->assertNull($value, "toArray()[{$key}] doit être null à la construction");
         }
+    }
+
+    public function test_blueprint_exposes_exactly_seven_initialized_cognitive_slots(): void
+    {
+        $blueprint = $this->identifiedBlueprint();
+        $slots = [];
+        foreach (KernelBlueprint::COGNITIVE_TYPES as $type) {
+            $slots[$type] = [
+                'cognitive_type' => $type,
+                'creation_status' => 'EMPTY',
+            ];
+        }
+
+        $blueprint->initializeCognitiveSlots($slots);
+
+        $this->assertSame($slots, $blueprint->cognitive_slots);
+        $this->assertCount(7, $blueprint->cognitive_slots);
+    }
+
+    public function test_blueprint_rejects_an_eighth_cognitive_type(): void
+    {
+        $blueprint = $this->identifiedBlueprint();
+        $slots = [];
+        foreach (KernelBlueprint::COGNITIVE_TYPES as $type) {
+            $slots[$type] = ['cognitive_type' => $type];
+        }
+        $slots['EIGHTH_TYPE'] = ['cognitive_type' => 'EIGHTH_TYPE'];
+
+        $this->expectException(\LogicException::class);
+        $blueprint->initializeCognitiveSlots($slots);
     }
 
     /**

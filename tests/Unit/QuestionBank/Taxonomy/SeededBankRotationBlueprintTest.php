@@ -122,6 +122,7 @@ class SeededBankRotationBlueprintTest extends TestCase
         Schema::dropIfExists('kernel_depth_matrix');
         Schema::dropIfExists('kernel_rotation_state_v2');
         Schema::dropIfExists('kernel_code_sequences');
+        Schema::dropIfExists('kernel_blueprint_cognitive_slots');
         Schema::dropIfExists('kernel_blueprint_runs');
         parent::tearDown();
     }
@@ -195,6 +196,19 @@ class SeededBankRotationBlueprintTest extends TestCase
             $table->timestamp('engaged_at')->nullable();
             $table->timestamp('received_at')->nullable();
             $table->timestamps();
+        });
+
+        Schema::create('kernel_blueprint_cognitive_slots', function (Blueprint $table) {
+            $table->string('blueprint_id', 36);
+            $table->string('cognitive_type', 64);
+            $table->json('source')->nullable();
+            $table->json('creation_failure')->nullable();
+            $table->json('translations')->default('{}');
+            $table->string('creation_status', 32)->default('EMPTY');
+            $table->string('validation_status', 32)->default('NOT_VALIDATED');
+            $table->json('validation_findings')->default('[]');
+            $table->timestamps();
+            $table->primary(['blueprint_id', 'cognitive_type']);
         });
 
         Schema::create('kernel_code_sequences', function (Blueprint $table) {

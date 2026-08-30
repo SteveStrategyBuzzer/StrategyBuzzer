@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\QuestionBank\Rotation;
 
 use App\Services\QuestionBank\KernelBlueprint;
+use App\Services\QuestionBank\Phase1\KernelPhase1Generator;
 use App\Services\QuestionBank\Taxonomy\TaxonomyPipelineBridge;
 use Illuminate\Support\Facades\DB;
 
@@ -26,6 +27,7 @@ final class KernelPipelineOrchestrator
         private readonly KernelRotationPlanner $planner,
         private readonly KernelRotationStateRepository $stateRepository,
         private readonly ?TaxonomyPipelineBridge $taxonomyBridge = null,
+        private readonly ?KernelPhase1Generator $phase1 = null,
     ) {}
 
     /**
@@ -41,6 +43,7 @@ final class KernelPipelineOrchestrator
         if ($this->taxonomyBridge !== null) {
             $resumedBlueprint = $this->taxonomyBridge->resumeActiveBlueprint();
             if ($resumedBlueprint !== null) {
+                $this->runPhase1IfReady($resumedBlueprint);
                 return [
                     'status' => self::STATUS_ROTATION_ASSIGNED,
                     'blueprint' => $resumedBlueprint,
@@ -82,6 +85,7 @@ final class KernelPipelineOrchestrator
         // Hors de la transaction KRP : Gemini et l'outbox Taxonomy ne peuvent
         // jamais annuler ou falsifier la décision de rotation déjà engagée.
         $this->taxonomyBridge?->process($blueprint);
+        $this->runPhase1IfReady($blueprint);
 
         return [
             'status' => self::STATUS_ROTATION_ASSIGNED,
@@ -108,5 +112,20 @@ final class KernelPipelineOrchestrator
                 'engaged_at' => now(),
                 'updated_at' => now(),
             ]);
+    }
+
+    private function runPhase1IfReady(KernelBlueprint $blueprint): void
+    {
+        if ($this->phase1 === null) {
+            return;
+        }
+
+        if (! $blueprint->isComplete()) {
+            throw new \RuntimeException(
+                '[KernelPipelineOrchestrator] Phase 1 exige Taxonomy et kernel_code complets.'
+            );
+        }
+
+        $this->phase1->generate($blueprint);
     }
 }

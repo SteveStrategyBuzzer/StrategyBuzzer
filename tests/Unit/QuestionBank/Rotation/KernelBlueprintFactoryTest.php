@@ -3,6 +3,8 @@
 namespace Tests\Unit\QuestionBank\Rotation;
 
 use App\Services\QuestionBank\Rotation\KernelBlueprintFactory;
+use App\Services\QuestionBank\KernelBlueprint;
+use App\Services\QuestionBank\KernelBlueprintCognitiveSlotRepository;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -32,11 +34,29 @@ class KernelBlueprintFactoryTest extends TestCase
             $table->timestamps();
         });
 
+        Schema::create('kernel_blueprint_cognitive_slots', function (Blueprint $table) {
+            $table->string('blueprint_id', 36);
+            $table->string('cognitive_type', 64);
+            $table->json('source')->nullable();
+            $table->json('creation_failure')->nullable();
+            $table->json('translations')->default('{}');
+            $table->string('creation_status', 32)->default('EMPTY');
+            $table->string('validation_status', 32)->default('NOT_VALIDATED');
+            $table->json('validation_findings')->default('[]');
+            $table->timestamps();
+            $table->primary(['blueprint_id', 'cognitive_type']);
+            $table->foreign('blueprint_id')
+                ->references('blueprint_id')
+                ->on('kernel_blueprint_runs')
+                ->cascadeOnDelete();
+        });
+
         $this->factory = new KernelBlueprintFactory();
     }
 
     protected function tearDown(): void
     {
+        Schema::dropIfExists('kernel_blueprint_cognitive_slots');
         Schema::dropIfExists('kernel_blueprint_runs');
         parent::tearDown();
     }
@@ -85,6 +105,54 @@ class KernelBlueprintFactoryTest extends TestCase
         $this->assertSame('CREATED_UNENGAGED', $row->execution_state);
         $this->assertNull($row->depth);
         $this->assertNull($row->domain_code);
+    }
+
+    public function test_create_atomically_inserts_the_seven_empty_slots(): void
+    {
+        $blueprint = $this->factory->create();
+
+        $rows = DB::table('kernel_blueprint_cognitive_slots')
+            ->where('blueprint_id', $blueprint->blueprint_id)
+            ->get();
+
+        $this->assertCount(7, $rows);
+        $this->assertEqualsCanonicalizing(
+            KernelBlueprint::COGNITIVE_TYPES,
+            $rows->pluck('cognitive_type')->all()
+        );
+        foreach ($rows as $row) {
+            $this->assertSame('EMPTY', $row->creation_status);
+            $this->assertSame('NOT_VALIDATED', $row->validation_status);
+            $this->assertNull($row->source);
+            $this->assertNull($row->creation_failure);
+            $this->assertSame('{}', $row->translations);
+            $this->assertSame('[]', $row->validation_findings);
+        }
+
+        $this->assertCount(7, $blueprint->cognitive_slots);
+    }
+
+    public function test_create_rolls_back_parent_when_slot_initialization_fails(): void
+    {
+        $repository = new class extends KernelBlueprintCognitiveSlotRepository
+        {
+            public function initializeEmptySlots(string $blueprintId): array
+            {
+                throw new RuntimeException('slot initialization failed');
+            }
+        };
+
+        $factory = new KernelBlueprintFactory($repository);
+
+        try {
+            $factory->create();
+            $this->fail('La création devait échouer.');
+        } catch (RuntimeException $exception) {
+            $this->assertSame('slot initialization failed', $exception->getMessage());
+        }
+
+        $this->assertSame(0, DB::table('kernel_blueprint_runs')->count());
+        $this->assertSame(0, DB::table('kernel_blueprint_cognitive_slots')->count());
     }
 
     public function test_create_blueprint_has_null_depth_and_domain(): void

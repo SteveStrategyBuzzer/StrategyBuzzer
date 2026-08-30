@@ -36,6 +36,7 @@ class QuestionApiClient
 {
     public const ENDPOINT_MASTER_QUESTION = '/generate-master-question';
     public const ENDPOINT_IMAGE_QUESTION = '/generate-image-question';
+    public const ENDPOINT_KERNEL_PHASE1_SOURCE = '/generate-kernel-phase1-source';
 
     private const TOKEN_TTL_SECONDS = 60;
     private const JWT_ALGO = 'HS256';
@@ -62,7 +63,11 @@ class QuestionApiClient
      */
     public function postAdmin(string $endpoint, array $payload, array $opts = []): Response
     {
-        if ($endpoint !== self::ENDPOINT_MASTER_QUESTION && $endpoint !== self::ENDPOINT_IMAGE_QUESTION) {
+        if (! in_array($endpoint, [
+            self::ENDPOINT_MASTER_QUESTION,
+            self::ENDPOINT_IMAGE_QUESTION,
+            self::ENDPOINT_KERNEL_PHASE1_SOURCE,
+        ], true)) {
             throw new \InvalidArgumentException("Unsupported question-api admin endpoint: {$endpoint}");
         }
 

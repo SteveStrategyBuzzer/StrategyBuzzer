@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Console\Commands;
 
 use App\Services\QuestionBank\KernelCodeEngine;
+use App\Services\QuestionBank\Phase1\KernelPhase1Generator;
 use App\Services\QuestionBank\Rotation\KernelBlueprintFactory;
 use App\Services\QuestionBank\Rotation\KernelPipelineOrchestrator;
 use App\Services\QuestionBank\Rotation\KernelPipelineOutboxRepository;
@@ -141,6 +142,7 @@ class QuestionsKernelProcessOutboxCommand extends Command
                 $planner,
                 new KernelCodeEngine(),
             ),
+            app(KernelPhase1Generator::class),
         );
 
         return new ProcessKernelPipelineOutbox($planner, $orchestrator, $outboxRepo);

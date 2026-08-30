@@ -6,8 +6,9 @@ use App\Models\AdminQuestionAuditLog;
 use App\Services\QuestionApi\QuestionApiClient;
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 /**
@@ -26,11 +27,22 @@ use Tests\TestCase;
  */
 class QuestionApiClientAdminAuthTest extends TestCase
 {
-    use RefreshDatabase;
-
     protected function setUp(): void
     {
         parent::setUp();
+        Schema::create('admin_question_audit_log', function (Blueprint $table): void {
+            $table->bigIncrements('id');
+            $table->string('jti', 64)->unique();
+            $table->unsignedBigInteger('caller_user_id')->nullable();
+            $table->string('endpoint', 64);
+            $table->char('payload_hash', 64);
+            $table->string('source', 64)->nullable();
+            $table->boolean('accepted')->default(false);
+            $table->unsignedSmallInteger('http_status')->nullable();
+            $table->string('error', 255)->nullable();
+            $table->timestamp('created_at')->nullable();
+            $table->timestamp('responded_at')->nullable();
+        });
         // Laravel's env() only reads from $_ENV / $_SERVER (the PutenvAdapter
         // is disabled in Laravel 9+ for performance), so set both.
         $secret = 'test-secret-that-is-definitely-long-enough';
@@ -44,6 +56,7 @@ class QuestionApiClientAdminAuthTest extends TestCase
     {
         unset($_ENV['QUESTION_API_JWT_SECRET'], $_SERVER['QUESTION_API_JWT_SECRET']);
         unset($_ENV['QUESTION_API_URL'], $_SERVER['QUESTION_API_URL']);
+        Schema::dropIfExists('admin_question_audit_log');
         parent::tearDown();
     }
 
@@ -139,6 +152,37 @@ class QuestionApiClientAdminAuthTest extends TestCase
         $this->assertFalse((bool) $row->accepted);
         $this->assertSame(503, (int) $row->http_status);
         $this->assertNotNull($row->error);
+    }
+
+    public function test_phase1_endpoint_is_allowed_and_bound_into_jwt_claim(): void
+    {
+        Http::fake([
+            'qapi.test/generate-kernel-phase1-source' => Http::response([
+                'ok' => true,
+                'result' => ['slots' => []],
+            ], 200),
+        ]);
+
+        $client = new QuestionApiClient();
+        $client->postAdmin(
+            QuestionApiClient::ENDPOINT_KERNEL_PHASE1_SOURCE,
+            ['blueprint_id' => 'bp-phase1'],
+            ['caller_user_id' => 1, 'source' => 'phase1-test']
+        );
+
+        Http::assertSent(function ($request): bool {
+            $auth = $request->header('Authorization')[0] ?? '';
+            if (! str_starts_with($auth, 'Bearer ')) {
+                return false;
+            }
+
+            $claims = (array) JWT::decode(
+                substr($auth, strlen('Bearer ')),
+                new Key('test-secret-that-is-definitely-long-enough', 'HS256')
+            );
+
+            return $claims['endpoint'] === QuestionApiClient::ENDPOINT_KERNEL_PHASE1_SOURCE;
+        });
     }
 
     public function test_post_admin_rejects_unknown_endpoint(): void

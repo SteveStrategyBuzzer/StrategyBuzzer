@@ -1649,6 +1649,234 @@ const VARIANT_BAND_DEFAULTS = {
   tf_reasoning_false:    'normal_reader',
   qcm_deceptive_trap:    'fast_reader_dense',
 };
+
+const PHASE1_COGNITIVE_TYPES = [
+  'QCM_RECOGNITION',
+  'QCM_REASONING',
+  'QCM_TRAP',
+  'TRUE_FALSE_RECOGNITION_TRUE',
+  'TRUE_FALSE_RECOGNITION_FALSE',
+  'TRUE_FALSE_REASONING_TRUE',
+  'TRUE_FALSE_REASONING_FALSE',
+];
+
+function validatePhase1SourceText(text, expected) {
+  let raw = (text || '').trim();
+  if (raw.startsWith('```json')) raw = raw.slice(7);
+  if (raw.startsWith('```')) raw = raw.slice(3);
+  if (raw.endsWith('```')) raw = raw.slice(0, -3);
+  raw = raw.trim();
+
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (error) {
+    return { ok: false, reason: `invalid JSON: ${error.message}` };
+  }
+
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    return { ok: false, reason: 'Phase1 result must be an object' };
+  }
+  if (parsed.schema_version !== 'phase1.source.v1') {
+    return { ok: false, reason: 'schema_version must be phase1.source.v1' };
+  }
+  if (parsed.blueprint_id !== expected.blueprint_id ||
+      parsed.kernel_code !== expected.kernel_code ||
+      parsed.source_language !== expected.source_language) {
+    return { ok: false, reason: 'Phase1 identity mismatch' };
+  }
+  if (!Array.isArray(parsed.slots) || parsed.slots.length !== PHASE1_COGNITIVE_TYPES.length) {
+    return { ok: false, reason: 'Phase1 result must contain exactly seven slots' };
+  }
+
+  const seen = new Set();
+  for (const slot of parsed.slots) {
+    if (!slot || typeof slot !== 'object' || Array.isArray(slot)) {
+      return { ok: false, reason: 'Each Phase1 slot must be an object' };
+    }
+
+    const type = slot.cognitive_type;
+    if (!PHASE1_COGNITIVE_TYPES.includes(type) || seen.has(type)) {
+      return { ok: false, reason: `Invalid or duplicate cognitive_type: ${type}` };
+    }
+    seen.add(type);
+
+    if (typeof slot.question !== 'string' || !slot.question.trim() ||
+        typeof slot.sv !== 'string' || !slot.sv.trim() ||
+        typeof slot.correct_answer_key !== 'string' ||
+        !Array.isArray(slot.choices) ||
+        !slot.creation_evidence || typeof slot.creation_evidence !== 'object') {
+      return { ok: false, reason: `${type} has an incomplete source schema` };
+    }
+
+    const expectedKeys = type.startsWith('QCM_') ? ['a', 'b', 'c', 'd'] : ['a', 'b'];
+    const actualKeys = slot.choices.map((choice) =>
+      String(choice && choice.key ? choice.key : '').toLowerCase());
+    if (JSON.stringify(actualKeys) !== JSON.stringify(expectedKeys)) {
+      return { ok: false, reason: `${type} has invalid choice keys` };
+    }
+    if (slot.choices.some((choice) =>
+      !choice || typeof choice.text !== 'string' || !choice.text.trim())) {
+      return { ok: false, reason: `${type} has an empty choice` };
+    }
+
+    const correctKey = String(slot.correct_answer_key).toLowerCase();
+    if (type.startsWith('QCM_') && correctKey !== 'a') {
+      return { ok: false, reason: `${type} correct_answer_key must be a` };
+    }
+    if (type.includes('TRUE_FALSE')) {
+      if (slot.choices[0].text !== 'VRAI' || slot.choices[1].text !== 'FAUX') {
+        return { ok: false, reason: `${type} choices must be VRAI and FAUX` };
+      }
+      const expectedCorrectKey = type.endsWith('_TRUE') ? 'a' : 'b';
+      if (correctKey !== expectedCorrectKey) {
+        return { ok: false, reason: `${type} polarity mismatch` };
+      }
+    }
+  }
+
+  if (seen.size !== PHASE1_COGNITIVE_TYPES.length) {
+    return { ok: false, reason: 'Phase1 result is missing a cognitive type' };
+  }
+
+  return { ok: true, value: parsed };
+}
+
+// ============================================================================
+// POST /generate-kernel-phase1-source
+//
+// Canonical Phase1 v1.0 boundary. One request asks for all seven autonomous
+// CognitiveSlots and executes exactly one router generation call.
+// ============================================================================
+app.post('/generate-kernel-phase1-source', requireAdminToken, async (req, res) => {
+  const input = req.body || {};
+  const requiredIdentity = [
+    'schema_version',
+    'generation_contract_version',
+    'blueprint_id',
+    'kernel_code',
+    'depth',
+    'domain',
+    'subdomain_active',
+    'subject_active',
+    'dominant_idea_active',
+    'source_language',
+  ];
+  for (const field of requiredIdentity) {
+    if (input[field] === undefined || input[field] === null || input[field] === '') {
+      return res.status(400).json({ ok: false, error: `missing required field: ${field}` });
+    }
+  }
+
+  if (input.schema_version !== 'phase1.source.v1' || input.source_language !== 'fr') {
+    return res.status(400).json({
+      ok: false,
+      error: 'Phase1 requires schema_version=phase1.source.v1 and source_language=fr',
+    });
+  }
+
+  const systemPrompt =
+    'Tu crées des questions de culture générale en français. Réponds uniquement avec un objet JSON valide, sans markdown ni prose externe.';
+
+  const userPrompt = `Crée exactement SEPT CognitiveSlots autonomes pour UN SEUL KernelBlueprint.
+
+IDENTITÉ IMMUABLE
+- blueprint_id: ${input.blueprint_id}
+- kernel_code: ${input.kernel_code}
+- depth: ${input.depth}
+- domaine: ${input.domain}
+- sous-domaine: ${input.subdomain_active}
+- sujet: ${input.subject_active}
+- idée dominante: ${input.dominant_idea_active}
+- langue source: fr
+
+RÈGLES ABSOLUES
+- Produis exactement une entrée pour chacun de ces types: ${PHASE1_COGNITIVE_TYPES.join(', ')}.
+- Aucun slot n'est maître ou dérivé d'un autre. Chaque proposition intellectuelle est distincte.
+- Aucun QCM ne devient mécaniquement un Vrai/Faux. Aucun faux n'est la simple négation du vrai.
+- Toute question se lit en 8 secondes maximum à 150 mots/minute.
+- Tout SV se lit en 30 secondes maximum, explique la bonne réponse et reste dans le même contexte.
+- QCM: quatre choix courts, distincts, plausibles, de même catégorie et forme comparable.
+- QCM: choices.a est TOUJOURS la bonne réponse; choices.b/c/d sont les distracteurs; correct_answer_key="a".
+- Vrai/Faux: choices=[{"key":"a","text":"VRAI"},{"key":"b","text":"FAUX"}].
+- Types finissant par _TRUE: correct_answer_key="a". Types finissant par _FALSE: correct_answer_key="b".
+- QCM_RECOGNITION: rappel factuel direct.
+- QCM_REASONING: au moins un lien logique nécessaire.
+- QCM_TRAP: confusion plausible et loyale, jamais typographique ou ambiguë.
+- TRUE_FALSE_RECOGNITION_TRUE/FALSE: fait atomique vrai/faux.
+- TRUE_FALSE_REASONING_TRUE/FALSE: relation logique vraie/fausse.
+- creation_evidence doit contenir cognitive_operation, cognitive_justification,
+  difference_from_other_slots, truth_basis, trap_basis et self_checks.
+- trap_basis est une chaîne non vide uniquement pour QCM_TRAP; il vaut null ailleurs.
+- Tous les booléens self_checks valent true.
+
+FORMAT JSON EXACT
+{
+  "schema_version": "phase1.source.v1",
+  "blueprint_id": "${input.blueprint_id}",
+  "kernel_code": "${input.kernel_code}",
+  "source_language": "fr",
+  "slots": [
+    {
+      "cognitive_type": "QCM_RECOGNITION",
+      "question": "...",
+      "choices": [
+        {"key": "a", "text": "..."},
+        {"key": "b", "text": "..."},
+        {"key": "c", "text": "..."},
+        {"key": "d", "text": "..."}
+      ],
+      "correct_answer_key": "a",
+      "sv": "...",
+      "creation_evidence": {
+        "cognitive_operation": "...",
+        "cognitive_justification": "...",
+        "difference_from_other_slots": "...",
+        "truth_basis": "...",
+        "trap_basis": null,
+        "self_checks": {
+          "question_readable_under_8_seconds": true,
+          "sv_readable_under_30_seconds": true,
+          "correct_answer_explained_by_sv": true,
+          "cognitive_type_respected": true,
+          "one_correct_answer_only": true,
+          "choices_are_plausible": true,
+          "distinct_from_other_slots": true,
+          "same_subject_and_dominant_idea": true,
+          "question_answer_choices_sv_coherent_with_subdomain": true
+        }
+      }
+    }
+  ]
+}`;
+
+  let routed;
+  try {
+    routed = await aiRouter.generate({
+      systemPrompt,
+      userPrompt,
+      temperature: 0.65,
+      maxOutputTokens: 5000,
+      responseMimeType: 'application/json',
+      validate: (text) => validatePhase1SourceText(text, input),
+    });
+  } catch (error) {
+    if (error.name === 'NoProvidersConfiguredError') {
+      return res.status(503).json({ ok: false, error: 'no_providers_configured', detail: error.message });
+    }
+    if (error.name === 'AllProvidersExhaustedError') {
+      return res.status(503).json({ ok: false, error: 'all_providers_exhausted', detail: error.message });
+    }
+    return res.status(502).json({ ok: false, error: 'router_error', detail: error.message || String(error) });
+  }
+
+  return res.json({
+    ok: true,
+    result: routed.validated,
+    provider: routed.provider,
+    latency_ms: routed.latencyMs,
+  });
+});
 // Returns { soft, hard } for a variant key (EN script)
 const bandLimitsForVariant = (variantKey) => {
   const band = VARIANT_BAND_DEFAULTS[variantKey] || 'normal_reader';

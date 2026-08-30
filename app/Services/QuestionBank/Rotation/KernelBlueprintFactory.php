@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\QuestionBank\Rotation;
 
 use App\Services\QuestionBank\KernelBlueprint;
+use App\Services\QuestionBank\KernelBlueprintCognitiveSlotRepository;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -45,6 +46,11 @@ final class KernelBlueprintFactory
         . '(CREATED_UNENGAGED ou ENGAGED_IN_PIPELINE). '
         . 'Attendre CURRENT_KERNEL_RECEIVED ou NOT_ENGAGED_PRODUCTION_ON_HOLD.';
 
+    public function __construct(
+        private readonly KernelBlueprintCognitiveSlotRepository $slots =
+            new KernelBlueprintCognitiveSlotRepository(),
+    ) {}
+
     /**
      * Crée un nouveau KernelBlueprint.
      *
@@ -65,16 +71,20 @@ final class KernelBlueprintFactory
         $blueprintId = (string) Str::orderedUuid();
 
         try {
-            DB::table(self::RUNS_TABLE)->insert([
-                'blueprint_id'    => $blueprintId,
-                'execution_state' => 'CREATED_UNENGAGED',
-                'depth'           => null,
-                'domain_code'     => null,
-                'engaged_at'      => null,
-                'received_at'     => null,
-                'created_at'      => now(),
-                'updated_at'      => now(),
-            ]);
+            $slots = DB::transaction(function () use ($blueprintId): array {
+                DB::table(self::RUNS_TABLE)->insert([
+                    'blueprint_id'    => $blueprintId,
+                    'execution_state' => 'CREATED_UNENGAGED',
+                    'depth'           => null,
+                    'domain_code'     => null,
+                    'engaged_at'      => null,
+                    'received_at'     => null,
+                    'created_at'      => now(),
+                    'updated_at'      => now(),
+                ]);
+
+                return $this->slots->initializeEmptySlots($blueprintId);
+            });
         } catch (UniqueConstraintViolationException) {
             // Deux créations simultanées ont passé le EXISTS en même temps :
             // l'index partiel one_active_blueprint_idx a rejeté la seconde.
@@ -83,6 +93,7 @@ final class KernelBlueprintFactory
 
         $blueprint = new KernelBlueprint();
         $blueprint->initializeBlueprintId($blueprintId);
+        $blueprint->initializeCognitiveSlots($slots);
 
         return $blueprint;
     }

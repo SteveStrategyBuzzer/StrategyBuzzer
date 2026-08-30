@@ -30,6 +30,16 @@ namespace App\Services\QuestionBank;
  */
 class KernelBlueprint
 {
+    public const COGNITIVE_TYPES = [
+        'QCM_RECOGNITION',
+        'QCM_REASONING',
+        'QCM_TRAP',
+        'TRUE_FALSE_RECOGNITION_TRUE',
+        'TRUE_FALSE_RECOGNITION_FALSE',
+        'TRUE_FALSE_REASONING_TRUE',
+        'TRUE_FALSE_REASONING_FALSE',
+    ];
+
     // ─── Identité canonique du Blueprint (DEC-059) ───────────────────────────
 
     /**
@@ -82,6 +92,13 @@ class KernelBlueprint
      * Immuable après fillKernelCode().
      */
     private ?string $kernel_code = null;
+
+    /**
+     * Sept enfants permanents, indexés par cognitive_type.
+     *
+     * @var array<string, array<string, mixed>>
+     */
+    private array $cognitive_slots = [];
 
     // ═════════════════════════════════════════════════════════════════════════
     // Accès public aux propriétés
@@ -139,6 +156,32 @@ class KernelBlueprint
         }
 
         $this->blueprint_id = $id;
+    }
+
+    /**
+     * @param array<string, array<string, mixed>> $slots
+     */
+    public function initializeCognitiveSlots(array $slots): void
+    {
+        if ($this->cognitive_slots !== []) {
+            throw new \LogicException(
+                '[KernelBlueprint] CognitiveSlots déjà initialisés.'
+            );
+        }
+
+        $this->assertCognitiveSlots($slots);
+        $this->cognitive_slots = $slots;
+    }
+
+    /**
+     * Recharge uniquement les enfants persistés; la Section 1 reste inchangée.
+     *
+     * @param array<string, array<string, mixed>> $slots
+     */
+    public function synchronizeCognitiveSlots(array $slots): void
+    {
+        $this->assertCognitiveSlots($slots);
+        $this->cognitive_slots = $slots;
     }
 
     /**
@@ -330,6 +373,32 @@ class KernelBlueprint
             'subject_active'       => $this->subject_active,
             'dominant_idea_active' => $this->dominant_idea_active,
             'kernel_code'          => $this->kernel_code,
+            'cognitive_slots'      => $this->cognitive_slots,
         ];
+    }
+
+    /**
+     * @param array<string, array<string, mixed>> $slots
+     */
+    private function assertCognitiveSlots(array $slots): void
+    {
+        $actual = array_keys($slots);
+        sort($actual);
+        $expected = self::COGNITIVE_TYPES;
+        sort($expected);
+
+        if ($actual !== $expected) {
+            throw new \LogicException(
+                '[KernelBlueprint] Les sept CognitiveSlots officiels sont requis.'
+            );
+        }
+
+        foreach ($slots as $type => $slot) {
+            if (($slot['cognitive_type'] ?? null) !== $type) {
+                throw new \LogicException(
+                    "[KernelBlueprint] CognitiveSlot incohérent pour {$type}."
+                );
+            }
+        }
     }
 }
