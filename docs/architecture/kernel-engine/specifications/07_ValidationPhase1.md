@@ -61,7 +61,10 @@ ValidationPhase1 reçoit ensemble les slots créés du Blueprint afin de vérifi
 - aucune option vide;
 - aucune option dupliquée après normalisation;
 - aucun doublon exact de question;
-- temps de lecture estimé;
+- temps de lecture estimé de la question et du SV;
+- pour chaque QCM, bonne réponse et distracteurs conformes à une unité de réponse courte;
+- aucun choix sous forme de phrase explicative, justification, énumération ou combinaison de plusieurs idées;
+- homogénéité sémantique, grammaticale et de concision entre les quatre choix;
 - aucune mutation de la Section 1.
 
 # 4. Contrôles intellectuels officiels
@@ -77,6 +80,9 @@ ValidationPhase1 contrôle :
 - absence d’ambiguïté;
 - SV expliquant réellement la bonne réponse;
 - question lisible en huit secondes ou moins;
+- limite de huit secondes appliquée au texte de la question seulement;
+- réponse QCM limitée à un mot, un nom propre, une valeur courte ou une expression courte représentant une seule idée indivisible;
+- distracteurs de même catégorie sémantique, de forme grammaticale comparable et de concision comparable;
 - SV lisible en trente secondes ou moins;
 - absence de remplissage artificiel;
 - cohérence contextuelle complète;
@@ -184,6 +190,9 @@ SOURCE_CHOICE_COUNT_INVALID
 SOURCE_ANSWER_NOT_IN_CHOICES
 SOURCE_MULTIPLE_CORRECT_ANSWERS
 SOURCE_TRUE_FALSE_POLARITY_INVALID
+SOURCE_CHOICE_NOT_CONCISE
+SOURCE_CHOICE_MULTIPLE_IDEAS
+SOURCE_CHOICES_HETEROGENEOUS
 SOURCE_QUESTION_READ_TIME_EXCEEDED
 SOURCE_SV_READ_TIME_EXCEEDED
 SOURCE_FACTUAL_SUSPICION
@@ -313,7 +322,8 @@ Les slots PASS non ciblés ne sont pas rejoués.
 - même `kernel_code`;
 - aucune réécriture silencieuse;
 - validation indépendante des `self_checks`;
-- question ≤ 8 secondes;
+- question seule ≤ 8 secondes;
+- chaque réponse et distracteur QCM forme une unité courte représentant une seule idée;
 - SV ≤ 30 secondes;
 - difficulté indépendante de la longueur;
 - sous-domaine comme frontière contextuelle finale;
@@ -335,19 +345,22 @@ Les slots PASS non ciblés ne sont pas rejoués.
 7. reasoning false fondé seulement sur une date changée → SUSPICION;
 8. réponse absente des choix → SUSPICION;
 9. deux bonnes réponses → SUSPICION;
-10. question > 8 secondes → SUSPICION;
-11. SV > 30 secondes → SUSPICION;
-12. question courte de Depth élevé → PASS si intellectuellement conforme;
-13. contexte hors sous-domaine → SUSPICION;
-14. doublon exact → SUSPICION;
-15. reformulation sémantique → SUSPICION;
-16. conversion QCM/TF mécanique → SUSPICION;
-17. négation vrai/faux mécanique → SUSPICION;
-18. un slot suspect ne bloque pas les slots PASS;
-19. retry plafonné;
-20. aucune correction automatique;
-21. aucune traduction d’une source non PASS;
-22. Section 1 immuable.
+10. choix formulé comme phrase explicative ou contenant plusieurs idées → SUSPICION;
+11. choix de catégories ou formes incompatibles → SUSPICION;
+12. mot composé, nom complet, date ou expression courte représentant une seule idée → accepté;
+13. question > 8 secondes → SUSPICION;
+14. SV > 30 secondes → SUSPICION;
+15. question courte de Depth élevé → PASS si intellectuellement conforme;
+16. contexte hors sous-domaine → SUSPICION;
+17. doublon exact → SUSPICION;
+18. reformulation sémantique → SUSPICION;
+19. conversion QCM/TF mécanique → SUSPICION;
+20. négation vrai/faux mécanique → SUSPICION;
+21. un slot suspect ne bloque pas les slots PASS;
+22. retry plafonné;
+23. aucune correction automatique;
+24. aucune traduction d’une source non PASS;
+25. Section 1 immuable.
 
 # 16. Statut
 
