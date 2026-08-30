@@ -124,7 +124,11 @@ CONSUMED
 - difficulté portée par la connaissance ou le raisonnement;
 - cohérence jusqu’au sous-domaine;
 - QCM = quatre choix et une bonne réponse;
+- pour les trois QCM, `choices.a` est toujours la bonne réponse et `correct_answer_key = a`;
+- les distracteurs QCM restent canoniquement en `b`, `c`, `d`;
 - Vrai/Faux = deux choix et polarité imposée;
+- le mélange des choix appartient exclusivement au gameplay et ne réécrit jamais le Blueprint;
+- le résultat joueur conserve la clé canonique du choix sélectionné, pas seulement sa lettre affichée;
 - aucun contenu partiel déclaré CREATED.
 
 # 5. Premier travail — ALIGN-AUDIT-06-v1.0

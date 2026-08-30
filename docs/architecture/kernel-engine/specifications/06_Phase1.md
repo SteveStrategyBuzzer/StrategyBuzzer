@@ -329,6 +329,35 @@ Les distracteurs :
 - ne révèlent pas la bonne réponse par leur longueur, leur précision ou leur forme;
 - ne sont ni absurdes ni hors contexte.
 
+### 6.1.1 Position canonique de la bonne réponse
+
+Dans chacun des trois cognitifs QCM :
+
+```text
+QCM_RECOGNITION
+QCM_REASONING
+QCM_TRAP
+```
+
+la bonne réponse est toujours stockée dans le choix canonique `a` :
+
+```text
+choices.a = bonne réponse
+choices.b = distracteur 1
+choices.c = distracteur 2
+choices.d = distracteur 3
+correct_answer_key = a
+```
+
+Phase1 applique cette position lors de la création source. Les traductions,
+copies Quarantine, corrections et réconciliations conservent exactement cette
+correspondance. Le Blueprint ne mélange jamais les choix et ne modifie jamais
+`correct_answer_key`.
+
+Le mélange de l’ordre d’affichage appartient exclusivement au gameplay et ne
+réécrit jamais les choix persistés. Le résultat joueur doit conserver
+l’identité de la clé canonique du choix présenté.
+
 ## 6.2 Vrai/Faux
 
 ```text
@@ -610,6 +639,7 @@ Phase1 ciblée
 - aucun `question_code`, `COG` ou `VAR`;
 - question seule ≤ 8 secondes;
 - réponses et distracteurs = unités courtes représentant chacune une seule idée;
+- QCM : `choices.a` est la bonne réponse et `correct_answer_key = a`;
 - SV ≤ 30 secondes;
 - difficulté jamais créée par la longueur;
 - cohérence jusqu’au sous-domaine;
@@ -641,7 +671,8 @@ Phase1 ciblée
 19. aucun slot partiel déclaré `CREATED`;
 20. retries plafonnés à trois;
 21. replay idempotent;
-22. aucune mutation Section 1.
+22. QCM : bonne réponse canonique en `a`, distracteurs en `b`, `c`, `d`;
+23. aucune mutation Section 1.
 
 # 18. Statut
 

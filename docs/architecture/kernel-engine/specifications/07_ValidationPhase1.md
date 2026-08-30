@@ -56,6 +56,7 @@ ValidationPhase1 reçoit ensemble les slots créés du Blueprint afin de vérifi
 - champs obligatoires présents;
 - nombres de choix conformes;
 - bonne réponse présente dans les choix;
+- pour chaque QCM, `choices.a` est la bonne réponse et `correct_answer_key = a`;
 - une seule bonne réponse;
 - polarité Vrai/Faux conforme au type;
 - aucune option vide;
@@ -324,6 +325,7 @@ Les slots PASS non ciblés ne sont pas rejoués.
 - validation indépendante des `self_checks`;
 - question seule ≤ 8 secondes;
 - chaque réponse et distracteur QCM forme une unité courte représentant une seule idée;
+- QCM : bonne réponse canonique en `a`, distracteurs en `b`, `c`, `d`;
 - SV ≤ 30 secondes;
 - difficulté indépendante de la longueur;
 - sous-domaine comme frontière contextuelle finale;
@@ -360,7 +362,8 @@ Les slots PASS non ciblés ne sont pas rejoués.
 22. retry plafonné;
 23. aucune correction automatique;
 24. aucune traduction d’une source non PASS;
-25. Section 1 immuable.
+25. QCM : `correct_answer_key` différent de `a` → SUSPICION;
+26. Section 1 immuable.
 
 # 16. Statut
 

@@ -94,6 +94,41 @@ Le gameplay peut lire uniquement :
 
 Un Blueprint présent physiquement dans ReadyBank peut contenir des parties non exploitables. La sélection gameplay doit exclure ces parties jusqu’à leur réconciliation réussie.
 
+## 5.1 Correspondance canonique des choix QCM
+
+Pour les trois cognitifs QCM du Blueprint :
+
+```text
+QCM_RECOGNITION
+QCM_REASONING
+QCM_TRAP
+```
+
+la persistance conserve toujours :
+
+```text
+choices.a = bonne réponse
+choices.b = distracteur 1
+choices.c = distracteur 2
+choices.d = distracteur 3
+correct_answer_key = a
+```
+
+Cette correspondance est conservée lors de la livraison au gameplay, des
+copies Quarantine, des corrections et de la réconciliation ReadyBank.
+
+Au moment de présenter une question, le gameplay peut mélanger l’ordre des
+quatre choix. Il conserve pour chaque choix affiché sa clé canonique et
+enregistre l’identité canonique du choix joué, jamais la seule lettre affichée.
+Le mélange n’est jamais persisté et ne modifie jamais le Blueprint.
+
+Cette règle ne change pas la polarité Vrai/Faux :
+
+```text
+type *_TRUE  → réponse canonique a = VRAI
+type *_FALSE → réponse canonique b = FAUX
+```
+
 # 6. Vue de vérification du Blueprint
 
 ReadyBank doit permettre une projection administrative complète montrant :
