@@ -1,11 +1,11 @@
 # StrategyBuzzer — Moteur intellectuel — Spécification active maître
 
-**Version :** 1.8.0-krp-v4-taxonomy-v1.1  
-**Date :** 2026-08-25  
+**Version :** 1.9.0-phase1-v1.0  
+**Date :** 2026-08-30  
 **Statut :** **ACTIF — VÉRITÉ GLOBALE COURANTE**  
 **Portée :** architecture globale, frontières, ownership, communications et état documentaire des modules 01→11.
 
-> Cette version intègre `DEC-119 — OFFICIAL`, `02_KernelRotationPlanner v4.0` et `DEC-120 — OFFICIAL`, `03_Taxonomy v1.1`. Taxonomy persiste seulement le fait terminal de consommation; KRP le consomme au prochain nouveau Blueprint et exécute lui-même ses moteurs internes d’épuisement.
+> Cette version conserve `DEC-119 — OFFICIAL`, `02_KernelRotationPlanner v4.0`, `DEC-120 — OFFICIAL`, `03_Taxonomy v1.1`, `DEC-121` et `DEC-122`. Elle active maintenant `06_Phase1 v1.0` et `07_ValidationPhase1 v1.0` comme contrats de Build : création source de sept mécanismes cognitifs autonomes, validation officielle par slot et intégration au même KernelBlueprint.
 
 ---
 
@@ -93,8 +93,8 @@ Une seule spécification est travaillée à la fois.
 | 03 Taxonomy | **100 % intellectuel v1.1** | **100 %** | non à poursuivre avant validation KRP | NON | **VERROUILLÉ — DEC-120 OFFICIAL** |
 | 04 ValidationDominantIdeas | règles absorbées par Taxonomy v1.1 | contrat de règles | aucun moteur autonome | N/A | **SUPERSEDED comme étape autonome — DEC-101** |
 | 05 QuestionIntent | **100 % intellectuel v2.2** | **100 %** | à réaligner sur construction progressive | NON | **VERROUILLÉ — DEC-121 + DEC-122** |
-| 06 Phase1 | règles structurelles DEC-122 | partiel v0.1 | non | non | sept CognitiveSlots + frontière Quarantine verrouillés |
-| 07 ValidationPhase1 | frontière DEC-122 | partiel v0.1 | non | non | signalement source + copie complète verrouillés |
+| 06 Phase1 | **100 % intellectuel v1.0** | **100 % BUILD-READY** | à auditer/réaligner | NON | **CONTRAT VERROUILLÉ — module actif** |
+| 07 ValidationPhase1 | **100 % intellectuel v1.0** | **100 % BUILD-READY** | à auditer/réaligner après/avec 06 | NON | **CONTRAT VERROUILLÉ — frontière active** |
 | 08 Phase2 | règles traductions DEC-122 | partiel v0.1 | non | non | traductions imbriquées + reprise ciblée verrouillées |
 | 09 ValidationPhase2 | frontière DEC-122 | partiel v0.1 | non | non | signalement traduction + copie complète verrouillés |
 | 10 Quarantine | copie complète DEC-122 | partiel v0.1 | non | non | copie rouge structurée + reprise ciblée verrouillées |
@@ -465,28 +465,55 @@ Gemini utilise les règles `ValidationDominantIdeas` **pendant** la création de
 
 ---
 
-# 16. Phases 1–2
+# 16. Phase1 et ValidationPhase1 actives
 
-Leurs interfaces détaillées restent réservées et non spécifiées. Elles ne doivent pas être inventées dans KRP.
+Références exclusives :
+
+```text
+specifications/06_Phase1.md v1.0
+specifications/07_ValidationPhase1.md v1.0
+DEC-122
+```
+
+Phase1 reçoit le même Blueprint finalisé par QuestionIntent et remplit sept CognitiveSlots source autonomes dans un appel de création structuré. Aucun slot n’est le master des autres.
+
+Règles terminales :
+
+- question lisible en huit secondes ou moins;
+- SV explicatif lisible en trente secondes ou moins;
+- difficulté portée par la connaissance ou le raisonnement, jamais par la longueur;
+- cohérence question/réponse/choix/SV jusqu’au sous-domaine;
+- écriture atomique par CognitiveSlot;
+- sept mécanismes cognitifs distincts;
+- aucun `question_code`, `COG` ou `VAR`;
+- ValidationPhase1 décide PASS ou SUSPICION par slot;
+- source non PASS non traduite;
+- copie Quarantine complète et reprise ciblée.
 
 ---
 
 # 17. État opérationnel immédiat
 
-Le travail actif porte uniquement sur KRP v4.0.
+Le module actif unique devient `06_Phase1 v1.0`.
+
+KRP v4, Taxonomy v1.1 et QuestionIntent/KernelCodeEngine constituent les frontières amont déjà présentes sur la branche officielle. Ils ne doivent pas être réimplantés dans ce bloc.
 
 Prochaine opération :
 
 ```text
-DEC-119 + KRP v4.0
+ALIGN-AUDIT-06-v1.0
 ↓
-implantation KRP seulement, par micro-blocs
+audit du code Phase1 réel contre 06 v1.0
 ↓
-tests contractuels KRP v4.0
+KEEP / MODIFY / REMOVE / MISSING / UNRESOLVED
 ↓
-validation terminale KRP
+si aucun UNRESOLVED architectural
 ↓
-Taxonomy v1.1 seulement après
+patch minimal Phase1
+↓
+tests contractuels 06 v1.0
+↓
+ALIGN-AUDIT-07-v1.0
 ```
 
 ---
@@ -517,8 +544,8 @@ Le KernelBlueprint projette progressivement `DD-DO` lors des écritures KRP puis
 
 ```text
 01 → specifications/01_KernelBlueprint.md v2.1
-06 → specifications/06_Phase1.md v0.1
-07 → specifications/07_ValidationPhase1.md v0.1
+06 → specifications/06_Phase1.md v1.0 — BUILD-READY
+07 → specifications/07_ValidationPhase1.md v1.0 — BUILD-READY
 08 → specifications/08_Phase2.md v0.1
 09 → specifications/09_ValidationPhase2.md v0.1
 10 → specifications/10_Quarantine.md v0.1
