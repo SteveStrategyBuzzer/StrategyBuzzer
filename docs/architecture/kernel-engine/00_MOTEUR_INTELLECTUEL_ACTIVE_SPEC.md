@@ -479,7 +479,9 @@ Phase1 reçoit le même Blueprint finalisé par QuestionIntent et remplit sept C
 
 Règles terminales :
 
-- question lisible en huit secondes ou moins;
+- texte de la question lisible en huit secondes ou moins;
+- réponse et distracteurs QCM sous forme d’unités courtes représentant chacune une seule idée (mot, nom propre, valeur courte ou expression courte);
+- choix QCM de même catégorie sémantique, forme grammaticale et concision comparables;
 - SV explicatif lisible en trente secondes ou moins;
 - difficulté portée par la connaissance ou le raisonnement, jamais par la longueur;
 - cohérence question/réponse/choix/SV jusqu’au sous-domaine;
