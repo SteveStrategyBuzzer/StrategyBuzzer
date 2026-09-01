@@ -123,7 +123,11 @@ class KernelBlueprintFactoryTest extends TestCase
         foreach ($rows as $row) {
             $this->assertSame('EMPTY', $row->creation_status);
             $this->assertSame('NOT_VALIDATED', $row->validation_status);
-            $this->assertNull($row->source);
+            $this->assertNotNull($row->source);
+            $this->assertSame(
+                KernelBlueprint::emptyCognitiveSlotSource($row->cognitive_type),
+                json_decode($row->source, true)
+            );
             $this->assertNull($row->creation_failure);
             $this->assertSame('{}', $row->translations);
             $this->assertSame('[]', $row->validation_findings);

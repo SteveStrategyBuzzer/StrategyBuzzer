@@ -40,6 +40,30 @@ class KernelBlueprint
         'TRUE_FALSE_REASONING_FALSE',
     ];
 
+    public static function emptyCognitiveSlotSource(string $cognitiveType): array
+    {
+        if (! in_array($cognitiveType, self::COGNITIVE_TYPES, true)) {
+            throw new \LogicException(
+                "[KernelBlueprint] Type cognitif non officiel: {$cognitiveType}."
+            );
+        }
+
+        $isQcm = str_starts_with($cognitiveType, 'QCM_');
+
+        return [
+            'schema_version' => 'phase1.source.v1',
+            'source_language' => 'fr',
+            'cognitive_type' => $cognitiveType,
+            'question' => null,
+            'choices' => $isQcm
+                ? ['a' => null, 'b' => null, 'c' => null, 'd' => null]
+                : ['a' => null, 'b' => null],
+            'correct_answer_key' => str_ends_with($cognitiveType, '_FALSE') ? 'b' : 'a',
+            'sv' => null,
+            'creation_evidence' => null,
+        ];
+    }
+
     // ─── Identité canonique du Blueprint (DEC-059) ───────────────────────────
 
     /**

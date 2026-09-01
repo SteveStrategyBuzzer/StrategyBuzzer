@@ -66,6 +66,7 @@ class KernelBlueprintCognitiveSlotsMigrationPostgresTest extends TestCase
             DB::table('kernel_blueprint_cognitive_slots')->insert([
                 'blueprint_id' => 'bp-pg',
                 'cognitive_type' => $type,
+                'source' => json_encode(KernelBlueprint::emptyCognitiveSlotSource($type)),
             ]);
         }
 
@@ -83,6 +84,7 @@ class KernelBlueprintCognitiveSlotsMigrationPostgresTest extends TestCase
         DB::table('kernel_blueprint_cognitive_slots')->insert([
             'blueprint_id' => 'bp-cascade',
             'cognitive_type' => 'QCM_RECOGNITION',
+            'source' => json_encode(KernelBlueprint::emptyCognitiveSlotSource('QCM_RECOGNITION')),
         ]);
 
         DB::table('kernel_blueprint_runs')->where('blueprint_id', 'bp-cascade')->delete();
@@ -94,7 +96,7 @@ class KernelBlueprintCognitiveSlotsMigrationPostgresTest extends TestCase
             'blueprint_id' => 'bp-invalid',
             'cognitive_type' => 'QCM_RECOGNITION',
             'creation_status' => 'CREATED',
-            'source' => null,
+            'source' => json_encode('invalid-scalar-source'),
         ]);
     }
 }

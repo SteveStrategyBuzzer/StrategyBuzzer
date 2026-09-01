@@ -23,7 +23,9 @@ class KernelBlueprintCognitiveSlotRepository
             $rows[] = [
                 'blueprint_id' => $blueprintId,
                 'cognitive_type' => $cognitiveType,
-                'source' => null,
+                'source' => $this->encodeJson(
+                    KernelBlueprint::emptyCognitiveSlotSource($cognitiveType)
+                ),
                 'creation_failure' => null,
                 'translations' => '{}',
                 'creation_status' => 'EMPTY',
@@ -114,7 +116,9 @@ class KernelBlueprintCognitiveSlotRepository
             ->where('cognitive_type', $cognitiveType)
             ->where('creation_status', 'EMPTY')
             ->update([
-                'source' => null,
+                'source' => $this->encodeJson(
+                    KernelBlueprint::emptyCognitiveSlotSource($cognitiveType)
+                ),
                 'creation_failure' => $this->encodeJson($creationFailure),
                 'creation_status' => 'CREATION_FAILED',
                 'validation_status' => 'NOT_VALIDATED',

@@ -119,7 +119,10 @@ class KernelPhase1GeneratorTest extends TestCase
         foreach ($this->blueprint->cognitive_slots as $slot) {
             $this->assertSame(3, $slot['creation_failure']['attempt_count']);
             $this->assertSame('TRANSPORT', $slot['creation_failure']['last_failure_type']);
-            $this->assertNull($slot['source']);
+            $this->assertSame(
+                KernelBlueprint::emptyCognitiveSlotSource($slot['cognitive_type']),
+                $slot['source']
+            );
         }
     }
 

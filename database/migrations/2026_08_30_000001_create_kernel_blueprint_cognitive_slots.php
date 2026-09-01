@@ -21,7 +21,9 @@ return new class extends Migration
             // Exact type of kernel_blueprint_runs.blueprint_id: VARCHAR(36).
             $table->string('blueprint_id', 36);
             $table->string('cognitive_type', 64);
-            $table->jsonb('source')->nullable();
+            // EMPTY and CREATION_FAILED still carry the canonical source
+            // skeleton; Phase 1 only replaces its nullable content fields.
+            $table->jsonb('source');
             $table->jsonb('creation_failure')->nullable();
             $table->jsonb('translations')->default('{}');
             $table->string('creation_status', 32)->default('EMPTY');
@@ -81,7 +83,7 @@ return new class extends Migration
         DB::statement(
             "ALTER TABLE kernel_blueprint_cognitive_slots
              ADD CONSTRAINT kbcs_source_object_check
-             CHECK (source IS NULL OR jsonb_typeof(source) = 'object')"
+             CHECK (jsonb_typeof(source) = 'object')"
         );
 
         DB::statement(
@@ -111,7 +113,7 @@ return new class extends Migration
              CHECK (
                  (
                      creation_status = 'EMPTY'
-                     AND source IS NULL
+                     AND source IS NOT NULL
                      AND creation_failure IS NULL
                      AND validation_status = 'NOT_VALIDATED'
                      AND jsonb_array_length(validation_findings) = 0
@@ -125,7 +127,7 @@ return new class extends Migration
                  OR
                  (
                      creation_status = 'CREATION_FAILED'
-                     AND source IS NULL
+                     AND source IS NOT NULL
                      AND creation_failure IS NOT NULL
                      AND validation_status = 'NOT_VALIDATED'
                      AND jsonb_array_length(validation_findings) = 0

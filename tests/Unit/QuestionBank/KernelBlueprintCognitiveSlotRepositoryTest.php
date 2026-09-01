@@ -57,7 +57,10 @@ class KernelBlueprintCognitiveSlotRepositoryTest extends TestCase
         foreach ($slots as $slot) {
             $this->assertSame('EMPTY', $slot['creation_status']);
             $this->assertSame('NOT_VALIDATED', $slot['validation_status']);
-            $this->assertNull($slot['source']);
+            $this->assertSame(
+                KernelBlueprint::emptyCognitiveSlotSource($slot['cognitive_type']),
+                $slot['source']
+            );
             $this->assertNull($slot['creation_failure']);
             $this->assertSame([], $slot['translations']);
             $this->assertSame([], $slot['validation_findings']);
@@ -119,6 +122,9 @@ class KernelBlueprintCognitiveSlotRepositoryTest extends TestCase
         $this->assertSame('CREATED', $slots['QCM_RECOGNITION']['creation_status']);
         $this->assertSame('CREATION_FAILED', $slots['QCM_REASONING']['creation_status']);
         $this->assertSame($failure, $slots['QCM_REASONING']['creation_failure']);
-        $this->assertNull($slots['QCM_REASONING']['source']);
+        $this->assertSame(
+            KernelBlueprint::emptyCognitiveSlotSource('QCM_REASONING'),
+            $slots['QCM_REASONING']['source']
+        );
     }
 }
