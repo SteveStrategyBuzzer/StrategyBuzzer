@@ -1,11 +1,11 @@
 # CURRENT HANDOFF — StrategyBuzzer Kernel Engine
 
-**Mis à jour :** 2026-08-30  
+**Mis à jour :** 2026-09-07
 **Branche officielle :** `replit/intellectual-engine-current-2026-08-16`  
 **Module actif unique :** `06_Phase1`  
 **Spécification active :** `specifications/06_Phase1.md` v1.0  
 **Frontière suivante verrouillée :** `07_ValidationPhase1.md` v1.0  
-**Décision :** `DEC-122`  
+**Décisions actives :** `DEC-123` (QuestionIntent) ; `DEC-122` (inchangée)
 **Prochain bloc exact :** `ALIGN-AUDIT-06-v1.0 → BUILD-06-v1.0`
 
 > Ce fichier est un pointeur opérationnel. En cas de contradiction, `00_ArchitectureRegister.md + 00_MOTEUR_INTELLECTUEL_ACTIVE_SPEC.md + specifications/06_Phase1.md v1.0` priment.
@@ -50,9 +50,8 @@ Ne pas réimplanter ni redéfinir :
 - KernelBlueprint Section 1;
 - KRP v4 / DEC-119;
 - Taxonomy v1.1 / DEC-120;
-- QuestionIntent / KernelCodeEngine / DEC-121;
-- construction progressive du `kernel_code`;
-- migrations DEC-121;
+- QuestionIntent / DEC-123 : construction, persistance et verrouillage du `kernel_code` complet;
+- migrations historiques DEC-121 ;
 - tests KRP v4;
 - masque joueur;
 - ReadyBank;

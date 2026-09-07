@@ -1,6 +1,6 @@
 # DOCUMENTATION MAP — StrategyBuzzer Kernel Engine
 
-**Date : 2026-08-23**
+**Date : 2026-09-07**
 
 ## Autorité
 
@@ -19,12 +19,12 @@
 
 | Module | Source | Statut |
 |---|---|---|
-| 01 KernelBlueprint | `specifications/01_KernelBlueprint.md` | contrat intellectuel disponible pour KRP |
+| 01 KernelBlueprint | `specifications/01_KernelBlueprint.md` | **v3.0 VERROUILLÉ — DEC-123 OFFICIAL; QuestionIntent possède seul le kernel_code complet** |
 | 02 KernelRotationPlanner | `specifications/02_KernelRotationPlanner.md` | **v3.7 VERROUILLÉ — PARTIE INTELLECTUELLE — DEC-118** |
 | 03 Taxonomy | `specifications/03_Taxonomy.md` | v1.0 historique sur frontière KRP; détails internes à reconstruire dans son tour |
 | 03 frontière temporaire | `working/03_Taxonomy/03_Taxonomy_BOUNDARY_BRIDGE_DEC-118.md` | **ACTIVE uniquement pour ownership KRP/Taxonomy** |
 | 04 ValidationDominantIdeas | `working/04_ValidationDominantIdeas/` | brides actives; règles utilisées par Gemini pendant Taxonomy |
-| 05 QuestionIntent | certificat/source récupérée | verrouillé selon certificat |
+| 05 QuestionIntent | `specifications/05_QuestionIntent.md` | **v2.2 VERROUILLÉ — DEC-123 + DEC-122; construit/persiste/verrouille seul le kernel_code complet** |
 | 06..11 | `working/` | à spécifier dans leur tour |
 
 ## KRP — source unique

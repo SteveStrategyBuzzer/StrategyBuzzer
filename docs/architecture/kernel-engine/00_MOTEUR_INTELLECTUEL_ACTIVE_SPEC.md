@@ -1,11 +1,11 @@
 # StrategyBuzzer — Moteur intellectuel — Spécification active maître
 
-**Version :** 1.9.0-phase1-v1.0  
-**Date :** 2026-08-30  
+**Version :** 2.0.0-kbp-v3.0
+**Date :** 2026-09-07
 **Statut :** **ACTIF — VÉRITÉ GLOBALE COURANTE**  
 **Portée :** architecture globale, frontières, ownership, communications et état documentaire des modules 01→11.
 
-> Cette version conserve `DEC-119 — OFFICIAL`, `02_KernelRotationPlanner v4.0`, `DEC-120 — OFFICIAL`, `03_Taxonomy v1.1`, `DEC-121` et `DEC-122`. Elle active maintenant `06_Phase1 v1.0` et `07_ValidationPhase1 v1.0` comme contrats de Build : création source de sept mécanismes cognitifs autonomes, validation officielle par slot et intégration au même KernelBlueprint.
+> Cette version conserve `DEC-119 — OFFICIAL`, `02_KernelRotationPlanner v4.0`, `DEC-120 — OFFICIAL`, `03_Taxonomy v1.1` et `DEC-122 — OFFICIAL` inchangée. `01_KernelBlueprint v3.0` et `DEC-123 — OFFICIAL` remplacent la règle de construction progressive de `DEC-121`, désormais **SUPERSEDED**. QuestionIntent est l'unique propriétaire du `kernel_code` complet.
 
 ---
 
@@ -88,11 +88,11 @@ Une seule spécification est travaillée à la fois.
 
 | Module | Architecture | Contrat | Implémentation | Validation | Statut |
 |---|---:|---:|---:|---:|---|
-| 01 KernelBlueprint | **100 % intellectuel v2.1** | **100 %** | à auditer contre DEC-122 | NON | **VERROUILLÉ — DEC-113 + DEC-122** |
+| 01 KernelBlueprint | **100 % intellectuel v3.0** | **100 %** | à auditer contre DEC-123 + DEC-122 | NON | **VERROUILLÉ — DEC-123 + DEC-122** |
 | 02 KernelRotationPlanner | **100 % intellectuel v4.0** | **100 %** | implantation KRP seulement, par micro-blocs | NON | **VERROUILLÉ — DEC-119 OFFICIAL** |
 | 03 Taxonomy | **100 % intellectuel v1.1** | **100 %** | non à poursuivre avant validation KRP | NON | **VERROUILLÉ — DEC-120 OFFICIAL** |
 | 04 ValidationDominantIdeas | règles absorbées par Taxonomy v1.1 | contrat de règles | aucun moteur autonome | N/A | **SUPERSEDED comme étape autonome — DEC-101** |
-| 05 QuestionIntent | **100 % intellectuel v2.2** | **100 %** | à réaligner sur construction progressive | NON | **VERROUILLÉ — DEC-121 + DEC-122** |
+| 05 QuestionIntent | **100 % intellectuel v2.2** | **100 %** | à auditer contre DEC-123 | NON | **VERROUILLÉ — DEC-123 + DEC-122** |
 | 06 Phase1 | **100 % intellectuel v1.0** | **100 % BUILD-READY** | à auditer/réaligner | NON | **CONTRAT VERROUILLÉ — module actif** |
 | 07 ValidationPhase1 | **100 % intellectuel v1.0** | **100 % BUILD-READY** | à auditer/réaligner après/avec 06 | NON | **CONTRAT VERROUILLÉ — frontière active** |
 | 08 Phase2 | règles traductions DEC-122 | partiel v0.1 | non | non | traductions imbriquées + reprise ciblée verrouillées |
@@ -148,9 +148,9 @@ Taxonomy
 ↓
 Taxonomy FIN
 ↓
-QuestionIntent / KernelCodeEngine
-  ↳ alloue uniquement VVVV
-  ↳ assemble et verrouille le kernel_code dont DD-DO et SUB-SUJ-IDE ont été projetés progressivement par le KernelBlueprint
+QuestionIntent
+  ↳ attribue VVVV
+  ↳ construit, persiste et verrouille seul le kernel_code complet
 ↓
 FIN PHASE INTELLECTUELLE
 ```
@@ -498,7 +498,7 @@ Règles terminales :
 
 Le module actif unique devient `06_Phase1 v1.0`.
 
-KRP v4, Taxonomy v1.1 et QuestionIntent/KernelCodeEngine constituent les frontières amont déjà présentes sur la branche officielle. Ils ne doivent pas être réimplantés dans ce bloc.
+KRP v4, Taxonomy v1.1 et QuestionIntent constituent les frontières amont déjà présentes sur la branche officielle. `KernelCodeEngine`, s'il existe, est uniquement un mécanisme interne de QuestionIntent. Ils ne doivent pas être réimplantés dans ce bloc.
 
 Prochaine opération :
 
@@ -536,16 +536,17 @@ DEC-115 à DEC-118 : REJECTED, historique seulement. Anciennes versions KRP : hi
 ## Référence canonique QuestionIntent
 
 ```text
-05 → specifications/05_QuestionIntent.md v2.2 / DEC-121 + DEC-122
+01 → specifications/01_KernelBlueprint.md v3.0 / DEC-123
+05 → specifications/05_QuestionIntent.md v2.2 / DEC-123 + DEC-122
 ```
 
-Le KernelBlueprint projette progressivement `DD-DO` lors des écritures KRP puis `SUB-SUJ-IDE` lors des écritures Taxonomy. QuestionIntent/KernelCodeEngine alloue uniquement le compteur base36 `VVVV`, indépendant par bassin `Depth + Domain`, puis assemble et verrouille le code final. Phase1 remplit ensuite les sept CognitiveSlots du même Blueprint. L’état cognitif joueur `00n→11o` reste externe au Blueprint.
+KRP écrit uniquement `depth + domain` et Taxonomy uniquement son triplet métier. QuestionIntent attribue le compteur base36 `VVVV`, indépendant par bassin `Depth + Domain`, puis construit, persiste et verrouille le `kernel_code` complet. Il n'existe aucune projection progressive du code. `KernelCodeEngine`, s'il existe techniquement, demeure interne à QuestionIntent et sans ownership autonome. Phase1 remplit ensuite les sept CognitiveSlots du même Blueprint. L’état cognitif joueur `00n→11o` reste externe au Blueprint.
 
 
 ## Référence canonique DEC-122
 
 ```text
-01 → specifications/01_KernelBlueprint.md v2.1
+01 → specifications/01_KernelBlueprint.md v3.0 / DEC-123
 06 → specifications/06_Phase1.md v1.0 — BUILD-READY
 07 → specifications/07_ValidationPhase1.md v1.0 — BUILD-READY
 08 → specifications/08_Phase2.md v0.1

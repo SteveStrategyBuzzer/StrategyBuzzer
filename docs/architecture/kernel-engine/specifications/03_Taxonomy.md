@@ -51,6 +51,11 @@ subject_active
 dominant_idea_active
 ```
 
+Ces trois slots forment le seul ownership Blueprint de Taxonomy. Taxonomy ne
+construit, ne projette, ne persiste et ne verrouille aucun segment de
+`kernel_code` : celui-ci est construit intégralement et exclusivement par
+QuestionIntent selon `05_QuestionIntent.md` / DEC-123.
+
 Lorsqu’il consomme la dernière Dominant Idea du dernier Subject de l’occurrence active, Taxonomy transmet uniquement un **fait terminal de consommation** à KRP.
 
 Taxonomy ne décide jamais la rotation.
@@ -901,7 +906,7 @@ La spécification est conforme seulement si :
 Audit croisé :
 
 ```text
-01_KernelBlueprint v2.0
+01_KernelBlueprint v3.0 / DEC-123
 02_KernelRotationPlanner v4.0 / DEC-119
 04_ValidationDominantIdeas — interface
 05_QuestionIntent — frontière aval

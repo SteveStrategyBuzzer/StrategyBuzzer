@@ -444,40 +444,40 @@ Les slots PASS non ciblés ne sont pas rejoués.
 27. Section 1 immuable;
 28. l’entrée de ValidationPhase1 est `blueprint_id` plus lookup et statut
     terminal précédent; aucun objet Blueprint ou tableau de slots ne transite;
-29. KBP crée atomiquement un vrai `KernelBlueprint` PostgreSQL isolé, avec les
-    préconditions de la phase ciblée déjà présentes et les vrais sept slots;
-    ce Blueprint n’est ni mock, tableau, mémoire, Quarantine, ni récupérable
-    par les workers;
-30. le Harness demande ce scénario à KBP, reçoit son identifiant, déclenche la
-    vraie phase avec fournisseur simulé, intercepte sa fin, bloque la cascade,
-    observe puis nettoie;
-31. le Harness n’écrit aucune précondition, donnée intellectuelle, statut ou
-    finding de validation;
+29. ValidationPhase1 demande, par son point d'entrée de test, un vrai
+    `KernelBlueprint` PostgreSQL canonique, complet structurellement et vide
+    intellectuellement ; KBP le crée atomiquement avec les sept vrais slots et
+    remet l'autorisation initiale `{blueprint_id, VALIDATION_PHASE_1}` ;
+30. les paramètres et dépendances simulées propres au test appartiennent
+    exclusivement à ValidationPhase1 et à son point d'entrée ; KBP ne les
+    reçoit pas et ne prépare aucune donnée intellectuelle ;
+31. l'appelant technique observe le résultat terminal et le persistant, puis
+    demande à KBP la terminaison ; il ne prépare, n'écrit, ne relaie et ne
+    supprime aucune donnée, et ne constitue pas un Harness architectural ;
 32. les modes production et test sont entièrement externes au Blueprint :
     production relaie vers ValidationPhase1, test relaie vers un récepteur
     terminal, sans variante métier Phase1.
 
-# 15.1 Mode test externe et récepteur terminal
+# 15.1 Point d'entrée de test et observation terminale
 
 Le mode de production comme le mode test est déterminé hors du
 `KernelBlueprint`. Aucun champ `mode`, `target`, `test` ou équivalent ne peut
 être persisté dans le Blueprint.
 
-En production, Phase1 signale sa fin et le relais externe déclenche
-ValidationPhase1. En test, la même Phase1, sans branche métier spécifique,
-signale sa fin vers un récepteur terminal externe. Ce récepteur intercepte la
-fin et bloque la cascade; il n’écrit ni précondition, ni contenu intellectuel,
-ni statut ou finding de validation.
+En production, Phase1 signale sa fin et son contrat de sortie autorise
+ValidationPhase1. En test, ValidationPhase1 demande, par son propre point
+d'entrée, la mise à disposition d'un Blueprint canonique vide. KBP crée la
+même structure qu'en production et remet uniquement l'autorisation initiale
+`{blueprint_id, VALIDATION_PHASE_1}`.
 
-Le Harness est lui aussi extérieur aux phases. Il demande à KBP la création
-atomique d’un scénario PostgreSQL isolé réellement préparé pour la phase
-ciblée : les préconditions existent dès la création et les sept slots sont de
-vraies lignes persistées. KBP retourne seulement le `blueprint_id`. Le Harness
-déclenche ensuite la vraie phase avec le fournisseur simulé, attend le
-récepteur terminal, observe le résultat et nettoie. Il ne rend pas ce
-Blueprint récupérable par les workers de production non ciblés ; seule la
-vraie phase autorisée peut le retrouver par `blueprint_id`. Le Harness
-n’effectue aucune écriture de précondition, intellectuelle ou de validation.
+Les paramètres intellectuels nécessaires au test, les contenus contrôlés et
+les dépendances simulées sont fournis directement à ValidationPhase1 par son
+environnement de test. Ils ne transitent pas par KBP et KBP ne les inscrit pas
+dans le Blueprint. L'appelant technique observe le résultat terminal et le
+persistant, puis demande à KBP la terminaison. Il n'est pas propriétaire du
+Blueprint, ne transmet pas la clé entre les phases, n'écrit ni précondition,
+ni contenu, ni statut ou finding, ne supprime aucune donnée directement et ne
+constitue pas un Harness architectural.
 
 # 16. Statut
 

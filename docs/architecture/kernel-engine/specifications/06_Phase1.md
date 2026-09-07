@@ -11,11 +11,19 @@
 
 # 1. Mission
 
-L'entrée contractuelle de Phase1 est exclusivement `blueprint_id`, accompagné de
-la preuve que la phase précédente est terminée avec son statut terminal. Phase1
-retrouve alors ce même `KernelBlueprint` persistant déjà préparé, portant son
-identité intellectuelle complète, et remplit exactement sept `CognitiveSlots`
-dans la langue source.
+En fonctionnement normal, l'entrée contractuelle de Phase1 est exclusivement
+`blueprint_id`, accompagné de la preuve que la phase précédente est terminée
+avec son statut terminal. Phase1 retrouve alors le même `KernelBlueprint`
+persistant et lit l'identité intellectuelle inscrite par les vrais propriétaires
+amont.
+
+Lorsqu'elle est ciblée directement en test, Phase1 demande un Blueprint par son
+propre point d'entrée et reçoit l'autorisation initiale de KBP. Le Blueprint
+demeure intellectuellement vide à sa création; les paramètres nécessaires au
+test appartiennent à Phase1 et à ses dépendances simulées, jamais à KBP.
+
+Dans les deux chemins, Phase1 remplit exactement sept `CognitiveSlots` dans la
+langue source et écrit uniquement dans sa zone d'ownership.
 
 Phase1 :
 
@@ -754,21 +762,25 @@ Phase1 ciblée
 23. aucune mutation Section 1.
 24. entrée Phase1 limitée à `blueprint_id` avec phase précédente terminée et
     statut terminal ; le Blueprint est relu en persistance, jamais transporté ;
-25. KBP crée atomiquement un vrai `KernelBlueprint` PostgreSQL isolé, déjà
-    préparé pour la phase ciblée : préconditions présentes dès sa création et
-    vrais sept slots persistés ;
+25. la Phase1 ciblée demande, par son point d'entrée de test, un vrai
+    `KernelBlueprint` PostgreSQL canonique, complet structurellement et vide
+    intellectuellement ; KBP le crée atomiquement avec les sept vrais slots et
+    remet l'autorisation initiale `{blueprint_id, PHASE_1}` ;
 26. ce Blueprint de test n'est ni mock, ni tableau, ni mémoire, ni Quarantine ;
-    il n'est pas récupérable par les workers de production non ciblés, mais
-    reste accessible à la vraie Phase1 autorisée par `blueprint_id` ;
-27. le Harness demande ce scénario à KBP, reçoit le seul identifiant, déclenche
-    la vraie Phase1 avec un fournisseur simulé, intercepte le signal terminal,
-    bloque la cascade, observe puis nettoie ;
-28. le Harness n'écrit aucune précondition, donnée intellectuelle ou validation ;
+    il n'est pas récupérable par les workers de production et reste accessible
+    à la vraie Phase1 autorisée par `blueprint_id` ;
+27. les paramètres intellectuels et le fournisseur simulé appartiennent
+    exclusivement au point d'entrée de test et aux dépendances de Phase1 ; ils
+    ne sont ni remis à KBP ni inscrits par KBP dans le Blueprint ;
+28. l'appelant technique observe le résultat terminal et le persistant, puis
+    demande à KBP la terminaison ; il ne prépare, n'écrit, ne relaie et ne
+    supprime aucune donnée, et ne constitue pas un Harness architectural ;
 29. une erreur JSON, slot/type/question/choix/clé/polarité/SV/temps/doublon
     donne `CREATION_FAILED`, tandis qu'un contenu intellectuel persistable est
     envoyé à `ValidationPhase1` puis peut devenir `SUSPICION` ;
-30. production : signal vers ValidationPhase1 ; test : signal vers récepteur
-    terminal externe, sans champ de mode ou de cible dans le Blueprint.
+30. production : signal vers ValidationPhase1 ; test : le point d'entrée
+    externe observe le terminal et autorise ou non la suite sans champ de mode
+    ou de cible dans le Blueprint.
 
 # 18. Statut
 
