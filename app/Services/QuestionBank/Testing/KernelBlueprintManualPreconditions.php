@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Services\QuestionBank\Testing;
 
-use App\Services\QuestionBank\KernelBlueprint;
 use App\Services\QuestionBank\KernelCodeFormat;
 use InvalidArgumentException;
 
@@ -12,8 +11,9 @@ use InvalidArgumentException;
  * Valeurs manuelles contrôlées pour compléter un Blueprint de test.
  *
  * Cette classe ne consulte aucun moteur métier. Elle valide localement les
- * valeurs, puis utilise les écritures canoniques du Blueprint pour conserver
- * l'identité du même agrégat créé par la Factory.
+ * valeurs. C'est un DTO de scénario : il ne possède ni Blueprint ni capacité
+ * d'écriture. La fixture isolée est le seul composant qui matérialise ces
+ * valeurs dans les tables de test.
  */
 final class KernelBlueprintManualPreconditions
 {
@@ -26,23 +26,9 @@ final class KernelBlueprintManualPreconditions
         public readonly string $kernelCode,
     ) {}
 
-    public function applyTo(KernelBlueprint $blueprint): void
+    public function validate(): void
     {
         $this->validateLocally();
-
-        $blueprint->fillRotation($this->depth, $this->domain);
-        $blueprint->fillTaxonomy(
-            $this->subdomainActive,
-            $this->subjectActive,
-            $this->dominantIdeaActive,
-        );
-        $blueprint->fillKernelCode($this->kernelCode);
-
-        if ($blueprint->blueprint_id === null) {
-            throw new InvalidArgumentException(
-                'Les préconditions manuelles exigent un Blueprint créé par la Factory.',
-            );
-        }
     }
 
     private function validateLocally(): void
