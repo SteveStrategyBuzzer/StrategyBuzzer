@@ -11,7 +11,8 @@
 
 # 1. Mission
 
-ValidationPhase1 valide officiellement les contenus source des sept `CognitiveSlots` du même `KernelBlueprint`.
+ValidationPhase1 valide officiellement les contenus source techniquement
+persistables des sept `CognitiveSlots` du même `KernelBlueprint`.
 
 Elle :
 
@@ -24,7 +25,26 @@ Elle :
 
 Les `self_checks` de Phase1 sont préventifs. Ils ne constituent jamais le PASS officiel.
 
-# 2. Entrées
+La frontière est stricte : une structure invalide techniquement relève de
+Phase1 et termine en `CREATION_FAILED`; elle ne parvient jamais à
+ValidationPhase1 comme `SUSPICION`. Un contenu intellectuel techniquement
+valide relève de ValidationPhase1 et peut produire `SUSPICION`.
+
+# 2. Entrées et relais
+
+L’entrée de ValidationPhase1 est exclusivement :
+
+```text
+blueprint_id
+lookup du KernelBlueprint persistant
+phase précédente terminée
+statut terminal de la phase précédente
+```
+
+Aucun objet `Blueprint`, frame, tableau de slots ou copie autoritaire ne
+transite entre phases. ValidationPhase1 retrouve le Blueprint persistant par
+`blueprint_id`, puis lit les données dont elle a besoin dans cette source
+unique.
 
 Pour chaque slot créé :
 
@@ -46,9 +66,15 @@ source_language
 kernel_code
 ```
 
-ValidationPhase1 reçoit ensemble les slots créés du Blueprint afin de vérifier leurs distinctions croisées.
+ValidationPhase1 lit ensemble les sept slots persistés du Blueprint afin de
+vérifier leurs distinctions croisées. Elle ne reçoit pas ces slots en entrée.
 
-# 3. Contrôles déterministes locaux
+# 3. Précondition technique Phase1
+
+Les contrôles suivants sont de la responsabilité de Phase1, avant la fin de sa
+création. Leur échec est un échec de création : le slot est
+`CREATION_FAILED`, les findings de création sont conservés par Phase1 et le
+slot n’est pas soumis à ValidationPhase1.
 
 - schéma et version reconnus;
 - identité conforme au Blueprint;
@@ -62,11 +88,13 @@ ValidationPhase1 reçoit ensemble les slots créés du Blueprint afin de vérifi
 - aucune option vide;
 - aucune option dupliquée après normalisation;
 - aucun doublon exact de question;
-- temps de lecture estimé de la question et du SV;
-- pour chaque QCM, bonne réponse et distracteurs conformes à une unité de réponse courte;
-- aucun choix sous forme de phrase explicative, justification, énumération ou combinaison de plusieurs idées;
-- homogénéité sémantique, grammaticale et de concision entre les quatre choix;
+- temps de lecture estimé de la question et du SV conformes;
 - aucune mutation de la Section 1.
+
+La forme courte d’une réponse ou d’un distracteur et l’homogénéité
+intellectuelle des choix sont des contrôles de contenu de ValidationPhase1 :
+si la structure est persistable mais que ces exigences ne sont pas
+satisfaites, elles produisent `SUSPICION`.
 
 # 4. Contrôles intellectuels officiels
 
@@ -80,11 +108,8 @@ ValidationPhase1 contrôle :
 - absence de seconde bonne réponse;
 - absence d’ambiguïté;
 - SV expliquant réellement la bonne réponse;
-- question lisible en huit secondes ou moins;
-- limite de huit secondes appliquée au texte de la question seulement;
 - réponse QCM limitée à un mot, un nom propre, une valeur courte ou une expression courte représentant une seule idée indivisible;
 - distracteurs de même catégorie sémantique, de forme grammaticale comparable et de concision comparable;
-- SV lisible en trente secondes ou moins;
 - absence de remplissage artificiel;
 - cohérence contextuelle complète;
 - distinction sémantique entre les sept slots;
@@ -144,7 +169,8 @@ Un appel de revue indépendant peut contrôler les sept slots ensemble.
 
 Le reviewer :
 
-- reçoit les créations sans pouvoir les modifier;
+- reçoit une projection de revue en lecture seule, produite depuis le
+  Blueprint persisté, sans pouvoir la modifier;
 - reçoit les règles v1.0;
 - retourne uniquement PASS ou des findings structurés;
 - ne génère aucun remplacement;
@@ -180,6 +206,11 @@ related_cognitive_types si comparaison croisée
 ```
 
 # 7. Codes de raisons officiels
+
+Les codes structurels ci-dessous sont des findings de création Phase1 : ils
+aboutissent à `CREATION_FAILED` et ne sont jamais écrits par
+ValidationPhase1. Les autres codes sont des findings de validation et peuvent
+accompagner `SUSPICION`.
 
 ```text
 SOURCE_SCHEMA_INVALID
@@ -235,7 +266,7 @@ Aucun seuil numérique unique n’est déclaré comme vérité métier. Le contr
 aucun finding
 → PASS
 
-au moins un finding intellectuel ou structurel
+au moins un finding intellectuel
 → SUSPICION
 ```
 
@@ -250,7 +281,8 @@ Un slot SUSPICION :
 
 # 10. États et ownership
 
-ValidationPhase1 écrit uniquement :
+Après lecture du Blueprint persistant, ValidationPhase1 écrit uniquement ses
+statuts de validation et ses findings de validation, sur son ownership :
 
 ```text
 NOT_VALIDATED
@@ -258,7 +290,7 @@ PASS
 SUSPICION
 ```
 
-Elle ne modifie pas :
+Elle ne crée, ne remplace ni ne corrige aucun slot. Elle ne modifie pas :
 
 ```text
 EMPTY
@@ -268,23 +300,31 @@ CREATION_FAILED
 
 Elle ne produit ni `READY` ni `CONSUMED`.
 
-## 10.1 Frontière de persistance
+## 10.1 Frontière de persistance et ownership
 
-Le `KernelBlueprint` demeure l’unique agrégat canonique. Sa Section 1 est
-persistée dans `kernel_blueprint_runs`; les sept slots sont persistés
-séparément dans `kernel_blueprint_cognitive_slots` sous la clé
+Le `KernelBlueprint` est une structure persistante extérieure aux phases,
+créée une seule fois par `KernelBlueprintFactory` (`KBP`). Il conserve le même
+`blueprint_id`, est progressivement rempli, et demeure la source de vérité
+unique. Aucune copie autoritaire, ni aucun objet `Blueprint`, n’est autorisé
+comme transport entre phases.
+
+Sa Section 1 est persistée dans `kernel_blueprint_runs`; les sept slots sont
+persistés séparément dans `kernel_blueprint_cognitive_slots` sous la clé
 `(blueprint_id, cognitive_type)`.
 
 La contrainte d’unicité garantit une seule occurrence de chaque type cognitif
-par Blueprint. ValidationPhase1 valide et met à jour le slot ciblé sans
-réécrire un frame global ni modifier la Section 1.
+par Blueprint. Chaque phase retrouve ce même Blueprint par identifiant, lit et
+écrit seulement son ownership, persiste, puis signale sa fin avec son statut
+terminal. ValidationPhase1 met à jour exclusivement les statuts et findings
+de validation des slots ciblés, sans réécrire un frame global ni modifier la
+Section 1.
 
 `question_intents.frame_en` est legacy et non autoritaire. Ni Phase1 ni
 ValidationPhase1 n’y trouvent la source canonique des slots. Les traductions,
 le masque joueur, le mélange des choix et les données joueur restent hors de
 la persistance Phase1.
 
-# 11. Échec technique de validation
+# 11. Échec technique du fournisseur de validation
 
 Clé d’idempotence :
 
@@ -295,17 +335,25 @@ blueprint_id + validation-phase1.v1 + validation_contract_version
 Politique :
 
 - maximum trois tentatives techniques au total;
-- retry sur timeout, transport, JSON illisible ou identité divergente;
+- retry sur timeout, transport ou JSON illisible du fournisseur;
 - aucun PASS par défaut;
-- après épuisement : `SOURCE_VALIDATION_TECHNICAL_FAILURE`;
+- après épuisement : finding `SOURCE_VALIDATION_TECHNICAL_FAILURE` et statut
+  `SUSPICION` du slot techniquement persistable concerné;
 - traductions du slot concerné bloquées;
 - contenu non exploitable;
 - incident traçable;
 - aucun contenu source réécrit.
 
+Une identité divergente, un schéma invalide ou toute autre structure source
+invalide n’est pas un échec de ce fournisseur : cette donnée aurait dû être
+arrêtée par Phase1 en `CREATION_FAILED` et ne peut pas être reclassée en
+`SUSPICION`.
+
 # 12. Quarantine
 
-Toute SUSPICION :
+Le traitement Quarantine, extérieur à ValidationPhase1 et déclenché après son
+statut terminal, traite toute `SUSPICION` intellectuelle ou due à l’échec
+technique du fournisseur de validation :
 
 - identifie exactement le slot et les champs;
 - conserve les raisons et preuves;
@@ -313,6 +361,11 @@ Toute SUSPICION :
 - permet l’affichage rouge des chemins ciblés;
 - conserve normalement les slots valides;
 - ne transforme pas les traductions non créées en erreurs de traduction.
+
+La copie Quarantine est strictement forensique et non autoritaire : le
+`KernelBlueprint` persistant conserve seul la vérité et son `blueprint_id`.
+ValidationPhase1 ne crée pas cette copie : elle écrit seulement ses statuts et
+findings.
 
 Exemple :
 
@@ -322,7 +375,10 @@ cognitive_slots.QCM_REASONING.source.correct_answer_key
 
 # 13. Revalidation ciblée
 
-Une copie corrigée reprend uniquement les slots et champs ciblés.
+Une correction reprend uniquement les slots et champs ciblés dans le
+`KernelBlueprint` persistant. Elle passe par le chemin de création approprié;
+le relais vers ValidationPhase1 reste un `blueprint_id`, non une copie
+Blueprint transportée.
 
 ```text
 correction Phase1
@@ -351,6 +407,8 @@ Les slots PASS non ciblés ne sont pas rejoués.
 - copie Quarantine complète;
 - aucune traduction d’une source non PASS;
 - aucun `question_code`, `COG` ou `VAR`.
+- aucune structure techniquement invalide classée `SUSPICION`;
+- aucun champ de mode, target ou test dans le Blueprint.
 
 # 15. Tests contractuels de Build
 
@@ -361,25 +419,65 @@ Les slots PASS non ciblés ne sont pas rejoués.
 5. piège typographique → SUSPICION;
 6. faux absurde → SUSPICION;
 7. reasoning false fondé seulement sur une date changée → SUSPICION;
-8. réponse absente des choix → SUSPICION;
-9. deux bonnes réponses → SUSPICION;
-10. choix formulé comme phrase explicative ou contenant plusieurs idées → SUSPICION;
-11. choix de catégories ou formes incompatibles → SUSPICION;
-12. mot composé, nom complet, date ou expression courte représentant une seule idée → accepté;
-13. question > 8 secondes → SUSPICION;
-14. SV > 30 secondes → SUSPICION;
-15. question courte de Depth élevé → PASS si intellectuellement conforme;
-16. contexte hors sous-domaine → SUSPICION;
-17. doublon exact → SUSPICION;
-18. reformulation sémantique → SUSPICION;
-19. conversion QCM/TF mécanique → SUSPICION;
-20. négation vrai/faux mécanique → SUSPICION;
-21. un slot suspect ne bloque pas les slots PASS;
-22. retry plafonné;
-23. aucune correction automatique;
-24. aucune traduction d’une source non PASS;
-25. QCM : `correct_answer_key` différent de `a` → SUSPICION;
-26. Section 1 immuable.
+8. réponse absente des choix → Phase1 / `CREATION_FAILED`, jamais ValidationPhase1;
+9. deux bonnes réponses → Phase1 / `CREATION_FAILED`, jamais ValidationPhase1;
+10. clé QCM différente de `a`, nombre de choix invalide, polarité invalide,
+    champ obligatoire absent ou choix vide/dupliqué → Phase1 /
+    `CREATION_FAILED`, jamais `SUSPICION`;
+11. choix formulé comme phrase explicative ou contenant plusieurs idées → SUSPICION;
+12. choix de catégories ou formes incompatibles → SUSPICION;
+13. mot composé, nom complet, date ou expression courte représentant une seule idée → accepté;
+14. question > 8 secondes → Phase1 / `CREATION_FAILED`, jamais `SUSPICION`;
+15. SV > 30 secondes → Phase1 / `CREATION_FAILED`, jamais `SUSPICION`;
+16. question courte de Depth élevé → PASS si intellectuellement conforme;
+17. contexte hors sous-domaine → SUSPICION;
+18. doublon exact → Phase1 / `CREATION_FAILED`, jamais `SUSPICION`;
+19. reformulation sémantique → SUSPICION;
+20. conversion QCM/TF mécanique → SUSPICION;
+21. négation vrai/faux mécanique → SUSPICION;
+22. un slot suspect ne bloque pas les slots PASS;
+23. retry plafonné;
+24. aucune correction automatique;
+25. aucune traduction d’une source non PASS;
+26. QCM : `correct_answer_key` différent de `a` → Phase1 /
+    `CREATION_FAILED`, jamais `SUSPICION`;
+27. Section 1 immuable;
+28. l’entrée de ValidationPhase1 est `blueprint_id` plus lookup et statut
+    terminal précédent; aucun objet Blueprint ou tableau de slots ne transite;
+29. KBP crée atomiquement un vrai `KernelBlueprint` PostgreSQL isolé, avec les
+    préconditions de la phase ciblée déjà présentes et les vrais sept slots;
+    ce Blueprint n’est ni mock, tableau, mémoire, Quarantine, ni récupérable
+    par les workers;
+30. le Harness demande ce scénario à KBP, reçoit son identifiant, déclenche la
+    vraie phase avec fournisseur simulé, intercepte sa fin, bloque la cascade,
+    observe puis nettoie;
+31. le Harness n’écrit aucune précondition, donnée intellectuelle, statut ou
+    finding de validation;
+32. les modes production et test sont entièrement externes au Blueprint :
+    production relaie vers ValidationPhase1, test relaie vers un récepteur
+    terminal, sans variante métier Phase1.
+
+# 15.1 Mode test externe et récepteur terminal
+
+Le mode de production comme le mode test est déterminé hors du
+`KernelBlueprint`. Aucun champ `mode`, `target`, `test` ou équivalent ne peut
+être persisté dans le Blueprint.
+
+En production, Phase1 signale sa fin et le relais externe déclenche
+ValidationPhase1. En test, la même Phase1, sans branche métier spécifique,
+signale sa fin vers un récepteur terminal externe. Ce récepteur intercepte la
+fin et bloque la cascade; il n’écrit ni précondition, ni contenu intellectuel,
+ni statut ou finding de validation.
+
+Le Harness est lui aussi extérieur aux phases. Il demande à KBP la création
+atomique d’un scénario PostgreSQL isolé réellement préparé pour la phase
+ciblée : les préconditions existent dès la création et les sept slots sont de
+vraies lignes persistées. KBP retourne seulement le `blueprint_id`. Le Harness
+déclenche ensuite la vraie phase avec le fournisseur simulé, attend le
+récepteur terminal, observe le résultat et nettoie. Il ne rend pas ce
+Blueprint récupérable par les workers de production non ciblés ; seule la
+vraie phase autorisée peut le retrouver par `blueprint_id`. Le Harness
+n’effectue aucune écriture de précondition, intellectuelle ou de validation.
 
 # 16. Statut
 

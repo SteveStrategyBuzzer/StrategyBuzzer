@@ -14,9 +14,9 @@
 
 # 1. Mission
 
-`KernelBlueprint` est l’**enveloppe canonique persistante d’un noyau** pendant son passage dans le pipeline StrategyBuzzer.
+`KernelBlueprint` est la **structure canonique persistante, extérieure aux phases**, d’un noyau pendant son passage dans le pipeline StrategyBuzzer. Créé une seule fois par `KernelBlueprintFactory` (KBP), il est progressivement rempli sous le même `blueprint_id` et demeure l’unique source de vérité.
 
-Il transporte les contrats permanents du noyau courant et permet à chaque module propriétaire d’écrire uniquement les slots qui lui appartiennent.
+Il ne circule pas comme objet entre modules et aucune copie n’est autoritaire. Le relais inter-phase est minimal : `blueprint_id`, fin confirmée de la phase précédente et statut terminal de cette phase. Chaque phase retrouve alors le même Blueprint persistant, lit ses préconditions persistées, écrit exclusivement les slots de son ownership, persiste son résultat, puis signale sa propre fin.
 
 Il ne produit aucune décision métier.
 
@@ -58,7 +58,7 @@ NOUVEAU KernelBlueprint canonique
 KernelRotationPlanner
 ```
 
-Le Blueprint reçu par ReadyBank n’est jamais recyclé vers KRP.
+Le Blueprint identifié par ReadyBank n’est jamais recyclé vers KRP.
 
 ---
 
@@ -72,11 +72,11 @@ KernelBlueprint doit :
 4. faire respecter l’ownership des écritures ;
 5. garantir le write-once des groupes structurels dans le chemin normal ;
 6. conserver la même identité pendant tout le pipeline ;
-7. transporter la Section 1 — création intellectuelle ;
+7. conserver la Section 1 — création intellectuelle ;
 8. réserver la Section 2 — création gameplay ;
 9. réserver la Section 3 — traduction ;
 10. rester distinct des réservoirs, curseurs, banques et mécanismes internes des moteurs ;
-11. permettre la réconciliation contrôlée dans ReadyBank avec une copie complète corrigée par Quarantine, sans transformer l’objet canonique en structure librement réinscriptible ;
+11. permettre la réconciliation contrôlée dans ReadyBank avec une copie complète corrigée par Quarantine, explicitement non canonique, sans rendre la structure canonique librement réinscriptible ;
 12. demeurer lisible par les modules aval selon leurs contrats.
 
 ---
@@ -102,6 +102,8 @@ KernelBlueprint ne doit jamais :
 - accepter une écriture directe extérieure contournant le propriétaire ;
 - accepter un second remplissage normal d’un groupe déjà rempli ;
 - recevoir directement une ancienne logique `ReadyBank → KRP` réutilisant le même Blueprint.
+- contenir un champ, flag ou cible de mode `production`, `test`, `target` ou équivalent ;
+- être fourni, sérialisé ou reconstruit comme objet Blueprint de relais entre phases.
 
 ---
 
@@ -109,9 +111,9 @@ KernelBlueprint ne doit jamais :
 
 ## 4.1 Création
 
-`KernelBlueprintFactory` reçoit une demande de création autorisée par l’orchestration du pipeline et crée une nouvelle enveloppe canonique.
+`KernelBlueprintFactory` reçoit une demande de création autorisée par l’orchestration du pipeline et crée, une seule fois, la nouvelle structure canonique persistante. La demande et le relais de création ne contiennent pas un objet Blueprint.
 
-La création attribue :
+La création persiste atomiquement :
 
 ```text
 blueprint_id
@@ -119,7 +121,7 @@ blueprint_id
 
 ## 4.2 Écritures des propriétaires
 
-Le Blueprint reçoit ensuite, dans l’ordre normal du pipeline :
+Après leur lookup persistant, les propriétaires écrivent ensuite, dans l’ordre normal du pipeline :
 
 ```text
 KernelRotationPlanner
@@ -138,7 +140,7 @@ Phase2
 → contenu des TranslationSlots correspondants
 ```
 
-Les moteurs de validation et Quarantine font évoluer les états/contenus uniquement selon les contrats propriétaires 07, 09 et 10 ainsi que DEC-122; `01_KernelBlueprint` en transporte la structure sans devenir l’autorité de validation.
+Les moteurs de validation et Quarantine font évoluer les états/contenus uniquement selon les contrats propriétaires 07, 09 et 10 ainsi que DEC-122 ; `01_KernelBlueprint` conserve leur structure persistante sans devenir l’autorité de validation.
 
 ---
 
@@ -146,9 +148,9 @@ Les moteurs de validation et Quarantine font évoluer les états/contenus unique
 
 KernelBlueprint ne produit pas une décision métier en sortie.
 
-Sa sortie est **lui-même**, enrichi progressivement, avec la même identité canonique.
+Sa sortie n’est jamais un objet Blueprint. Son état persistant est enrichi progressivement, avec la même identité canonique.
 
-Chaque module aval reçoit le même noyau courant et lit uniquement les slots nécessaires.
+Chaque module aval reçoit seulement le relais minimal, retrouve le même noyau courant par lookup persistant sur `blueprint_id`, puis lit uniquement les slots nécessaires.
 
 Destination terminale :
 
@@ -156,7 +158,7 @@ Destination terminale :
 ReadyBank
 ```
 
-`CURRENT_KERNEL_RECEIVED` est un signal de réception du noyau courant ; ce signal autorise la création du **Blueprint suivant**. Il ne transforme pas l’ancien Blueprint en entrée KRP.
+`CURRENT_KERNEL_RECEIVED` est un signal terminal référencé par `blueprint_id` ; ce signal autorise la création du **Blueprint suivant**. Il ne transforme pas l’ancien Blueprint en entrée KRP.
 
 ---
 
@@ -225,7 +227,7 @@ réponse(s)
 Saviez-vous (SV)
 ```
 
-`01_KernelBlueprint` verrouille l’existence, l’identité et l’ownership structurel de ces sept conteneurs.
+`01_KernelBlueprint` verrouille l’existence, l’identité et l’ownership structurel de ces sept conteneurs. Les sept slots réels existent dès la création persistante, y compris lorsqu’ils sont encore vides.
 
 Le schéma métier détaillé de leur payload appartient à `06_Phase1` et ne doit pas être inventé dans le Blueprint.
 
@@ -279,15 +281,19 @@ Ses données internes se limitent à :
 
 Aucun réservoir moteur ne peut être déplacé dans le Blueprint pour simplifier une implantation.
 
+Les modes d’exécution sont entièrement extérieurs : l’orchestrateur sélectionne les relais et récepteurs externes de production ou de test. Aucun état de mode, de test, de cible ou de scénario ne réside dans le Blueprint.
+
 ---
 
 # 8. Mécanismes
 
 ## 8.1 KernelBlueprintFactory
 
-Responsabilité : créer une **nouvelle** enveloppe canonique et lui attribuer son `blueprint_id`.
+Responsabilité : créer atomiquement la **nouvelle structure persistante canonique** et lui attribuer son `blueprint_id`.
 
 La création doit être atomique vis-à-vis de l’unicité d’un Blueprint actif.
+
+KBP est aussi l’unique frontière de fixture : pour un scénario demandé, il crée le vrai Blueprint PostgreSQL isolé, déjà préparé pour la phase ciblée. Toutes les préconditions de cette phase et les vrais sept CognitiveSlots existent dès la création atomique. Une fixture KBP n’est ni mock, ni tableau, ni mémoire, ni copie Quarantine. Elle n’est pas récupérable ou modifiable par les workers de production non ciblés, mais reste accessible à la vraie phase autorisée par `blueprint_id`.
 
 Décisions récupérées compatibles : DEC-035, DEC-058, DEC-059.
 
@@ -361,19 +367,33 @@ Le nom des méthodes techniques est déterminé lors des spécifications propri�
 
 # 9. Communication inter-modules
 
+## 9.0 Règle universelle de relais et lookup
+
+Entre deux phases, le message ne contient que :
+
+```text
+blueprint_id
++ phase précédente terminée
++ statut terminal de cette phase
+```
+
+Il ne contient aucun objet `KernelBlueprint`, aucun payload de slot et aucune copie autoritaire. La phase destinataire effectue son lookup persistant par `blueprint_id`, vérifie la fin et le statut terminal requis, lit les seules préconditions de son contrat, écrit seulement son ownership, persiste, puis émet son propre signal terminal. Un statut non terminal, absent ou incompatible interdit le démarrage de la phase suivante.
+
 ## 9.1 Factory → KRP
 
 ```text
-KernelBlueprintFactory
+KernelBlueprintFactory persiste le Blueprint
 ↓
-nouveau Blueprint avec blueprint_id
+relais : blueprint_id + Factory terminée + statut terminal
 ↓
-KernelRotationPlanner
+KernelRotationPlanner retrouve le Blueprint persistant
 ```
 
 KRP ne crée pas l’enveloppe.
 
 ## 9.2 KRP → Taxonomy
+
+Après persistance de `fillRotation`, KRP relaie uniquement son `blueprint_id`, sa fin et son statut terminal. Taxonomy retrouve le Blueprint persistant.
 
 Taxonomy lit :
 
@@ -383,6 +403,8 @@ domain
 ```
 
 ## 9.3 Taxonomy → QuestionIntent
+
+Après persistance de `fillTaxonomy`, Taxonomy relaie uniquement son `blueprint_id`, sa fin et son statut terminal. QuestionIntent retrouve le Blueprint persistant.
 
 QuestionIntent lit :
 
@@ -396,16 +418,16 @@ dominant_idea_active
 
 ## 9.4 Section 1 → Section 2
 
-Phase1 reçoit le territoire intellectuel complet nécessaire à sa création gameplay.
+Après le relais terminal de QuestionIntent, Phase1 retrouve le Blueprint persistant et lit le territoire intellectuel complet nécessaire à sa création gameplay ; ce territoire n’est pas transporté.
 
 ## 9.5 Section 2 → Section 3
 
-Phase2 traduit les contenus admissibles selon son contrat futur sans écraser la source.
+Après le relais terminal requis, Phase2 retrouve le Blueprint persistant et traduit les contenus admissibles selon son contrat futur sans écraser la source.
 
 ## 9.6 ReadyBank → prochain Blueprint
 
 ```text
-Blueprint courant reçu par ReadyBank
+ReadyBank retrouve le Blueprint courant par blueprint_id
 ↓
 CURRENT_KERNEL_RECEIVED
 ↓
@@ -420,11 +442,28 @@ Interdit :
 
 ```text
 ReadyBank
-↓
-ancien Blueprint
-↓
+↓ relais d’objet ancien Blueprint
 KRP le réécrit
 ```
+
+## 9.7 Phase1, validation et modes externes
+
+Après lookup du `blueprint_id`, Phase1 écrit uniquement les CognitiveSlots de son ownership et persiste avant son signal terminal.
+
+- une erreur technique de Phase1 (échec de fournisseur, persistance impossible, indisponibilité ou erreur d’exécution) termine Phase1 en `CREATION_FAILED` ;
+- un contenu intellectuel produit et techniquement persistable termine Phase1 selon son statut de création, puis est relayé vers `ValidationPhase1` ;
+- `ValidationPhase1` qualifie ce contenu ; une suspicion intellectuelle est `SUSPICION`, jamais `CREATION_FAILED`.
+
+`CREATION_FAILED` et `SUSPICION` sont donc disjoints : le premier décrit une impossibilité technique de création/persistance ; le second un contenu existant, persisté et soumis à validation.
+
+Les deux parcours sont configurés hors du Blueprint :
+
+```text
+production : relais Phase1 terminal → ValidationPhase1
+test       : relais Phase1 terminal → récepteur terminal de test
+```
+
+Phase1 ne possède aucune variante métier de test : elle exécute le même contrat, les mêmes préconditions, écrit le même ownership persistant et signale le même statut terminal. Seul le routage externe après cette fin diffère.
 
 ---
 
@@ -451,7 +490,7 @@ kernel_code
 
 Un second remplissage normal est refusé même si la nouvelle valeur est identique.
 
-Une correction Quarantine passe par un contrat distinct et contrôlé : copie complète, reprise ciblée du pipeline, puis fusion atomique avec le canonique dans ReadyBank.
+Une correction Quarantine passe par un contrat distinct et contrôlé : copie complète non canonique, reprise ciblée du pipeline, puis application atomique des seules corrections autorisées au persistant canonique par ReadyBank.
 
 ## 10.3 Contrat d’atomicité logique
 
@@ -525,7 +564,7 @@ DOMAIN_EXHAUSTED
 DEPTH_EXHAUSTED
 ```
 
-Les états détaillés des CognitiveSlots et TranslationSlots appartiennent aux modules de création/validation correspondants. Le Blueprint les transporte lorsqu’ils seront spécifiés ; il n’en devient pas l’autorité métier.
+Les états détaillés des CognitiveSlots et TranslationSlots appartiennent aux modules de création/validation correspondants. Le Blueprint les conserve de façon persistante lorsqu’ils seront spécifiés ; il n’en devient pas l’autorité métier.
 
 ---
 
@@ -564,7 +603,7 @@ ENGAGED_IN_PIPELINE
 ## 12.5 Noyau suivant
 
 ```text
-ReadyBank reçoit le Blueprint courant
+ReadyBank retrouve le Blueprint courant par son identifiant
 ↓
 CURRENT_KERNEL_RECEIVED
 ↓
@@ -625,7 +664,7 @@ Un Blueprint créé mais non engagé reste structurellement `CREATED_UNENGAGED` 
 
 ## 13.8 Réception ReadyBank répétée
 
-L’idempotence du signal `CURRENT_KERNEL_RECEIVED` appartient à la frontière ReadyBank/orchestration et non à une réécriture du Blueprint reçu.
+L’idempotence du signal `CURRENT_KERNEL_RECEIVED` appartient à la frontière ReadyBank/orchestration et non à une réécriture du Blueprint identifié.
 
 Le même Blueprint ne doit jamais déclencher deux créations effectives du noyau suivant.
 
@@ -633,7 +672,7 @@ Le même Blueprint ne doit jamais déclencher deux créations effectives du noya
 
 Les méthodes write-once normales ne peuvent pas être détournées pour corriger silencieusement un slot déjà rempli.
 
-La correction passe par le contrat contrôlé de `10_Quarantine` et rejoint le canonique uniquement selon `11_ReadyBank`.
+La correction passe par le contrat contrôlé de `10_Quarantine`. La copie Quarantine est une représentation de travail explicitement non canonique, distincte de la source de vérité persistante ; elle ne peut ni remplacer celle-ci ni devenir autoritaire. Seul `11_ReadyBank`, dans son ownership, peut appliquer au canonique les corrections ciblées autorisées.
 
 ## 13.10 Réservoirs
 
@@ -700,6 +739,12 @@ Phase1 ne réécrit jamais un frame global.
 Phase1 ne persiste aucune traduction ni donnée joueur. Le masque joueur, le
 mélange des choix et la position affichée restent externes au Blueprint.
 
+## 14.7 Persistance de fixture KBP
+
+Une fixture est créée exclusivement par KBP dans PostgreSQL isolé. La transaction de création insère le vrai Blueprint, ses sept lignes `kernel_blueprint_cognitive_slots` et toutes les préconditions réelles requises par la phase ciblée ; elle échoue entièrement sinon. Cette fixture est identifiée par son `blueprint_id` et son isolation est imposée par la frontière de test : aucun worker de production ne peut la découvrir, la récupérer ou l’écrire.
+
+Le `Harness` ne construit ni ne persiste aucun Blueprint, précondition, contenu intellectuel ou validation. Il demande le scénario à KBP, reçoit le seul `blueprint_id`, déclenche la vraie phase avec son fournisseur simulé externe, intercepte le signal terminal, bloque la cascade externe, observe le persistant puis nettoie l’isolation. Le Harness n’est ni propriétaire d’écriture ni une voie de contournement de l’ownership.
+
 ---
 
 # 15. Validation architecturale
@@ -720,6 +765,10 @@ La spécification 01 est valide uniquement si toutes les affirmations suivantes 
 - `CURRENT_KERNEL_RECEIVED` ouvre la création du Blueprint suivant ;
 - `PRODUCTION_ON_HOLD` n’est pas un état Blueprint ;
 - DEC-106 est respectée pour l’écriture/consommation Taxonomy.
+- tout relais inter-phase contient uniquement `blueprint_id`, phase précédente terminée et statut terminal ;
+- aucune phase ne reçoit un objet Blueprint, ni n’écrit hors de son ownership après lookup persistant ;
+- les modes production et test restent externes au Blueprint ;
+- `CREATION_FAILED` Phase1 et `SUSPICION` de validation sont disjoints.
 
 Résultat de reconstruction documentaire : **PASS**.
 
@@ -766,7 +815,7 @@ Résultat de reconstruction documentaire : **PASS**.
 
 ## Pipeline / nouveau noyau
 
-23. Blueprint reçu par ReadyBank conserve son identité ;
+23. Blueprint retrouvé par ReadyBank via son identifiant conserve son identité ;
 24. `CURRENT_KERNEL_RECEIVED` n’entraîne aucune nouvelle rotation sur ce Blueprint ;
 25. noyau suivant → nouveau `blueprint_id` ;
 26. KRP travaille sur le nouveau Blueprint ;
@@ -777,6 +826,19 @@ Résultat de reconstruction documentaire : **PASS**.
 28. les sept CognitiveSlots permanents sont présents ;
 29. chaque CognitiveSlot possède une correspondance de traduction ;
 30. aucun remplissage Section 2/3 ne peut modifier Section 1 par écriture libre.
+
+## Relais, KBP et Harness
+
+31. chaque relais inter-phase contient exclusivement `blueprint_id`, fin de phase précédente et statut terminal ;
+32. une phase sans fin terminale compatible de la phase précédente est refusée avant toute écriture ;
+33. chaque phase retrouve le Blueprint PostgreSQL persistant et ne peut écrire que son ownership ;
+34. KBP crée atomiquement une fixture PostgreSQL isolée avec les préconditions de la phase ciblée et les sept vrais CognitiveSlots ;
+35. une fixture KBP n’est ni mock, ni tableau, ni mémoire, ni Quarantine et elle est inaccessible aux workers ;
+36. Harness obtient uniquement l’identifiant de KBP, déclenche la vraie phase avec fournisseur simulé externe, intercepte sa fin, bloque la cascade, observe puis nettoie ;
+37. Harness ne peut écrire ni précondition, ni contenu intellectuel, ni validation ;
+38. erreur technique Phase1 → `CREATION_FAILED` ;
+39. contenu intellectuel techniquement persistable Phase1 → `ValidationPhase1`, puis suspicion éventuelle → `SUSPICION` ;
+40. production relaie Phase1 vers ValidationPhase1 et test vers le récepteur terminal externe, sans variante métier Phase1 ni champ de mode dans le Blueprint.
 
 Les tests de contenu détaillé Phase1, validations, traductions et Quarantine seront ajoutés par leurs modules propriétaires sans redéfinir la structure permanente de 01.
 
@@ -895,7 +957,7 @@ Les slots suspects ou dépendants non créés ne deviennent cependant jamais exp
 
 ## 19.3 Copie complète Quarantine
 
-Quarantine reçoit une copie complète du Blueprint tel qu’il existe au moment de la suspicion.
+Après lookup persistant par `blueprint_id` et signal de `SUSPICION`, Quarantine crée une copie complète du Blueprint tel qu’il existe au moment de la suspicion. Cette copie est explicitement non canonique, distincte de la source de vérité persistante et ne constitue pas un objet Blueprint relayé entre phases.
 
 La copie conserve :
 
@@ -937,19 +999,19 @@ Les slots déjà valides ne sont pas recréés.
 
 ## 19.5 Réconciliation dans ReadyBank
 
-La copie corrigée rejoint le Blueprint canonique dans ReadyBank.
+ReadyBank retrouve le Blueprint canonique par `blueprint_id` et examine la copie corrigée non canonique selon la référence de réconciliation.
 
 ReadyBank vérifie l’identité canonique puis, de façon contrôlée :
 
-- remplace les slots explicitement soupçonnés et corrigés;
-- corrige les valeurs ciblées;
-- copie dans le canonique les slots restés vides;
+- applique au persistant canonique les corrections des slots explicitement soupçonnés et corrigés ;
+- applique les corrections des valeurs ciblées ;
+- applique au canonique le remplissage des slots restés vides ;
 - conserve sans modification tous les slots valides non ciblés;
-- refuse une copie qui ne correspond pas au même Blueprint;
+- refuse une copie qui ne correspond pas au même `blueprint_id` ;
 - conserve la traçabilité avant/après;
 - ne rend le contenu concerné exploitable qu’après réussite des validations requises.
 
-La copie ne devient jamais un second noyau canonique et ne reçoit jamais un nouveau `kernel_code`.
+La copie ne devient jamais un second noyau canonique, ne remplace jamais le persistant canonique et ne reçoit jamais un nouveau `kernel_code`.
 
 ## 19.6 Clé de ciblage
 
@@ -975,7 +1037,7 @@ cognitive_slots.QCM_RECOGNITION.translations.el.answer
 ## 19.7 Invariants
 
 - un seul Blueprint canonique;
-- une copie Quarantine complète;
+- une copie Quarantine complète, explicitement non canonique et distincte;
 - le canonique termine son parcours jusqu’à ReadyBank;
 - la copie corrigée reprend uniquement le travail nécessaire;
 - aucune traduction d’un contenu source non validé;

@@ -11,7 +11,11 @@
 
 # 1. Mission verrouillée
 
-ReadyBank reçoit le Blueprint canonique après son parcours normal et devient le point unique où une copie complète corrigée issue de Quarantine peut rejoindre ce canonique.
+ReadyBank reçoit ou détecte un relais minimal composé de `blueprint_id`, de la
+confirmation que la phase précédente est terminée et de son statut terminal.
+Il relit alors le même agrégat canonique persistant. Il devient le point unique
+où une copie complète corrigée issue de Quarantine peut réconcilier cet
+agrégat.
 
 ReadyBank :
 
@@ -23,22 +27,47 @@ ReadyBank :
 
 # 2. Arrivée du canonique
 
-Le Blueprint canonique poursuit toutes les phases jusqu’à ReadyBank.
+## 2.1 Contrat de circulation et de propriété
 
-Il peut arriver avec :
+`KernelBlueprint` est une structure persistante extérieure aux phases. Elle est
+créée une seule fois par `KernelBlueprintFactory` (KBP), avec un unique
+`blueprint_id`, puis progressivement remplie. Elle est la source de vérité
+unique : aucune copie autoritaire et aucun objet `Blueprint` ne transitent entre
+phases.
+
+Le seul relais inter-phase autorisé est :
+
+```text
+blueprint_id + phase précédente terminée + statut terminal
+```
+
+Chaque phase retrouve le `KernelBlueprint` persistant à partir de cet identifiant,
+lit et écrit exclusivement les données relevant de son ownership, persiste sa
+transaction, puis signale sa fin. ReadyBank applique exactement ce contrat : il
+ne reçoit, ne conserve ni ne transmet un objet canonique en mémoire. À son
+déclenchement, il vérifie le relais, relit le même `KernelBlueprint` persistant
+et évalue l’admissibilité de ses slots.
+
+Le canonique peut, à l’arrivée de ReadyBank, contenir :
 
 - des slots valides;
 - des slots soupçonnés;
 - des slots vides parce qu’une création dépendante a été bloquée;
 - des validations ou traductions encore attendues par une copie Quarantine.
 
-ReadyBank conserve le Blueprint complet.
+ReadyBank ne « conserve » donc pas une nouvelle instance complète : il opère sur
+l’unique agrégat canonique retrouvé par `blueprint_id`.
 
 Un slot soupçonné, vide, bloqué ou non validé n’est jamais exploitable par le gameplay.
 
 L’arrivée du canonique ne supprime pas et n’invalide pas la copie Quarantine correspondante.
 
 # 3. Arrivée de la copie corrigée
+
+La copie Quarantine est non canonique. Elle ne constitue pas un transport du
+`KernelBlueprint` entre phases et ne peut jamais devenir sa source de vérité.
+Elle est une pièce de reprise ciblée, persistée séparément, que ReadyBank
+identifie puis confronte à l’agrégat canonique relu par `blueprint_id`.
 
 La copie complète corrigée doit correspondre exactement au canonique par :
 
@@ -60,7 +89,8 @@ Une copie ne correspondant pas à la même identité est refusée.
 
 # 4. Réconciliation contrôlée
 
-ReadyBank fusionne atomiquement la copie corrigée avec le canonique.
+Après avoir relu le canonique, ReadyBank fusionne atomiquement les seules
+corrections admissibles de la copie avec ce même agrégat.
 
 Opérations autorisées :
 
@@ -85,7 +115,8 @@ La copie ne devient jamais un deuxième canonique.
 
 ## 4.1 Frontière de persistance canonique
 
-ReadyBank manipule le seul agrégat canonique `KernelBlueprint`.
+ReadyBank manipule le seul agrégat canonique `KernelBlueprint`, toujours relu
+par `blueprint_id`.
 `kernel_blueprint_runs` conserve sa Section 1 immuable et
 `kernel_blueprint_cognitive_slots` conserve séparément ses sept slots.
 
@@ -98,6 +129,52 @@ réécrit un frame global.
 l’utilise pas comme source de vérité canonique. Les traductions restent
 imbriquées dans leur slot, tandis que le masque joueur, le mélange des choix
 et les autres données joueur restent externes au Blueprint.
+
+## 4.2 Admissibilité et signal terminal
+
+Un slot n’est admissible qu’après lecture de son état persistant et vérification
+de toutes les conditions requises par son type : contenu source complet,
+validation requise obtenue et traduction demandée elle-même admissible. Un slot
+vide, bloqué, soupçonné, non validé ou dont la traduction est absente/non validée
+reste physiquement présent mais exclu du gameplay.
+
+ReadyBank persiste le résultat de son contrôle ou de sa réconciliation dans le
+canonique, puis émet son signal terminal. Le relais suivant ne reçoit que
+`blueprint_id`, la fin de ReadyBank et ce statut terminal; il relira à son tour
+le même agrégat. Aucune phase ne transporte une version sérialisée, mutée ou
+complète du canonique.
+
+## 4.3 Échecs de Phase1
+
+Une erreur technique de Phase1 (création, fournisseur, persistance ou
+infrastructure empêchant la création) termine en `CREATION_FAILED`. Elle ne
+produit pas un contenu intellectuel à valider.
+
+Un contenu intellectuel produit et techniquement persistable, mais douteux ou
+incomplet au regard des règles métier, passe par `ValidationPhase1`, puis prend
+le statut `SUSPICION` si cette validation le conclut. `CREATION_FAILED` et
+`SUSPICION` sont donc des branches distinctes et ne doivent jamais être
+confondues par ReadyBank ou par leurs relais.
+
+## 4.4 Modes externes, fixture et Harness
+
+Les modes production et test sont entièrement externes au `KernelBlueprint`.
+Aucun champ de mode, de target ou de test n’est stocké dans le Blueprint ni
+déduit de son contenu.
+
+Pour une fixture de test, le Harness demande à KBP le scénario ciblé. KBP crée
+atomiquement un vrai `KernelBlueprint` PostgreSQL isolé, déjà préparé pour la
+phase visée : les préconditions existent dès sa création et ses vrais sept slots
+sont présents. KBP retourne uniquement son `blueprint_id`. Cette fixture n’est
+ni un mock, ni un tableau, ni de la mémoire, ni une copie Quarantine. Elle
+n’est pas récupérable par les workers de production non ciblés, mais reste
+accessible à la vraie phase autorisée par `blueprint_id`.
+
+Le Harness déclenche ensuite la vraie phase avec fournisseur simulé, intercepte
+son signal de fin, bloque la cascade, observe le résultat puis nettoie. Il
+n’écrit aucune précondition, donnée intellectuelle ou validation. Il ne crée pas
+de variante métier de Phase1 : en production Phase1 relaie vers la validation;
+en test elle relaie vers le récepteur terminal externe.
 
 # 5. Exploitabilité gameplay
 

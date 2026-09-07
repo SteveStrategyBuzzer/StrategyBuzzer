@@ -70,7 +70,9 @@ Ne pas restaurer :
 
 # 3. Mission Phase1 v1.0
 
-Recevoir le même `KernelBlueprint` finalisé et produire les sept créations source autonomes :
+Recevoir uniquement un `blueprint_id` par lookup, après fin confirmée de la phase
+précédente et statut terminal attendu, retrouver le `KernelBlueprint` persistant
+et produire les sept créations source autonomes :
 
 ```text
 QCM_RECOGNITION
@@ -104,7 +106,55 @@ READY
 CONSUMED
 ```
 
-# 3.1 Frontière de persistance canonique
+Les erreurs techniques de Phase1 (fournisseur, décodage, schéma, persistance ou
+infrastructure) produisent `CREATION_FAILED`. Un contenu intellectuel
+techniquement persistable est transmis à ValidationPhase1 ; cette validation,
+et elle seule, peut conclure à `SUSPICION`. Ces deux issues ne sont jamais
+interchangeables.
+
+# 3.1 Relais et résumé opérationnel verrouillés
+
+Le pipeline canonique est :
+
+```text
+KBP
+→ KRP
+→ Taxonomy
+→ QuestionIntent
+→ Phase1
+→ ValidationPhase1
+→ Traductions
+→ ValidationPhase2
+→ ReadyBank
+```
+
+`KernelBlueprintFactory` / KBP crée une seule fois le vrai
+`KernelBlueprint` PostgreSQL et lui attribue son `blueprint_id`. Cette
+structure persistante est extérieure aux phases, progressivement remplie et
+l'unique source de vérité ; elle conserve le même `blueprint_id` pendant tout
+le pipeline.
+
+Il n'existe aucune copie autoritaire, aucun agrégat Blueprint de transport et
+aucun passage d'objet `KernelBlueprint` entre phases. Un relais contient
+strictement :
+
+```text
+blueprint_id
++ phase précédente terminée
++ statut terminal attendu
+```
+
+Chaque phase retrouve le Blueprint persistant par cet identifiant, lit
+uniquement les préconditions relevant des ownerships amont, écrit uniquement
+son propre ownership, persiste puis signale sa fin.
+
+Les modes production et test sont entièrement externes au Blueprint : aucun
+champ `mode`, `target`, `test` ou équivalent n'y est autorisé. Phase1 garde la
+même logique métier dans les deux cas : pour un contenu techniquement
+persistable, en production son relais externe va vers ValidationPhase1 ; en
+test, il va vers un récepteur terminal qui bloque la cascade.
+
+# 3.2 Frontière de persistance canonique
 
 Le `KernelBlueprint` est l’unique agrégat canonique.
 
@@ -200,7 +250,7 @@ Implémenter :
 - maximum trois tentatives techniques au total;
 - aucun retry intellectuel automatique;
 - aucun appel Gemini réel pendant les tests;
-- mocks/fixtures déterministes;
+- fournisseur simulé déterministe uniquement derrière l'interface fournisseur;
 - aucune exposition de credential.
 
 Gemini ne décide jamais le PASS officiel.
@@ -236,6 +286,20 @@ Couvrir au minimum les vingt tests contractuels de `06_Phase1 v1.0`, notamment :
 
 Les tests PostgreSQL utilisent un schéma aléatoire isolé, jamais `public`, Neon ou la VM.
 
+Fixture et Harness sont verrouillés :
+
+- KBP crée atomiquement le vrai `KernelBlueprint` PostgreSQL isolé, déjà
+  préparé pour la phase ciblée : les préconditions requises existent dès sa
+  création et les vrais sept slots y sont présents ;
+- cette fixture n'est ni un mock, ni un tableau, ni de la mémoire, ni une
+  Quarantine ; elle n'est pas récupérable par les workers de production non
+  ciblés, mais reste accessible à la vraie phase autorisée par `blueprint_id` ;
+- le Harness demande ce scénario à KBP, reçoit exclusivement le
+  `blueprint_id`, déclenche la vraie phase avec le fournisseur simulé,
+  intercepte le signal de fin, bloque la cascade, observe puis nettoie ;
+- le Harness n'écrit jamais de précondition, de contenu intellectuel ou de
+  validation dans le Blueprint.
+
 # 10. Frontière de sortie
 
 Phase1 se termine après :
@@ -245,9 +309,11 @@ réponse structurée
 → contrôles techniques locaux
 → écriture des slots créés
 → persistance des creation_status
-→ passage vers ValidationPhase1
 ```
 
+Pour un contenu techniquement persistable, Phase1 signale sa fin et relaie
+externement vers ValidationPhase1. Pour une erreur technique, elle persiste
+`CREATION_FAILED` et signale cette fin terminale sans l'envoyer à la validation.
 Phase1 ne décide ni PASS ni SUSPICION.
 
 # 11. Git et livraison

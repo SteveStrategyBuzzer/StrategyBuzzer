@@ -11,7 +11,11 @@
 
 # 1. Mission
 
-Phase1 reçoit le même `KernelBlueprint` canonique portant son identité intellectuelle complète et remplit exactement sept `CognitiveSlots` dans la langue source.
+L'entrée contractuelle de Phase1 est exclusivement `blueprint_id`, accompagné de
+la preuve que la phase précédente est terminée avec son statut terminal. Phase1
+retrouve alors ce même `KernelBlueprint` persistant déjà préparé, portant son
+identité intellectuelle complète, et remplit exactement sept `CognitiveSlots`
+dans la langue source.
 
 Phase1 :
 
@@ -22,6 +26,25 @@ Phase1 :
 - ne crée aucune traduction;
 - ne crée aucun état joueur;
 - ne produit aucun `question_code`, `COG` ou `VAR`.
+
+## 1.1 Blueprint canonique et relais inter-phases
+
+`KernelBlueprint` est une structure persistante extérieure aux phases. Il est
+créé une seule fois, atomiquement, par `KernelBlueprintFactory` (KBP), puis
+progressivement rempli sous le même `blueprint_id`. Il est l'unique source de
+vérité : aucune copie autoritaire et aucun objet `Blueprint` transporté entre
+phases ne sont autorisés.
+
+Le relais minimal entre phases est strictement :
+
+```text
+blueprint_id + phase précédente terminée + statut terminal
+```
+
+Chaque phase relit le Blueprint persistant par cet identifiant, lit et écrit
+uniquement les champs de son ownership, persiste, puis signale sa propre fin.
+Phase1 ne reçoit donc jamais un Blueprint sérialisé en entrée et ne transmet
+jamais un Blueprint en sortie.
 
 # 2. Unité de création
 
@@ -280,7 +303,10 @@ La fausseté provient d’un lien logique incorrect
 - les sept slots partagent le territoire intellectuel sans partager la même mécanique;
 - une réponse identique n’est tolérable que si la question, la proposition visée et l’opération mentale sont réellement distinctes;
 - chaque slot explique sa différence cognitive avec les six autres;
-- si un type conforme ne peut pas être produit, la sortie est `SLOT_UNCREATABLE`, jamais un contenu mal classé.
+- aucune variante de statut métier `SLOT_UNCREATABLE` n'est admise : l'absence
+  structurelle d'un slot attendu est une erreur technique `CREATION_FAILED` ;
+  un contenu produit mais intellectuellement douteux est transmis à
+  `ValidationPhase1` et peut devenir `SUSPICION`, jamais un contenu mal classé.
 
 # 6. Structure des réponses
 
@@ -446,7 +472,12 @@ Une proposition factuellement vraie mais appartenant à un autre contexte intell
 
 Un seul appel de création demande les sept slots ensemble.
 
-## 9.1 Entrée
+## 9.1 Contexte de création dérivé du Blueprint relu
+
+L'entrée de Phase1 reste `blueprint_id` et le relais terminal précédent. Après
+lookup du Blueprint persistant, Phase1 construit le contexte suivant pour
+l'appel Gemini ; ce contexte n'est pas un Blueprint reçu ou transmis entre
+phases.
 
 ```text
 schema_version
@@ -594,6 +625,22 @@ Phase1 vérifie avant écriture :
 - `trap_basis` conforme;
 - aucune mutation de la Section 1.
 
+Les défauts techniques ci-dessous empêchent la création du slot concerné et
+aboutissent à `CREATION_FAILED` : JSON illisible ou version inconnue, slot ou
+type absent, inattendu ou dupliqué, question absente, choix absents ou de
+cardinalité invalide, clé absente, invalide ou dupliquée, bonne clé absente,
+polarité Vrai/Faux non conforme, SV absent, dépassement de temps mesuré par la
+garde locale, ou doublon textuel exact après normalisation. Ils ne sont jamais
+classés `SUSPICION`.
+
+Un contenu intellectuellement non conforme mais techniquement persistable
+(mécanisme cognitif, pertinence, vérité, cohérence contextuelle, plausibilité,
+concision ou homogénéité des choix, distinction entre slots, qualité du SV ou
+formulation lourde) est écrit lorsqu'il satisfait la structure technique, puis
+relève exclusivement de `ValidationPhase1`, qui peut statuer `SUSPICION`.
+Phase1 ne transforme jamais cette décision intellectuelle en
+`CREATION_FAILED`.
+
 # 13. Retries techniques
 
 Clé d’idempotence :
@@ -605,8 +652,11 @@ blueprint_id + phase1.source.v1 + generation_contract_version
 Politique :
 
 - maximum trois tentatives techniques au total;
-- retry seulement sur timeout, transport, JSON illisible, schéma incomplet ou identité divergente;
-- aucun retry automatique destiné à masquer une suspicion intellectuelle;
+- retry seulement sur timeout, transport, JSON illisible, ou défaut structurel
+  technique de sortie (slot/type/question/choix/clé/polarité/SV/temps/doublon,
+  schéma ou identité divergente);
+- aucune suspicion, ni aucun défaut intellectuel techniquement persistable, ne
+  déclenche de retry technique ;
 - aucun nouveau `kernel_code`;
 - après épuisement : slots concernés `CREATION_FAILED`, traductions bloquées, incident traçable.
 
@@ -624,9 +674,17 @@ Phase1
 → PASS ou SUSPICION
 ```
 
+Après sa persistance, Phase1 émet son signal terminal. En production, ce signal
+relaie vers `ValidationPhase1`. En test, un récepteur terminal externe
+l'intercepte et bloque la cascade. Ce choix de relais est extérieur au
+Blueprint : aucun champ `mode`, `target` ou `test` n'existe dans le Blueprint,
+et aucune variante métier de Phase1 n'est admise.
+
 # 15. Quarantine et reprise
 
-Toute source soupçonnée produit une copie complète du Blueprint avec ciblage structuré.
+Toute source soupçonnée est référencée par son `blueprint_id` canonique avec
+ciblage structuré. Une éventuelle Quarantine ne constitue jamais un Blueprint
+copié ou une source de vérité autoritaire.
 
 Exemple :
 
@@ -636,7 +694,8 @@ cognitive_slots.QCM_RECOGNITION.source.question
 
 Les traductions d’un slot source non validé ne sont pas créées.
 
-Une copie corrigée reprend uniquement les slots et champs ciblés :
+La reprise corrigée relit le même Blueprint et reprend uniquement les slots et
+champs ciblés :
 
 ```text
 Phase1 ciblée
@@ -681,8 +740,8 @@ Phase1 ciblée
 9. phrase, justification, énumération ou plusieurs idées dans un choix → refus;
 10. Vrai/Faux : deux choix et polarité exacte;
 11. QCM_TRAP exige `trap_basis`;
-12. question au-dessus de 8 secondes → refus technique ou suspicion;
-13. SV au-dessus de 30 secondes → refus technique ou suspicion;
+12. question au-dessus de 8 secondes → `CREATION_FAILED`;
+13. SV au-dessus de 30 secondes → `CREATION_FAILED`;
 14. aucune limite minimale de caractères;
 15. Depth élevé avec question courte → accepté;
 16. incohérence sous-domaine → suspicion;
@@ -693,6 +752,23 @@ Phase1 ciblée
 21. replay idempotent;
 22. QCM : bonne réponse canonique en `a`, distracteurs en `b`, `c`, `d`;
 23. aucune mutation Section 1.
+24. entrée Phase1 limitée à `blueprint_id` avec phase précédente terminée et
+    statut terminal ; le Blueprint est relu en persistance, jamais transporté ;
+25. KBP crée atomiquement un vrai `KernelBlueprint` PostgreSQL isolé, déjà
+    préparé pour la phase ciblée : préconditions présentes dès sa création et
+    vrais sept slots persistés ;
+26. ce Blueprint de test n'est ni mock, ni tableau, ni mémoire, ni Quarantine ;
+    il n'est pas récupérable par les workers de production non ciblés, mais
+    reste accessible à la vraie Phase1 autorisée par `blueprint_id` ;
+27. le Harness demande ce scénario à KBP, reçoit le seul identifiant, déclenche
+    la vraie Phase1 avec un fournisseur simulé, intercepte le signal terminal,
+    bloque la cascade, observe puis nettoie ;
+28. le Harness n'écrit aucune précondition, donnée intellectuelle ou validation ;
+29. une erreur JSON, slot/type/question/choix/clé/polarité/SV/temps/doublon
+    donne `CREATION_FAILED`, tandis qu'un contenu intellectuel persistable est
+    envoyé à `ValidationPhase1` puis peut devenir `SUSPICION` ;
+30. production : signal vers ValidationPhase1 ; test : signal vers récepteur
+    terminal externe, sans champ de mode ou de cible dans le Blueprint.
 
 # 18. Statut
 
