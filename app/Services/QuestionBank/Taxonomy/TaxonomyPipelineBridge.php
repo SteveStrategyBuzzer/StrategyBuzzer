@@ -57,6 +57,15 @@ final class TaxonomyPipelineBridge
         return $this->process($blueprint);
     }
 
+    /**
+     * Reprend exclusivement l'identité fournie par KBP; ne recherche jamais un
+     * autre Blueprint actif.
+     */
+    public function resumeBlueprint(KernelBlueprint $blueprint): KernelBlueprint
+    {
+        return $this->process($blueprint);
+    }
+
     private function deliverPendingTerminalFacts(): void
     {
         foreach ($this->repo->pendingV11TerminalFacts() as $fact) {

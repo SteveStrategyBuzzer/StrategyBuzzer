@@ -6,9 +6,10 @@ namespace Tests\Unit\QuestionBank\Rotation;
 
 use App\Services\QuestionBank\Rotation\DepthNeedMatrix;
 use App\Services\QuestionBank\Rotation\Events\CurrentKernelReceived;
-use App\Services\QuestionBank\Rotation\KernelBlueprintFactory;
+use App\Services\QuestionBank\Rotation\CurrentKernelReceivedKbpAdapter;
 use App\Services\QuestionBank\Rotation\KernelPipelineOrchestrator;
 use App\Services\QuestionBank\Rotation\KernelPipelineOutboxRepository;
+use App\Services\QuestionBank\Rotation\KernelBlueprintProvisioner;
 use App\Services\QuestionBank\Rotation\KernelRotationPlanner;
 use App\Services\QuestionBank\Rotation\ProcessKernelPipelineOutbox;
 use App\Services\QuestionBank\Rotation\KernelRotationStateRepository;
@@ -50,6 +51,7 @@ class ProcessKernelPipelineOutboxTest extends TestCase
 
     protected function tearDown(): void
     {
+        Schema::dropIfExists('kernel_blueprint_request_refs');
         Schema::dropIfExists('kernel_taxonomy_terminal_facts');
         Schema::dropIfExists('kernel_current_kernel_receipts');
         Schema::dropIfExists('kernel_pipeline_outbox');
@@ -111,13 +113,20 @@ class ProcessKernelPipelineOutboxTest extends TestCase
         $this->insertOutboxEvent($eventId, $blueprintId, 2, 'geographie');
 
         $this->makeProcessor()->process(10);
+        $engagedBlueprintId = DB::table('kernel_blueprint_request_refs')
+            ->where('request_reference', $eventId)
+            ->value('blueprint_id');
 
         // Simuler un rejeu : effacer processed_at
         DB::table('kernel_pipeline_outbox')
             ->where('event_id', $eventId)
             ->update(['processed_at' => null, 'attempt_count' => 0]);
 
-        $this->makeProcessor()->process(10);
+        $replay = $this->makeProcessor()->process(10);
+        $this->assertSame(ProcessKernelPipelineOutbox::OUTCOME_PROCESSED, $replay[0]['outcome']);
+        $this->assertSame($engagedBlueprintId, DB::table('kernel_blueprint_request_refs')
+            ->where('request_reference', $eventId)->value('blueprint_id'));
+        $this->assertSame(1, DB::table('kernel_blueprint_runs')->count());
 
         // Compteur ne doit pas avoir doublé
         $total = DB::table('kernel_depth_domain_totals')
@@ -159,6 +168,9 @@ class ProcessKernelPipelineOutboxTest extends TestCase
         $this->assertCount(1, $results);
         $this->assertSame(ProcessKernelPipelineOutbox::OUTCOME_PROCESSED, $results[0]['outcome']);
         $this->assertSame('PRODUCTION_ON_HOLD', $results[0]['orchestrator_status']);
+        $this->assertSame(0, DB::table('kernel_blueprint_runs')->count(), 'Le shell KBP inutilisé est nettoyé.');
+        $this->assertSame(0, DB::table('kernel_blueprint_cognitive_slots')->count(), 'Les slots cascade avec le shell.');
+        $this->assertSame(0, DB::table('kernel_blueprint_request_refs')->count(), 'Son binding cascade avec le parent.');
     }
 
     // =========================================================================
@@ -237,13 +249,14 @@ class ProcessKernelPipelineOutboxTest extends TestCase
 
         $planner = new KernelRotationPlanner();
 
-        $orchestrator = new KernelPipelineOrchestrator(
-            new KernelBlueprintFactory(),
-            $planner,
-            $stateRepository,
-        );
+        $orchestrator = new KernelPipelineOrchestrator($planner, $stateRepository);
 
-        return new ProcessKernelPipelineOutbox($planner, $orchestrator, new KernelPipelineOutboxRepository());
+        return new ProcessKernelPipelineOutbox(
+            $planner,
+            $orchestrator,
+            new KernelPipelineOutboxRepository(),
+            new CurrentKernelReceivedKbpAdapter(new KernelBlueprintProvisioner()),
+        );
     }
 
     // =========================================================================
@@ -274,6 +287,19 @@ class ProcessKernelPipelineOutboxTest extends TestCase
             $table->json('validation_findings')->default('[]');
             $table->timestamps();
             $table->primary(['blueprint_id', 'cognitive_type']);
+            $table->foreign('blueprint_id')
+                ->references('blueprint_id')
+                ->on('kernel_blueprint_runs')
+                ->cascadeOnDelete();
+        });
+
+        Schema::create('kernel_blueprint_request_refs', function (Blueprint $table) {
+            $table->string('request_reference', 128)->primary();
+            $table->string('blueprint_id', 36);
+            $table->foreign('blueprint_id')
+                ->references('blueprint_id')
+                ->on('kernel_blueprint_runs')
+                ->cascadeOnDelete();
         });
 
         Schema::create('kernel_code_sequences', function (Blueprint $table) {

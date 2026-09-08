@@ -6,7 +6,6 @@ namespace App\Services\QuestionBank\Rotation;
 
 use App\Services\QuestionBank\KernelBlueprint;
 use App\Services\QuestionBank\KernelBlueprintCognitiveSlotRepository;
-use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use RuntimeException;
@@ -35,17 +34,6 @@ final class KernelBlueprintFactory
 {
     private const RUNS_TABLE = 'kernel_blueprint_runs';
 
-    /** États considérés « actifs » — un seul Blueprint actif autorisé (DEC-067). */
-    private const ACTIVE_STATES = [
-        'CREATED_UNENGAGED',
-        'ENGAGED_IN_PIPELINE',
-    ];
-
-    private const STOP_MESSAGE =
-        '[KernelBlueprintFactory] STOP — un Blueprint actif existe déjà '
-        . '(CREATED_UNENGAGED ou ENGAGED_IN_PIPELINE). '
-        . 'Attendre CURRENT_KERNEL_RECEIVED ou NOT_ENGAGED_PRODUCTION_ON_HOLD.';
-
     public function __construct(
         private readonly KernelBlueprintCognitiveSlotRepository $slots =
             new KernelBlueprintCognitiveSlotRepository(),
@@ -58,38 +46,30 @@ final class KernelBlueprintFactory
      */
     public function create(): KernelBlueprint
     {
-        // ── Niveau 1 : vérification applicative (séquentielle, chemin rapide) ─
-        $activeExists = DB::table(self::RUNS_TABLE)
-            ->whereIn('execution_state', self::ACTIVE_STATES)
-            ->exists();
-
-        if ($activeExists) {
-            throw new RuntimeException(self::STOP_MESSAGE);
+        if (DB::table(self::RUNS_TABLE)
+            ->whereIn('execution_state', ['CREATED_UNENGAGED', 'ENGAGED_IN_PIPELINE'])
+            ->exists()) {
+            throw new RuntimeException('Un Blueprint actif existe déjà.');
         }
 
-        // ── Niveau 2 : INSERT avec filet atomique DB (index partiel PostgreSQL) ─
+        // The partial database index remains the atomic guard for concurrent
+        // creators; the check above provides the same contract on SQLite too.
         $blueprintId = (string) Str::orderedUuid();
 
-        try {
-            $slots = DB::transaction(function () use ($blueprintId): array {
-                DB::table(self::RUNS_TABLE)->insert([
-                    'blueprint_id'    => $blueprintId,
-                    'execution_state' => 'CREATED_UNENGAGED',
-                    'depth'           => null,
-                    'domain_code'     => null,
-                    'engaged_at'      => null,
-                    'received_at'     => null,
-                    'created_at'      => now(),
-                    'updated_at'      => now(),
-                ]);
+        $slots = DB::transaction(function () use ($blueprintId): array {
+            DB::table(self::RUNS_TABLE)->insert([
+                'blueprint_id'    => $blueprintId,
+                'execution_state' => 'CREATED_UNENGAGED',
+                'depth'           => null,
+                'domain_code'     => null,
+                'engaged_at'      => null,
+                'received_at'     => null,
+                'created_at'      => now(),
+                'updated_at'      => now(),
+            ]);
 
-                return $this->slots->initializeEmptySlots($blueprintId);
-            });
-        } catch (UniqueConstraintViolationException) {
-            // Deux créations simultanées ont passé le EXISTS en même temps :
-            // l'index partiel one_active_blueprint_idx a rejeté la seconde.
-            throw new RuntimeException(self::STOP_MESSAGE);
-        }
+            return $this->slots->initializeEmptySlots($blueprintId);
+        });
 
         $blueprint = new KernelBlueprint();
         $blueprint->initializeBlueprintId($blueprintId);

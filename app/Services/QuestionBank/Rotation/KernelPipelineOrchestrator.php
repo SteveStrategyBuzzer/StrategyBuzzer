@@ -10,7 +10,7 @@ use App\Services\QuestionBank\Taxonomy\TaxonomyPipelineBridge;
 use Illuminate\Support\Facades\DB;
 
 /**
- * KRP v4 Factory -> Blueprint -> KRP orchestration.
+ * KRP orchestration for a Blueprint provisioned by KBP.
  *
  * KRP owns the rotation transaction. Once its Blueprint is committed as
  * engaged, the optional external Taxonomy bridge consumes depth + domain only.
@@ -23,45 +23,47 @@ final class KernelPipelineOrchestrator
     public const STATUS_PRODUCTION_ON_HOLD = 'PRODUCTION_ON_HOLD';
 
     public function __construct(
-        private readonly KernelBlueprintFactory $factory,
         private readonly KernelRotationPlanner $planner,
         private readonly KernelRotationStateRepository $stateRepository,
+        private readonly KernelBlueprintProvisionedLoader $loader = new KernelBlueprintProvisionedLoader(),
         private readonly ?TaxonomyPipelineBridge $taxonomyBridge = null,
         private readonly ?KernelPhase1Generator $phase1 = null,
     ) {}
 
-    /**
-     * Creates a new Factory Blueprint, lets KRP consume one pending terminal
-     * fact, and writes the resulting depth + domain exactly once.
-     *
-     * @return array{status: string, blueprint: KernelBlueprint|null}
-     */
-    public function run(?string $previousDomain = null): array
+    /** @return array{status: string, blueprint: KernelBlueprint|null} */
+    public function runProvisioned(string $blueprintId): array
     {
-        // Si Taxonomy a échoué après l'engagement KRP, seule la reprise du même
-        // Blueprint est autorisée. La rotation ne doit surtout pas être relancée.
-        if ($this->taxonomyBridge !== null) {
-            $resumedBlueprint = $this->taxonomyBridge->resumeActiveBlueprint();
-            if ($resumedBlueprint !== null) {
-                $this->runPhase1IfReady($resumedBlueprint);
-                return [
-                    'status' => self::STATUS_ROTATION_ASSIGNED,
-                    'blueprint' => $resumedBlueprint,
-                ];
+        $state = $this->loader->executionState($blueprintId);
+        if ($state === 'ENGAGED_IN_PIPELINE') {
+            $engaged = $this->loader->loadEngaged($blueprintId);
+            if ($this->taxonomyBridge !== null) {
+                $engaged = $this->taxonomyBridge->resumeBlueprint($engaged);
             }
+            $this->runPhase1IfReady($engaged);
+
+            return [
+                'status' => self::STATUS_ROTATION_ASSIGNED,
+                'blueprint' => $engaged,
+            ];
+        }
+        if ($state !== 'CREATED_UNENGAGED') {
+            throw new \RuntimeException(
+                "[KernelPipelineOrchestrator] Blueprint non provisionnable pour Rotation: {$blueprintId}."
+            );
         }
 
         $blueprint = null;
 
-        DB::transaction(function () use (&$blueprint) {
+        DB::transaction(function () use (&$blueprint, $blueprintId) {
             $state = $this->stateRepository->firstForUpdate();
 
-            // The only pre-Factory KRP gate is a previously persisted HOLD.
+            // The only pre-Rotation gate is a previously persisted HOLD.
             if ($this->planner->isProductionOnHold($state)) {
+                $this->deleteUnengagedBlueprint($blueprintId);
                 return;
             }
 
-            $candidate = $this->factory->create();
+            $candidate = $this->loader->loadCreated($blueprintId);
             $resolution = $this->planner->prepareNewBlueprint($candidate, $state);
 
             if ($resolution->isNoRotation()) {

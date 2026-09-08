@@ -7,7 +7,8 @@ namespace Tests\Unit\QuestionBank\Taxonomy;
 use App\Services\QuestionBank\KernelCodeEngine;
 use App\Services\QuestionBank\KernelBlueprint;
 use App\Services\QuestionBank\Rotation\DepthNeedMatrix;
-use App\Services\QuestionBank\Rotation\KernelBlueprintFactory;
+use App\Services\QuestionBank\Rotation\KernelBlueprintProvisioner;
+use App\Services\QuestionBank\Rotation\KernelBlueprintProvisionedLoader;
 use App\Services\QuestionBank\Rotation\KernelPipelineOrchestrator;
 use App\Services\QuestionBank\Rotation\KernelRotationPlanner;
 use App\Services\QuestionBank\Rotation\KernelRotationStateRepository;
@@ -95,9 +96,9 @@ class SeededBankRotationBlueprintTest extends TestCase
         );
 
         $this->orchestrator = new KernelPipelineOrchestrator(
-            new KernelBlueprintFactory(),
             new KernelRotationPlanner(),
             new KernelRotationStateRepository(),
+            new KernelBlueprintProvisionedLoader(),
             new TaxonomyPipelineBridge(
                 $taxonomy,
                 $this->repo,
@@ -122,6 +123,7 @@ class SeededBankRotationBlueprintTest extends TestCase
         Schema::dropIfExists('kernel_depth_matrix');
         Schema::dropIfExists('kernel_rotation_state_v2');
         Schema::dropIfExists('kernel_code_sequences');
+        Schema::dropIfExists('kernel_blueprint_request_refs');
         Schema::dropIfExists('kernel_blueprint_cognitive_slots');
         Schema::dropIfExists('kernel_blueprint_runs');
         parent::tearDown();
@@ -142,7 +144,9 @@ class SeededBankRotationBlueprintTest extends TestCase
         $this->seedBankCell($this->firstDepth, self::FIRST_DOMAIN, 'Capitales européennes', 'Paris', 'Paris est traversée par la Seine');
 
         // ── 2. Exécuter le pipeline complet ──────────────────────────────────
-        $result = $this->orchestrator->run(null);
+        $result = $this->orchestrator->runProvisioned(
+            (new KernelBlueprintProvisioner())->provisionForTest('test:taxonomy:seeded', 'taxonomy'),
+        );
 
         // ── 3. ROTATION_ASSIGNED + Blueprint entièrement rempli ──────────────
         $this->assertSame(KernelPipelineOrchestrator::STATUS_ROTATION_ASSIGNED, $result['status']);
@@ -209,6 +213,11 @@ class SeededBankRotationBlueprintTest extends TestCase
             $table->json('validation_findings')->default('[]');
             $table->timestamps();
             $table->primary(['blueprint_id', 'cognitive_type']);
+        });
+
+        Schema::create('kernel_blueprint_request_refs', function (Blueprint $table) {
+            $table->string('request_reference', 128)->primary();
+            $table->string('blueprint_id', 36);
         });
 
         Schema::create('kernel_code_sequences', function (Blueprint $table) {

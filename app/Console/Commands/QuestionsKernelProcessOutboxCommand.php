@@ -6,7 +6,8 @@ namespace App\Console\Commands;
 
 use App\Services\QuestionBank\KernelCodeEngine;
 use App\Services\QuestionBank\Phase1\KernelPhase1Generator;
-use App\Services\QuestionBank\Rotation\KernelBlueprintFactory;
+use App\Services\QuestionBank\Rotation\CurrentKernelReceivedKbpAdapter;
+use App\Services\QuestionBank\Rotation\KernelBlueprintProvisioner;
 use App\Services\QuestionBank\Rotation\KernelPipelineOrchestrator;
 use App\Services\QuestionBank\Rotation\KernelPipelineOutboxRepository;
 use App\Services\QuestionBank\Rotation\KernelRotationPlanner;
@@ -133,7 +134,6 @@ class QuestionsKernelProcessOutboxCommand extends Command
         );
 
         $orchestrator = new KernelPipelineOrchestrator(
-            new KernelBlueprintFactory(),
             $planner,
             new KernelRotationStateRepository(),
             new TaxonomyPipelineBridge(
@@ -145,6 +145,11 @@ class QuestionsKernelProcessOutboxCommand extends Command
             app(KernelPhase1Generator::class),
         );
 
-        return new ProcessKernelPipelineOutbox($planner, $orchestrator, $outboxRepo);
+        return new ProcessKernelPipelineOutbox(
+            $planner,
+            $orchestrator,
+            $outboxRepo,
+            new CurrentKernelReceivedKbpAdapter(new KernelBlueprintProvisioner()),
+        );
     }
 }

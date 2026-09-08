@@ -39,7 +39,7 @@ use Throwable;
  *
  * Interdictions :
  *   - N'appelle jamais applyCount() (chemin V2 désactivé — DEC-093).
- *   - Ne crée jamais de Blueprint sans passer par KernelBlueprintFactory (via Orchestrator).
+ *   - Ne crée jamais de Blueprint hors de la frontière KBP.
  *   - N'invoque aucun composant BankWorker.
  */
 final class ProcessKernelPipelineOutbox
@@ -58,6 +58,7 @@ final class ProcessKernelPipelineOutbox
         private readonly KernelRotationPlanner        $planner,
         private readonly KernelPipelineOrchestrator   $orchestrator,
         private readonly KernelPipelineOutboxRepository $outboxRepo,
+        private readonly CurrentKernelReceivedKbpAdapter $kbpAdapter,
     ) {}
 
     /**
@@ -92,7 +93,7 @@ final class ProcessKernelPipelineOutbox
      *   1. Incrémenter attempt_count (verrou optimiste)
      *   2. Reconstruire l'événement depuis payload
  *   3. planner->receiveKernelReceivedV2() — CKR canonique (idempotence + compteur)
-     *   4. orchestrator->run() — Blueprint suivant
+     *   4. KBP puis orchestrator->runProvisioned() — Blueprint suivant
      *   5. Marquer processed_at (succès total)
      *   6. En cas d'erreur : sauver last_error
      *
@@ -138,8 +139,12 @@ final class ProcessKernelPipelineOutbox
                 $event->domain,
             );
 
-            // ── 3. Blueprint suivant (KRP-R11) ────────────────────────────────
-            $orchResult = $this->orchestrator->run();
+            // ── 3. KBP idempotent, puis entrée Rotation strictement id-only ───
+            $nextBlueprintId = $this->kbpAdapter->provisionNextBlueprint($event);
+            // Un rejeu doit reprendre ce même Blueprint, jamais considérer son
+            // engagement comme une fin. runProvisioned() distribue selon l'état :
+            // Rotation pour CREATED_UNENGAGED, reprise aval pour ENGAGED_IN_PIPELINE.
+            $orchResult = $this->orchestrator->runProvisioned($nextBlueprintId);
 
             Log::info('[ProcessKernelPipelineOutbox] Événement traité.', [
                 'event_id'            => $row->event_id,

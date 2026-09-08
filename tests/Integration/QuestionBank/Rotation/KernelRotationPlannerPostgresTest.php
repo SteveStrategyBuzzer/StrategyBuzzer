@@ -6,7 +6,7 @@ namespace Tests\Integration\QuestionBank\Rotation;
 
 use App\Services\QuestionBank\Rotation\DepthNeedMatrix;
 use App\Services\QuestionBank\Rotation\DepthTourState;
-use App\Services\QuestionBank\Rotation\KernelBlueprintFactory;
+use App\Services\QuestionBank\Rotation\KernelBlueprintProvisioner;
 use App\Services\QuestionBank\Rotation\KernelPipelineOrchestrator;
 use App\Services\QuestionBank\Rotation\KernelRotationPlanner;
 use App\Services\QuestionBank\Rotation\KernelRotationStateRepository;
@@ -115,7 +115,9 @@ class KernelRotationPlannerPostgresTest extends TestCase
     public function test_orchestrator_assigns_the_initial_rotation_with_v4_tour_state(): void
     {
         $orchestrator = $this->newOrchestrator();
-        $result = $orchestrator->run();
+        $result = $orchestrator->runProvisioned(
+            (new KernelBlueprintProvisioner())->provisionForTest('test:krp:initial', 'rotation'),
+        );
 
         $this->assertSame(KernelPipelineOrchestrator::STATUS_ROTATION_ASSIGNED, $result['status']);
         $this->assertNotNull($result['blueprint']);
@@ -171,7 +173,9 @@ class KernelRotationPlannerPostgresTest extends TestCase
             'science',
         );
 
-        $result = $this->newOrchestrator()->run();
+        $result = $this->newOrchestrator()->runProvisioned(
+            (new KernelBlueprintProvisioner())->provisionForTest('test:krp:hold', 'rotation'),
+        );
         $this->assertSame(KernelPipelineOrchestrator::STATUS_PRODUCTION_ON_HOLD, $result['status']);
         $this->assertNull($result['blueprint']);
 
@@ -218,11 +222,7 @@ class KernelRotationPlannerPostgresTest extends TestCase
     {
         $stateRepository = new KernelRotationStateRepository();
 
-        return new KernelPipelineOrchestrator(
-            new KernelBlueprintFactory(),
-            new KernelRotationPlanner(),
-            $stateRepository,
-        );
+        return new KernelPipelineOrchestrator(new KernelRotationPlanner(), $stateRepository);
     }
 
     private function configureIsolatedConnection(string $connectionName): void
@@ -289,6 +289,32 @@ class KernelRotationPlannerPostgresTest extends TestCase
             $table->timestampTz('received_at')->nullable();
             $table->timestampsTz();
             $table->index('execution_state');
+        });
+
+        Schema::connection('pgsql')->create('kernel_blueprint_cognitive_slots', function (Blueprint $table): void {
+            $table->string('blueprint_id', 36);
+            $table->string('cognitive_type', 64);
+            $table->jsonb('source')->nullable();
+            $table->jsonb('creation_failure')->nullable();
+            $table->jsonb('translations')->default('{}');
+            $table->string('creation_status', 32)->default('EMPTY');
+            $table->string('validation_status', 32)->default('NOT_VALIDATED');
+            $table->jsonb('validation_findings')->default('[]');
+            $table->timestampsTz();
+            $table->primary(['blueprint_id', 'cognitive_type']);
+            $table->foreign('blueprint_id')
+                ->references('blueprint_id')
+                ->on('kernel_blueprint_runs')
+                ->cascadeOnDelete();
+        });
+
+        Schema::connection('pgsql')->create('kernel_blueprint_request_refs', function (Blueprint $table): void {
+            $table->string('request_reference', 128)->primary();
+            $table->string('blueprint_id', 36);
+            $table->foreign('blueprint_id')
+                ->references('blueprint_id')
+                ->on('kernel_blueprint_runs')
+                ->cascadeOnDelete();
         });
 
         DB::statement(
