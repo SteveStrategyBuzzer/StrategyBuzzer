@@ -93,7 +93,7 @@ SQL)->confdeltype);
 
     public function test_provisioning_creates_an_empty_parent_and_seven_slots_atomically(): void
     {
-        $id = $this->provisioner()->provisionForTest('test:atomic', 'input-only');
+        $id = $this->provisioner()->provisionForTest('test:atomic');
         $run = DB::table('kernel_blueprint_runs')->where('blueprint_id', $id)->first();
 
         $this->assertSame('CREATED_UNENGAGED', $run->execution_state);
@@ -108,7 +108,7 @@ SQL)->confdeltype);
 
     public function test_production_event_replay_returns_the_same_blueprint_id(): void
     {
-        $event = new CurrentKernelReceived('event-kbp-replay', 'received-blueprint', 2, 'science', now()->toIso8601String());
+        $event = new CurrentKernelReceived('event-kbp-replay', 'received-blueprint', now()->toIso8601String());
         $first = $this->provisioner()->provisionForCurrentKernelReceived($event);
         $second = $this->provisioner()->provisionForCurrentKernelReceived($event);
 
@@ -117,9 +117,9 @@ SQL)->confdeltype);
         $this->assertSame(1, DB::table('kernel_blueprint_request_refs')->count());
     }
 
-    public function test_test_reference_returns_only_an_id_and_never_persists_requesting_phase(): void
+    public function test_test_reference_returns_only_an_id(): void
     {
-        $id = $this->provisioner()->provisionForTest('test:input-only', 'phase-that-must-not-be-stored');
+        $id = $this->provisioner()->provisionForTest('test:input-only');
 
         $this->assertIsString($id);
         $this->assertSame(
@@ -130,26 +130,20 @@ SQL)->confdeltype);
         );
     }
 
-    public function test_cleanup_is_idempotent_and_refuses_mismatch_or_public_schema(): void
+    public function test_cleanup_uses_only_blueprint_id_and_refuses_public_schema(): void
     {
         $provisioner = $this->provisioner();
-        $id = $provisioner->provisionForTest('test:cleanup', 'phase');
-        try {
-            $provisioner->cleanupTestContext('other-id', 'test:cleanup');
-            $this->fail('A mismatched id must be refused.');
-        } catch (RuntimeException $exception) {
-            $this->assertStringContainsString('non autorisé', $exception->getMessage());
-        }
+        $id = $provisioner->provisionForTest('test:cleanup');
 
-        $provisioner->cleanupTestContext($id, 'test:cleanup');
-        $provisioner->cleanupTestContext($id, 'test:cleanup');
+        $provisioner->cleanupTestContext($id);
+        $provisioner->cleanupTestContext($id);
         $this->assertSame(0, DB::table('kernel_blueprint_runs')->count());
         $this->assertSame(0, DB::table('kernel_blueprint_cognitive_slots')->count());
         $this->assertSame(0, DB::table('kernel_blueprint_request_refs')->count());
 
         DB::statement('SET search_path TO public');
         try {
-            $provisioner->cleanupTestContext($id, 'test:cleanup');
+            $provisioner->cleanupTestContext($id);
             $this->fail('Cleanup in public must be refused.');
         } catch (RuntimeException $exception) {
             $this->assertStringContainsString('public', $exception->getMessage());
@@ -162,13 +156,35 @@ SQL)->confdeltype);
     {
         DB::statement("ALTER TABLE kernel_blueprint_request_refs ADD CONSTRAINT reject_rollback CHECK (request_reference <> 'test:rollback')");
         try {
-            $this->provisioner()->provisionForTest('test:rollback', 'phase');
+            $this->provisioner()->provisionForTest('test:rollback');
             $this->fail('The binding constraint must fail.');
         } catch (\Throwable) {
             $this->assertSame(0, DB::table('kernel_blueprint_runs')->count());
             $this->assertSame(0, DB::table('kernel_blueprint_cognitive_slots')->count());
             $this->assertSame(0, DB::table('kernel_blueprint_request_refs')->count());
         }
+    }
+
+    public function test_different_reference_does_not_adopt_the_active_blueprint(): void
+    {
+        $first = $this->provisioner()->provisionForTest('test:first-reference');
+
+        try {
+            $this->provisioner()->provisionForTest('test:different-reference');
+            $this->fail('Une autre demande ne doit pas adopter le Blueprint actif.');
+        } catch (RuntimeException $exception) {
+            $this->assertStringContainsString('Blueprint actif', $exception->getMessage());
+        }
+
+        $this->assertSame(1, DB::table('kernel_blueprint_runs')->count());
+        $this->assertSame(7, DB::table('kernel_blueprint_cognitive_slots')->count());
+        $this->assertSame(1, DB::table('kernel_blueprint_request_refs')->count());
+        $this->assertSame($first, DB::table('kernel_blueprint_request_refs')
+            ->where('request_reference', 'test:first-reference')
+            ->value('blueprint_id'));
+        $this->assertNull(DB::table('kernel_blueprint_request_refs')
+            ->where('request_reference', 'test:different-reference')
+            ->value('blueprint_id'));
     }
 
     public function test_two_real_processes_converge_on_one_binding_and_no_orphans(): void
@@ -179,7 +195,7 @@ SQL)->confdeltype);
 
         $resultDirectory = sys_get_temp_dir() . '/kpb-' . bin2hex(random_bytes(6));
         mkdir($resultDirectory);
-        $event = ['event-concurrent', 'received-blueprint', 2, 'science', now()->toIso8601String()];
+        $event = ['event-concurrent', 'received-blueprint', now()->toIso8601String()];
         $pids = [];
         for ($worker = 0; $worker < 2; $worker++) {
             $pid = pcntl_fork();

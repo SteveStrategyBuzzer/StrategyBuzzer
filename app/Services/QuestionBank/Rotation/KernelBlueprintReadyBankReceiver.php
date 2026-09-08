@@ -91,8 +91,6 @@ final class KernelBlueprintReadyBankReceiver
         $event      = new CurrentKernelReceived(
             eventId:     (string) Str::uuid(),
             blueprintId: $blueprint->blueprint_id,
-            depth:       (int) $blueprint->depth,
-            domain:      (string) $blueprint->domain,
             occurredAt:  $occurredAt,
         );
 

@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Tests\Unit\QuestionBank\Rotation;
 
 use App\Services\QuestionBank\Rotation\DepthNeedMatrix;
-use App\Services\QuestionBank\Rotation\Events\CurrentKernelReceived;
 use App\Services\QuestionBank\Rotation\CurrentKernelReceivedKbpAdapter;
 use App\Services\QuestionBank\Rotation\KernelPipelineOrchestrator;
 use App\Services\QuestionBank\Rotation\KernelPipelineOutboxRepository;
@@ -126,7 +125,9 @@ class ProcessKernelPipelineOutboxTest extends TestCase
         $this->assertSame(ProcessKernelPipelineOutbox::OUTCOME_PROCESSED, $replay[0]['outcome']);
         $this->assertSame($engagedBlueprintId, DB::table('kernel_blueprint_request_refs')
             ->where('request_reference', $eventId)->value('blueprint_id'));
-        $this->assertSame(1, DB::table('kernel_blueprint_runs')->count());
+        $this->assertSame(1, DB::table('kernel_blueprint_runs')
+            ->whereIn('execution_state', ['CREATED_UNENGAGED', 'ENGAGED_IN_PIPELINE'])
+            ->count());
 
         // Compteur ne doit pas avoir doublé
         $total = DB::table('kernel_depth_domain_totals')
@@ -168,7 +169,9 @@ class ProcessKernelPipelineOutboxTest extends TestCase
         $this->assertCount(1, $results);
         $this->assertSame(ProcessKernelPipelineOutbox::OUTCOME_PROCESSED, $results[0]['outcome']);
         $this->assertSame('PRODUCTION_ON_HOLD', $results[0]['orchestrator_status']);
-        $this->assertSame(0, DB::table('kernel_blueprint_runs')->count(), 'Le shell KBP inutilisé est nettoyé.');
+        $this->assertSame(0, DB::table('kernel_blueprint_runs')
+            ->whereIn('execution_state', ['CREATED_UNENGAGED', 'ENGAGED_IN_PIPELINE'])
+            ->count(), 'Le shell KBP inutilisé est nettoyé.');
         $this->assertSame(0, DB::table('kernel_blueprint_cognitive_slots')->count(), 'Les slots cascade avec le shell.');
         $this->assertSame(0, DB::table('kernel_blueprint_request_refs')->count(), 'Son binding cascade avec le parent.');
     }
@@ -186,7 +189,7 @@ class ProcessKernelPipelineOutboxTest extends TestCase
             'event_id'       => $eventId,
             'event_type'     => 'CURRENT_KERNEL_RECEIVED',
             'schema_version' => 1,
-            'payload'        => json_encode($this->makePayload($eventId, $blueprintId, 2, 'geographie')),
+            'payload'        => json_encode($this->makePayload($eventId, $blueprintId)),
             'occurred_at'    => now(),
             'processed_at'   => now(),
             'attempt_count'  => 1,
@@ -409,11 +412,21 @@ class ProcessKernelPipelineOutboxTest extends TestCase
         int    $depth,
         string $domain,
     ): void {
+        DB::table('kernel_blueprint_runs')->insert([
+            'blueprint_id' => $blueprintId,
+            'execution_state' => 'READY_BANK_RECEIVED',
+            'depth' => $depth,
+            'domain_code' => $domain,
+            'received_at' => now(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
         DB::table('kernel_pipeline_outbox')->insert([
             'event_id'       => $eventId,
             'event_type'     => 'CURRENT_KERNEL_RECEIVED',
             'schema_version' => 1,
-            'payload'        => json_encode($this->makePayload($eventId, $blueprintId, $depth, $domain)),
+            'payload'        => json_encode($this->makePayload($eventId, $blueprintId)),
             'occurred_at'    => now(),
             'processed_at'   => null,
             'attempt_count'  => 0,
@@ -422,15 +435,13 @@ class ProcessKernelPipelineOutboxTest extends TestCase
         ]);
     }
 
-    private function makePayload(string $eventId, string $blueprintId, int $depth, string $domain): array
+    private function makePayload(string $eventId, string $blueprintId): array
     {
         return [
             'event_id'       => $eventId,
             'event_type'     => 'CURRENT_KERNEL_RECEIVED',
             'schema_version' => 1,
             'blueprint_id'   => $blueprintId,
-            'depth'          => $depth,
-            'domain'         => $domain,
             'occurred_at'    => now()->toIso8601String(),
         ];
     }

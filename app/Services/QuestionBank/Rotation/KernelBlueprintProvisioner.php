@@ -32,48 +32,31 @@ final class KernelBlueprintProvisioner
     }
 
     /**
-     * Test boundary. The requesting phase is deliberately input-only: it is
-     * neither persisted nor returned and grants no intellectual precondition.
+     * Test boundary. The external scenario chooses the first phase after KBP
+     * returns the id; no phase, destination or precondition enters KBP.
      */
-    public function provisionForTest(string $technicalReference, string $requestingPhase): string
+    public function provisionForTest(string $requestReference): string
     {
-        if (! app()->runningUnitTests() || ! str_starts_with($technicalReference, 'test:')) {
+        if (! app()->runningUnitTests() || ! str_starts_with($requestReference, 'test:')) {
             throw new RuntimeException('[KBP] Entrée de test refusée hors contexte PHPUnit isolé.');
         }
 
-        if ($requestingPhase === '') {
-            throw new RuntimeException('[KBP] Phase demandeuse de test requise.');
-        }
-
-        return $this->provision($technicalReference);
+        return $this->provision($requestReference);
     }
 
     /**
-     * Deletes only a test context owned by its external technical reference.
-     * Parent deletion cascades to the seven slots and to the request binding.
+     * Deletes a Blueprint identified only by the id retained by the external
+     * test scenario. Parent deletion cascades to slots and request binding.
      */
-    public function cleanupTestContext(string $blueprintId, string $technicalReference): void
+    public function cleanupTestContext(string $blueprintId): void
     {
-        if (! app()->runningUnitTests() || ! str_starts_with($technicalReference, 'test:')) {
+        if (! app()->runningUnitTests()) {
             throw new RuntimeException('[KBP] Nettoyage de test refusé hors contexte PHPUnit isolé.');
         }
 
         $this->assertNonPublicSchema();
 
-        DB::transaction(function () use ($blueprintId, $technicalReference): void {
-            $binding = DB::table(self::REFERENCES_TABLE)
-                ->where('request_reference', $technicalReference)
-                ->lockForUpdate()
-                ->first();
-
-            if ($binding === null) {
-                return;
-            }
-
-            if ((string) $binding->blueprint_id !== $blueprintId) {
-                throw new RuntimeException('[KBP] Nettoyage de contexte test non autorisé.');
-            }
-
+        DB::transaction(function () use ($blueprintId): void {
             DB::table(self::RUNS_TABLE)
                 ->where('blueprint_id', $blueprintId)
                 ->delete();
@@ -110,9 +93,8 @@ final class KernelBlueprintProvisioner
                 return $blueprint->blueprint_id;
             });
         } catch (UniqueConstraintViolationException $exception) {
-            // A competing request with this reference may have committed while
-            // this complete transaction was rolled back. It is a replay, not
-            // the one-active-blueprint conflict.
+            // Same reference: the losing transaction is fully rolled back,
+            // then observes the winner's binding after its commit.
             for ($attempt = 0; $attempt < 3; $attempt++) {
                 $winner = $this->findBlueprintId($requestReference);
                 if ($winner !== null) {
@@ -122,7 +104,11 @@ final class KernelBlueprintProvisioner
                 usleep(10_000);
             }
 
-            throw $exception;
+            // Different reference: never adopt the already-active Blueprint.
+            throw new RuntimeException(
+                '[KBP] Un Blueprint actif existe déjà pour une autre demande.',
+                previous: $exception,
+            );
         }
     }
 

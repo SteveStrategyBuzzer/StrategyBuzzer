@@ -145,7 +145,7 @@ class SeededBankRotationBlueprintTest extends TestCase
 
         // ── 2. Exécuter le pipeline complet ──────────────────────────────────
         $result = $this->orchestrator->runProvisioned(
-            (new KernelBlueprintProvisioner())->provisionForTest('test:taxonomy:seeded', 'taxonomy'),
+            (new KernelBlueprintProvisioner())->provisionForTest('test:taxonomy:seeded'),
         );
 
         // ── 3. ROTATION_ASSIGNED + Blueprint entièrement rempli ──────────────

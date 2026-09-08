@@ -132,11 +132,25 @@ final class ProcessKernelPipelineOutbox
             $event = CurrentKernelReceived::fromPayload($payload);
 
             // ── 2. CKR canonique (DEC-093) — source unique de vérité ─────────
+            // depth/domain ne circulent pas dans l'événement : ils sont relus
+            // depuis l'ancien Blueprint persistant identifié par blueprint_id.
+            $receivedBlueprint = DB::table('kernel_blueprint_runs')
+                ->where('blueprint_id', $event->blueprintId)
+                ->first(['depth', 'domain_code']);
+
+            if ($receivedBlueprint === null
+                || $receivedBlueprint->depth === null
+                || $receivedBlueprint->domain_code === null) {
+                throw new \RuntimeException(
+                    "Blueprint reçu introuvable ou incomplet: {$event->blueprintId}"
+                );
+            }
+
             // Atomiquement : idempotence → receipt → compteur.
             $this->planner->receiveKernelReceivedV2(
                 $event->blueprintId,
-                $event->depth,
-                $event->domain,
+                (int) $receivedBlueprint->depth,
+                (string) $receivedBlueprint->domain_code,
             );
 
             // ── 3. KBP idempotent, puis entrée Rotation strictement id-only ───

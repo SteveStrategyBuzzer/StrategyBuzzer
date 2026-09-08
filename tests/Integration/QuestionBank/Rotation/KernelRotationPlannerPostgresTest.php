@@ -116,7 +116,7 @@ class KernelRotationPlannerPostgresTest extends TestCase
     {
         $orchestrator = $this->newOrchestrator();
         $result = $orchestrator->runProvisioned(
-            (new KernelBlueprintProvisioner())->provisionForTest('test:krp:initial', 'rotation'),
+            (new KernelBlueprintProvisioner())->provisionForTest('test:krp:initial'),
         );
 
         $this->assertSame(KernelPipelineOrchestrator::STATUS_ROTATION_ASSIGNED, $result['status']);
@@ -174,7 +174,7 @@ class KernelRotationPlannerPostgresTest extends TestCase
         );
 
         $result = $this->newOrchestrator()->runProvisioned(
-            (new KernelBlueprintProvisioner())->provisionForTest('test:krp:hold', 'rotation'),
+            (new KernelBlueprintProvisioner())->provisionForTest('test:krp:hold'),
         );
         $this->assertSame(KernelPipelineOrchestrator::STATUS_PRODUCTION_ON_HOLD, $result['status']);
         $this->assertNull($result['blueprint']);
