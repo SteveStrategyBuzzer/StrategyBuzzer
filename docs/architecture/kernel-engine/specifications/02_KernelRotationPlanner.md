@@ -631,9 +631,9 @@ ReadyBank
 
 ```text
 KRP
-→ Blueprint avec blueprint_id + depth + domain
+→ transmet blueprint_id uniquement
 → FIN KRP
-→ Taxonomy
+→ Taxonomy recharge le Blueprint et lit depth + domain persistés
 ```
 
 ## 16.3 Taxonomy → KRP
@@ -707,7 +707,9 @@ L’implantation est conforme seulement si les tests prouvent :
 25. HOLD uniquement si tous les `cycle_remaining = 0` ;
 26. nouveau tour d’un Depth = huit Domaines `VISIBLE` neufs ;
 27. KRP-002/KRP-003 et politique 1+3 retries respectés ;
-28. le Blueprint ressort avec seulement `blueprint_id + depth + domain` remplis dans la Section intellectuelle KRP.
+28. Rotation transmet uniquement `blueprint_id`; Taxonomy recharge le même
+    Blueprint persistant et y lit `depth + domain`, que KRP a remplis dans sa
+    Section intellectuelle.
 
 Les tests Taxonomy sont hors périmètre de cette implantation KRP. Ils seront traités lorsque `03_Taxonomy` sera corrigé et implanté dans son propre bloc.
 

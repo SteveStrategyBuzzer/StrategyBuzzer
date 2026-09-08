@@ -11,7 +11,10 @@
 
 # 1. Mission verrouillée
 
-Phase2 reçoit le même KernelBlueprint canonique après création et validation des contenus source admissibles.
+Phase2 reçoit uniquement `blueprint_id`, recharge le même KernelBlueprint
+canonique persistant, puis vérifie la création et la validation des contenus
+source admissibles. Après son travail, elle transmet uniquement le même
+`blueprint_id` à ValidationPhase2.
 
 Elle ajoute, à l’intérieur de chacun des sept CognitiveSlots, les représentations linguistiques supplémentaires.
 

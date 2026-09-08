@@ -442,12 +442,13 @@ Les slots PASS non ciblés ne sont pas rejoués.
 26. QCM : `correct_answer_key` différent de `a` → Phase1 /
     `CREATION_FAILED`, jamais `SUSPICION`;
 27. Section 1 immuable;
-28. l’entrée de ValidationPhase1 est `blueprint_id` plus lookup et statut
-    terminal précédent; aucun objet Blueprint ou tableau de slots ne transite;
+28. l’entrée de ValidationPhase1 est uniquement `blueprint_id`; elle recharge
+    le Blueprint et y vérifie le statut terminal précédent; aucun objet
+    Blueprint ou tableau de slots ne transite;
 29. ValidationPhase1 demande, par son point d'entrée de test, un vrai
     `KernelBlueprint` PostgreSQL canonique, complet structurellement et vide
     intellectuellement ; KBP le crée atomiquement avec les sept vrais slots et
-    remet l'autorisation initiale `{blueprint_id, VALIDATION_PHASE_1}` ;
+    retourne uniquement `blueprint_id` ;
 30. les paramètres et dépendances simulées propres au test appartiennent
     exclusivement à ValidationPhase1 et à son point d'entrée ; KBP ne les
     reçoit pas et ne prépare aucune donnée intellectuelle ;
@@ -464,11 +465,11 @@ Le mode de production comme le mode test est déterminé hors du
 `KernelBlueprint`. Aucun champ `mode`, `target`, `test` ou équivalent ne peut
 être persisté dans le Blueprint.
 
-En production, Phase1 signale sa fin et son contrat de sortie autorise
-ValidationPhase1. En test, ValidationPhase1 demande, par son propre point
+En production, Phase1 persiste sa fin puis transmet uniquement `blueprint_id`
+à ValidationPhase1, qui recharge et vérifie cet état. En test,
+ValidationPhase1 demande, par son propre point
 d'entrée, la mise à disposition d'un Blueprint canonique vide. KBP crée la
-même structure qu'en production et remet uniquement l'autorisation initiale
-`{blueprint_id, VALIDATION_PHASE_1}`.
+même structure qu'en production et retourne uniquement `blueprint_id`.
 
 Les paramètres intellectuels nécessaires au test, les contenus contrôlés et
 les dépendances simulées sont fournis directement à ValidationPhase1 par son

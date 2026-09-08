@@ -1,11 +1,11 @@
 # CURRENT HANDOFF — StrategyBuzzer Kernel Engine
 
-**Mis à jour :** 2026-09-07
+**Mis à jour :** 2026-09-08
 **Branche officielle :** `replit/intellectual-engine-current-2026-08-16`  
 **Module actif unique :** `06_Phase1`  
 **Spécification active :** `specifications/06_Phase1.md` v1.0  
 **Frontière suivante verrouillée :** `07_ValidationPhase1.md` v1.0  
-**Décisions actives :** `DEC-123` (QuestionIntent) ; `DEC-122` (inchangée)
+**Décisions actives :** `DEC-123` (ownership QuestionIntent) ; `DEC-124` (transmission par `blueprint_id`) ; `DEC-122` (inchangée)
 **Prochain bloc exact :** `ALIGN-AUDIT-06-v1.0 → BUILD-06-v1.0`
 
 > Ce fichier est un pointeur opérationnel. En cas de contradiction, `00_ArchitectureRegister.md + 00_MOTEUR_INTELLECTUEL_ACTIVE_SPEC.md + specifications/06_Phase1.md v1.0` priment.
@@ -51,6 +51,7 @@ Ne pas réimplanter ni redéfinir :
 - KRP v4 / DEC-119;
 - Taxonomy v1.1 / DEC-120;
 - QuestionIntent / DEC-123 : construction, persistance et verrouillage du `kernel_code` complet;
+- frontières / DEC-124 : transmission de `blueprint_id` uniquement, puis lookup persistant;
 - migrations historiques DEC-121 ;
 - tests KRP v4;
 - masque joueur;
@@ -134,16 +135,16 @@ l'unique source de vérité ; elle conserve le même `blueprint_id` pendant tout
 le pipeline.
 
 Il n'existe aucune copie autoritaire, aucun agrégat Blueprint de transport et
-aucun passage d'objet `KernelBlueprint` entre phases. Un relais contient
+aucun passage d'objet `KernelBlueprint` entre phases. La seule valeur transmise
+est strictement :
 strictement :
 
 ```text
 blueprint_id
-+ phase précédente terminée
-+ statut terminal attendu
 ```
 
-Chaque phase retrouve le Blueprint persistant par cet identifiant, lit
+Chaque phase retrouve le Blueprint persistant par cet identifiant, y vérifie
+la phase précédente terminée et son statut terminal, lit
 uniquement les préconditions relevant des ownerships amont, écrit uniquement
 son propre ownership, persiste puis signale sa fin.
 
@@ -285,19 +286,17 @@ Couvrir au minimum les vingt tests contractuels de `06_Phase1 v1.0`, notamment :
 
 Les tests PostgreSQL utilisent un schéma aléatoire isolé, jamais `public`, Neon ou la VM.
 
-Fixture et Harness sont verrouillés :
+Le scénario de test reste extérieur à KBP et au Blueprint :
 
-- KBP crée atomiquement le vrai `KernelBlueprint` PostgreSQL isolé, déjà
-  préparé pour la phase ciblée : les préconditions requises existent dès sa
-  création et les vrais sept slots y sont présents ;
-- cette fixture n'est ni un mock, ni un tableau, ni de la mémoire, ni une
-  Quarantine ; elle n'est pas récupérable par les workers de production non
-  ciblés, mais reste accessible à la vraie phase autorisée par `blueprint_id` ;
-- le Harness demande ce scénario à KBP, reçoit exclusivement le
-  `blueprint_id`, déclenche la vraie phase avec le fournisseur simulé,
-  intercepte le signal de fin, bloque la cascade, observe puis nettoie ;
-- le Harness n'écrit jamais de précondition, de contenu intellectuel ou de
-  validation dans le Blueprint.
+- KBP crée atomiquement le vrai `KernelBlueprint` PostgreSQL isolé,
+  structurellement complet avec ses sept slots et intellectuellement vide ;
+- KBP retourne uniquement `blueprint_id` ;
+- les phases précédentes établissent leurs propres préconditions selon leurs
+  contrats; KBP n'en prépare aucune ;
+- le scénario externe définit la première phase, les transmissions successives
+  de `blueprint_id` et le point d'arrêt, puis observe et demande le nettoyage ;
+- aucun Harness, Fixture ou coordinateur central n'appartient au contrat
+  architectural actif.
 
 # 10. Frontière de sortie
 

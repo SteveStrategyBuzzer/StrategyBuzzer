@@ -1,11 +1,11 @@
 # StrategyBuzzer — Moteur intellectuel — Spécification active maître
 
-**Version :** 2.0.0-kbp-v3.0
-**Date :** 2026-09-07
+**Version :** 2.1.0-kbp-v3.1
+**Date :** 2026-09-08
 **Statut :** **ACTIF — VÉRITÉ GLOBALE COURANTE**  
 **Portée :** architecture globale, frontières, ownership, communications et état documentaire des modules 01→11.
 
-> Cette version conserve `DEC-119 — OFFICIAL`, `02_KernelRotationPlanner v4.0`, `DEC-120 — OFFICIAL`, `03_Taxonomy v1.1` et `DEC-122 — OFFICIAL` inchangée. `01_KernelBlueprint v3.0` et `DEC-123 — OFFICIAL` remplacent la règle de construction progressive de `DEC-121`, désormais **SUPERSEDED**. QuestionIntent est l'unique propriétaire du `kernel_code` complet.
+> Cette version conserve `DEC-119 — OFFICIAL`, `02_KernelRotationPlanner v4.0`, `DEC-120 — OFFICIAL`, `03_Taxonomy v1.1` et `DEC-122 — OFFICIAL` inchangée. `01_KernelBlueprint v3.1`, `DEC-123 — OFFICIAL` et `DEC-124 — OFFICIAL` remplacent la règle de construction progressive de `DEC-121`, désormais **SUPERSEDED**. DEC-124 remplace uniquement les clauses d’autorisation distincte et `destinataire_initial` de DEC-123; son historique reste intact. QuestionIntent est l'unique propriétaire du `kernel_code` complet.
 
 ---
 
@@ -88,11 +88,11 @@ Une seule spécification est travaillée à la fois.
 
 | Module | Architecture | Contrat | Implémentation | Validation | Statut |
 |---|---:|---:|---:|---:|---|
-| 01 KernelBlueprint | **100 % intellectuel v3.0** | **100 %** | à auditer contre DEC-123 + DEC-122 | NON | **VERROUILLÉ — DEC-123 + DEC-122** |
+| 01 KernelBlueprint | **100 % intellectuel v3.1** | **100 %** | à auditer contre DEC-123 + DEC-124 + DEC-122 | NON | **VERROUILLÉ — DEC-123 + DEC-124 + DEC-122** |
 | 02 KernelRotationPlanner | **100 % intellectuel v4.0** | **100 %** | implantation KRP seulement, par micro-blocs | NON | **VERROUILLÉ — DEC-119 OFFICIAL** |
 | 03 Taxonomy | **100 % intellectuel v1.1** | **100 %** | non à poursuivre avant validation KRP | NON | **VERROUILLÉ — DEC-120 OFFICIAL** |
 | 04 ValidationDominantIdeas | règles absorbées par Taxonomy v1.1 | contrat de règles | aucun moteur autonome | N/A | **SUPERSEDED comme étape autonome — DEC-101** |
-| 05 QuestionIntent | **100 % intellectuel v2.2** | **100 %** | à auditer contre DEC-123 | NON | **VERROUILLÉ — DEC-123 + DEC-122** |
+| 05 QuestionIntent | **100 % intellectuel v2.2** | **100 %** | à auditer contre DEC-123 + DEC-124 | NON | **VERROUILLÉ — DEC-123 + DEC-124 + DEC-122** |
 | 06 Phase1 | **100 % intellectuel v1.0** | **100 % BUILD-READY** | à auditer/réaligner | NON | **CONTRAT VERROUILLÉ — module actif** |
 | 07 ValidationPhase1 | **100 % intellectuel v1.0** | **100 % BUILD-READY** | à auditer/réaligner après/avec 06 | NON | **CONTRAT VERROUILLÉ — frontière active** |
 | 08 Phase2 | règles traductions DEC-122 | partiel v0.1 | non | non | traductions imbriquées + reprise ciblée verrouillées |
@@ -536,8 +536,8 @@ DEC-115 à DEC-118 : REJECTED, historique seulement. Anciennes versions KRP : hi
 ## Référence canonique QuestionIntent
 
 ```text
-01 → specifications/01_KernelBlueprint.md v3.0 / DEC-123
-05 → specifications/05_QuestionIntent.md v2.2 / DEC-123 + DEC-122
+01 → specifications/01_KernelBlueprint.md v3.1 / DEC-123 + DEC-124
+05 → specifications/05_QuestionIntent.md v2.2 / DEC-123 + DEC-124 + DEC-122
 ```
 
 KRP écrit uniquement `depth + domain` et Taxonomy uniquement son triplet métier. QuestionIntent attribue le compteur base36 `VVVV`, indépendant par bassin `Depth + Domain`, puis construit, persiste et verrouille le `kernel_code` complet. Il n'existe aucune projection progressive du code. `KernelCodeEngine`, s'il existe techniquement, demeure interne à QuestionIntent et sans ownership autonome. Phase1 remplit ensuite les sept CognitiveSlots du même Blueprint. L’état cognitif joueur `00n→11o` reste externe au Blueprint.
@@ -546,7 +546,7 @@ KRP écrit uniquement `depth + domain` et Taxonomy uniquement son triplet métie
 ## Référence canonique DEC-122
 
 ```text
-01 → specifications/01_KernelBlueprint.md v3.0 / DEC-123
+01 → specifications/01_KernelBlueprint.md v3.1 / DEC-123 + DEC-124
 06 → specifications/06_Phase1.md v1.0 — BUILD-READY
 07 → specifications/07_ValidationPhase1.md v1.0 — BUILD-READY
 08 → specifications/08_Phase2.md v0.1

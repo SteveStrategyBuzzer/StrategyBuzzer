@@ -1,6 +1,6 @@
 # DOCUMENTATION MAP — StrategyBuzzer Kernel Engine
 
-**Date : 2026-09-07**
+**Date : 2026-09-08**
 
 ## Autorité
 
@@ -19,21 +19,26 @@
 
 | Module | Source | Statut |
 |---|---|---|
-| 01 KernelBlueprint | `specifications/01_KernelBlueprint.md` | **v3.0 VERROUILLÉ — DEC-123 OFFICIAL; QuestionIntent possède seul le kernel_code complet** |
-| 02 KernelRotationPlanner | `specifications/02_KernelRotationPlanner.md` | **v3.7 VERROUILLÉ — PARTIE INTELLECTUELLE — DEC-118** |
-| 03 Taxonomy | `specifications/03_Taxonomy.md` | v1.0 historique sur frontière KRP; détails internes à reconstruire dans son tour |
-| 03 frontière temporaire | `working/03_Taxonomy/03_Taxonomy_BOUNDARY_BRIDGE_DEC-118.md` | **ACTIVE uniquement pour ownership KRP/Taxonomy** |
+| 01 KernelBlueprint | `specifications/01_KernelBlueprint.md` | **v3.1 VERROUILLÉ — DEC-123 + DEC-124 OFFICIAL; blueprint_id seul transmis; QuestionIntent possède seul le kernel_code complet** |
+| 02 KernelRotationPlanner | `specifications/02_KernelRotationPlanner.md` | **v4.0 VERROUILLÉ — DEC-119 OFFICIAL** |
+| 03 Taxonomy | `specifications/03_Taxonomy.md` | **v1.1 VERROUILLÉ — DEC-120 OFFICIAL** |
+| 03 frontière historique | `working/03_Taxonomy/03_Taxonomy_BOUNDARY_BRIDGE_DEC-118.md` | **NON ACTIVE — DEC-118 REJECTED, remplacée par DEC-119/120** |
 | 04 ValidationDominantIdeas | `working/04_ValidationDominantIdeas/` | brides actives; règles utilisées par Gemini pendant Taxonomy |
-| 05 QuestionIntent | `specifications/05_QuestionIntent.md` | **v2.2 VERROUILLÉ — DEC-123 + DEC-122; construit/persiste/verrouille seul le kernel_code complet** |
-| 06..11 | `working/` | à spécifier dans leur tour |
+| 05 QuestionIntent | `specifications/05_QuestionIntent.md` | **v2.2 VERROUILLÉ — DEC-123 + DEC-124 + DEC-122; construit/persiste/verrouille seul le kernel_code complet** |
+| 06 Phase1 | `specifications/06_Phase1.md` | **v1.0 CONTRAT VERROUILLÉ** |
+| 07 ValidationPhase1 | `specifications/07_ValidationPhase1.md` | **v1.0 FRONTIÈRE VERROUILLÉE** |
+| 08 Phase2 | `specifications/08_Phase2.md` | **v0.1 RÈGLES OFFICIELLES, module à compléter** |
+| 09 ValidationPhase2 | `specifications/09_ValidationPhase2.md` | **v0.1 FRONTIÈRE OFFICIELLE, module à compléter** |
+| 10 Quarantine | `specifications/10_Quarantine.md` | **v0.1 RÈGLES OFFICIELLES, module à compléter** |
+| 11 ReadyBank | `specifications/11_ReadyBank.md` | **v0.2 RÈGLES OFFICIELLES, module à compléter** |
 
 ## KRP — source unique
 
 ```text
 docs/architecture/kernel-engine/specifications/02_KernelRotationPlanner.md
-Version 3.7
-VERROUILLÉ — PARTIE INTELLECTUELLE
-DEC-118
+Version 4.0
+VERROUILLÉ
+DEC-119
 ```
 
 ## Invariant actif
@@ -55,24 +60,26 @@ même IdeaSlot consommé
 ↓
 si le besoin reste identique : silence
 
-si ENCORE EXPLOITABLE → VIDE :
-DOMAIN_EXHAUSTED(depth,domain)
+si dernière Dominant Idea exploitable du dernier Subject utilisée :
+fait terminal de consommation de l'occurrence
 ```
 
-Le signal signifie uniquement :
+Le fait signifie uniquement :
 
 ```text
-CE DOMAIN EST VIDE
+LA DERNIÈRE DOMINANT IDEA EXPLOITABLE
+DE CETTE OCCURRENCE VIENT D'ÊTRE UTILISÉE
 ```
-
-Règle : **delta-only**.
 
 ```text
 pas de signal à chaque noyau
 pas de signal à chaque passage
 pas de AVAILABLE
-maximum 1 DOMAIN_EXHAUSTED normal par occurrence
+maximum 1 fait terminal normal par occurrence
 ```
+
+Taxonomy ne produit jamais `DOMAIN_EXHAUSTED`. KRP seul reçoit ce fait terminal
+et l'interprète dans son moteur interne `DOMAIN_EXHAUSTED`.
 
 Puis :
 
@@ -149,8 +156,9 @@ NON SPÉCIFIÉES
 ## Bloc actif
 
 ```text
-02_KernelRotationPlanner
-RÉAUDIT-02-v3.7 = NEXT
+06_Phase1
+ALIGN-AUDIT-06-v1.0 = NEXT
 ```
 
-But : auditer le diff local déjà commencé par Replit contre la v3.7, puis reprendre uniquement les corrections compatibles.
+But : auditer l’implantation Phase1 contre son contrat v1.0, sans rouvrir KRP
+v4.0, Taxonomy v1.1 ou les responsabilités intellectuelles déjà verrouillées.

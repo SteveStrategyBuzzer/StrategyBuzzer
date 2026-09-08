@@ -101,7 +101,8 @@ Taxonomy n’appelle pas KRP pour obtenir une rotation et KRP ne lit pas les Ban
 
 Taxonomy doit :
 
-1. recevoir un Blueprint avec `blueprint_id + depth + domain` déjà remplis ;
+1. recevoir uniquement `blueprint_id`, puis recharger le même Blueprint
+   persistant et y lire `depth + domain` déjà remplis ;
 2. lire le `DepthContract` correspondant au `depth` ;
 3. identifier l’occurrence Taxonomy active du `(Depth + Domain)` reçu ;
 4. ouvrir une nouvelle occurrence seulement lorsqu’aucune occurrence exploitable correspondante n’existe ;
@@ -906,7 +907,7 @@ La spécification est conforme seulement si :
 Audit croisé :
 
 ```text
-01_KernelBlueprint v3.0 / DEC-123
+01_KernelBlueprint v3.1 / DEC-123 + DEC-124
 02_KernelRotationPlanner v4.0 / DEC-119
 04_ValidationDominantIdeas — interface
 05_QuestionIntent — frontière aval

@@ -3,7 +3,7 @@
 **Version :** 2.2
 **Date :** 7 septembre 2026
 **Statut :** OFFICIAL — CONTRAT ARCHITECTURAL VERROUILLÉ
-**Décision :** DEC-123
+**Décisions :** DEC-123 + DEC-124
 **Décision connexe :** DEC-122 — OFFICIAL, inchangée
 **Implémentation :** À AUDITER
 **Validation terminale :** NON
@@ -16,8 +16,9 @@
 
 # 1. Mission
 
-QuestionIntent reçoit le même `KernelBlueprint` canonique lorsque ses cinq
-données intellectuelles sont déjà remplies. Il est l'unique propriétaire du
+QuestionIntent reçoit uniquement `blueprint_id`, recharge le même
+`KernelBlueprint` canonique et vérifie que ses cinq données intellectuelles
+sont déjà remplies. Il est l'unique propriétaire du
 `kernel_code` complet : il attribue `VVVV`, construit le code complet, le
 persiste et le verrouille dans une même opération atomique.
 
@@ -419,7 +420,7 @@ Ces contrats devront respecter les identités et invariants définis ici.
 ```text
 Architecture :        VERROUILLÉE
 Contrat :             VERROUILLÉ
-Spécification :       OFFICIAL v2.2 / DEC-123 + DEC-122
+Spécification :       OFFICIAL v2.2 / DEC-123 + DEC-124 + DEC-122
 DEC-121 :             SUPERSEDED (remplacée par DEC-123)
 Implémentation :      À AUDITER
 Validation terminale : NON

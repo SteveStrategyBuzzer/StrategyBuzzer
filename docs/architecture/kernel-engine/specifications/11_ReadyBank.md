@@ -11,9 +11,9 @@
 
 # 1. Mission verrouillée
 
-ReadyBank reçoit ou détecte un relais minimal composé de `blueprint_id`, de la
-confirmation que la phase précédente est terminée et de son statut terminal.
-Il relit alors le même agrégat canonique persistant. Il devient le point unique
+ReadyBank reçoit uniquement `blueprint_id`. Il relit alors le même agrégat
+canonique persistant et y vérifie que la phase précédente est terminée avec le
+statut terminal requis. Il devient le point unique
 où une copie complète corrigée issue de Quarantine peut réconcilier cet
 agrégat.
 
@@ -35,17 +35,18 @@ créée une seule fois par `KernelBlueprintFactory` (KBP), avec un unique
 unique : aucune copie autoritaire et aucun objet `Blueprint` ne transitent entre
 phases.
 
-Le seul relais inter-phase autorisé est :
+La seule valeur transmise entre phases est :
 
 ```text
-blueprint_id + phase précédente terminée + statut terminal
+blueprint_id
 ```
 
 Chaque phase retrouve le `KernelBlueprint` persistant à partir de cet identifiant,
 lit et écrit exclusivement les données relevant de son ownership, persiste sa
-transaction, puis signale sa fin. ReadyBank applique exactement ce contrat : il
+transaction, puis transmet le même `blueprint_id`. ReadyBank applique exactement ce contrat : il
 ne reçoit, ne conserve ni ne transmet un objet canonique en mémoire. À son
-déclenchement, il vérifie le relais, relit le même `KernelBlueprint` persistant
+déclenchement, il relit le même `KernelBlueprint` persistant, y vérifie l’état
+terminal précédent,
 et évalue l’admissibilité de ses slots.
 
 Le canonique peut, à l’arrivée de ReadyBank, contenir :
@@ -139,10 +140,10 @@ vide, bloqué, soupçonné, non validé ou dont la traduction est absente/non va
 reste physiquement présent mais exclu du gameplay.
 
 ReadyBank persiste le résultat de son contrôle ou de sa réconciliation dans le
-canonique, puis émet son signal terminal. Le relais suivant ne reçoit que
-`blueprint_id`, la fin de ReadyBank et ce statut terminal; il relira à son tour
-le même agrégat. Aucune phase ne transporte une version sérialisée, mutée ou
-complète du canonique.
+canonique, puis émet son signal terminal. La frontière suivante transmet
+uniquement `blueprint_id`; son destinataire relira le même agrégat et y
+vérifiera la fin de ReadyBank ainsi que son statut terminal. Aucune phase ne
+transporte une version sérialisée, mutée ou complète du canonique.
 
 ## 4.3 Échecs de Phase1
 
@@ -156,25 +157,23 @@ le statut `SUSPICION` si cette validation le conclut. `CREATION_FAILED` et
 `SUSPICION` sont donc des branches distinctes et ne doivent jamais être
 confondues par ReadyBank ou par leurs relais.
 
-## 4.4 Modes externes, fixture et Harness
+## 4.4 Modes et scénarios de test externes
 
 Les modes production et test sont entièrement externes au `KernelBlueprint`.
 Aucun champ de mode, de target ou de test n’est stocké dans le Blueprint ni
 déduit de son contenu.
 
-Pour une fixture de test, le Harness demande à KBP le scénario ciblé. KBP crée
-atomiquement un vrai `KernelBlueprint` PostgreSQL isolé, déjà préparé pour la
-phase visée : les préconditions existent dès sa création et ses vrais sept slots
-sont présents. KBP retourne uniquement son `blueprint_id`. Cette fixture n’est
-ni un mock, ni un tableau, ni de la mémoire, ni une copie Quarantine. Elle
-n’est pas récupérable par les workers de production non ciblés, mais reste
-accessible à la vraie phase autorisée par `blueprint_id`.
+Un scénario de test reste entièrement extérieur au Blueprint et à KBP. Il
+demande à KBP un vrai `KernelBlueprint` PostgreSQL isolé avec ses sept slots
+structurels vides; KBP retourne uniquement `blueprint_id`. La phase demandée
+recharge ce Blueprint et les phases précédentes établissent leurs propres
+préconditions selon leurs contrats, sans préparation intellectuelle par KBP.
 
-Le Harness déclenche ensuite la vraie phase avec fournisseur simulé, intercepte
-son signal de fin, bloque la cascade, observe le résultat puis nettoie. Il
-n’écrit aucune précondition, donnée intellectuelle ou validation. Il ne crée pas
-de variante métier de Phase1 : en production Phase1 relaie vers la validation;
-en test elle relaie vers le récepteur terminal externe.
+Le scénario définit uniquement la première phase, les transmissions successives
+de `blueprint_id` permises et le point d’arrêt. L’appelant observe ensuite le
+résultat persistant et demande à KBP le nettoyage avec la référence technique
+de création. Il ne constitue ni un Harness architectural ni une variante
+métier de Phase1.
 
 # 5. Exploitabilité gameplay
 

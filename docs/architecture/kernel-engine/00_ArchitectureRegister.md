@@ -60,6 +60,7 @@ REJECTED
 | DEC-121 | 2.2 | 2026-08-29 | SUPERSEDED | Historique conservé : `kernel_code` se construisait progressivement (KRP → `DD-DO`; Taxonomy → `SUB-SUJ-IDE`; QuestionIntent/KernelCodeEngine → `VVVV` + assemblage). Ses invariants compatibles — `VVVV` base36 transactionnel, unique, jamais recyclé et indépendant par bassin `Depth + Domain`; verrouillage final; Phase1 sans modification du code; état joueur externe — sont repris explicitement par DEC-123. La construction progressive est abandonnée. | 01,02,03,05 + frontière 06/11 | formulations DEC-121 v2.0/v2.1 portant `question_code-COG-VAR` | DEC-123 |
 | DEC-122 | 1.0 | 2026-08-29 | OFFICIAL | Un seul Blueprint canonique contient l’identité, les 7 CognitiveSlots source et leurs traductions. Le canonique poursuit toutes les phases jusqu’à ReadyBank. Quarantine reçoit une copie complète avec chemins soupçonnés affichables en rouge; la copie corrigée reprend le pipeline de façon ciblée puis rejoint le canonique uniquement dans ReadyBank, qui remplace/corrige/remplit les slots ciblés ou vides sans toucher aux slots valides. L’état joueur `00n→11o` reste externe au Blueprint et autorise au maximum un cognitif par chacune des trois familles | 01,05,06,07,08,09,10,11 + Gameplay | anciennes formulations fragment Quarantine et `question_code-COG-VAR` | AUCUNE |
 | DEC-123 | 1.0 | 2026-09-07 | OFFICIAL | Un Blueprint canonique, une porte logique et une autorisation éphémère. KBP crée atomiquement la structure vide et remet `{blueprint_id,destinataire_initial}`. Rotation écrit seulement `depth + domain`; Taxonomy seulement son triplet; QuestionIntent est l’unique propriétaire : il alloue `VVVV`, construit, persiste et verrouille le `kernel_code` complet. `CURRENT_KERNEL_RECEIVED` est l’entrée normale idempotente de création du Blueprint suivant. Aucun Harness, Fixture ou précondition intellectuelle KBP dans le contrat actif; terminaison de test par KBP sur demande autorisée. | 01,02,03,05 + frontières 06..11 | DEC-121 | AUCUNE |
+| DEC-124 | 1.0 | 2026-09-08 | OFFICIAL | `blueprint_id` est l’unique valeur transmise entre toutes les phases. Chaque phase recharge le même Blueprint persistant, lit les préconditions et statuts déjà écrits, écrit seulement sa zone puis transmet le même identifiant. Aucun objet d’autorisation séparé, `destinataire_initial`, propriétaire de clé ou état de circulation. `request_reference → blueprint_id` sert uniquement à l’idempotence de création KBP. | 01 + frontières 02,03,05,06,07,08,09,11 | clauses d’autorisation distincte et `destinataire_initial` de DEC-123 seulement | AUCUNE |
 
 ---
 
@@ -206,6 +207,15 @@ Taxonomy ne suppose jamais que le Blueprint immédiatement suivant appartient au
 - **Décision remplacée :** DEC-121
 - **Décision remplaçante :** AUCUNE
 
+> **ANNOTATION HISTORIQUE — SUPERSEDED BY DEC-124, PORTÉE LIMITÉE.**
+> Le contenu ci-dessous est conservé intégralement comme décision ayant
+> réellement existé. Seules les clauses qui définissent une autorisation
+> distincte, `{blueprint_id,destinataire_initial}`, sa remise initiale ou un
+> destinataire de cette autorisation sont remplacées par DEC-124. Les clauses
+> d’ownership intellectuel, de création canonique vide, d’idempotence, de
+> `CURRENT_KERNEL_RECEIVED`, de Factory interne et de DEC-122 demeurent
+> **OFFICIAL**.
+
 ## Décision
 
 DEC-121 est intégralement `SUPERSEDED` comme décision administrative. Son
@@ -251,10 +261,78 @@ complète non canonique et fusion ciblée uniquement dans ReadyBank.
 
 ---
 
+# DEC-124 — Transmission inter-phase par blueprint_id uniquement
+
+- **Version :** 1.0
+- **Date :** 2026-09-08
+- **Statut :** **OFFICIAL**
+- **Module propriétaire :** frontière commune `01→11`
+- **Source canonique :** `specifications/01_KernelBlueprint.md` v3.1
+- **Décision remplacée :** clauses d’autorisation distincte et
+  `destinataire_initial` de DEC-123 seulement
+- **Décision remplaçante :** AUCUNE
+
+## Décision
+
+KBP crée et persiste un Blueprint canonique complet et intellectuellement vide,
+avec ses sept CognitiveSlots. Après succès, KBP produit uniquement :
+
+```text
+blueprint_id
+```
+
+En production :
+
+```text
+KBP → blueprint_id → Rotation
+```
+
+En test :
+
+```text
+KBP → blueprint_id → phase demandeuse
+```
+
+À chaque frontière, la phase émettrice transmet uniquement le même
+`blueprint_id`. La phase destinataire recharge le même Blueprint persistant,
+vérifie les préconditions et statuts déjà persistés, lit l’identité
+intellectuelle nécessaire, écrit exclusivement sa zone d’ownership, persiste
+son résultat, puis transmet le même `blueprint_id` à la phase suivante. La
+dernière phase ne transmet rien de plus.
+
+Il n’existe aucun objet d’autorisation séparé, token d’autorisation,
+`destinataire_initial`, propriétaire persistant de clé, état persistant de
+circulation, agrégat transporté entre phases, Harness central, coordinateur de
+relais ou gestionnaire de clé.
+
+Les scénarios de test restent extérieurs au Blueprint et à KBP. Ils définissent
+seulement la première phase qui reçoit `blueprint_id`, les transmissions
+successives permises et le point d’arrêt. Ils n’écrivent aucune donnée métier
+ou intellectuelle dans le Blueprint.
+
+L’association technique :
+
+```text
+request_reference → blueprint_id
+```
+
+existe exclusivement pour empêcher une création en double et retrouver le même
+Blueprint après rejeu d’une demande KBP. Elle n’est jamais une clé inter-phase,
+une autorisation, un registre de destination, un coordinateur de phase, un
+scénario de test ou une partie du Blueprint canonique.
+
+DEC-123 reste intacte historiquement. DEC-124 remplace uniquement ses
+formulations sur l’autorisation distincte, `{blueprint_id,destinataire_initial}`
+et le destinataire initial. Elle ne modifie aucune responsabilité
+intellectuelle de Rotation, Taxonomy, QuestionIntent, Phase1,
+ValidationPhase1, Phase2, ValidationPhase2 ou ReadyBank.
+
+---
+
 # Sources canoniques actuelles
 
 ```text
-01 → specifications/01_KernelBlueprint.md v3.0 / DEC-123
+01 → specifications/01_KernelBlueprint.md v3.1 / DEC-123 + DEC-124
 02 → specifications/02_KernelRotationPlanner.md v4.0 / DEC-119
 03 → specifications/03_Taxonomy.md v1.1 / DEC-120
 ```
@@ -282,7 +360,7 @@ Ne jamais demander à Replit d’implanter KRP et Taxonomy dans le même bloc.
 # DEC-121 — historique SUPERSEDED : construction progressive, suffixe VVVV et anti-répétition joueur
 
 ```text
-05 → specifications/05_QuestionIntent.md v2.2 / DEC-123 + DEC-122
+05 → specifications/05_QuestionIntent.md v2.2 / DEC-123 + DEC-124 + DEC-122
 ```
 
 Le document historique `docs/architecture/05_QuestionIntent.md` est SUPERSEDED et retiré de l’arbre actif. Son historique demeure récupérable dans Git.
@@ -291,7 +369,7 @@ Le document historique `docs/architecture/05_QuestionIntent.md` est SUPERSEDED e
 # DEC-122 — Blueprint complet, copie Quarantine et fusion ReadyBank
 
 ```text
-01 → specifications/01_KernelBlueprint.md v3.0 / DEC-123
+01 → specifications/01_KernelBlueprint.md v3.1 / DEC-123 + DEC-124
 06 → specifications/06_Phase1.md v0.1
 07 → specifications/07_ValidationPhase1.md v0.1
 08 → specifications/08_Phase2.md v0.1

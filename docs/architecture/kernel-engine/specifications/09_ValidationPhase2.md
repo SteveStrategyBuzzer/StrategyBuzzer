@@ -11,13 +11,17 @@
 
 # 1. Mission verrouillée
 
-ValidationPhase2 valide les traductions de la question, de la réponse, des choix et du SV à l’intérieur des sept CognitiveSlots du même KernelBlueprint.
+ValidationPhase2 reçoit uniquement `blueprint_id`, recharge le même
+KernelBlueprint persistant, vérifie l’état terminal de Phase2, puis valide les
+traductions de la question, de la réponse, des choix et du SV à l’intérieur de
+ses sept CognitiveSlots.
 
 Elle ne remplace jamais la source et ne crée aucun nouveau CognitiveSlot.
 
 # 2. Sortie sans suspicion
 
-Une traduction validée peut poursuivre vers ReadyBank avec le Blueprint canonique.
+Après validation, ValidationPhase2 transmet uniquement le même `blueprint_id`
+à ReadyBank, qui recharge le Blueprint canonique persistant.
 
 # 3. Sortie avec suspicion
 

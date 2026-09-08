@@ -12,13 +12,12 @@
 # 1. Mission
 
 En fonctionnement normal, l'entrée contractuelle de Phase1 est exclusivement
-`blueprint_id`, accompagné de la preuve que la phase précédente est terminée
-avec son statut terminal. Phase1 retrouve alors le même `KernelBlueprint`
-persistant et lit l'identité intellectuelle inscrite par les vrais propriétaires
-amont.
+`blueprint_id`. Phase1 retrouve alors le même `KernelBlueprint` persistant, y
+vérifie que la phase précédente est terminée avec son statut terminal et lit
+l'identité intellectuelle inscrite par les vrais propriétaires amont.
 
 Lorsqu'elle est ciblée directement en test, Phase1 demande un Blueprint par son
-propre point d'entrée et reçoit l'autorisation initiale de KBP. Le Blueprint
+propre point d'entrée et reçoit uniquement `blueprint_id` de KBP. Le Blueprint
 demeure intellectuellement vide à sa création; les paramètres nécessaires au
 test appartiennent à Phase1 et à ses dépendances simulées, jamais à KBP.
 
@@ -43,14 +42,15 @@ progressivement rempli sous le même `blueprint_id`. Il est l'unique source de
 vérité : aucune copie autoritaire et aucun objet `Blueprint` transporté entre
 phases ne sont autorisés.
 
-Le relais minimal entre phases est strictement :
+La transmission entre phases est strictement :
 
 ```text
-blueprint_id + phase précédente terminée + statut terminal
+blueprint_id
 ```
 
-Chaque phase relit le Blueprint persistant par cet identifiant, lit et écrit
-uniquement les champs de son ownership, persiste, puis signale sa propre fin.
+Chaque phase relit le Blueprint persistant par cet identifiant, y vérifie la
+phase précédente et son statut terminal, lit et écrit uniquement les champs de
+son ownership, persiste, puis signale sa propre fin.
 Phase1 ne reçoit donc jamais un Blueprint sérialisé en entrée et ne transmet
 jamais un Blueprint en sortie.
 
@@ -482,8 +482,8 @@ Un seul appel de création demande les sept slots ensemble.
 
 ## 9.1 Contexte de création dérivé du Blueprint relu
 
-L'entrée de Phase1 reste `blueprint_id` et le relais terminal précédent. Après
-lookup du Blueprint persistant, Phase1 construit le contexte suivant pour
+L'entrée de Phase1 est uniquement `blueprint_id`. Phase1 recharge le Blueprint
+persistant et y vérifie l’état terminal précédent, puis construit le contexte suivant pour
 l'appel Gemini ; ce contexte n'est pas un Blueprint reçu ou transmis entre
 phases.
 
@@ -760,15 +760,16 @@ Phase1 ciblée
 21. replay idempotent;
 22. QCM : bonne réponse canonique en `a`, distracteurs en `b`, `c`, `d`;
 23. aucune mutation Section 1.
-24. entrée Phase1 limitée à `blueprint_id` avec phase précédente terminée et
-    statut terminal ; le Blueprint est relu en persistance, jamais transporté ;
+24. entrée Phase1 limitée à `blueprint_id`; la phase précédente terminée et son
+    statut terminal sont vérifiés dans le Blueprint relu en persistance, jamais
+    transporté ;
 25. la Phase1 ciblée demande, par son point d'entrée de test, un vrai
     `KernelBlueprint` PostgreSQL canonique, complet structurellement et vide
     intellectuellement ; KBP le crée atomiquement avec les sept vrais slots et
-    remet l'autorisation initiale `{blueprint_id, PHASE_1}` ;
+    retourne uniquement `blueprint_id` ;
 26. ce Blueprint de test n'est ni mock, ni tableau, ni mémoire, ni Quarantine ;
     il n'est pas récupérable par les workers de production et reste accessible
-    à la vraie Phase1 autorisée par `blueprint_id` ;
+    à la vraie Phase1 par `blueprint_id` ;
 27. les paramètres intellectuels et le fournisseur simulé appartiennent
     exclusivement au point d'entrée de test et aux dépendances de Phase1 ; ils
     ne sont ni remis à KBP ni inscrits par KBP dans le Blueprint ;

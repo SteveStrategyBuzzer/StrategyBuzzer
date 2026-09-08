@@ -1,17 +1,18 @@
 # StrategyBuzzer — 01_KernelBlueprint
 
-**Version :** 3.0
-**Date :** 2026-09-07
+**Version :** 3.1
+**Date :** 2026-09-08
 **Statut documentaire :** **VERROUILLÉ**
 **Architecture :** **100 %**
 **Contrat :** **100 %**
-**Décision directrice :** **DEC-123 v1.0 — OFFICIAL**
-**Remplace :** v2.1 et la construction progressive de `kernel_code` de DEC-121
+**Décisions directrices :** **DEC-123 v1.0 + DEC-124 v1.0 — OFFICIAL**
+**Remplace :** v3.0 sur la transmission inter-phase seulement
 
-> Cette version remplace intégralement v2.1. DEC-121 est conservée comme
-> historique `SUPERSEDED`; DEC-123 reprend ses invariants compatibles de
-> format, unicité, allocation de `VVVV` et immutabilité, mais abandonne
-> définitivement la construction progressive du code.
+> Cette version conserve intégralement les responsabilités intellectuelles de
+> v3.0. DEC-123 demeure historique et **OFFICIAL**, sauf ses seules clauses sur
+> l’autorisation distincte et `destinataire_initial`, marquées
+> **SUPERSEDED BY DEC-124** dans le registre. DEC-124 établit `blueprint_id`
+> comme unique valeur transmise entre toutes les phases.
 
 # 1. Mission
 
@@ -39,25 +40,25 @@ recyclé, renvoyé à Rotation ou réécrit pour le noyau suivant.
 
 # 3. Autorité architecturale
 
-Cette spécification et DEC-123 sont l'autorité. Le code existant ne l'est pas.
-La porte logique est le contrat d'accès et d'ownership : elle n'implique ni
-table, ni champ `key`, ni token persistant, ni `BlueprintKey`, ni
-`current_key_owner`, ni porte distincte par phase.
+Cette spécification, DEC-123 dans sa portée non remplacée et DEC-124 sont
+l'autorité. Le code existant ne l'est pas. Le contrat d'accès et d'ownership
+n'implique ni table ou champ de clé de circulation, ni propriétaire courant,
+ni porte distincte par phase.
 
 # 4. Un seul Blueprint canonique
 
-Il existe un seul Blueprint canonique, une seule porte logique et une seule
-autorisation d'exécution en circulation. Chaque phase retrouve le même
-persistant via `blueprint_id`. Aucun objet `KernelBlueprint` hydraté, payload
-de slot ou copie autoritaire n'est transmis entre phases. Une copie Quarantine
-est l'exception explicitement non canonique définie par DEC-122.
+Il existe un seul Blueprint canonique. `blueprint_id` est l'unique valeur
+transmise entre les phases; chaque phase retrouve par cet identifiant le même
+persistant. Aucun objet `KernelBlueprint` hydraté, payload de slot ou copie
+autoritaire n'est transmis entre phases. Une copie Quarantine est l'exception
+explicitement non canonique définie par DEC-122.
 
 # 5. Responsabilités exclusives de KBP
 
 `KernelBlueprintFactory` (KBP) crée une seule fois le Blueprint canonique
 complet vide, lui attribue son `blueprint_id`, crée ses structures permanentes
 et persiste atomiquement l'ensemble. Après une création réussie, KBP remet
-l'autorisation initiale au seul destinataire initial.
+uniquement `blueprint_id`.
 
 # 6. Ownership officiel des écritures
 
@@ -76,7 +77,7 @@ l'autorisation initiale au seul destinataire initial.
 QuestionIntent est l'unique propriétaire du `kernel_code` complet.
 `KernelCodeEngine`, s'il existe techniquement, est seulement un mécanisme
 interne de QuestionIntent : ni module, ni phase, ni copropriétaire, ni porte,
-ni destinataire autonome de l'autorisation, ni autorité d'écriture.
+ni gestionnaire de transmission, ni autorité d'écriture.
 
 # 7. Interdictions de KBP
 
@@ -96,18 +97,19 @@ ReadyBank → CURRENT_KERNEL_RECEIVED → KBP
 ```
 
 `CURRENT_KERNEL_RECEIVED` signifie que ReadyBank a reçu terminalement le noyau
-courant. Il autorise exclusivement la création du Blueprint suivant, jamais la
+courant. Il déclenche exclusivement la création du Blueprint suivant, jamais la
 modification ou la retransmission de l'ancien Blueprint.
 
 # 9. Référence d'idempotence d'une demande
 
-La demande issue de `CURRENT_KERNEL_RECEIVED` porte une référence de rejeu
-stable. Une première réception réussie crée un seul nouveau Blueprint; le
-rejeu de la même référence retourne le même `blueprint_id` sans second effet
-lifecycle. Si la création est validée mais que la remise de l'autorisation
-échoue ou est interrompue, le Blueprint reste `CREATED_UNENGAGED`; le rejeu
-retrouve ce Blueprint et remet l'autorisation. Un rollback ne laisse ni
-Blueprint ni autorisation.
+La demande issue de `CURRENT_KERNEL_RECEIVED` porte une `request_reference`
+stable. L'association `request_reference → blueprint_id` existe uniquement
+pour empêcher une création en double et retrouver le même Blueprint après
+rejeu. Elle n'est ni une clé inter-phase, ni un registre de destination, ni un
+coordinateur de phase, ni un scénario de test, ni une partie du Blueprint.
+Si la création est validée mais que la transmission de `blueprint_id` échoue
+ou est interrompue, le Blueprint reste `CREATED_UNENGAGED`; le rejeu retrouve
+ce Blueprint. Un rollback ne laisse ni Blueprint ni association technique.
 
 # 10. Entrée de test
 
@@ -124,7 +126,7 @@ Les paramètres et dépendances simulées nécessaires au test d'une phase
 appartiennent au contrat de cette phase et à son infrastructure de test. Ils ne
 sont pas reçus, choisis, persistés ou transformés en préconditions Blueprint
 par KBP. Ils ne donnent aucune responsabilité intellectuelle à KBP et ne
-deviennent pas une autorisation de modifier une zone amont.
+permettent pas de modifier une zone amont.
 
 # 12. Construction canonique complète vide
 
@@ -183,9 +185,9 @@ de `06_Phase1`, celui des langues de `08_Phase2`.
 
 # 16. Sortie de KBP
 
-Après succès, KBP ne sort jamais un agrégat Blueprint. Sa sortie est la remise
-unique de l'autorisation initiale éphémère au destinataire initial. Après cette
-remise, les phases se relaient par références minimales et lookup persistant.
+Après succès, KBP ne sort jamais un agrégat Blueprint. Sa seule sortie est
+`blueprint_id`. Toutes les phases transmettent ce même identifiant et
+rechargent le persistant avant de lire ou d'écrire.
 
 # 17. blueprint_id
 
@@ -194,30 +196,29 @@ une seule fois. Il n'est ni `kernel_code`, ni `rotation_identifier`, ni une
 clé de droit durable. Toute seconde initialisation ou écriture directe est
 refusée.
 
-# 18. Autorisation initiale éphémère
+# 18. Transmission initiale
 
-L'autorisation remise après, et seulement après, la transaction réussie est
-exactement :
+La valeur produite après, et seulement après, la transaction réussie est :
 
 ```text
-{ blueprint_id, destinataire_initial }
+blueprint_id
 ```
 
-Elle n'est jamais persistée, ne fait pas partie du Blueprint et ne contient ni
-donnée intellectuelle, ni phase suivante, ni scénario complet, ni mode. Elle
-est remise une fois; aucune autorisation ne subsiste après rollback.
+KBP ne produit aucune donnée intellectuelle, phase suivante, destination,
+scénario ou mode. Après rollback, aucun Blueprint ni binding
+`request_reference → blueprint_id` ne subsiste.
 
-# 19. Destination normale Rotation
+# 19. Entrée normale Rotation
 
-En production, `destinataire_initial = Rotation`. Rotation retrouve le
-Blueprint, écrit seulement `depth + domain`, persiste, puis relaie le résultat
-terminal minimal à Taxonomy. Rotation ne construit aucune partie, projection
-ou segment du `kernel_code`.
+En production, KBP transmet uniquement `blueprint_id` à Rotation. Rotation
+retrouve le Blueprint, écrit seulement `depth + domain`, persiste, puis
+transmet le même `blueprint_id` à Taxonomy. Rotation ne construit aucune
+partie, projection ou segment du `kernel_code`.
 
-# 20. Destination de test phase demandeuse
+# 20. Entrée de test de la phase demandeuse
 
-En test isolé, `destinataire_initial` est la phase demandeuse. Cette phase
-recharge le même Blueprint par `blueprint_id`, applique son contrat et écrit
+En test isolé, KBP retourne uniquement `blueprint_id` à la phase demandeuse.
+Cette phase recharge le même Blueprint, applique son contrat et écrit
 seulement sa zone. Une phase ne reçoit jamais le pouvoir de créer les
 préconditions qui relèvent de phases précédentes; son test ne redéfinit pas le
 contrat du Blueprint.
@@ -261,13 +262,13 @@ de `fillTaxonomy`; aucun `CONSUMED` ne résulte d'un échec.
 
 # 25. Cycle de vie normal
 
-Après la remise à Rotation, chaque phase reçoit seulement :
+Après la transmission à Rotation, chaque phase reçoit seulement :
 
 ```text
-blueprint_id + phase précédente terminée + statut terminal requis
+blueprint_id
 ```
 
-Elle vérifie le statut compatible, charge le persistant, lit ses préconditions,
+Elle charge le persistant, y vérifie le statut compatible, lit ses préconditions,
 écrit son ownership, persiste puis émet son propre signal terminal. Un statut
 absent, non terminal ou incompatible interdit le démarrage et toute écriture
 de la phase suivante.
@@ -279,15 +280,16 @@ contrat autorise. La phase testée travaille sur le vrai Blueprint persistant
 isolé et son résultat peut être observé avant terminaison. Aucune cascade de
 production, aucun worker, outbox, queue, compteur, Bank ou ReadyBank de
 production ne doit récupérer ce contexte; les relais éventuels relèvent des
-contrats des modules testés, pas de 01.
+contrats des modules testés et transmettent uniquement `blueprint_id`.
 
 # 27. Absence de Harness
 
 Aucun Harness n'appartient au contrat architectural actif de
 `01_KernelBlueprint`. L'infrastructure de test peut techniquement déclarer ses
 assertions et simuler des dépendances, mais elle ne possède pas le Blueprint,
-ne reçoit ni ne transmet l'autorisation architecturale, ne construit pas de
-contenu et n'est jamais un orchestrateur métier.
+ne reçoit ni ne transmet de droit d'exécution distinct, ne construit pas de
+contenu et n'est jamais un orchestrateur métier. L'infrastructure de test ne
+fait que transmettre `blueprint_id` selon le scénario externe.
 
 # 28. Absence de préconditions intellectuelles KBP
 
@@ -304,21 +306,22 @@ contrat de cette phase. L'arrêt après le travail autorisé est extérieur au
 Blueprint et ne crée aucun état de mode, scénario, cible ou clé persistante
 dans celui-ci. Les phases ne deviennent pas responsables de l'observation.
 
-# 30. Autorité de terminaison
+# 30. Demande de terminaison
 
-L'appelant technique qui a demandé la création du contexte de test possède
-uniquement l'autorité extérieure de demander la terminaison après ses
-observations et assertions. Il présente à KBP `blueprint_id` avec sa référence
-externe éphémère. Cette autorité ne donne ni ownership Blueprint, ni droit
-d'écriture métier, ni droit de suppression directe.
+L'appelant technique qui a demandé la création du contexte de test peut
+demander sa terminaison après ses observations et assertions. Il présente à
+KBP uniquement `blueprint_id` dans le contexte PHPUnit PostgreSQL isolé. Cela
+ne donne ni ownership Blueprint, ni droit d'écriture métier, ni droit de
+suppression directe. L'association d'idempotence de création n'est pas une
+preuve de terminaison et n'acquiert aucune seconde fonction.
 
-# 31. Autorité de suppression
+# 31. Suppression par KBP
 
-KBP vérifie la correspondance entre `blueprint_id` et la référence externe du
-contexte isolé et est le seul à exécuter la suppression. Les phases ne
-connaissent pas ce mécanisme et n'exécutent aucun SQL de nettoyage. Une demande
-non autorisée est refusée; une seconde demande après suppression retourne
-`ALREADY_TERMINATED` et ne touche aucune autre donnée.
+KBP vérifie le contexte PHPUnit PostgreSQL isolé et l'identité du Blueprint,
+puis est le seul à exécuter la suppression. Les phases ne connaissent pas ce
+mécanisme et n'exécutent aucun SQL de nettoyage. Une demande hors de ce
+contexte est refusée. Un Blueprint déjà absent constitue un succès idempotent
+et aucune autre donnée n'est touchée.
 
 # 32. Nettoyage et interruption
 
@@ -366,9 +369,9 @@ Blueprint.
 | KRP, Taxonomy ou Phase1 écrit `kernel_code` | refus |
 | rejeu `CURRENT_KERNEL_RECEIVED` | même création, aucun double effet |
 | remise initiale interrompue | `CREATED_UNENGAGED`, rejeu du même identifiant |
-| terminaison non autorisée | refus |
+| référence technique ne correspondant pas au Blueprint | refus |
 | suppression pendant écriture | refus, Blueprint intact |
-| suppression répétée | `ALREADY_TERMINATED` |
+| suppression répétée après absence du Blueprint | succès idempotent |
 
 `question_intents.frame_en` reste legacy et non autoritaire; il n'est ni
 source de vérité Blueprint ni persistance Phase1. Les données joueur, le
@@ -406,11 +409,12 @@ Aucun slot suspect, vide ou non validé n'est exposable au gameplay.
 **Tests unitaires internes Factory/KBP seulement :** création de
 `blueprint_id`; charpente canonique vide; création atomique de l'enveloppe et
 des sept slots; unicité active; immutabilité; absence d'écriture
-intellectuelle; exactitude de `{ blueprint_id, destinataire_initial }`;
-idempotence/rejeu de `CURRENT_KERNEL_RECEIVED`; refus d'écriture directe;
-autorité de terminaison; refus pendant écriture active; `ALREADY_TERMINATED`;
-nettoyage d'un contexte interrompu. L'accès direct Factory est limité à ces
-tests internes.
+intellectuelle; sortie limitée à `blueprint_id`; idempotence/rejeu de
+`CURRENT_KERNEL_RECEIVED`; association
+`request_reference → blueprint_id`; refus d'écriture directe; contrôle de la
+demande de terminaison; refus pendant écriture active; succès idempotent si le
+Blueprint est déjà absent; nettoyage d'un contexte interrompu. L'accès direct
+Factory est limité à ces tests internes.
 
 **Tests fonctionnels KBP :** le Blueprint persistant est retrouvé par son
 identifiant, ne circule pas comme objet, reste structurellement complet et
@@ -428,5 +432,5 @@ de KBP.
 ```text
 Architecture : 100 %
 Contrat :      100 %
-STATUT DOCUMENTAIRE : VERROUILLÉ v3.0
+STATUT DOCUMENTAIRE : VERROUILLÉ v3.1
 ```
