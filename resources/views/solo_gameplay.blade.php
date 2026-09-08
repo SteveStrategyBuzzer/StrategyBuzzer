@@ -102,7 +102,10 @@
     @endif
 </div>
 
-<form method="POST" action="{{ route('solo.answer') }}">
+<form method="POST" action="{{ route('solo.answer') }}"
+      data-analytics-event="answer_submitted"
+      data-analytics-mode="solo"
+      data-analytics-question-number="{{ (int) ($params['current'] ?? 1) }}">
     @csrf
     <input type="hidden" name="question_id" value="{{ $params['question_id'] }}">
     <div class="reponses">

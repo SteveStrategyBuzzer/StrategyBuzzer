@@ -1381,7 +1381,7 @@ body { background: var(--sb-bg); }
                     <div class="sb-mode-body">
                         <div class="sb-mode-desc">{{ __('Faites votre ascension avec vos connaissances') }}</div>
                         @if($soloUnlocked)
-                            <a href="{{ R::has('solo.index') ? route('solo.index') : url('/solo') }}" class="sb-mode-btn btn-blue">{{ __('Jouer') }}</a>
+                            <a href="{{ R::has('solo.index') ? route('solo.index') : url('/solo') }}" class="sb-mode-btn btn-blue" data-analytics-event="mode_selected" data-analytics-mode="solo" data-analytics-location="main_menu">{{ __('Jouer') }}</a>
                         @else
                             <div class="sb-lock-badge">🔒 {{ __('Complétez votre profil') }}</div>
                         @endif
@@ -1401,7 +1401,7 @@ body { background: var(--sb-bg); }
                     <div class="sb-mode-body">
                         <div class="sb-mode-desc">{{ __('Affrontez d\'autres joueurs en temps réel') }}</div>
                         @if($duoStatus === 'unlocked')
-                            <a href="{{ route('duo.splash') }}" class="sb-mode-btn btn-green">{{ __('Jouer') }}</a>
+                            <a href="{{ route('duo.splash') }}" class="sb-mode-btn btn-green" data-analytics-event="mode_selected" data-analytics-mode="duo" data-analytics-location="main_menu">{{ __('Jouer') }}</a>
                         @elseif($duoStatus === 'invite_only')
                             <a href="{{ route('duo.invitations') }}" class="sb-mode-btn btn-green">{{ __('Rejoindre') }}</a>
                         @else
@@ -1449,7 +1449,7 @@ body { background: var(--sb-bg); }
                     <div class="sb-mode-body">
                         <div class="sb-mode-desc">{{ __('Jusqu\'à 40 joueurs par Quiz!') }}</div>
                         @if($masterPurchased && $profileComplete)
-                            <a href="{{ url('/master') }}" class="sb-mode-btn btn-orange">{{ __('Jouer') }}</a>
+                            <a href="{{ url('/master') }}" class="sb-mode-btn btn-orange" data-analytics-event="mode_selected" data-analytics-mode="master" data-analytics-location="main_menu">{{ __('Jouer') }}</a>
                         @else
                             <div style="font-size:0.62rem;color:var(--sb-muted);text-align:center;line-height:1.6">
                                 🔒 {{ __('Créez vos propres quiz et défiez vos amis') }}

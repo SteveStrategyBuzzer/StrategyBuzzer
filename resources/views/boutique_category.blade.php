@@ -524,7 +524,7 @@ audio { width: 100%; }
                                 @if($isUnlockedPack)
                                     <button class="btn success lock-btn" type="button" disabled>🔓</button>
                                 @else
-                                    <form method="POST" action="{{ $purchaseUrl }}">
+                                    <form method="POST" action="{{ $purchaseUrl }}" data-analytics-event="shop_purchase_attempt" data-analytics-category="{{ $category }}" data-analytics-kind="pack">
                                         @csrf
                                         <input type="hidden" name="kind" value="pack">
                                         <input type="hidden" name="target" value="{{ $p['slug'] }}">
@@ -581,7 +581,7 @@ audio { width: 100%; }
                     @if($isUnlockedMusic)
                         <div class="actions"><button class="btn success" disabled>{{ __('Disponible') }}</button></div>
                     @else
-                        <form method="POST" action="{{ $purchaseUrl }}" class="actions">
+                        <form method="POST" action="{{ $purchaseUrl }}" class="actions" data-analytics-event="shop_purchase_attempt" data-analytics-category="{{ $category }}" data-analytics-kind="music">
                             @csrf
                             <input type="hidden" name="kind" value="music">
                             <input type="hidden" name="target" value="{{ $track['id'] }}">
@@ -660,7 +660,7 @@ audio { width: 100%; }
                                 @if($isUnlockedStrategic)
                                     <button class="btn success lock-btn" type="button" disabled>🔓</button>
                                 @else
-                                    <form method="POST" action="{{ $purchaseUrl }}">
+                                    <form method="POST" action="{{ $purchaseUrl }}" data-analytics-event="shop_purchase_attempt" data-analytics-category="{{ $category }}" data-analytics-kind="strategic">
                                         @csrf
                                         <input type="hidden" name="kind" value="stratégique">
                                         <input type="hidden" name="target" value="{{ $slug }}">
@@ -951,7 +951,7 @@ audio { width: 100%; }
                         <img src="{{ asset('images/skill_coin.png') }}" alt="" class="coin-icon">
                         {{ $lp['price'] }}
                     </div>
-                    <form method="POST" action="{{ $purchaseUrl }}" style="margin-top:16px;">
+                    <form method="POST" action="{{ $purchaseUrl }}" style="margin-top:16px;" data-analytics-event="shop_purchase_attempt" data-analytics-category="{{ $category }}" data-analytics-kind="life">
                         @csrf
                         <input type="hidden" name="kind" value="life">
                         <input type="hidden" name="quantity" value="{{ $lp['lives'] }}">
@@ -1263,7 +1263,7 @@ function openPackModal(slug, label, price, isUnlocked) {
                 <img src="{{ asset('images/skill_coin.png') }}" alt="" style="width:28px;height:28px;">
                 <span>${price}</span>
             </div>
-            <form method="POST" action="{{ $purchaseUrl }}" style="margin:0;">
+            <form method="POST" action="{{ $purchaseUrl }}" style="margin:0;" data-analytics-event="shop_purchase_attempt" data-analytics-category="{{ $category }}" data-analytics-kind="pack">
                 @csrf
                 <input type="hidden" name="kind" value="pack">
                 <input type="hidden" name="target" value="${slug}">

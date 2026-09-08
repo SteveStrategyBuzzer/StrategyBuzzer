@@ -2849,6 +2849,10 @@ foreach ($colors as $color) {
             if (data.success) {
                 const mode = data.lobby?.mode || 'duo';
                 const settings = data.lobby?.settings || {};
+                window.trackEvent('game_started', {
+                    mode: mode,
+                    location: 'lobby'
+                });
                 if (window.showBrainSpin) window.showBrainSpin();
                 submitGameStart(mode, settings);
             } else {

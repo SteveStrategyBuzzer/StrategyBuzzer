@@ -347,35 +347,35 @@
 
     <div class="boutique-grid">
         <!-- Packs d'avatars -->
-        <a href="{{ route('boutique.category', 'packs') }}" class="category-card">
+        <a href="{{ route('boutique.category', 'packs') }}" class="category-card" data-analytics-event="shop_category_selected" data-analytics-category="packs">
             <div class="category-icon">🎨</div>
             <div class="category-name">{{ __("Packs d'avatars") }}</div>
             <div class="category-desc">{{ __('Nouveaux visuels pour votre profil') }}</div>
         </a>
 
         <!-- Musiques d'Ambiance -->
-        <a href="{{ route('boutique.category', 'musiques') }}" class="category-card">
+        <a href="{{ route('boutique.category', 'musiques') }}" class="category-card" data-analytics-event="shop_category_selected" data-analytics-category="musiques">
             <div class="category-icon">🎵</div>
             <div class="category-name">{{ __("Musiques d'Ambiance") }}</div>
             <div class="category-desc">{{ __('Ambiances musicales exclusives') }}</div>
         </a>
 
         <!-- Sons de Buzzers -->
-        <a href="{{ route('boutique.category', 'buzzers') }}" class="category-card">
+        <a href="{{ route('boutique.category', 'buzzers') }}" class="category-card" data-analytics-event="shop_category_selected" data-analytics-category="buzzers">
             <div class="category-icon">🔊</div>
             <div class="category-name">{{ __('Sons de Buzzers') }}</div>
             <div class="category-desc">{{ __('Personnalisez votre buzz') }}</div>
         </a>
 
         <!-- Avatars Stratégiques -->
-        <a href="{{ route('boutique.category', 'strategiques') }}" class="category-card premium">
+        <a href="{{ route('boutique.category', 'strategiques') }}" class="category-card premium" data-analytics-event="shop_category_selected" data-analytics-category="strategiques">
             <div class="category-icon">🛡️</div>
             <div class="category-name">{{ __('Avatars Stratégiques') }}</div>
             <div class="category-desc">{{ __('Pouvoirs spéciaux en jeu') }}</div>
         </a>
 
         <!-- Modes de Jeux -->
-        <a href="{{ route('boutique.category', 'master') }}" class="category-card premium {{ $allModesPurchased ? 'unlocked' : '' }}">
+        <a href="{{ route('boutique.category', 'master') }}" class="category-card premium {{ $allModesPurchased ? 'unlocked' : '' }}" data-analytics-event="shop_category_selected" data-analytics-category="master">
             @if($allModesPurchased)
                 <div class="category-badge">✓ {{ __('Tous débloqués') }}</div>
             @endif
@@ -385,28 +385,28 @@
         </a>
 
         <!-- Pièces d'Intelligence -->
-        <a href="{{ route('boutique.category', 'coins_intelligence') }}" class="category-card">
+        <a href="{{ route('boutique.category', 'coins_intelligence') }}" class="category-card" data-analytics-event="shop_category_selected" data-analytics-category="coins_intelligence">
             <div class="category-icon"><img src="{{ asset('images/coin-intelligence.png') }}" alt="{{ __("Pièce d'Intelligence") }}" style="width:48px;height:48px;object-fit:cover;object-position:center;clip-path:circle(50%);"></div>
             <div class="category-name">{{ __("Pièces d'Intelligence") }}</div>
             <div class="category-desc">{{ __('Gain dans Duo et Ligue') }}</div>
         </a>
 
         <!-- Pièces de Compétence -->
-        <a href="{{ route('boutique.category', 'coins_competence') }}" class="category-card">
+        <a href="{{ route('boutique.category', 'coins_competence') }}" class="category-card" data-analytics-event="shop_category_selected" data-analytics-category="coins_competence">
             <div class="category-icon"><img src="{{ asset('images/skill_coin.png') }}" alt="{{ __('Pièce de Compétence') }}" style="width:48px;height:48px;object-fit:cover;object-position:center;clip-path:circle(50%);"></div>
             <div class="category-name">{{ __('Pièces de Compétence') }}</div>
             <div class="category-desc">{{ __('Gain dans Solo') }}</div>
         </a>
 
         <!-- Vies -->
-        <a href="{{ route('boutique.category', 'vies') }}" class="category-card">
+        <a href="{{ route('boutique.category', 'vies') }}" class="category-card" data-analytics-event="shop_category_selected" data-analytics-category="vies">
             <div class="category-icon">❤️</div>
             <div class="category-name">{{ __('Vies') }}</div>
             <div class="category-desc">{{ __('Continuez à jouer') }}</div>
         </a>
 
         <!-- Gain par Visionnement -->
-        <a href="{{ route('boutique.category', 'rewarded') }}" class="category-card" style="background:linear-gradient(135deg, #1a2344, #0d3320); border-color: #22c55e;">
+        <a href="{{ route('boutique.category', 'rewarded') }}" class="category-card" style="background:linear-gradient(135deg, #1a2344, #0d3320); border-color: #22c55e;" data-analytics-event="shop_category_selected" data-analytics-category="rewarded">
             <div class="category-icon">📺</div>
             <div class="category-name">{{ __('Gain par Visionnement') }}</div>
             <div class="category-desc">{{ __('Gagnez des pièces en regardant une pub') }}</div>

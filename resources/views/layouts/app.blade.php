@@ -19,6 +19,7 @@
       window.SB_CURRENCY = @json($sbCurrency);
       window.SB_CURRENCY_SYMBOL = @json($sbCurrencySymbol);
     </script>
+    @include('partials.analytics')
 
     <title>StrategyBuzzer</title>
     <link href="{{ asset('vendor/bootstrap/bootstrap.min.css') }}" rel="stylesheet">

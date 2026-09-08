@@ -254,6 +254,10 @@ function checkMatchStatus() {
 
 function showOpponentFound(opponent) {
     clearInterval(pollingInterval);
+    window.trackEvent('matchmaking_succeeded', {
+        mode: 'duo',
+        matchmaking_type: 'random'
+    });
     
     const spinner = document.querySelector('.spinner');
     if (spinner) spinner.style.display = 'none';
@@ -290,6 +294,10 @@ function cancelMatchmaking() {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
+    window.trackEvent('matchmaking_started', {
+        mode: 'duo',
+        matchmaking_type: 'random'
+    });
     checkMatchStatus();
     pollingInterval = setInterval(checkMatchStatus, 2000);
 });
