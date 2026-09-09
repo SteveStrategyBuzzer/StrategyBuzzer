@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace App\Console\Commands;
 
 use App\Services\QuestionBank\KernelCodeEngine;
-use App\Services\QuestionBank\Phase1\KernelPhase1Generator;
 use App\Services\QuestionBank\Rotation\CurrentKernelReceivedKbpAdapter;
 use App\Services\QuestionBank\Rotation\KernelBlueprintProvisioner;
+use App\Services\QuestionBank\Rotation\KernelBlueprintProvisionedLoader;
 use App\Services\QuestionBank\Rotation\KernelPipelineOrchestrator;
 use App\Services\QuestionBank\Rotation\KernelPipelineOutboxRepository;
 use App\Services\QuestionBank\Rotation\KernelRotationPlanner;
@@ -134,15 +134,15 @@ class QuestionsKernelProcessOutboxCommand extends Command
         );
 
         $orchestrator = new KernelPipelineOrchestrator(
-            $planner,
-            new KernelRotationStateRepository(),
-            new TaxonomyPipelineBridge(
+            planner: $planner,
+            stateRepository: new KernelRotationStateRepository(),
+            loader: new KernelBlueprintProvisionedLoader(),
+            taxonomyBridge: new TaxonomyPipelineBridge(
                 $taxonomy,
                 $taxonomyRepository,
                 $planner,
                 new KernelCodeEngine(),
             ),
-            app(KernelPhase1Generator::class),
         );
 
         return new ProcessKernelPipelineOutbox(

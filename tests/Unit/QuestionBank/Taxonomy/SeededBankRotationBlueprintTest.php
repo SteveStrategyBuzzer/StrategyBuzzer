@@ -53,6 +53,7 @@ class SeededBankRotationBlueprintTest extends TestCase
     private TaxonomyBankRepository $repo;
     private MockObject&TaxonomyGeminiClient $gemini;
     private KernelPipelineOrchestrator $orchestrator;
+    private TaxonomyPipelineBridge $taxonomyBridge;
     private int $firstDepth;
 
     protected function setUp(): void
@@ -95,16 +96,18 @@ class SeededBankRotationBlueprintTest extends TestCase
             new ValidationDominantIdeas(),
         );
 
+        $this->taxonomyBridge = new TaxonomyPipelineBridge(
+            $taxonomy,
+            $this->repo,
+            new KernelRotationPlanner(),
+            new KernelCodeEngine(),
+        );
+
         $this->orchestrator = new KernelPipelineOrchestrator(
             new KernelRotationPlanner(),
             new KernelRotationStateRepository(),
             new KernelBlueprintProvisionedLoader(),
-            new TaxonomyPipelineBridge(
-                $taxonomy,
-                $this->repo,
-                new KernelRotationPlanner(),
-                new KernelCodeEngine(),
-            ),
+            $this->taxonomyBridge,
         );
     }
 
@@ -148,30 +151,51 @@ class SeededBankRotationBlueprintTest extends TestCase
             (new KernelBlueprintProvisioner())->provisionForTest('test:taxonomy:seeded'),
         );
 
-        // ── 3. ROTATION_ASSIGNED + Blueprint entièrement rempli ──────────────
+        // ── 3. ROTATION_ASSIGNED + identité uniquement en sortie Rotation ────
         $this->assertSame(KernelPipelineOrchestrator::STATUS_ROTATION_ASSIGNED, $result['status']);
-
-        /** @var KernelBlueprint $blueprint */
-        $blueprint = $result['blueprint'];
-        $this->assertInstanceOf(KernelBlueprint::class, $blueprint);
-        $this->assertSame($this->firstDepth, $blueprint->depth);
-        $this->assertSame(self::FIRST_DOMAIN, $blueprint->domain);
-        $this->assertSame('Capitales européennes', $blueprint->subdomain_active);
-        $this->assertSame('Paris', $blueprint->subject_active);
-        $this->assertSame('Paris est traversée par la Seine', $blueprint->dominant_idea_active);
-        $this->assertTrue($blueprint->isTaxonomyFilled(), 'Les slots Taxonomy doivent être remplis');
-        $this->assertNotNull($blueprint->kernel_code);
-        $this->assertSame($blueprint->kernel_code, $blueprint->kernelCodeProjection());
+        $this->assertSame(['status', 'blueprint_id'], array_keys($result));
+        $this->assertIsString($result['blueprint_id']);
 
         // ── 4. Blueprint engagé en DB ─────────────────────────────────────────
         $run = DB::table('kernel_blueprint_runs')
-            ->where('blueprint_id', $blueprint->blueprint_id)
+            ->where('blueprint_id', $result['blueprint_id'])
             ->first();
         $this->assertNotNull($run);
         $this->assertSame('ENGAGED_IN_PIPELINE', $run->execution_state);
         $this->assertSame($this->firstDepth, (int) $run->depth);
         $this->assertSame(self::FIRST_DOMAIN, $run->domain_code);
-        $this->assertSame($blueprint->kernel_code, $run->kernel_code);
+        $this->assertNotNull($run->kernel_code);
+    }
+
+    public function test_taxonomy_bridge_entry_is_id_only_and_opens_the_persistent_blueprint(): void
+    {
+        $blueprintId = (new KernelBlueprintProvisioner())
+            ->provisionForTest('test:taxonomy:id-only-entry');
+        DB::table('kernel_blueprint_runs')
+            ->where('blueprint_id', $blueprintId)
+            ->update([
+                'execution_state' => 'ENGAGED_IN_PIPELINE',
+                'depth' => $this->firstDepth,
+                'domain_code' => self::FIRST_DOMAIN,
+                'engaged_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+        $entry = new \ReflectionMethod(TaxonomyPipelineBridge::class, 'process');
+        $parameter = $entry->getParameters()[0];
+        $this->assertSame('string', (string) $parameter->getType());
+
+        $opener = new \ReflectionMethod(
+            TaxonomyPipelineBridge::class,
+            'openPersistentBlueprint',
+        );
+        $blueprint = $opener->invoke($this->taxonomyBridge, $blueprintId);
+
+        $this->assertInstanceOf(KernelBlueprint::class, $blueprint);
+        $this->assertSame($blueprintId, $blueprint->blueprint_id);
+        $this->assertSame($this->firstDepth, $blueprint->depth);
+        $this->assertSame(self::FIRST_DOMAIN, $blueprint->domain);
+        $this->assertCount(7, $blueprint->cognitive_slots);
     }
 
     // =========================================================================

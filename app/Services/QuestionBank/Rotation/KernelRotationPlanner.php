@@ -422,11 +422,14 @@ final class KernelRotationPlanner
     private function ensureInitializedState(?object $state): object
     {
         if ($state === null) {
+            $initialDepth = $this->depthNeedMatrix->nextRequiredDepth(null);
+            $onHold = $initialDepth === null;
+
             $this->stateRepository->insert([
-                'depth_state'                    => self::DEPTH_STATE_ACTIVE,
-                'active_depth'                   => DepthNeedMatrix::DEPTH_CYCLE[0],
-                'active_tour_id'                 => (string) Str::orderedUuid(),
-                'tour_state'                     => self::TOUR_OPEN,
+                'depth_state'                    => $onHold ? self::DEPTH_STATE_HOLD : self::DEPTH_STATE_ACTIVE,
+                'active_depth'                   => $initialDepth,
+                'active_tour_id'                 => $onHold ? null : (string) Str::orderedUuid(),
+                'tour_state'                     => $onHold ? self::TOUR_CLOSED : self::TOUR_OPEN,
                 'last_closed_tour_id'            => null,
                 'last_closed_depth'              => null,
                 'domain_position'                => null,

@@ -5,15 +5,13 @@ declare(strict_types=1);
 namespace App\Services\QuestionBank\Rotation;
 
 use App\Services\QuestionBank\KernelBlueprint;
-use App\Services\QuestionBank\Phase1\KernelPhase1Generator;
-use App\Services\QuestionBank\Taxonomy\TaxonomyPipelineBridge;
 use Illuminate\Support\Facades\DB;
 
 /**
  * KRP orchestration for a Blueprint provisioned by KBP.
  *
  * KRP owns the rotation transaction. Once its Blueprint is committed as
- * engaged, the optional external Taxonomy bridge consumes depth + domain only.
+ * engaged, the optional external Taxonomy boundary receives only blueprint_id.
  */
 final class KernelPipelineOrchestrator
 {
@@ -26,24 +24,20 @@ final class KernelPipelineOrchestrator
         private readonly KernelRotationPlanner $planner,
         private readonly KernelRotationStateRepository $stateRepository,
         private readonly KernelBlueprintProvisionedLoader $loader = new KernelBlueprintProvisionedLoader(),
-        private readonly ?TaxonomyPipelineBridge $taxonomyBridge = null,
-        private readonly ?KernelPhase1Generator $phase1 = null,
+        private readonly ?TaxonomyBlueprintIdReceiver $taxonomyBridge = null,
     ) {}
 
-    /** @return array{status: string, blueprint: KernelBlueprint|null} */
+    /** @return array{status: string, blueprint_id: string|null} */
     public function runProvisioned(string $blueprintId): array
     {
         $state = $this->loader->executionState($blueprintId);
         if ($state === 'ENGAGED_IN_PIPELINE') {
-            $engaged = $this->loader->loadEngaged($blueprintId);
-            if ($this->taxonomyBridge !== null) {
-                $engaged = $this->taxonomyBridge->resumeBlueprint($engaged);
-            }
-            $this->runPhase1IfReady($engaged);
+            $this->loader->loadEngaged($blueprintId);
+            $this->taxonomyBridge?->process($blueprintId);
 
             return [
                 'status' => self::STATUS_ROTATION_ASSIGNED,
-                'blueprint' => $engaged,
+                'blueprint_id' => $blueprintId,
             ];
         }
         if ($state !== 'CREATED_UNENGAGED') {
@@ -63,7 +57,7 @@ final class KernelPipelineOrchestrator
                 return;
             }
 
-            $candidate = $this->loader->loadCreated($blueprintId);
+            $candidate = $this->loader->loadCreatedForUpdate($blueprintId);
             $resolution = $this->planner->prepareNewBlueprint($candidate, $state);
 
             if ($resolution->isNoRotation()) {
@@ -80,18 +74,17 @@ final class KernelPipelineOrchestrator
         if ($blueprint === null) {
             return [
                 'status' => self::STATUS_PRODUCTION_ON_HOLD,
-                'blueprint' => null,
+                'blueprint_id' => null,
             ];
         }
 
         // Hors de la transaction KRP : Gemini et l'outbox Taxonomy ne peuvent
         // jamais annuler ou falsifier la décision de rotation déjà engagée.
-        $this->taxonomyBridge?->process($blueprint);
-        $this->runPhase1IfReady($blueprint);
+        $this->taxonomyBridge?->process($blueprintId);
 
         return [
             'status' => self::STATUS_ROTATION_ASSIGNED,
-            'blueprint' => $blueprint,
+            'blueprint_id' => $blueprintId,
         ];
     }
 
@@ -105,8 +98,11 @@ final class KernelPipelineOrchestrator
 
     private function engageBlueprint(KernelBlueprint $blueprint): void
     {
-        DB::table(self::RUNS_TABLE)
+        $updated = DB::table(self::RUNS_TABLE)
             ->where('blueprint_id', $blueprint->blueprint_id)
+            ->where('execution_state', 'CREATED_UNENGAGED')
+            ->whereNull('depth')
+            ->whereNull('domain_code')
             ->update([
                 'execution_state' => 'ENGAGED_IN_PIPELINE',
                 'depth' => $blueprint->depth,
@@ -114,20 +110,12 @@ final class KernelPipelineOrchestrator
                 'engaged_at' => now(),
                 'updated_at' => now(),
             ]);
-    }
 
-    private function runPhase1IfReady(KernelBlueprint $blueprint): void
-    {
-        if ($this->phase1 === null) {
-            return;
-        }
-
-        if (! $blueprint->isComplete()) {
+        if ($updated !== 1) {
             throw new \RuntimeException(
-                '[KernelPipelineOrchestrator] Phase 1 exige Taxonomy et kernel_code complets.'
+                "[KernelPipelineOrchestrator] Écriture Rotation refusée: {$blueprint->blueprint_id}."
             );
         }
-
-        $this->phase1->generate($blueprint);
     }
+
 }

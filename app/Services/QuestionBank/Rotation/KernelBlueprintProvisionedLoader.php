@@ -24,6 +24,11 @@ final class KernelBlueprintProvisionedLoader
         return $this->load($blueprintId, 'CREATED_UNENGAGED');
     }
 
+    public function loadCreatedForUpdate(string $blueprintId): KernelBlueprint
+    {
+        return $this->load($blueprintId, 'CREATED_UNENGAGED', true);
+    }
+
     public function loadEngaged(string $blueprintId): KernelBlueprint
     {
         return $this->load($blueprintId, 'ENGAGED_IN_PIPELINE');
@@ -48,13 +53,20 @@ final class KernelBlueprintProvisionedLoader
         return $state;
     }
 
-    private function load(string $blueprintId, string $expectedState): KernelBlueprint
+    private function load(
+        string $blueprintId,
+        string $expectedState,
+        bool $lockForUpdate = false,
+    ): KernelBlueprint
     {
         $this->executionState($blueprintId);
 
-        $run = DB::table('kernel_blueprint_runs')
-            ->where('blueprint_id', $blueprintId)
-            ->first();
+        $query = DB::table('kernel_blueprint_runs')
+            ->where('blueprint_id', $blueprintId);
+        if ($lockForUpdate) {
+            $query->lockForUpdate();
+        }
+        $run = $query->first();
 
         if ($run === null || $run->execution_state !== $expectedState) {
             throw new RuntimeException("[KBP] Blueprint provisionné invalide ou introuvable: {$blueprintId}.");
@@ -71,6 +83,22 @@ final class KernelBlueprintProvisionedLoader
         $slots = $this->slots->allForBlueprint($blueprintId);
         if (count($slots) !== count(KernelBlueprint::COGNITIVE_TYPES)) {
             throw new RuntimeException("[KBP] Blueprint sans les sept slots requis: {$blueprintId}.");
+        }
+        if ($expectedState === 'CREATED_UNENGAGED') {
+            foreach ($slots as $slot) {
+                if (($slot['creation_status'] ?? null) !== 'EMPTY'
+                    || ($slot['validation_status'] ?? null) !== 'NOT_VALIDATED'
+                    || ($slot['creation_failure'] ?? null) !== null
+                    || ($slot['translations'] ?? []) !== []
+                    || ($slot['validation_findings'] ?? []) !== []
+                    || ($slot['source'] ?? null) != KernelBlueprint::emptyCognitiveSlotSource(
+                        (string) ($slot['cognitive_type'] ?? '')
+                    )) {
+                    throw new RuntimeException(
+                        "[KBP] Blueprint provisionné avec CognitiveSlot non vide: {$blueprintId}."
+                    );
+                }
+            }
         }
 
         $blueprint = new KernelBlueprint();

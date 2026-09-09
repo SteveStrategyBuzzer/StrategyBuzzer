@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace Tests\Integration\QuestionBank\Rotation;
 
+use App\Services\QuestionBank\KernelBlueprint;
 use App\Services\QuestionBank\Rotation\DepthNeedMatrix;
 use App\Services\QuestionBank\Rotation\DepthTourState;
 use App\Services\QuestionBank\Rotation\KernelBlueprintProvisioner;
 use App\Services\QuestionBank\Rotation\KernelPipelineOrchestrator;
 use App\Services\QuestionBank\Rotation\KernelRotationPlanner;
 use App\Services\QuestionBank\Rotation\KernelRotationStateRepository;
+use App\Services\QuestionBank\Rotation\TaxonomyBlueprintIdReceiver;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Database\QueryException;
 use Illuminate\Database\Schema\Blueprint;
@@ -115,14 +117,11 @@ class KernelRotationPlannerPostgresTest extends TestCase
     public function test_orchestrator_assigns_the_initial_rotation_with_v4_tour_state(): void
     {
         $orchestrator = $this->newOrchestrator();
-        $result = $orchestrator->runProvisioned(
-            (new KernelBlueprintProvisioner())->provisionForTest('test:krp:initial'),
-        );
+        $blueprintId = (new KernelBlueprintProvisioner())->provisionForTest('test:krp:initial');
+        $result = $orchestrator->runProvisioned($blueprintId);
 
         $this->assertSame(KernelPipelineOrchestrator::STATUS_ROTATION_ASSIGNED, $result['status']);
-        $this->assertNotNull($result['blueprint']);
-        $this->assertSame(2, $result['blueprint']->depth);
-        $this->assertSame('geographie', $result['blueprint']->domain);
+        $this->assertSame($blueprintId, $result['blueprint_id']);
 
         $state = DB::table('kernel_rotation_state_v2')->first();
         $this->assertNotNull($state);
@@ -137,9 +136,13 @@ class KernelRotationPlannerPostgresTest extends TestCase
         $this->assertSame(
             'ENGAGED_IN_PIPELINE',
             DB::table('kernel_blueprint_runs')
-                ->where('blueprint_id', $result['blueprint']->blueprint_id)
+                ->where('blueprint_id', $blueprintId)
                 ->value('execution_state'),
         );
+        $this->assertSame(2, (int) DB::table('kernel_blueprint_runs')
+            ->where('blueprint_id', $blueprintId)->value('depth'));
+        $this->assertSame('geographie', DB::table('kernel_blueprint_runs')
+            ->where('blueprint_id', $blueprintId)->value('domain_code'));
     }
 
     public function test_last_visible_domain_can_close_the_final_need_and_persist_hold(): void
@@ -177,7 +180,7 @@ class KernelRotationPlannerPostgresTest extends TestCase
             (new KernelBlueprintProvisioner())->provisionForTest('test:krp:hold'),
         );
         $this->assertSame(KernelPipelineOrchestrator::STATUS_PRODUCTION_ON_HOLD, $result['status']);
-        $this->assertNull($result['blueprint']);
+        $this->assertNull($result['blueprint_id']);
 
         $state = DB::table('kernel_rotation_state_v2')->first();
         $this->assertSame('PRODUCTION_ON_HOLD', $state->depth_state);
@@ -216,6 +219,128 @@ class KernelRotationPlannerPostgresTest extends TestCase
         } catch (\RuntimeException $exception) {
             $this->assertStringContainsString('interne à KRP v4.0', $exception->getMessage());
         }
+    }
+
+    public function test_rotation_persists_the_existing_mechanism_result_atomically_and_transmits_only_its_id(): void
+    {
+        $blueprintId = (new KernelBlueprintProvisioner())
+            ->provisionForTest('test:krp:persistent-id-boundary');
+        $this->assertIsString($blueprintId);
+        $recorder = new class implements TaxonomyBlueprintIdReceiver {
+            public ?string $receivedBlueprintId = null;
+
+            public function process(string $blueprintId): void
+            {
+                $this->receivedBlueprintId = $blueprintId;
+            }
+        };
+        $orchestrator = new KernelPipelineOrchestrator(
+            new KernelRotationPlanner(),
+            new KernelRotationStateRepository(),
+            new \App\Services\QuestionBank\Rotation\KernelBlueprintProvisionedLoader(),
+            $recorder,
+        );
+
+        $before = DB::table('kernel_blueprint_runs')
+            ->where('blueprint_id', $blueprintId)
+            ->first();
+        $this->assertNotNull($before);
+        $this->assertNull($before->depth);
+        $this->assertNull($before->domain_code);
+        $this->assertSame(7, DB::table('kernel_blueprint_cognitive_slots')
+            ->where('blueprint_id', $blueprintId)->count());
+        $this->assertSame(7, DB::table('kernel_blueprint_cognitive_slots')
+            ->where('blueprint_id', $blueprintId)
+            ->where('creation_status', 'EMPTY')
+            ->where('validation_status', 'NOT_VALIDATED')
+            ->count());
+
+        DB::statement(
+            'ALTER TABLE kernel_blueprint_runs '
+            . 'ADD CONSTRAINT reject_rotation_write CHECK (domain_code IS NULL)'
+        );
+
+        try {
+            $orchestrator->runProvisioned($blueprintId);
+            $this->fail('The simulated Rotation persistence failure must roll back.');
+        } catch (QueryException) {
+            $afterFailure = DB::table('kernel_blueprint_runs')
+                ->where('blueprint_id', $blueprintId)
+                ->first();
+            $this->assertNull($afterFailure->depth);
+            $this->assertNull($afterFailure->domain_code);
+            $this->assertNull($recorder->receivedBlueprintId);
+            $this->assertSame(0, DB::table('kernel_rotation_state_v2')->count());
+        } finally {
+            DB::statement(
+                'ALTER TABLE kernel_blueprint_runs DROP CONSTRAINT reject_rotation_write'
+            );
+        }
+
+        $result = $orchestrator->runProvisioned($blueprintId);
+        $state = DB::table('kernel_rotation_state_v2')->first();
+        $persisted = DB::table('kernel_blueprint_runs')
+            ->where('blueprint_id', $blueprintId)
+            ->first();
+        $determinedDomain = self::DOMAINS[(int) $state->domain_position];
+
+        $this->assertSame(KernelPipelineOrchestrator::STATUS_ROTATION_ASSIGNED, $result['status']);
+        $this->assertSame($blueprintId, $result['blueprint_id']);
+        $this->assertSame($blueprintId, $persisted->blueprint_id);
+        $this->assertSame((int) $state->active_depth, (int) $persisted->depth);
+        $this->assertSame($determinedDomain, $persisted->domain_code);
+        $this->assertSame($blueprintId, $state->active_blueprint_identity);
+        $this->assertSame($blueprintId, $recorder->receivedBlueprintId);
+        $this->assertNull($persisted->kernel_code ?? null);
+        $this->assertSame(7, DB::table('kernel_blueprint_cognitive_slots')
+            ->where('blueprint_id', $blueprintId)
+            ->where('creation_status', 'EMPTY')
+            ->where('validation_status', 'NOT_VALIDATED')
+            ->count());
+        $this->assertSame(0, DB::table('kernel_taxonomy_terminal_facts')->count());
+    }
+
+    public function test_rotation_rejects_a_slot_with_source_content_even_when_its_status_is_empty(): void
+    {
+        $blueprintId = (new KernelBlueprintProvisioner())
+            ->provisionForTest('test:krp:source-content-gate');
+        $source = KernelBlueprint::emptyCognitiveSlotSource('QCM_RECOGNITION');
+        $source['question'] = 'Contenu intellectuel prématuré';
+        DB::table('kernel_blueprint_cognitive_slots')
+            ->where('blueprint_id', $blueprintId)
+            ->where('cognitive_type', 'QCM_RECOGNITION')
+            ->update(['source' => json_encode($source, JSON_UNESCAPED_UNICODE)]);
+
+        $recorder = new class implements TaxonomyBlueprintIdReceiver {
+            public ?string $receivedBlueprintId = null;
+
+            public function process(string $blueprintId): void
+            {
+                $this->receivedBlueprintId = $blueprintId;
+            }
+        };
+        $orchestrator = new KernelPipelineOrchestrator(
+            new KernelRotationPlanner(),
+            new KernelRotationStateRepository(),
+            new \App\Services\QuestionBank\Rotation\KernelBlueprintProvisionedLoader(),
+            $recorder,
+        );
+
+        try {
+            $orchestrator->runProvisioned($blueprintId);
+            $this->fail('Rotation must reject a source-populated EMPTY slot.');
+        } catch (\RuntimeException $exception) {
+            $this->assertStringContainsString('CognitiveSlot non vide', $exception->getMessage());
+        }
+
+        $run = DB::table('kernel_blueprint_runs')
+            ->where('blueprint_id', $blueprintId)
+            ->first();
+        $this->assertNull($run->depth);
+        $this->assertNull($run->domain_code);
+        $this->assertSame('CREATED_UNENGAGED', $run->execution_state);
+        $this->assertNull($recorder->receivedBlueprintId);
+        $this->assertSame(0, DB::table('kernel_rotation_state_v2')->count());
     }
 
     private function newOrchestrator(): KernelPipelineOrchestrator
