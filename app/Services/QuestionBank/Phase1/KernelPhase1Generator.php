@@ -7,6 +7,7 @@ namespace App\Services\QuestionBank\Phase1;
 use App\Services\QuestionApi\QuestionApiClient;
 use App\Services\QuestionBank\KernelBlueprint;
 use App\Services\QuestionBank\KernelBlueprintCognitiveSlotRepository;
+use App\Services\QuestionBank\Rotation\KernelBlueprintProvisionedLoader;
 use Throwable;
 
 class KernelPhase1Generator
@@ -18,17 +19,30 @@ class KernelPhase1Generator
         private readonly QuestionApiClient $questionApi,
         private readonly KernelBlueprintCognitiveSlotRepository $slots,
         private readonly KernelPhase1SourceValidator $validator,
+        private readonly KernelBlueprintProvisionedLoader $loader =
+            new KernelBlueprintProvisionedLoader(),
     ) {}
 
+    public function generate(string $blueprintId): string
+    {
+        $blueprint = $this->loader->loadEngaged($blueprintId);
+        $result = $this->generateSlots($blueprint);
+
+        if ($result['failed'] !== []
+            || count($result['created']) !== count(KernelBlueprint::COGNITIVE_TYPES)) {
+            throw new Phase1TechnicalException(
+                'CREATION_FAILED',
+                "[Phase1] Les sept CognitiveSlots ne sont pas CREATED: {$blueprintId}."
+            );
+        }
+
+        return $blueprintId;
+    }
+
     /**
-     * @return array{
-     *   status: string,
-     *   attempts: int,
-     *   created: string[],
-     *   failed: string[]
-     * }
+     * @return array{status: string, attempts: int, created: string[], failed: string[]}
      */
-    public function generate(KernelBlueprint $blueprint): array
+    private function generateSlots(KernelBlueprint $blueprint): array
     {
         if (! $blueprint->isComplete()) {
             throw new Phase1TechnicalException(

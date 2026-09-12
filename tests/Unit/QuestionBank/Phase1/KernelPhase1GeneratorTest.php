@@ -9,6 +9,8 @@ use App\Services\QuestionBank\KernelBlueprint;
 use App\Services\QuestionBank\KernelBlueprintCognitiveSlotRepository;
 use App\Services\QuestionBank\Phase1\KernelPhase1Generator;
 use App\Services\QuestionBank\Phase1\KernelPhase1SourceValidator;
+use App\Services\QuestionBank\Phase1\Phase1TechnicalException;
+use App\Services\QuestionBank\Phase1\ValidationPhase1EntryBoundary;
 use GuzzleHttp\Psr7\Response as PsrResponse;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Http\Client\Response;
@@ -27,9 +29,23 @@ class KernelPhase1GeneratorTest extends TestCase
         parent::setUp();
         Schema::create('kernel_blueprint_runs', function (Blueprint $table): void {
             $table->string('blueprint_id', 36)->primary();
+            $table->string('execution_state', 64);
             $table->smallInteger('depth')->nullable();
             $table->string('domain_code', 64)->nullable();
+            $table->string('subdomain_active')->nullable();
+            $table->string('subject_active')->nullable();
+            $table->text('dominant_idea_active')->nullable();
+            $table->string('kernel_code_dd', 2)->nullable();
+            $table->string('kernel_code_do', 3)->nullable();
+            $table->string('kernel_code_sub', 3)->nullable();
+            $table->string('kernel_code_suj', 3)->nullable();
+            $table->string('kernel_code_ide', 3)->nullable();
+            $table->string('kernel_code_vvvv', 4)->nullable();
             $table->string('kernel_code', 23)->nullable();
+        });
+        Schema::create('kernel_blueprint_request_refs', function (Blueprint $table): void {
+            $table->string('request_reference', 128)->primary();
+            $table->string('blueprint_id', 36);
         });
         Schema::create('kernel_blueprint_cognitive_slots', function (Blueprint $table): void {
             $table->string('blueprint_id', 36);
@@ -56,9 +72,23 @@ class KernelPhase1GeneratorTest extends TestCase
 
         DB::table('kernel_blueprint_runs')->insert([
             'blueprint_id' => $this->blueprint->blueprint_id,
+            'execution_state' => 'ENGAGED_IN_PIPELINE',
             'depth' => $this->blueprint->depth,
             'domain_code' => $this->blueprint->domain,
+            'subdomain_active' => $this->blueprint->subdomain_active,
+            'subject_active' => $this->blueprint->subject_active,
+            'dominant_idea_active' => $this->blueprint->dominant_idea_active,
+            'kernel_code_dd' => $this->blueprint->kernel_code_dd,
+            'kernel_code_do' => $this->blueprint->kernel_code_do,
+            'kernel_code_sub' => $this->blueprint->kernel_code_sub,
+            'kernel_code_suj' => $this->blueprint->kernel_code_suj,
+            'kernel_code_ide' => $this->blueprint->kernel_code_ide,
+            'kernel_code_vvvv' => $this->blueprint->kernel_code_vvvv,
             'kernel_code' => $this->blueprint->kernel_code,
+        ]);
+        DB::table('kernel_blueprint_request_refs')->insert([
+            'request_reference' => 'phase1:test',
+            'blueprint_id' => $this->blueprint->blueprint_id,
         ]);
         DB::table('question_intents')->insert(['id' => 1, 'frame_en' => '{"legacy":true}']);
 
@@ -71,6 +101,7 @@ class KernelPhase1GeneratorTest extends TestCase
     {
         Schema::dropIfExists('question_intents');
         Schema::dropIfExists('kernel_blueprint_cognitive_slots');
+        Schema::dropIfExists('kernel_blueprint_request_refs');
         Schema::dropIfExists('kernel_blueprint_runs');
         parent::tearDown();
     }
@@ -80,19 +111,21 @@ class KernelPhase1GeneratorTest extends TestCase
         $client = new Phase1FakeQuestionApiClient([$this->successResponse($this->payload())]);
         $before = DB::table('kernel_blueprint_runs')->where('blueprint_id', 'bp-phase1')->first();
 
-        $result = $this->generator($client)->generate($this->blueprint);
+        $result = $this->generator($client)->generate('bp-phase1');
 
-        $this->assertSame('CREATED', $result['status']);
-        $this->assertSame(1, $result['attempts']);
+        $this->assertSame('bp-phase1', $result);
         $this->assertSame(1, $client->calls);
         $this->assertSame(QuestionApiClient::ENDPOINT_KERNEL_PHASE1_SOURCE, $client->endpoints[0]);
-        $this->assertCount(7, $result['created']);
-        $this->assertCount(7, $this->blueprint->cognitive_slots);
-        foreach ($this->blueprint->cognitive_slots as $slot) {
+        $slots = $this->repository->allForBlueprint('bp-phase1');
+        $this->assertCount(7, $slots);
+        foreach ($slots as $slot) {
             $this->assertSame('CREATED', $slot['creation_status']);
             $this->assertSame([], $slot['translations']);
             $this->assertSame('NOT_VALIDATED', $slot['validation_status']);
         }
+        $validationBlueprint = (new ValidationPhase1EntryBoundary())->receive($result);
+        $this->assertSame('bp-phase1', $validationBlueprint->blueprint_id);
+        $this->assertCount(7, $validationBlueprint->cognitive_slots);
         $this->assertEquals(
             $before,
             DB::table('kernel_blueprint_runs')->where('blueprint_id', 'bp-phase1')->first()
@@ -111,12 +144,16 @@ class KernelPhase1GeneratorTest extends TestCase
             new RuntimeException('timeout 3'),
         ]);
 
-        $result = $this->generator($client)->generate($this->blueprint);
-
+        try {
+            $this->generator($client)->generate('bp-phase1');
+            $this->fail('Phase 1 ne doit pas transmettre blueprint_id après un échec total.');
+        } catch (Phase1TechnicalException $exception) {
+            $this->assertSame('CREATION_FAILED', $exception->failureType);
+        }
         $this->assertSame(3, $client->calls);
-        $this->assertSame('CREATION_FAILED', $result['status']);
-        $this->assertCount(7, $result['failed']);
-        foreach ($this->blueprint->cognitive_slots as $slot) {
+        $slots = $this->repository->allForBlueprint('bp-phase1');
+        $this->assertCount(7, $slots);
+        foreach ($slots as $slot) {
             $this->assertSame(3, $slot['creation_failure']['attempt_count']);
             $this->assertSame('TRANSPORT', $slot['creation_failure']['last_failure_type']);
             $this->assertSame(
@@ -124,17 +161,26 @@ class KernelPhase1GeneratorTest extends TestCase
                 $slot['source']
             );
         }
+        $this->assertValidationPhaseOneRejects('bp-phase1');
+    }
+
+    public function test_validation_phase_one_rejects_blueprint_before_phase_one_finishes(): void
+    {
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('CognitiveSlot non créé');
+
+        (new ValidationPhase1EntryBoundary())->receive('bp-phase1');
     }
 
     public function test_idempotent_replay_does_not_call_api_again(): void
     {
         $client = new Phase1FakeQuestionApiClient([$this->successResponse($this->payload())]);
         $generator = $this->generator($client);
-        $generator->generate($this->blueprint);
+        $generator->generate('bp-phase1');
 
-        $result = $generator->generate($this->blueprint);
+        $result = $generator->generate('bp-phase1');
 
-        $this->assertSame('IDEMPOTENT', $result['status']);
+        $this->assertSame('bp-phase1', $result);
         $this->assertSame(1, $client->calls);
     }
 
@@ -145,19 +191,27 @@ class KernelPhase1GeneratorTest extends TestCase
         $response = $this->successResponse($payload);
         $client = new Phase1FakeQuestionApiClient([$response, $response, $response]);
 
-        $result = $this->generator($client)->generate($this->blueprint);
-
+        try {
+            $this->generator($client)->generate('bp-phase1');
+            $this->fail('Phase 1 ne doit pas transmettre blueprint_id après un échec partiel.');
+        } catch (Phase1TechnicalException $exception) {
+            $this->assertSame('CREATION_FAILED', $exception->failureType);
+        }
         $this->assertSame(3, $client->calls);
-        $this->assertCount(6, $result['created']);
-        $this->assertSame(['QCM_REASONING'], $result['failed']);
+        $slots = $this->repository->allForBlueprint('bp-phase1');
+        $this->assertSame(
+            6,
+            count(array_filter($slots, static fn (array $slot): bool => $slot['creation_status'] === 'CREATED'))
+        );
         $this->assertSame(
             'CREATED',
-            $this->blueprint->cognitive_slots['QCM_RECOGNITION']['creation_status']
+            $slots['QCM_RECOGNITION']['creation_status']
         );
         $this->assertSame(
             'CREATION_FAILED',
-            $this->blueprint->cognitive_slots['QCM_REASONING']['creation_status']
+            $slots['QCM_REASONING']['creation_status']
         );
+        $this->assertValidationPhaseOneRejects('bp-phase1');
     }
 
     private function generator(QuestionApiClient $client): KernelPhase1Generator
@@ -167,6 +221,16 @@ class KernelPhase1GeneratorTest extends TestCase
             $this->repository,
             new KernelPhase1SourceValidator()
         );
+    }
+
+    private function assertValidationPhaseOneRejects(string $blueprintId): void
+    {
+        try {
+            (new ValidationPhase1EntryBoundary())->receive($blueprintId);
+            $this->fail('Validation Phase 1 devait refuser un slot non CREATED.');
+        } catch (RuntimeException $exception) {
+            $this->assertStringContainsString('CognitiveSlot non créé', $exception->getMessage());
+        }
     }
 
     private function successResponse(array $payload): Response

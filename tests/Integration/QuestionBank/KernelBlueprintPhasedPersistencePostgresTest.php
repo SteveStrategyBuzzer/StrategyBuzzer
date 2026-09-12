@@ -315,16 +315,9 @@ final class KernelBlueprintPhasedPersistencePostgresTest extends TestCase
         // The boundary constructor accepts only a persistent loader: no provider
         // client can be injected or called by this phase-entry operation.
         $boundary = new KernelPhase1EntryBoundary();
-        $blueprint = $boundary->receive('bp-phase1');
+        $receivedBlueprintId = $boundary->receive('bp-phase1');
 
-        $this->assertSame('04', $blueprint->kernel_code_dd);
-        $this->assertSame('GEO', $blueprint->kernel_code_do);
-        $this->assertSame('CAN', $blueprint->kernel_code_sub);
-        $this->assertSame('CON', $blueprint->kernel_code_suj);
-        $this->assertSame('ACT', $blueprint->kernel_code_ide);
-        $this->assertSame('000A', $blueprint->kernel_code_vvvv);
-        $this->assertSame('04-GEO-CAN-CON-ACT-000A', $blueprint->kernel_code);
-        $this->assertCount(7, $blueprint->cognitive_slots);
+        $this->assertSame('bp-phase1', $receivedBlueprintId);
         $this->assertSame(
             7,
             DB::table('kernel_blueprint_cognitive_slots')
