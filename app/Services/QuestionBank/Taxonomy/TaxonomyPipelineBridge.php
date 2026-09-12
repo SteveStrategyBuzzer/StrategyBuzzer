@@ -6,7 +6,7 @@ namespace App\Services\QuestionBank\Taxonomy;
 
 use App\Services\QuestionBank\KernelBlueprint;
 use App\Services\QuestionBank\KernelBlueprintCognitiveSlotRepository;
-use App\Services\QuestionBank\KernelCodeEngine;
+use App\Services\QuestionBank\QuestionIntentBlueprintIdReceiver;
 use App\Services\QuestionBank\Rotation\KernelRotationPlanner;
 use App\Services\QuestionBank\Rotation\TaxonomyBlueprintIdReceiver;
 use Illuminate\Support\Facades\DB;
@@ -26,7 +26,7 @@ final class TaxonomyPipelineBridge implements TaxonomyBlueprintIdReceiver
         private readonly TaxonomyOrchestrator $taxonomy,
         private readonly TaxonomyBankRepository $repo,
         private readonly KernelRotationPlanner $planner,
-        private readonly KernelCodeEngine $kernelCodeEngine,
+        private readonly QuestionIntentBlueprintIdReceiver $questionIntent,
         private readonly KernelBlueprintCognitiveSlotRepository $slots =
             new KernelBlueprintCognitiveSlotRepository(),
     ) {}
@@ -38,8 +38,41 @@ final class TaxonomyPipelineBridge implements TaxonomyBlueprintIdReceiver
 
     private function processOpenedBlueprint(KernelBlueprint $blueprint): KernelBlueprint
     {
-        $this->taxonomy->assignToBlueprint($blueprint);
-        $this->kernelCodeEngine->assignKernelCode($blueprint);
+        DB::transaction(function () use ($blueprint): void {
+            $this->taxonomy->assignToBlueprint($blueprint);
+            $updated = DB::table('kernel_blueprint_runs')
+                ->where('blueprint_id', $blueprint->blueprint_id)
+                ->whereNull('subdomain_active')
+                ->whereNull('subject_active')
+                ->whereNull('dominant_idea_active')
+                ->update([
+                    'subdomain_active'     => $blueprint->subdomain_active,
+                    'subject_active'       => $blueprint->subject_active,
+                    'dominant_idea_active' => $blueprint->dominant_idea_active,
+                    'kernel_code_sub'     => $blueprint->kernel_code_sub,
+                    'kernel_code_suj'     => $blueprint->kernel_code_suj,
+                    'kernel_code_ide'     => $blueprint->kernel_code_ide,
+                    'updated_at'            => now(),
+                ]);
+
+            if ($updated === 0) {
+                $existing = DB::table('kernel_blueprint_runs')
+                    ->where('blueprint_id', $blueprint->blueprint_id)
+                    ->first();
+                if ($existing === null
+                    || $existing->subdomain_active !== $blueprint->subdomain_active
+                    || $existing->subject_active !== $blueprint->subject_active
+                    || $existing->dominant_idea_active !== $blueprint->dominant_idea_active
+                    || $existing->kernel_code_sub !== $blueprint->kernel_code_sub
+                    || $existing->kernel_code_suj !== $blueprint->kernel_code_suj
+                    || $existing->kernel_code_ide !== $blueprint->kernel_code_ide) {
+                    throw new RuntimeException(
+                        "[TaxonomyPipelineBridge] Taxonomy concurrente ou divergente: {$blueprint->blueprint_id}."
+                    );
+                }
+            }
+        });
+        $this->questionIntent->process((string) $blueprint->blueprint_id);
         $this->deliverPendingTerminalFacts();
 
         return $blueprint;
@@ -60,11 +93,7 @@ final class TaxonomyPipelineBridge implements TaxonomyBlueprintIdReceiver
             return null;
         }
 
-        $blueprint = new KernelBlueprint();
-        $blueprint->initializeBlueprintId((string) $run->blueprint_id);
-        $blueprint->fillRotation((int) $run->depth, (string) $run->domain_code);
-
-        return $this->processOpenedBlueprint($blueprint);
+        return $this->processOpenedBlueprint($this->openPersistentBlueprint((string) $run->blueprint_id));
     }
 
     /**
@@ -73,37 +102,23 @@ final class TaxonomyPipelineBridge implements TaxonomyBlueprintIdReceiver
      */
     public function resumeBlueprint(KernelBlueprint $blueprint): KernelBlueprint
     {
-        return $this->processOpenedBlueprint($blueprint);
+        throw new RuntimeException(
+            '[TaxonomyPipelineBridge] Le pont reçoit uniquement blueprint_id; rechargez le Blueprint persistant.'
+        );
     }
 
     private function openPersistentBlueprint(string $blueprintId): KernelBlueprint
     {
-        $run = DB::table('kernel_blueprint_runs')
-            ->where('blueprint_id', $blueprintId)
-            ->first();
+        $loader = new \App\Services\QuestionBank\Rotation\KernelBlueprintProvisionedLoader($this->slots);
 
-        if ($run === null
-            || $run->execution_state !== 'ENGAGED_IN_PIPELINE'
-            || $run->depth === null
-            || $run->domain_code === null) {
+        try {
+            return $loader->loadEngaged($blueprintId);
+        } catch (\Throwable $exception) {
             throw new RuntimeException(
-                "[TaxonomyPipelineBridge] Blueprint Rotation introuvable ou incomplet: {$blueprintId}."
+                "[TaxonomyPipelineBridge] Blueprint Rotation introuvable ou incomplet: {$blueprintId}.",
+                previous: $exception,
             );
         }
-
-        $slots = $this->slots->allForBlueprint($blueprintId);
-        if (count($slots) !== count(KernelBlueprint::COGNITIVE_TYPES)) {
-            throw new RuntimeException(
-                "[TaxonomyPipelineBridge] Blueprint sans les sept CognitiveSlots: {$blueprintId}."
-            );
-        }
-
-        $blueprint = new KernelBlueprint();
-        $blueprint->initializeBlueprintId($blueprintId);
-        $blueprint->fillRotation((int) $run->depth, (string) $run->domain_code);
-        $blueprint->initializeCognitiveSlots($slots);
-
-        return $blueprint;
     }
 
     private function deliverPendingTerminalFacts(): void

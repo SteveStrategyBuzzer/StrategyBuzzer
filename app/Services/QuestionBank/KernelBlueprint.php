@@ -16,7 +16,8 @@ namespace App\Services\QuestionBank;
  *   subdomain_active
  *   subject_active      ← Taxonomy                (fillTaxonomy)
  *   dominant_idea_active
- *   kernel_code         ← KernelCodeEngine        (fillKernelCode)
+ *   VVVV                ← KernelCodeEngine        (fillVvvv)
+ *   kernel_code         ← PostgreSQL generated projection (read-only)
  *
  * ── Règles d'écriture ─────────────────────────────────────────────────────
  *   • Toute propriété est lisible publiquement ($bp->depth).
@@ -111,11 +112,18 @@ class KernelBlueprint
     private ?string $dominant_idea_active = null;
 
     /**
-     * Propriétaire : KernelCodeEngine.
-     * Produit uniquement après complétude de l'identité et de la Taxonomy.
-     * Immuable après fillKernelCode().
+     * Projection PostgreSQL read-only. In-memory compatibility callers may
+     * still use fillKernelCode(), but phases persist only VVVV.
      */
     private ?string $kernel_code = null;
+
+    /** Canonical persisted segments (DD-DO-SUB-SUJ-IDE-VVVV). */
+    private ?string $kernel_code_dd = null;
+    private ?string $kernel_code_do = null;
+    private ?string $kernel_code_sub = null;
+    private ?string $kernel_code_suj = null;
+    private ?string $kernel_code_ide = null;
+    private ?string $kernel_code_vvvv = null;
 
     /**
      * Sept enfants permanents, indexés par cognitive_type.
@@ -133,6 +141,10 @@ class KernelBlueprint
      */
     public function __get(string $name): mixed
     {
+        if ($name === 'kernel_code') {
+            return $this->kernelCodeProjection();
+        }
+
         if (property_exists($this, $name)) {
             return $this->$name;
         }
@@ -159,6 +171,10 @@ class KernelBlueprint
      */
     public function __isset(string $name): bool
     {
+        if ($name === 'kernel_code') {
+            return $this->kernelCodeProjection() !== null;
+        }
+
         return property_exists($this, $name) && $this->$name !== null;
     }
 
@@ -232,6 +248,8 @@ class KernelBlueprint
 
         $this->depth  = $depth;
         $this->domain = $domain;
+        $this->kernel_code_dd = KernelCodeFormat::depth($depth);
+        $this->kernel_code_do = KernelCodeFormat::domain($domain);
     }
 
     /**
@@ -265,10 +283,15 @@ class KernelBlueprint
         $this->subdomain_active     = $subdomainActive;
         $this->subject_active       = $subjectActive;
         $this->dominant_idea_active = $dominantIdeaActive;
+        $this->kernel_code_sub = KernelCodeFormat::segment($subdomainActive);
+        $this->kernel_code_suj = KernelCodeFormat::segment($subjectActive);
+        $this->kernel_code_ide = KernelCodeFormat::segment($dominantIdeaActive);
     }
 
     /**
-     * Appelée par KernelCodeEngine uniquement — après l'identité et Taxonomy.
+     * Compatibility shim for callers that still hand a complete code to the
+     * aggregate. New phase code writes only VVVV; kernel_code is a DB
+     * generated projection.
      *
      * Précondition : blueprint_id et isIdentityComplete() sont définis.
      * Lit les champs précédents — ne les modifie jamais.
@@ -278,12 +301,6 @@ class KernelBlueprint
      */
     public function fillKernelCode(string $kernelCode): void
     {
-        if ($this->kernel_code !== null) {
-            throw new \LogicException(
-                '[KernelBlueprint] kernel_code déjà défini — write-once violation (fillKernelCode).'
-            );
-        }
-
         if ($this->blueprint_id === null || ! $this->isIdentityComplete()) {
             throw new \LogicException(
                 '[KernelBlueprint] Identité canonique, Rotation et Taxonomy requises avant kernel_code.'
@@ -299,7 +316,33 @@ class KernelBlueprint
             );
         }
 
+        $this->fillVvvv(substr($kernelCode, -4));
         $this->kernel_code = $kernelCode;
+    }
+
+    /**
+     * QuestionIntent owns this final segment. It is deliberately the only
+     * mutation method after Taxonomy and never accepts a complete code.
+     */
+    public function fillVvvv(string $vvvv): void
+    {
+        if ($this->kernel_code_vvvv !== null) {
+            if ($this->kernel_code_vvvv !== $vvvv) {
+                throw new \LogicException(
+                    '[KernelBlueprint] VVVV déjà attribué — write-once violation.'
+                );
+            }
+
+            return;
+        }
+
+        if (! $this->isIdentityComplete() || ! preg_match('/^[0-9A-Z]{4}$/', $vvvv)) {
+            throw new \LogicException(
+                '[KernelBlueprint] Taxonomy complète et VVVV canonique requis.'
+            );
+        }
+
+        $this->kernel_code_vvvv = $vvvv;
     }
 
     // ═════════════════════════════════════════════════════════════════════════
@@ -328,7 +371,7 @@ class KernelBlueprint
 
     /**
      * Vérifie que les 5 champs d'identité sont remplis.
-     * Précondition obligatoire pour que KernelCodeEngine puisse écrire kernel_code.
+     * Précondition obligatoire pour que KernelCodeEngine puisse écrire VVVV.
      */
     public function isIdentityComplete(): bool
     {
@@ -338,19 +381,25 @@ class KernelBlueprint
     /**
      * Projection dérivée DEC-121 v2.2. Aucune chaîne partielle n'est persistée.
      */
-    public function kernelCodeProjection(): string
+    public function kernelCodeProjection(): ?string
     {
         if ($this->kernel_code !== null) {
             return $this->kernel_code;
         }
 
+        if ($this->kernel_code_dd === null || $this->kernel_code_do === null
+            || $this->kernel_code_sub === null || $this->kernel_code_suj === null
+            || $this->kernel_code_ide === null || $this->kernel_code_vvvv === null) {
+            return null;
+        }
+
         return implode('-', [
-            $this->depth !== null ? KernelCodeFormat::depth($this->depth) : '__',
-            $this->domain !== null ? KernelCodeFormat::domain($this->domain) : '___',
-            $this->subdomain_active !== null ? KernelCodeFormat::segment($this->subdomain_active) : '___',
-            $this->subject_active !== null ? KernelCodeFormat::segment($this->subject_active) : '___',
-            $this->dominant_idea_active !== null ? KernelCodeFormat::segment($this->dominant_idea_active) : '___',
-            '____',
+            $this->kernel_code_dd,
+            $this->kernel_code_do,
+            $this->kernel_code_sub,
+            $this->kernel_code_suj,
+            $this->kernel_code_ide,
+            $this->kernel_code_vvvv,
         ]);
     }
 
@@ -364,11 +413,11 @@ class KernelBlueprint
         }
 
         return implode('-', [
-            KernelCodeFormat::depth((int) $this->depth),
-            KernelCodeFormat::domain((string) $this->domain),
-            KernelCodeFormat::segment((string) $this->subdomain_active),
-            KernelCodeFormat::segment((string) $this->subject_active),
-            KernelCodeFormat::segment((string) $this->dominant_idea_active),
+            $this->kernel_code_dd,
+            $this->kernel_code_do,
+            $this->kernel_code_sub,
+            $this->kernel_code_suj,
+            $this->kernel_code_ide,
         ]);
     }
 
@@ -380,7 +429,7 @@ class KernelBlueprint
     {
         return $this->blueprint_id !== null
             && $this->isIdentityComplete()
-            && $this->kernel_code !== null;
+            && $this->kernel_code_vvvv !== null;
     }
 
     /**
@@ -396,7 +445,13 @@ class KernelBlueprint
             'subdomain_active'     => $this->subdomain_active,
             'subject_active'       => $this->subject_active,
             'dominant_idea_active' => $this->dominant_idea_active,
-            'kernel_code'          => $this->kernel_code,
+            'kernel_code_dd'       => $this->kernel_code_dd,
+            'kernel_code_do'       => $this->kernel_code_do,
+            'kernel_code_sub'     => $this->kernel_code_sub,
+            'kernel_code_suj'     => $this->kernel_code_suj,
+            'kernel_code_ide'     => $this->kernel_code_ide,
+            'kernel_code_vvvv'    => $this->kernel_code_vvvv,
+            'kernel_code'          => $this->kernelCodeProjection(),
             'cognitive_slots'      => $this->cognitive_slots,
         ];
     }

@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Unit\QuestionBank\Taxonomy;
 
-use App\Services\QuestionBank\KernelCodeEngine;
 use App\Services\QuestionBank\KernelBlueprint;
+use App\Services\QuestionBank\QuestionIntentBlueprintIdReceiver;
 use App\Services\QuestionBank\Rotation\DepthNeedMatrix;
 use App\Services\QuestionBank\Rotation\KernelBlueprintProvisioner;
 use App\Services\QuestionBank\Rotation\KernelBlueprintProvisionedLoader;
@@ -100,7 +100,7 @@ class SeededBankRotationBlueprintTest extends TestCase
             $taxonomy,
             $this->repo,
             new KernelRotationPlanner(),
-            new KernelCodeEngine(),
+            new QuestionIntentBlueprintIdReceiver(),
         );
 
         $this->orchestrator = new KernelPipelineOrchestrator(
@@ -177,6 +177,8 @@ class SeededBankRotationBlueprintTest extends TestCase
                 'execution_state' => 'ENGAGED_IN_PIPELINE',
                 'depth' => $this->firstDepth,
                 'domain_code' => self::FIRST_DOMAIN,
+                'kernel_code_dd' => str_pad((string) $this->firstDepth, 2, '0', STR_PAD_LEFT),
+                'kernel_code_do' => 'GEO',
                 'engaged_at' => now(),
                 'updated_at' => now(),
             ]);
@@ -220,7 +222,22 @@ class SeededBankRotationBlueprintTest extends TestCase
             $table->string('execution_state', 64)->default('CREATED_UNENGAGED');
             $table->smallInteger('depth')->nullable();
             $table->string('domain_code', 64)->nullable();
-            $table->string('kernel_code', 23)->nullable()->unique();
+            $table->string('subdomain_active')->nullable();
+            $table->string('subject_active')->nullable();
+            $table->text('dominant_idea_active')->nullable();
+            $table->string('kernel_code_dd', 2)->nullable();
+            $table->string('kernel_code_do', 3)->nullable();
+            $table->string('kernel_code_sub', 3)->nullable();
+            $table->string('kernel_code_suj', 3)->nullable();
+            $table->string('kernel_code_ide', 3)->nullable();
+            $table->string('kernel_code_vvvv', 4)->nullable();
+            $table->string('kernel_code', 23)->nullable()->storedAs(
+                "CASE WHEN kernel_code_dd IS NOT NULL AND kernel_code_do IS NOT NULL "
+                . "AND kernel_code_sub IS NOT NULL AND kernel_code_suj IS NOT NULL "
+                . "AND kernel_code_ide IS NOT NULL AND kernel_code_vvvv IS NOT NULL "
+                . "THEN kernel_code_dd || '-' || kernel_code_do || '-' || kernel_code_sub "
+                . "|| '-' || kernel_code_suj || '-' || kernel_code_ide || '-' || kernel_code_vvvv END"
+            )->unique();
             $table->timestamp('engaged_at')->nullable();
             $table->timestamp('received_at')->nullable();
             $table->timestamps();

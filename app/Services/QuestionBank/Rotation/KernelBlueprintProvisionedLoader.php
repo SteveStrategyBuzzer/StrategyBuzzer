@@ -104,7 +104,45 @@ final class KernelBlueprintProvisionedLoader
         $blueprint = new KernelBlueprint();
         $blueprint->initializeBlueprintId($blueprintId);
         if ($expectedState === 'ENGAGED_IN_PIPELINE') {
+            if (($run->kernel_code_dd ?? null) === null
+                || ($run->kernel_code_do ?? null) === null) {
+                throw new RuntimeException(
+                    "[KBP] Blueprint ENGAGED_IN_PIPELINE sans Rotation segmentée: {$blueprintId}."
+                );
+            }
             $blueprint->fillRotation((int) $run->depth, (string) $run->domain_code);
+
+            if (($run->kernel_code_dd ?? null) !== null
+                && (string) $run->kernel_code_dd !== $blueprint->kernel_code_dd) {
+                throw new RuntimeException("[KBP] DD divergent du Depth persisté: {$blueprintId}.");
+            }
+            if (($run->kernel_code_do ?? null) !== null
+                && (string) $run->kernel_code_do !== $blueprint->kernel_code_do) {
+                throw new RuntimeException("[KBP] DO divergent du Domaine persisté: {$blueprintId}.");
+            }
+        }
+        $taxonomyValues = [
+            $run->subdomain_active ?? null,
+            $run->subject_active ?? null,
+            $run->dominant_idea_active ?? null,
+        ];
+        if (array_filter($taxonomyValues, static fn(mixed $value): bool => $value !== null) !== []) {
+            if (in_array(null, $taxonomyValues, true)) {
+                throw new RuntimeException("[KBP] Taxonomy partielle: {$blueprintId}.");
+            }
+            $blueprint->fillTaxonomy(...array_map(static fn(mixed $value): string => (string) $value, $taxonomyValues));
+            foreach (['kernel_code_sub', 'kernel_code_suj', 'kernel_code_ide'] as $column) {
+                if (($run->{$column} ?? null) === null
+                    || (string) $run->{$column} !== $blueprint->{$column}) {
+                    throw new RuntimeException("[KBP] Segment {$column} divergent: {$blueprintId}.");
+                }
+            }
+        }
+        if (($run->kernel_code_vvvv ?? null) !== null) {
+            if (! $blueprint->isIdentityComplete()) {
+                throw new RuntimeException("[KBP] VVVV sans Taxonomy complète: {$blueprintId}.");
+            }
+            $blueprint->fillVvvv((string) $run->kernel_code_vvvv);
         }
         $blueprint->initializeCognitiveSlots($slots);
 

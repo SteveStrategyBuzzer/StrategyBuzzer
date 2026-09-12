@@ -209,7 +209,7 @@ foreach ($blueprintIds as $idx => $blueprintId) {
             $bp->fillRotation(TEST_DEPTH, TEST_DOMAIN);
             $bp->fillTaxonomy(TEST_SUB, TEST_SUJ, TEST_IDE);
 
-            $code = $engine->assignKernelCode($bp);
+            $code = $engine->assignKernelCodeById($bp->blueprint_id);
 
             file_put_contents(
                 "{$tmpDir}/{$idx}.json",
@@ -322,7 +322,7 @@ $bpIdp->initializeBlueprintId($firstBpId);
 $bpIdp->fillRotation(TEST_DEPTH, TEST_DOMAIN);
 $bpIdp->fillTaxonomy(TEST_SUB, TEST_SUJ, TEST_IDE);
 
-$codeIdp = (new KernelCodeEngine())->assignKernelCode($bpIdp);
+$codeIdp = (new KernelCodeEngine())->assignKernelCodeById($bpIdp->blueprint_id);
 
 $seqAfterIdp = (int) DB::table('kernel_code_sequences')
     ->where('depth', TEST_DEPTH)->where('domain_code', TEST_DC)->value('next_value');
@@ -353,7 +353,7 @@ $bpExtra->initializeBlueprintId($extraId);
 $bpExtra->fillRotation(TEST_DEPTH, TEST_DOMAIN);
 $bpExtra->fillTaxonomy(TEST_SUB, TEST_SUJ, TEST_IDE);
 
-$extraCode      = (new KernelCodeEngine())->assignKernelCode($bpExtra);
+$extraCode      = (new KernelCodeEngine())->assignKernelCodeById($bpExtra->blueprint_id);
 $extraSuffix    = substr($extraCode, -4);
 $extraSuffixInt = (int) base_convert($extraSuffix, 36, 10);
 $extraSuffixOk  = ($extraSuffixInt === $startValue + N_WORKERS); // juste après le dernier worker

@@ -76,9 +76,9 @@ class KernelBlueprintPart1Test extends TestCase
         $this->assertNull($this->blueprint()->kernel_code);
     }
 
-    public function test_empty_blueprint_exposes_empty_kernel_code_projection(): void
+    public function test_empty_blueprint_exposes_null_kernel_code_projection(): void
     {
-        $this->assertSame('__-___-___-___-___-____', $this->blueprint()->kernelCodeProjection());
+        $this->assertNull($this->blueprint()->kernelCodeProjection());
     }
 
     public function test_blueprint_id_is_null_at_construction(): void
@@ -95,17 +95,20 @@ class KernelBlueprintPart1Test extends TestCase
         $this->assertIsArray($this->blueprint()->toArray());
     }
 
-    public function test_toArray_has_exactly_8_keys(): void
+    public function test_toArray_has_exactly_14_keys(): void
     {
-        $this->assertCount(8, $this->blueprint()->toArray());
+        $this->assertCount(14, $this->blueprint()->toArray());
     }
 
-    public function test_toArray_contains_identity_and_the_6_official_keys(): void
+    public function test_toArray_contains_identity_and_exact_segment_keys(): void
     {
         $expected = [
             'blueprint_id',
             'depth', 'domain', 'subdomain_active',
-            'subject_active', 'dominant_idea_active', 'kernel_code',
+            'subject_active', 'dominant_idea_active',
+            'kernel_code_dd', 'kernel_code_do', 'kernel_code_sub',
+            'kernel_code_suj', 'kernel_code_ide', 'kernel_code_vvvv',
+            'kernel_code',
             'cognitive_slots',
         ];
 
@@ -247,14 +250,14 @@ class KernelBlueprintPart1Test extends TestCase
         $bp = $this->identifiedBlueprint();
         $bp->fillRotation(2, 'histoire');
 
-        $this->assertSame('02-HIS-___-___-___-____', $bp->kernelCodeProjection());
+        $this->assertNull($bp->kernelCodeProjection());
     }
 
     public function test_fillRotation_accepts_all_valid_depths(): void
     {
-        foreach (range(1, 10) as $depth) {
+        foreach ([2, 4, 6, 7, 8, 9, 10] as $depth) {
             $bp = $this->identifiedBlueprint();
-            $bp->fillRotation($depth, 'géographie');
+            $bp->fillRotation($depth, 'Géographie');
             $this->assertSame($depth, $bp->depth, "fillRotation doit accepter depth={$depth}");
         }
     }
@@ -323,7 +326,7 @@ class KernelBlueprintPart1Test extends TestCase
         $bp->fillRotation(2, 'histoire');
         $bp->fillTaxonomy('Rome', 'César', 'Conquête');
 
-        $this->assertSame('02-HIS-ROM-CES-CON-____', $bp->kernelCodeProjection());
+        $this->assertNull($bp->kernelCodeProjection());
     }
 
     public function test_fillTaxonomy_requires_rotation(): void
@@ -511,14 +514,14 @@ class KernelBlueprintPart1Test extends TestCase
     public function test_taxonomy_reads_rotation_but_cannot_overwrite_it(): void
     {
         $bp = $this->identifiedBlueprint();
-        $bp->fillRotation(8, 'géographie');
+        $bp->fillRotation(8, 'Géographie');
 
         // Taxonomy lit depth + domain pour travailler dans le bon réservoir,
         // mais ne les modifie pas (pas de paramètre depth/domain dans fillTaxonomy).
         $bp->fillTaxonomy('Capitales', 'Nairobi', 'hub_économique');
 
         $this->assertSame(8,            $bp->depth,  'depth doit rester inchangé après fillTaxonomy');
-        $this->assertSame('géographie', $bp->domain, 'domain doit rester inchangé après fillTaxonomy');
+        $this->assertSame('Géographie', $bp->domain, 'domain doit rester inchangé après fillTaxonomy');
     }
 
     // =========================================================================

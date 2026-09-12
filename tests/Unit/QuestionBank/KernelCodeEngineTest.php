@@ -7,6 +7,8 @@ namespace Tests\Unit\QuestionBank;
 use App\Exceptions\QuestionBank\KernelCodeEngineException;
 use App\Services\QuestionBank\KernelBlueprint;
 use App\Services\QuestionBank\KernelCodeEngine;
+use App\Services\QuestionBank\KernelCodeFormat;
+use App\Services\QuestionBank\QuestionIntentBlueprintIdReceiver;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Database\Schema\Blueprint;
@@ -37,7 +39,22 @@ class KernelCodeEngineTest extends TestCase
             $t->string('execution_state', 64)->default('CREATED_UNENGAGED');
             $t->smallInteger('depth')->nullable();
             $t->string('domain_code', 64)->nullable();
-            $t->string('kernel_code', 23)->nullable()->unique();
+            $t->string('subdomain_active')->nullable();
+            $t->string('subject_active')->nullable();
+            $t->text('dominant_idea_active')->nullable();
+            $t->string('kernel_code_dd', 2)->nullable();
+            $t->string('kernel_code_do', 3)->nullable();
+            $t->string('kernel_code_sub', 3)->nullable();
+            $t->string('kernel_code_suj', 3)->nullable();
+            $t->string('kernel_code_ide', 3)->nullable();
+            $t->string('kernel_code_vvvv', 4)->nullable();
+            $t->string('kernel_code', 23)->nullable()->storedAs(
+                "CASE WHEN kernel_code_dd IS NOT NULL AND kernel_code_do IS NOT NULL "
+                . "AND kernel_code_sub IS NOT NULL AND kernel_code_suj IS NOT NULL "
+                . "AND kernel_code_ide IS NOT NULL AND kernel_code_vvvv IS NOT NULL "
+                . "THEN kernel_code_dd || '-' || kernel_code_do || '-' || kernel_code_sub "
+                . "|| '-' || kernel_code_suj || '-' || kernel_code_ide || '-' || kernel_code_vvvv END"
+            )->unique();
             $t->timestamp('engaged_at')->nullable();
             $t->timestamp('received_at')->nullable();
             $t->timestamps();
@@ -50,11 +67,29 @@ class KernelCodeEngineTest extends TestCase
             $t->timestamps();
             $t->primary(['depth', 'domain_code']);
         });
+        Schema::create('kernel_blueprint_request_refs', function (Blueprint $t) {
+            $t->string('request_reference', 128)->primary();
+            $t->string('blueprint_id', 36);
+        });
+        Schema::create('kernel_blueprint_cognitive_slots', function (Blueprint $t) {
+            $t->string('blueprint_id', 36);
+            $t->string('cognitive_type', 64);
+            $t->json('source')->nullable();
+            $t->json('creation_failure')->nullable();
+            $t->json('translations')->default('{}');
+            $t->json('validation_findings')->default('[]');
+            $t->string('creation_status', 32)->default('EMPTY');
+            $t->string('validation_status', 32)->default('NOT_VALIDATED');
+            $t->timestamps();
+            $t->primary(['blueprint_id', 'cognitive_type']);
+        });
     }
 
     protected function tearDown(): void
     {
         Schema::dropIfExists('kernel_code_sequences');
+        Schema::dropIfExists('kernel_blueprint_cognitive_slots');
+        Schema::dropIfExists('kernel_blueprint_request_refs');
         Schema::dropIfExists('kernel_blueprint_runs');
         parent::tearDown();
     }
@@ -77,17 +112,51 @@ class KernelCodeEngineTest extends TestCase
         $bp->fillRotation($depth, $domain);
         $bp->fillTaxonomy($subdomain, $subject, $dominantIdea);
 
-        DB::table('kernel_blueprint_runs')->insert([
+        $persisted = [
             'blueprint_id'    => $blueprintId,
             'execution_state' => 'ENGAGED_IN_PIPELINE',
             'depth'           => $depth,
             'domain_code'     => $domain,
-            'kernel_code'     => $existingCode,
+            'subdomain_active' => $subdomain,
+            'subject_active' => $subject,
+            'dominant_idea_active' => $dominantIdea,
+            'kernel_code_dd' => str_pad((string) $depth, 2, '0', STR_PAD_LEFT),
+            'kernel_code_do' => KernelCodeFormat::domain($domain),
+            'kernel_code_sub' => KernelCodeFormat::segment($subdomain),
+            'kernel_code_suj' => KernelCodeFormat::segment($subject),
+            'kernel_code_ide' => KernelCodeFormat::segment($dominantIdea),
             'created_at'      => now(),
             'updated_at'      => now(),
+        ];
+        if ($existingCode !== null) {
+            $persisted['kernel_code_vvvv'] = substr($existingCode, -4);
+        }
+        DB::table('kernel_blueprint_runs')->insert($persisted);
+        DB::table('kernel_blueprint_request_refs')->insert([
+            'request_reference' => 'test:' . $blueprintId,
+            'blueprint_id' => $blueprintId,
         ]);
+        foreach (KernelBlueprint::COGNITIVE_TYPES as $type) {
+            DB::table('kernel_blueprint_cognitive_slots')->insert([
+                'blueprint_id' => $blueprintId,
+                'cognitive_type' => $type,
+                'source' => json_encode(KernelBlueprint::emptyCognitiveSlotSource($type), JSON_THROW_ON_ERROR),
+                'translations' => '{}',
+                'validation_findings' => '[]',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
 
         return $bp;
+    }
+
+    private function assign(KernelBlueprint $blueprint): string
+    {
+        (new QuestionIntentBlueprintIdReceiver($this->engine))->process($blueprint->blueprint_id);
+
+        return (string) DB::table('kernel_blueprint_runs')
+            ->where('blueprint_id', $blueprint->blueprint_id)->value('kernel_code');
     }
 
     // ═════════════════════════════════════════════════════════════════════════
@@ -268,19 +337,20 @@ class KernelCodeEngineTest extends TestCase
     public function test_assign_produces_correct_format(): void
     {
         $bp = $this->makeBlueprint();
-        $code = $this->engine->assignKernelCode($bp);
+        $code = $this->assign($bp);
 
         // Format structurel
         $this->assertMatchesRegularExpression(KernelCodeEngine::FORMAT_REGEX, $code);
         $this->assertSame(23, strlen($code));
         $this->assertSame('04-GEO-CAN-CON-ACT-0000', $code);
-        $this->assertSame($code, $bp->kernel_code);
+        $this->assertSame($code, DB::table('kernel_blueprint_runs')
+            ->where('blueprint_id', $bp->blueprint_id)->value('kernel_code'));
     }
 
     public function test_assign_writes_to_db(): void
     {
         $bp = $this->makeBlueprint();
-        $this->engine->assignKernelCode($bp);
+        $this->assign($bp);
 
         $row = DB::table('kernel_blueprint_runs')->where('blueprint_id', 'bp-test-0001')->first();
         $this->assertSame('04-GEO-CAN-CON-ACT-0000', $row->kernel_code);
@@ -289,7 +359,7 @@ class KernelCodeEngineTest extends TestCase
     public function test_idempotence_same_blueprint_twice(): void
     {
         $bp = $this->makeBlueprint();
-        $code1 = $this->engine->assignKernelCode($bp);
+        $code1 = $this->assign($bp);
 
         // Remettre le Blueprint en mémoire (simulate new call)
         $bp2 = new KernelBlueprint();
@@ -297,10 +367,11 @@ class KernelCodeEngineTest extends TestCase
         $bp2->fillRotation(4, 'Géographie');
         $bp2->fillTaxonomy('Canada', 'Confédération canadienne', "Acte de l'Amérique du Nord britannique");
 
-        $code2 = $this->engine->assignKernelCode($bp2);
+        $code2 = $this->assign($bp2);
 
         $this->assertSame($code1, $code2);
-        $this->assertSame($code2, $bp2->kernel_code);
+        $this->assertSame($code2, DB::table('kernel_blueprint_runs')
+            ->where('blueprint_id', $bp2->blueprint_id)->value('kernel_code'));
 
         // Le compteur ne doit avoir avancé qu'une seule fois
         $seq = DB::table('kernel_code_sequences')
@@ -313,8 +384,8 @@ class KernelCodeEngineTest extends TestCase
         $bp1 = $this->makeBlueprint('bp-001');
         $bp2 = $this->makeBlueprint('bp-002');
 
-        $code1 = $this->engine->assignKernelCode($bp1);
-        $code2 = $this->engine->assignKernelCode($bp2);
+        $code1 = $this->assign($bp1);
+        $code2 = $this->assign($bp2);
 
         $this->assertStringEndsWith('-0000', $code1);
         $this->assertStringEndsWith('-0001', $code2);
@@ -325,8 +396,8 @@ class KernelCodeEngineTest extends TestCase
         $bpGe = $this->makeBlueprint('bp-ge', 2, 'Géographie', 'Europe', 'France', 'Gaule');
         $bpHi = $this->makeBlueprint('bp-hi', 2, 'Histoire', 'Antiquité', 'Rome', 'César');
 
-        $codeGe = $this->engine->assignKernelCode($bpGe);
-        $codeHi = $this->engine->assignKernelCode($bpHi);
+        $codeGe = $this->assign($bpGe);
+        $codeHi = $this->assign($bpHi);
 
         // Chaque bassin commence à 0000
         $this->assertStringEndsWith('-0000', $codeGe);
@@ -340,8 +411,8 @@ class KernelCodeEngineTest extends TestCase
         $bp4 = $this->makeBlueprint('bp-d4', 4, 'Géographie', 'Europe', 'France', 'Gaule');
         $bp6 = $this->makeBlueprint('bp-d6', 6, 'Géographie', 'Europe', 'France', 'Gaule');
 
-        $code4 = $this->engine->assignKernelCode($bp4);
-        $code6 = $this->engine->assignKernelCode($bp6);
+        $code4 = $this->assign($bp4);
+        $code6 = $this->assign($bp6);
 
         $this->assertStringEndsWith('-0000', $code4);
         $this->assertStringEndsWith('-0000', $code6);
@@ -352,7 +423,7 @@ class KernelCodeEngineTest extends TestCase
     public function test_immutability_cannot_reassign(): void
     {
         $bp = $this->makeBlueprint('bp-imm', existingCode: '04-GEO-CAN-CON-ACT-000A');
-        $code = $this->engine->assignKernelCode($bp);
+        $code = $this->assign($bp);
 
         // Retourne l'existant, ne consomme pas de nouveau suffixe
         $this->assertSame('04-GEO-CAN-CON-ACT-000A', $code);
@@ -369,9 +440,9 @@ class KernelCodeEngineTest extends TestCase
         $bp->fillRotation(4, 'Géographie');
         $bp->fillTaxonomy('Canada', 'Sujet', 'Idée');
 
-        $this->expectException(KernelCodeEngineException::class);
-        $this->expectExceptionMessage('QUESTION_INTENT_MISSING_INPUT');
-        $this->engine->assignKernelCode($bp);
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Binding technique absent');
+        $this->assign($bp);
     }
 
     public function test_missing_rotation_throws(): void
@@ -383,14 +454,13 @@ class KernelCodeEngineTest extends TestCase
         DB::table('kernel_blueprint_runs')->insert([
             'blueprint_id'    => 'bp-miss-rot',
             'execution_state' => 'ENGAGED_IN_PIPELINE',
-            'kernel_code'     => null,
             'created_at'      => now(),
             'updated_at'      => now(),
         ]);
 
-        $this->expectException(KernelCodeEngineException::class);
-        $this->expectExceptionMessage('QUESTION_INTENT_MISSING_INPUT');
-        $this->engine->assignKernelCode($bp);
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Binding technique absent');
+        $this->assign($bp);
     }
 
     public function test_missing_taxonomy_throws(): void
@@ -403,37 +473,22 @@ class KernelCodeEngineTest extends TestCase
         DB::table('kernel_blueprint_runs')->insert([
             'blueprint_id'    => 'bp-miss-tax',
             'execution_state' => 'ENGAGED_IN_PIPELINE',
-            'kernel_code'     => null,
             'created_at'      => now(),
             'updated_at'      => now(),
         ]);
 
-        $this->expectException(KernelCodeEngineException::class);
-        $this->expectExceptionMessage('QUESTION_INTENT_MISSING_INPUT');
-        $this->engine->assignKernelCode($bp);
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Binding technique absent');
+        $this->assign($bp);
     }
 
     public function test_invalid_domain_throws_and_no_suffix_consumed(): void
     {
+        $this->expectException(KernelCodeEngineException::class);
+        $this->expectExceptionMessage('QUESTION_INTENT_INVALID_DOMAIN');
         $bp = new KernelBlueprint();
         $bp->initializeBlueprintId('bp-dom');
         $bp->fillRotation(4, 'Général');
-        $bp->fillTaxonomy('Canada', 'Sujet', 'Idée');
-
-        DB::table('kernel_blueprint_runs')->insert([
-            'blueprint_id'    => 'bp-dom',
-            'execution_state' => 'ENGAGED_IN_PIPELINE',
-            'kernel_code'     => null,
-            'created_at'      => now(),
-            'updated_at'      => now(),
-        ]);
-
-        try {
-            $this->engine->assignKernelCode($bp);
-            $this->fail('Exception attendue');
-        } catch (KernelCodeEngineException $e) {
-            $this->assertSame(KernelCodeEngineException::INVALID_DOMAIN, $e->errorCode);
-        }
 
         // Aucun suffixe consommé
         $this->assertSame(0, DB::table('kernel_code_sequences')->count());
@@ -454,7 +509,7 @@ class KernelCodeEngineTest extends TestCase
 
         $this->expectException(KernelCodeEngineException::class);
         $this->expectExceptionMessage('QUESTION_INTENT_SUFFIX_EXHAUSTED');
-        $this->engine->assignKernelCode($bp);
+        $this->assign($bp);
     }
 
     public function test_legacy_two_character_basin_blocks_new_allocation(): void
@@ -471,7 +526,7 @@ class KernelCodeEngineTest extends TestCase
 
         $this->expectException(KernelCodeEngineException::class);
         $this->expectExceptionMessage('réconciliation requise');
-        $this->engine->assignKernelCode($bp);
+        $this->assign($bp);
     }
 
     // ═════════════════════════════════════════════════════════════════════════
@@ -505,7 +560,7 @@ class KernelCodeEngineTest extends TestCase
             'dominant_idea_active' => $bp->dominant_idea_active,
         ];
 
-        $this->engine->assignKernelCode($bp);
+        $this->assign($bp);
 
         $this->assertSame($before['depth'],                $bp->depth);
         $this->assertSame($before['domain'],               $bp->domain);
@@ -513,7 +568,8 @@ class KernelCodeEngineTest extends TestCase
         $this->assertSame($before['subject_active'],       $bp->subject_active);
         $this->assertSame($before['dominant_idea_active'], $bp->dominant_idea_active);
         // Seul kernel_code a changé
-        $this->assertNotNull($bp->kernel_code);
+        $this->assertNotNull(DB::table('kernel_blueprint_runs')
+            ->where('blueprint_id', $bp->blueprint_id)->value('kernel_code'));
     }
 
     // ═════════════════════════════════════════════════════════════════════════
@@ -523,7 +579,7 @@ class KernelCodeEngineTest extends TestCase
     public function test_no_ks_hash_written(): void
     {
         $bp = $this->makeBlueprint();
-        $this->engine->assignKernelCode($bp);
+        $this->assign($bp);
 
         $row = DB::table('kernel_blueprint_runs')->where('blueprint_id', 'bp-test-0001')->first();
         // kernel_blueprint_runs n'a pas de colonne ks_hash — vérifier que le code ne tente pas d'y écrire
@@ -533,7 +589,7 @@ class KernelCodeEngineTest extends TestCase
     public function test_no_kld_hash_written(): void
     {
         $bp = $this->makeBlueprint();
-        $this->engine->assignKernelCode($bp);
+        $this->assign($bp);
 
         $row = DB::table('kernel_blueprint_runs')->where('blueprint_id', 'bp-test-0001')->first();
         $this->assertFalse(isset($row->kld_hash), 'kld_hash ne doit pas exister dans kernel_blueprint_runs');

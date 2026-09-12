@@ -239,23 +239,72 @@ class KernelCodeSequenceLegacyMigrationPostgresTest extends TestCase
         $this->insertSequence(4, 'GE', 41);
         $this->insertSequence(4, 'GEO', 19);
         $this->runMigration();
-
-        $blueprint = new KernelBlueprint();
-        $blueprint->initializeBlueprintId('bp-next-allocation');
-        $blueprint->fillRotation(4, 'Géographie');
-        $blueprint->fillTaxonomy('Canada', 'Confédération canadienne', 'Acte');
+        DB::statement(<<<'SQL'
+ALTER TABLE kernel_blueprint_runs
+    DROP COLUMN kernel_code,
+    ADD COLUMN kernel_code VARCHAR(23)
+        GENERATED ALWAYS AS (
+            CASE WHEN kernel_code_dd IS NOT NULL
+                AND kernel_code_do IS NOT NULL
+                AND kernel_code_sub IS NOT NULL
+                AND kernel_code_suj IS NOT NULL
+                AND kernel_code_ide IS NOT NULL
+                AND kernel_code_vvvv IS NOT NULL
+            THEN kernel_code_dd || '-' || kernel_code_do || '-' || kernel_code_sub || '-'
+                || kernel_code_suj || '-' || kernel_code_ide || '-' || kernel_code_vvvv
+            ELSE NULL END
+        ) STORED
+SQL);
+        Schema::create('kernel_blueprint_request_refs', function (Blueprint $table): void {
+            $table->string('request_reference', 128)->primary();
+            $table->string('blueprint_id', 36);
+        });
+        Schema::create('kernel_blueprint_cognitive_slots', function (Blueprint $table): void {
+            $table->string('blueprint_id', 36);
+            $table->string('cognitive_type', 64);
+            $table->jsonb('source')->nullable();
+            $table->jsonb('creation_failure')->nullable();
+            $table->jsonb('translations')->default('{}');
+            $table->string('creation_status', 32)->default('EMPTY');
+            $table->string('validation_status', 32)->default('NOT_VALIDATED');
+            $table->jsonb('validation_findings')->default('[]');
+            $table->timestampsTz();
+            $table->primary(['blueprint_id', 'cognitive_type']);
+        });
 
         DB::table('kernel_blueprint_runs')->insert([
             'blueprint_id'    => 'bp-next-allocation',
             'execution_state' => 'ENGAGED_IN_PIPELINE',
             'depth'           => 4,
             'domain_code'     => 'Géographie',
-            'kernel_code'     => null,
+            'kernel_code_dd'  => '04',
+            'kernel_code_do'  => 'GEO',
+            'subdomain_active' => 'Canada',
+            'subject_active' => 'Confédération canadienne',
+            'dominant_idea_active' => 'Acte',
+            'kernel_code_sub' => 'CAN',
+            'kernel_code_suj' => 'CON',
+            'kernel_code_ide' => 'ACT',
             'created_at'      => now(),
             'updated_at'      => now(),
         ]);
+        DB::table('kernel_blueprint_request_refs')->insert([
+            'request_reference' => 'legacy:next',
+            'blueprint_id' => 'bp-next-allocation',
+        ]);
+        foreach (KernelBlueprint::COGNITIVE_TYPES as $type) {
+            DB::table('kernel_blueprint_cognitive_slots')->insert([
+                'blueprint_id' => 'bp-next-allocation',
+                'cognitive_type' => $type,
+                'source' => json_encode(KernelBlueprint::emptyCognitiveSlotSource($type), JSON_THROW_ON_ERROR),
+                'translations' => '{}',
+                'validation_findings' => '[]',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
 
-        $code = (new KernelCodeEngine())->assignKernelCode($blueprint);
+        $code = (new KernelCodeEngine())->assignKernelCode('bp-next-allocation');
 
         $this->assertSame('04-GEO-CAN-CON-ACT-0015', $code);
         $this->assertSame(42, (int) DB::table('kernel_code_sequences')
@@ -286,6 +335,15 @@ class KernelCodeSequenceLegacyMigrationPostgresTest extends TestCase
             $table->string('execution_state', 64)->default('ENGAGED_IN_PIPELINE');
             $table->smallInteger('depth')->nullable();
             $table->string('domain_code', 64)->nullable();
+            $table->string('subdomain_active')->nullable();
+            $table->string('subject_active')->nullable();
+            $table->text('dominant_idea_active')->nullable();
+            $table->string('kernel_code_dd', 2)->nullable();
+            $table->string('kernel_code_do', 3)->nullable();
+            $table->string('kernel_code_sub', 3)->nullable();
+            $table->string('kernel_code_suj', 3)->nullable();
+            $table->string('kernel_code_ide', 3)->nullable();
+            $table->string('kernel_code_vvvv', 4)->nullable();
             $table->string('kernel_code', 22)->nullable();
             $table->timestamps();
         });

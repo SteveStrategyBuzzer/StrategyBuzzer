@@ -96,6 +96,8 @@ final class KernelBlueprintRunRepository
                 'execution_state' => 'ENGAGED_IN_PIPELINE',
                 'depth'           => $depth,
                 'domain_code'     => $domain,
+            'kernel_code_dd'  => \App\Services\QuestionBank\KernelCodeFormat::depth($depth),
+            'kernel_code_do'  => \App\Services\QuestionBank\KernelCodeFormat::domain($domain),
                 'engaged_at'      => now(),
                 'updated_at'      => now(),
             ]);

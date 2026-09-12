@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
-use App\Services\QuestionBank\KernelCodeEngine;
+use App\Services\QuestionBank\QuestionIntentBlueprintIdReceiver;
 use App\Services\QuestionBank\Rotation\CurrentKernelReceivedKbpAdapter;
 use App\Services\QuestionBank\Rotation\KernelBlueprintProvisioner;
 use App\Services\QuestionBank\Rotation\KernelBlueprintProvisionedLoader;
@@ -141,7 +141,8 @@ class QuestionsKernelProcessOutboxCommand extends Command
                 $taxonomy,
                 $taxonomyRepository,
                 $planner,
-                new KernelCodeEngine(),
+                new QuestionIntentBlueprintIdReceiver(),
+                new \App\Services\QuestionBank\KernelBlueprintCognitiveSlotRepository(),
             ),
         );
 

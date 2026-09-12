@@ -5,21 +5,20 @@ declare(strict_types=1);
 namespace App\Services\QuestionBank;
 
 use App\Exceptions\QuestionBank\KernelCodeEngineException;
+use App\Services\QuestionBank\Rotation\KernelBlueprintProvisionedLoader;
 use Illuminate\Support\Facades\DB;
 
 /**
- * KernelCodeEngine — propriétaire exclusif de l'écriture de kernel_code.
+ * KernelCodeEngine — propriétaire exclusif de l'écriture de VVVV.
  *
  * ══════════════════════════════════════════════════════════════════════════════
  * MODULE : 05_QuestionIntent (VERROUILLÉ)
  * ══════════════════════════════════════════════════════════════════════════════
  *
  * Mission : recevoir le KernelBlueprint dont le territoire intellectuel a été
- * entièrement déterminé et validé, construire son kernel_code canonique selon
- * la structure officielle StrategyBuzzer, attribuer un suffixe séquentiel
- * unique dans le bassin (Depth + Domaine), écrire ce kernel_code dans le
- * KernelBlueprint et rendre cette identité immuable pour toute la durée de
- * vie du noyau canonique.
+ * entièrement déterminé et validé, attribuer un suffixe séquentiel unique dans
+ * le bassin (Depth + Domaine). PostgreSQL projette kernel_code depuis les six
+ * segments et rend cette identité immuable.
  *
  * ── Format ──────────────────────────────────────────────────────────────────
  *
@@ -36,7 +35,7 @@ use Illuminate\Support\Facades\DB;
  *
  * ── Invariants ───────────────────────────────────────────────────────────────
  *
- *   - 1 Blueprint → 0 ou 1 kernel_code (jamais plusieurs)
+ *   - 1 Blueprint → 0 ou 1 VVVV/kernel_code (jamais plusieurs)
  *   - Idempotent : même Blueprint deux fois → même kernel_code, compteur avancé 1 seule fois
  *   - Immuable après attribution (NULL → valeur, jamais valeur → autre valeur)
  *   - 1 compteur indépendant par (Depth, domain_code)
@@ -66,18 +65,18 @@ final class KernelCodeEngine
     public const  MAX_SUFFIX   = 1_679_615; // 36^4 - 1
 
     // ═════════════════════════════════════════════════════════════════════════
-    // Point d'entrée public — allocation atomique du kernel_code
+    // Allocateur interne — la frontière publique reçoit uniquement blueprint_id
     // ═════════════════════════════════════════════════════════════════════════
 
     /**
-     * Attribue et persiste le kernel_code du Blueprint canonique.
+     * Attribue et persiste le kernel_code d'un Blueprint déjà réhydraté.
      *
      * Transaction unique : kernel_blueprint_runs + kernel_code_sequences
      * sont mis à jour dans la même frontière transactionnelle.
      *
      * @throws KernelCodeEngineException si une entrée est invalide ou le bassin épuisé.
      */
-    public function assignKernelCode(KernelBlueprint $blueprint): string
+    private function allocateForBlueprint(KernelBlueprint $blueprint): string
     {
         return DB::transaction(function () use ($blueprint) {
 
@@ -92,6 +91,28 @@ final class KernelCodeEngine
                     KernelCodeEngineException::MISSING_INPUT,
                     "Blueprint introuvable : {$blueprint->blueprint_id}"
                 );
+            }
+
+            foreach ([
+                'depth' => $blueprint->depth,
+                'domain_code' => $blueprint->domain,
+                'kernel_code_dd' => $blueprint->kernel_code_dd,
+                'kernel_code_do' => $blueprint->kernel_code_do,
+                'subdomain_active' => $blueprint->subdomain_active,
+                'subject_active' => $blueprint->subject_active,
+                'dominant_idea_active' => $blueprint->dominant_idea_active,
+                'kernel_code_sub' => $blueprint->kernel_code_sub,
+                'kernel_code_suj' => $blueprint->kernel_code_suj,
+                'kernel_code_ide' => $blueprint->kernel_code_ide,
+            ] as $column => $expected) {
+                if (property_exists($run, $column)
+                    && $run->{$column} !== null
+                    && (string) $run->{$column} !== (string) $expected) {
+                    throw new KernelCodeEngineException(
+                        KernelCodeEngineException::IDENTITY_CONFLICT,
+                        "Champ persisté {$column} divergent du Blueprint {$blueprint->blueprint_id}."
+                    );
+                }
             }
 
             // ── 2. Vérifier la projection intellectuelle complète ───────────
@@ -118,7 +139,7 @@ final class KernelCodeEngine
                         "kernel_code persisté divergent de la projection du Blueprint : {$code}"
                     );
                 }
-                $blueprint->fillKernelCode($code);
+                $blueprint->fillVvvv(substr($code, -4));
                 return $code;
             }
 
@@ -173,14 +194,11 @@ final class KernelCodeEngine
             // ── 9. Convertir en suffixe base36 4 chars ───────────────────────
             $suffix = $this->toBase36((int) $seq->next_value);
 
-            // ── 10. Construire le kernel_code ────────────────────────────────
-            $kernelCode = "{$prefix}-{$suffix}";
-
-            // ── 11. Écrire dans kernel_blueprint_runs ────────────────────────
+            // ── 10. Écrire uniquement VVVV; kernel_code est généré par PostgreSQL
             $updated = DB::table(self::RUNS_TABLE)
                 ->where('blueprint_id', $blueprint->blueprint_id)
-                ->whereNull('kernel_code') // garde anti-race (double-check)
-                ->update(['kernel_code' => $kernelCode, 'updated_at' => now()]);
+                ->whereNull('kernel_code_vvvv') // garde anti-race (double-check)
+                ->update(['kernel_code_vvvv' => $suffix, 'updated_at' => now()]);
 
             if ($updated === 0) {
                 // Un autre worker a assigné le code entre notre lock et notre write.
@@ -196,21 +214,48 @@ final class KernelCodeEngine
                     );
                 }
 
-                $blueprint->fillKernelCode((string) $fresh);
+                $blueprint->fillVvvv(substr((string) $fresh, -4));
                 return (string) $fresh;
             }
 
-            // ── 12. Incrémenter next_value ───────────────────────────────────
+            // ── 11. Incrémenter next_value ───────────────────────────────────
             DB::table(self::SEQ_TABLE)
                 ->where('depth', $blueprint->depth)
                 ->where('domain_code', $domainCode)
                 ->update(['next_value' => (int) $seq->next_value + 1, 'updated_at' => now()]);
 
-            // ── 13. Remplir le Blueprint en mémoire ──────────────────────────
-            $blueprint->fillKernelCode($kernelCode);
+            // ── 12. Lire la projection générée et remplir uniquement VVVV ────
+            $kernelCode = DB::table(self::RUNS_TABLE)
+                ->where('blueprint_id', $blueprint->blueprint_id)
+                ->value('kernel_code');
+            if ($kernelCode === null || ! preg_match(self::FORMAT_REGEX, (string) $kernelCode)) {
+                throw new KernelCodeEngineException(
+                    KernelCodeEngineException::IDENTITY_CONFLICT,
+                    "Projection kernel_code absente après allocation {$blueprint->blueprint_id}"
+                );
+            }
+            $blueprint->fillVvvv($suffix);
 
-            return $kernelCode;
+            return (string) $kernelCode;
         });
+    }
+
+    /**
+     * Official QuestionIntent boundary: reopen the aggregate by identity and
+     * return that same identity after allocating only VVVV.
+     */
+    public function assignKernelCode(string $blueprintId): string
+    {
+        $blueprint = (new KernelBlueprintProvisionedLoader())->loadEngaged($blueprintId);
+        return $this->allocateForBlueprint($blueprint);
+    }
+
+    /**
+     * Explicit alias for callers that name the QuestionIntent boundary.
+     */
+    public function assignKernelCodeById(string $blueprintId): string
+    {
+        return $this->assignKernelCode($blueprintId);
     }
 
     // ═════════════════════════════════════════════════════════════════════════

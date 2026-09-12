@@ -103,10 +103,14 @@ final class KernelPipelineOrchestrator
             ->where('execution_state', 'CREATED_UNENGAGED')
             ->whereNull('depth')
             ->whereNull('domain_code')
+            ->whereNull('kernel_code_dd')
+            ->whereNull('kernel_code_do')
             ->update([
                 'execution_state' => 'ENGAGED_IN_PIPELINE',
                 'depth' => $blueprint->depth,
                 'domain_code' => $blueprint->domain,
+            'kernel_code_dd' => $blueprint->kernel_code_dd,
+            'kernel_code_do' => $blueprint->kernel_code_do,
                 'engaged_at' => now(),
                 'updated_at' => now(),
             ]);

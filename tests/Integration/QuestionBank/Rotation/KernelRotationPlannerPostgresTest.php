@@ -410,6 +410,16 @@ class KernelRotationPlannerPostgresTest extends TestCase
             $table->string('execution_state', 64)->default('CREATED_UNENGAGED');
             $table->smallInteger('depth')->nullable();
             $table->string('domain_code', 64)->nullable();
+            $table->string('subdomain_active')->nullable();
+            $table->string('subject_active')->nullable();
+            $table->text('dominant_idea_active')->nullable();
+            $table->string('kernel_code_dd', 2)->nullable();
+            $table->string('kernel_code_do', 3)->nullable();
+            $table->string('kernel_code_sub', 3)->nullable();
+            $table->string('kernel_code_suj', 3)->nullable();
+            $table->string('kernel_code_ide', 3)->nullable();
+            $table->string('kernel_code_vvvv', 4)->nullable();
+            $table->string('kernel_code', 23)->nullable();
             $table->timestampTz('engaged_at')->nullable();
             $table->timestampTz('received_at')->nullable();
             $table->timestampsTz();
