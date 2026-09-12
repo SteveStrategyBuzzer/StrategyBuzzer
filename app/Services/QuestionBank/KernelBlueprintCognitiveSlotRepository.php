@@ -154,6 +154,104 @@ class KernelBlueprintCognitiveSlotRepository
         return $this->allForBlueprint($blueprintId)[$cognitiveType] ?? null;
     }
 
+    /**
+     * Persist the terminal ValidationPhase1 decision for all seven slots.
+     *
+     * This is the only validation writer.  No source, identity, creation
+     * metadata or translation column is included in the update projection.
+     *
+     * @param array<string, array{validation_status: string, validation_findings: array<int, array<string, mixed>>}> $decisions
+     */
+    public function writeValidationResults(string $blueprintId, array $decisions): void
+    {
+        $expected = KernelBlueprint::COGNITIVE_TYPES;
+        $actual = array_keys($decisions);
+        sort($actual);
+        $sortedExpected = $expected;
+        sort($sortedExpected);
+        if ($actual !== $sortedExpected) {
+            throw new LogicException(
+                '[KernelBlueprintCognitiveSlotRepository] Les sept décisions de validation sont requises.'
+            );
+        }
+
+        foreach ($expected as $cognitiveType) {
+            $this->assertOfficialType($cognitiveType);
+            $decision = $decisions[$cognitiveType];
+            if (! in_array($decision['validation_status'] ?? null, ['PASS', 'SUSPICION'], true)
+                || ! is_array($decision['validation_findings'] ?? null)) {
+                throw new LogicException(
+                    "[KernelBlueprintCognitiveSlotRepository] Décision de validation invalide pour {$cognitiveType}."
+                );
+            }
+        }
+
+        DB::transaction(function () use ($blueprintId, $decisions, $expected): void {
+            $rows = DB::table(self::TABLE)
+                ->where('blueprint_id', $blueprintId)
+                ->lockForUpdate()
+                ->get()
+                ->keyBy('cognitive_type');
+
+            if ($rows->count() !== count($expected)
+                || array_diff($expected, $rows->keys()->all()) !== []) {
+                throw new LogicException(
+                    "[KernelBlueprintCognitiveSlotRepository] Blueprint sans sept slots: {$blueprintId}."
+                );
+            }
+
+            $allExactTerminal = true;
+            foreach ($expected as $cognitiveType) {
+                $row = $rows->get($cognitiveType);
+                $requested = $decisions[$cognitiveType];
+                $existingFindings = $this->decodeJson($row->validation_findings) ?? [];
+                $isTerminal = in_array((string) $row->validation_status, ['PASS', 'SUSPICION'], true);
+                $isExact = $isTerminal
+                    && (string) $row->validation_status === $requested['validation_status']
+                    && $existingFindings === $requested['validation_findings'];
+
+                if ($isTerminal && ! $isExact) {
+                    throw new LogicException(
+                        "[KernelBlueprintCognitiveSlotRepository] Replay divergent pour {$cognitiveType}."
+                    );
+                }
+                if (! $isExact) {
+                    $allExactTerminal = false;
+                }
+            }
+
+            // Exact terminal replay is a true no-op, including updated_at.
+            if ($allExactTerminal) {
+                return;
+            }
+
+            foreach ($expected as $cognitiveType) {
+                $requested = $decisions[$cognitiveType];
+                $this->beforeValidationSlotUpdate($blueprintId, $cognitiveType);
+                $updated = DB::table(self::TABLE)
+                    ->where('blueprint_id', $blueprintId)
+                    ->where('cognitive_type', $cognitiveType)
+                    ->where('validation_status', 'NOT_VALIDATED')
+                    ->update([
+                        'validation_status' => $requested['validation_status'],
+                        'validation_findings' => $this->encodeJson($requested['validation_findings']),
+                    ]);
+                if ($updated !== 1) {
+                    throw new LogicException(
+                        "[KernelBlueprintCognitiveSlotRepository] Écriture atomique de validation interrompue."
+                    );
+                }
+            }
+        });
+    }
+
+    /**
+     * Test seam for exercising transaction rollback; production is a no-op.
+     */
+    protected function beforeValidationSlotUpdate(string $blueprintId, string $cognitiveType): void
+    {
+    }
+
     private function assertOfficialType(string $cognitiveType): void
     {
         if (! in_array($cognitiveType, KernelBlueprint::COGNITIVE_TYPES, true)) {

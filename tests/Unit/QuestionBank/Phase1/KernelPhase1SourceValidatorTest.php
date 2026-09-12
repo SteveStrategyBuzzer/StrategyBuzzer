@@ -82,16 +82,70 @@ class KernelPhase1SourceValidatorTest extends TestCase
         $this->assertStringContainsString('trente secondes', $result['invalid']['QCM_REASONING']);
     }
 
-    public function test_rejects_long_or_heterogeneous_qcm_choices(): void
+    public function test_accepts_long_punctuated_and_non_concise_qcm_choices_for_later_review(): void
     {
         $payload = $this->payload();
         $payload['slots'][2]['choices'][1]['text'] =
-            'Une phrase beaucoup trop longue qui combine plusieurs idées incompatibles';
+            'Une phrase beaucoup trop longue, qui combine plusieurs idées incompatibles; réellement.';
 
         $result = $this->validator->validate($this->blueprint, $payload);
 
-        $this->assertArrayHasKey('QCM_TRAP', $result['invalid']);
-        $this->assertStringContainsString('unité courte', $result['invalid']['QCM_TRAP']);
+        $this->assertArrayNotHasKey('QCM_TRAP', $result['invalid']);
+        $this->assertArrayHasKey('QCM_TRAP', $result['valid']);
+    }
+
+    public function test_self_checks_false_do_not_reject_a_persistable_slot(): void
+    {
+        $payload = $this->payload();
+        foreach ($payload['slots'] as &$slot) {
+            foreach ($slot['creation_evidence']['self_checks'] as $name => $_value) {
+                $slot['creation_evidence']['self_checks'][$name] = false;
+            }
+        }
+        unset($slot);
+
+        $result = $this->validator->validate($this->blueprint, $payload);
+
+        $this->assertCount(7, $result['valid']);
+        $this->assertSame([], $result['invalid']);
+    }
+
+    public function test_exact_normalized_question_duplicates_are_technical_invalidity(): void
+    {
+        $payload = $this->payload();
+        $payload['slots'][0]['question'] = '  Question   DUPLIQUÉE ? ';
+        $payload['slots'][1]['question'] = 'question dupliquée ?';
+
+        $result = $this->validator->validate($this->blueprint, $payload);
+
+        $this->assertArrayHasKey('QCM_RECOGNITION', $result['invalid']);
+        $this->assertArrayHasKey('QCM_REASONING', $result['invalid']);
+        $this->assertArrayNotHasKey('QCM_RECOGNITION', $result['valid']);
+        $this->assertArrayNotHasKey('QCM_REASONING', $result['valid']);
+    }
+
+    public function test_rejects_invalid_qcm_choice_count_and_key(): void
+    {
+        $payload = $this->payload();
+        $payload['slots'][0]['choices'] = array_slice($payload['slots'][0]['choices'], 0, 3);
+        $payload['slots'][1]['correct_answer_key'] = 'b';
+
+        $result = $this->validator->validate($this->blueprint, $payload);
+
+        $this->assertArrayHasKey('QCM_RECOGNITION', $result['invalid']);
+        $this->assertArrayHasKey('QCM_REASONING', $result['invalid']);
+    }
+
+    public function test_rejects_invalid_true_false_polarity_and_missing_required_field(): void
+    {
+        $payload = $this->payload();
+        $payload['slots'][3]['correct_answer_key'] = 'b';
+        $payload['slots'][4]['question'] = '';
+
+        $result = $this->validator->validate($this->blueprint, $payload);
+
+        $this->assertArrayHasKey('TRUE_FALSE_RECOGNITION_TRUE', $result['invalid']);
+        $this->assertArrayHasKey('TRUE_FALSE_RECOGNITION_FALSE', $result['invalid']);
     }
 
     /**

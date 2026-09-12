@@ -86,6 +86,24 @@ final class KernelPhase1SourceValidator
             }
         }
 
+        // Exact normalized duplicates are a technical seven-slot defect.
+        $questions = [];
+        foreach ($valid as $cognitiveType => $slot) {
+            $normalized = $this->normalizeQuestion((string) $slot['question']);
+            if ($normalized !== '') {
+                $questions[$normalized][] = $cognitiveType;
+            }
+        }
+        foreach ($questions as $duplicateTypes) {
+            if (count($duplicateTypes) < 2) {
+                continue;
+            }
+            foreach ($duplicateTypes as $cognitiveType) {
+                $invalid[$cognitiveType] = 'Question dupliquée après normalisation entre les sept slots.';
+                unset($valid[$cognitiveType]);
+            }
+        }
+
         return ['valid' => $valid, 'invalid' => $invalid];
     }
 
@@ -171,10 +189,14 @@ final class KernelPhase1SourceValidator
         }
 
         foreach (self::REQUIRED_SELF_CHECKS as $check) {
-            if ($evidence['self_checks'][$check] !== true) {
+            /*
+             * self_checks are metadata, not proof. Weak intellectual content
+             * remains persistable and is decided by ValidationPhase1.
+             */
+            if (! is_bool($evidence['self_checks'][$check])) {
                 throw new Phase1TechnicalException(
                     'INVALID_SCHEMA',
-                    "{$cognitiveType}.creation_evidence.self_checks.{$check} doit être true."
+                    "{$cognitiveType}.creation_evidence.self_checks.{$check} doit être booléen."
                 );
             }
         }
@@ -288,24 +310,8 @@ final class KernelPhase1SourceValidator
             );
         }
 
-        $wordCounts = [];
-        foreach ($choices as $choice) {
-            $wordCount = $this->wordCount($choice);
-            $wordCounts[] = $wordCount;
-            if ($wordCount > 6 || mb_strlen($choice) > 64 || preg_match('/[;,\n]/u', $choice)) {
-                throw new Phase1TechnicalException(
-                    'INVALID_SCHEMA',
-                    "{$cognitiveType} contient un choix qui n’est pas une unité courte."
-                );
-            }
-        }
-
-        if (max($wordCounts) - min($wordCounts) > 3) {
-            throw new Phase1TechnicalException(
-                'INVALID_SCHEMA',
-                "{$cognitiveType} contient des choix de longueur non comparable."
-            );
-        }
+        // Concision, punctuation and comparable length are intellectual
+        // weaknesses, not reasons to reject a technically persistable slot.
     }
 
     /**
@@ -355,5 +361,13 @@ final class KernelPhase1SourceValidator
         $words = preg_split('/[\s\p{Z}]+/u', trim($text), -1, PREG_SPLIT_NO_EMPTY);
 
         return is_array($words) ? count($words) : 0;
+    }
+
+    private function normalizeQuestion(string $question): string
+    {
+        $normalized = mb_strtolower(trim($question));
+        $normalized = preg_replace('/[\s\p{Z}]+/u', ' ', $normalized);
+
+        return is_string($normalized) ? $normalized : '';
     }
 }
