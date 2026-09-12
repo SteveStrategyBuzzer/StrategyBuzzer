@@ -17,17 +17,15 @@
 # 1. Mission
 
 QuestionIntent reçoit uniquement `blueprint_id`, recharge le même
-`KernelBlueprint` canonique et vérifie que ses cinq données intellectuelles
-sont déjà remplies. Il est l'unique propriétaire du
-`kernel_code` complet : il attribue `VVVV`, construit le code complet, le
-persiste et le verrouille dans une même opération atomique.
+`KernelBlueprint` canonique et vérifie que les valeurs amont nécessaires sont
+présentes. Il est le propriétaire exclusif de `kernel_code_vvvv` : il alloue
+le suffixe `VVVV` et le persiste atomiquement.
 
 QuestionIntent :
 
 - lit le territoire déjà décidé ;
-- encode toutes les composantes du code à partir des slots métier persistés ;
 - attribue `VVVV` ;
-- construit, persiste et verrouille le `kernel_code` complet ;
+- persiste uniquement `kernel_code_vvvv` ;
 - ne modifie aucune donnée intellectuelle ;
 - ne choisit aucun cognitif ;
 - ne crée aucune question ;
@@ -40,10 +38,10 @@ Le `kernel_code` permet :
 3. la comparaison avec l'historique joueur afin d'éviter une répétition
    conceptuelle.
 
-`KernelCodeEngine`, s'il existe techniquement, est exclusivement un mécanisme
-interne de QuestionIntent. Il n'est ni un module, ni une phase, ni un
-copropriétaire, ni une porte supplémentaire, ni un destinataire autonome de
-clé, ni une autorité d'écriture indépendante.
+`kernel_code` est généré par PostgreSQL en lecture seule après présence de ses
+six segments. QuestionIntent ne l'assemble, ne l'écrit et ne le verrouille
+jamais. `KernelCodeEngine`, s'il existe techniquement, n'est ni un module, ni
+une phase, ni un copropriétaire, ni une autorité d'écriture.
 
 ---
 
@@ -52,13 +50,14 @@ clé, ni une autorité d'écriture indépendante.
 ```text
 KernelBlueprint canonique
 ↓
-KRP écrit depth + domain
+KRP écrit depth + domain_code + DD + DO
 ↓
-Taxonomy écrit subdomain_active + subject_active + dominant_idea_active
+Taxonomy écrit les trois valeurs complètes + SUB + SUJ + IDE
 ↓
 QuestionIntent
-  ↳ attribue VVVV
-  ↳ construit, persiste et verrouille kernel_code complet
+  ↳ attribue et persiste VVVV
+↓
+PostgreSQL génère kernel_code (lecture seule)
 ↓
 Phase 1 crée les cognitifs et les questions
 ↓
@@ -69,11 +68,10 @@ READY_BANK
 Gameplay
 ```
 
-QuestionIntent est l'étape d'identité persistante située après Taxonomy. Il
+QuestionIntent est l'étape d'allocation du suffixe située après Taxonomy. Il
 n'est ni un moteur Taxonomy, ni un moteur cognitif, ni un moteur de sélection
-gameplay. KRP et Taxonomy écrivent uniquement leurs slots métier respectifs ;
-ils ne construisent, ne projettent, ne persistent ni ne verrouillent une partie
-du `kernel_code`.
+gameplay. Rotation possède DD/DO, Taxonomy possède SUB/SUJ/IDE, et PostgreSQL
+génère le code complet.
 
 ---
 
@@ -84,17 +82,26 @@ QuestionIntent lit exactement :
 ```text
 blueprint_id
 depth
-domain
+domain_code
 subdomain_active
 subject_active
 dominant_idea_active
+kernel_code_dd
+kernel_code_do
+kernel_code_sub
+kernel_code_suj
+kernel_code_ide
+kernel_code_vvvv
+kernel_code
 ```
 
 Préconditions :
 
 - `blueprint_id` existe et est immuable ;
-- les cinq composantes intellectuelles sont remplies ;
-- `kernel_code` est vide, sauf lors d'un replay idempotent du même Blueprint.
+- les cinq composantes intellectuelles et les cinq segments amont sont remplis ;
+- `kernel_code_vvvv` est vide, sauf lors d'un replay idempotent du même Blueprint ;
+- `kernel_code` est une colonne générée en lecture seule et reste `NULL` avant
+  la présence des six segments.
 
 Aucune Bank Taxonomy, mémoire Gemini, rotation KRP, donnée joueur ou donnée
 cognitive n'est une entrée de QuestionIntent.
@@ -106,12 +113,12 @@ cognitive n'est une entrée de QuestionIntent.
 QuestionIntent écrit une seule sortie autoritaire :
 
 ```text
-kernel_code = DD-DO-SUB-SUJ-IDE-VVVV
+kernel_code_vvvv = VVVV
 ```
 
-Il construit ce code complet à partir de tous les slots métier déjà persistés,
-puis le persiste et le verrouille atomiquement. Il ne persiste aucun code
-partiel.
+Il alloue et persiste atomiquement `kernel_code_vvvv`. PostgreSQL génère
+ensuite `kernel_code` en lecture seule lorsque les six segments sont présents.
+QuestionIntent ne persiste aucun code complet ou partiel.
 
 Format logique officiel :
 
@@ -119,49 +126,48 @@ Format logique officiel :
 DD-DO-SUB-SUJ-IDE-VVVV
 ```
 
-| Segment | Source métier lue par QuestionIntent | Encodage construit par QuestionIntent |
+| Segment | Propriétaire | Source |
 |---|---|---|
-| `DD` | `depth` écrit par KRP | Depth sur 2 caractères, par exemple `2 → 02` |
-| `DO` | `domain` écrit par KRP | 3 premières lettres normalisées du Domain |
-| `SUB` | `subdomain_active` écrit par Taxonomy | 3 premières lettres normalisées du Subdomain |
-| `SUJ` | `subject_active` écrit par Taxonomy | 3 premières lettres normalisées du Subject |
-| `IDE` | `dominant_idea_active` écrit par Taxonomy | 3 premières lettres normalisées de la Dominant Idea |
-| `VVVV` | compteur de bassin attribué par QuestionIntent | compteur base36 du bassin `Depth + Domain` |
+| `DD` | Rotation | `kernel_code_dd` |
+| `DO` | Rotation | `kernel_code_do` |
+| `SUB` | Taxonomy | `kernel_code_sub` |
+| `SUJ` | Taxonomy | `kernel_code_suj` |
+| `IDE` | Taxonomy | `kernel_code_ide` |
+| `VVVV` | QuestionIntent | `kernel_code_vvvv`, compteur base36 du bassin `Depth + Domain` |
 
-Les tables d'encodage et les règles exactes de longueur sont déterministes,
-versionnées et testées par QuestionIntent, y compris lorsqu'elles sont
-exécutées par son mécanisme interne `KernelCodeEngine`. Elles ne peuvent
+Les tables d'encodage et les règles exactes de longueur des segments amont sont
+déterministes, versionnées et testées par leurs propriétaires. Elles ne peuvent
 modifier la signification métier des slots.
 
-Le stockage canonique est :
+Le stockage canonique des segments et du code généré est :
 
 ```text
 kernel_blueprint_runs.kernel_code
 ```
 
-Le slot final `KernelBlueprint.kernel_code` est construit, persisté et
-verrouillé par QuestionIntent uniquement. Il n'existe aucun état de
-`kernel_code` progressif ni aucune projection de segments avant cette
-opération.
+`kernel_blueprint_runs.kernel_code_dd`, `kernel_code_do`, `kernel_code_sub`,
+`kernel_code_suj`, `kernel_code_ide` et `kernel_code_vvvv` sont les segments
+persistés par leurs propriétaires. `kernel_code` est généré par PostgreSQL,
+en lecture seule, et reste `NULL` avant la présence des six segments.
 
-## 4.1 Construction complète par QuestionIntent
+## 4.1 Allocation de VVVV par QuestionIntent
 
 ```text
-Blueprint avec depth=2, domain=Histoire,
-subdomain_active=Rome, subject_active=César,
-dominant_idea_active=Conquête
-↓
-QuestionIntent encode DD + DO + SUB + SUJ + IDE
+Blueprint avec les cinq valeurs métier et
+`kernel_code_dd`, `kernel_code_do`, `kernel_code_sub`,
+`kernel_code_suj`, `kernel_code_ide` déjà persistés
 ↓
 QuestionIntent attribue VVVV = 0000
 ↓
-QuestionIntent persiste et verrouille :
-02-HIS-ROM-CES-CON-0000
+QuestionIntent persiste uniquement :
+kernel_code_vvvv = 0000
+↓
+PostgreSQL génère le kernel_code complet
 ```
 
-KRP n'écrit que `depth + domain`. Taxonomy n'écrit que
-`subdomain_active + subject_active + dominant_idea_active`. QuestionIntent est
-seul à construire le `kernel_code` complet à partir de ces données.
+KRP écrit atomiquement `depth + domain_code + DD + DO`. Taxonomy écrit
+atomiquement `subdomain_active + subject_active + dominant_idea_active` et
+`SUB + SUJ + IDE`. QuestionIntent n'assemble jamais le `kernel_code` complet.
 
 ## 4.2 Règles VVVV
 
@@ -222,8 +228,9 @@ partager la même identité conceptuelle.
 
 QuestionIntent ne connaît et ne choisit aucun cognitif.
 
-Phase1 reçoit le même Blueprint portant le `kernel_code` final, persistant et
-verrouillé par QuestionIntent, puis remplit exactement les sept CognitiveSlots
+Phase1 reçoit uniquement `blueprint_id`, recharge le même Blueprint, dont le
+`kernel_code` généré est disponible en lecture seule après allocation de `VVVV`,
+puis remplit exactement les sept CognitiveSlots
 définis par `06_Phase1`.
 
 Aucun segment `COG`, `VAR` ou `question_code` n'est ajouté au `kernel_code` par
@@ -281,17 +288,17 @@ subject_active
 dominant_idea_active
 ```
 
-## QI-C02 — Construction déterministe
+## QI-C02 — Allocation déterministe
 
-Le même Blueprint déjà finalisé produit le même `kernel_code`. Un nouveau
+Le même Blueprint déjà finalisé conserve le même `kernel_code` généré. Un nouveau
 Blueprint du même bassin reçoit la prochaine valeur `VVVV`, même si ses
 segments intellectuels sont identiques.
 
 ## QI-C03 — Idempotence
 
-Un replay du même Blueprint avec le même `kernel_code` est un NO-OP. Un replay
-produisant un autre code est une anomalie et ne remplace jamais silencieusement
-le code existant.
+Un replay du même Blueprint avec le même `kernel_code_vvvv` est un NO-OP. Un
+replay produisant un autre suffixe est une anomalie et ne remplace jamais
+silencieusement le suffixe existant.
 
 ## QI-C04 — Unicité physique
 
@@ -302,13 +309,13 @@ Le `kernel_code` complet identifie une seule version physique de noyau.
 `DD-DO-SUB-SUJ-IDE` reste la base de comparaison conceptuelle malgré un
 changement de `VVVV`.
 
-## QI-C06 — Ownership exclusif du code
+## QI-C06 — Ownership exclusif de VVVV
 
-QuestionIntent est le seul propriétaire du `kernel_code` complet : il en
-construit tous les segments, l'attribue, le persiste et le verrouille.
-QuestionIntent ne produit pas les données métier `depth`, `domain`,
-`subdomain_active`, `subject_active` ou `dominant_idea_active`, mais les lit
-pour construire le code. `KernelCodeEngine` n'a aucun ownership distinct.
+QuestionIntent est le seul propriétaire de `kernel_code_vvvv`. Rotation possède
+`DD`/`DO`, Taxonomy possède `SUB`/`SUJ`/`IDE`, et PostgreSQL génère
+`kernel_code` en lecture seule lorsque les six segments existent.
+QuestionIntent n'assemble ni n'écrit le code complet. `KernelCodeEngine` n'a
+aucun ownership distinct.
 
 ## QI-C07 — Séparation cognitive
 
@@ -328,22 +335,21 @@ Gemini.
 États contractuels minimaux de l'opération :
 
 ```text
-À_ENCODER
+À_ALLOUER
 ↓ succès atomique
-ENCODÉ
+VVVV_ALLOUÉ
 ```
 
 Cas invalides :
 
 - territoire incomplet ;
-- segment impossible à encoder ;
-- collision d'unicité avec une autre identité ;
-- tentative de remplacer un code verrouillé ;
-- incohérence entre le code existant et les slots du Blueprint.
+- bassin VVVV épuisé ;
+- tentative de remplacer un suffixe verrouillé ;
+- incohérence entre les segments amont et les slots du Blueprint.
 
 Dans ces cas :
 
-- aucun code partiel n'est persisté ;
+- aucun suffixe partiel n'est persisté ;
 - aucun cognitif n'est créé ;
 - aucune rotation KRP ou consommation Taxonomy n'est déclenchée ;
 - l'incident est rapporté comme blocage de préparation.
@@ -352,7 +358,7 @@ Dans ces cas :
 
 # 11. Persistance et concurrence
 
-La création du `kernel_code` doit être :
+L'allocation de `kernel_code_vvvv` doit être :
 
 - atomique ;
 - protégée par une contrainte d'unicité ;
@@ -360,18 +366,20 @@ La création du `kernel_code` doit être :
 - idempotente pour le même `blueprint_id` ;
 - traçable jusqu'au Blueprint canonique.
 
-L'attribution `VVVV`, la construction du code complet, sa persistance et son
-verrouillage forment une opération transactionnelle de QuestionIntent. Les
-copies de travail et éléments de Quarantine conservent la référence au noyau
-canonique ; ils ne deviennent jamais une nouvelle autorité d'identité.
+L'attribution et la persistance de `VVVV` forment une opération transactionnelle
+de QuestionIntent. PostgreSQL génère ensuite `kernel_code` en lecture seule
+après la présence des six segments. Les copies de travail et éléments de
+Quarantine conservent la référence au noyau canonique ; ils ne deviennent
+jamais une nouvelle autorité d'identité.
 
 ---
 
 # 12. Tests contractuels minimaux
 
-1. Blueprint avec les cinq slots métier remplis → QuestionIntent construit,
-   persiste et verrouille le `kernel_code` complet ;
-2. territoire incomplet → aucune finalisation ni code partiel ;
+1. Blueprint avec les cinq valeurs métier et les cinq segments amont remplis →
+   QuestionIntent alloue et persiste `kernel_code_vvvv`, puis PostgreSQL génère
+   le `kernel_code` complet en lecture seule ;
+2. territoire ou segment amont incomplet → aucune allocation ni code partiel ;
 3. format logique `DD-DO-SUB-SUJ-IDE-VVVV` ;
 4. premier noyau de chaque bassin `Depth + Domain` → `0000` ;
 5. deuxième noyau du même bassin → `0001` ;
@@ -384,9 +392,9 @@ canonique ; ils ne deviennent jamais une nouvelle autorité d'identité.
 12. replay divergent → refus ;
 13. concurrence dans un même bassin → une allocation transactionnelle, unique
     et non recyclée par Blueprint ;
-14. QuestionIntent ne modifie aucun slot amont ;
-15. KRP n'écrit que `depth + domain` et Taxonomy que son triplet ; ni l'un ni
-    l'autre ne construit de segment de `kernel_code` ;
+14. QuestionIntent ne modifie aucun slot amont et n'écrit que `VVVV` ;
+15. KRP écrit atomiquement `depth + domain_code + DD + DO` et Taxonomy écrit
+    atomiquement ses trois valeurs complètes + `SUB + SUJ + IDE` ;
 16. Phase1 remplit les sept CognitiveSlots sans modifier `kernel_code` ;
 17. le masque joueur reste externe au Blueprint ;
 18. même famille cognitive déjà utilisée → famille exclue pour ce joueur ;
@@ -431,8 +439,8 @@ Prochaine opération autorisée :
 ```text
 ALIGN-AUDIT-05-v2.2
 ↓
-vérifier que QuestionIntent construit, persiste et verrouille seul le
-kernel_code complet et que VVVV respecte ses invariants transactionnels
+vérifier que QuestionIntent alloue et persiste uniquement VVVV, et que
+PostgreSQL génère le kernel_code en lecture seule après les six segments
 ↓
 KEEP / MODIFY / REMOVE / MISSING / UNRESOLVED
 ```

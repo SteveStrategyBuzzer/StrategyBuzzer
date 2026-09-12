@@ -64,6 +64,27 @@ Les tests historiques sont des **preuves de comportement d’un SHA**, jamais un
 
 ---
 
+# 2A. CANON ACTIF — RELAIS ET OWNERSHIP PHASÉS
+
+Un seul `KernelBlueprint` persistant et extérieur aux phases existe pour
+chaque noyau. Seul `blueprint_id` traverse les phases; chaque phase recharge
+le même persistant par cet identifiant.
+
+`kernel_blueprint_runs` persiste `depth`, `domain_code`, les valeurs complètes
+`subdomain_active`, `subject_active`, `dominant_idea_active`, ainsi que
+`kernel_code_dd`, `kernel_code_do`, `kernel_code_sub`, `kernel_code_suj`,
+`kernel_code_ide` et `kernel_code_vvvv`. PostgreSQL génère
+`kernel_code` en lecture seule, et le laisse `NULL` avant la présence des six
+segments.
+
+Rotation possède atomiquement `depth`, `domain_code`, `DD` et `DO`.
+Taxonomy possède atomiquement les trois valeurs complètes et `SUB`, `SUJ`,
+`IDE`. QuestionIntent possède uniquement `VVVV` et n'assemble ni n'écrit le
+`kernel_code` complet. Dans le bloc d'implémentation Phase1, la réouverture par
+`blueprint_id` a lieu à l'entrée de Phase1.
+
+---
+
 # 3. CONFLIT DOCUMENTAIRE / ARCHITECTURAL DÉTECTÉ — DEPTH NEED MATRIX
 
 ## SOURCE A — Architecture Register / KRP v3.2
@@ -159,7 +180,7 @@ KernelRotationPlanner
 ↓
 consultation des besoins de rotation
 ↓
-fillRotation(depth, domain)
+fillRotation(depth, domain_code, kernel_code_dd, kernel_code_do)
 ↓
 FIN MODULE 02
 ```
@@ -201,7 +222,10 @@ Il ne peut donc pas être repris tel quel.
 
 `bb87f8a2` retirait correctement Taxonomy / KernelCodeEngine du wiring de la commande Outbox Module 02.
 
-`900ffa95` retirait correctement Taxonomy / KernelCodeEngine du raccord Module 02 et retournait un Blueprint avec uniquement `blueprint_id + depth + domain`.
+`900ffa95` retirait correctement Taxonomy / KernelCodeEngine du raccord Module
+02. Toute description historique de sortie avec `depth + domain` est remplacée
+par le relais `blueprint_id` seul; KRP recharge ensuite le persistant et écrit
+atomiquement ses quatre champs.
 
 Cependant son ordre réel était encore :
 
@@ -238,8 +262,8 @@ propriétaire exact du bookkeeping CKR         UNRESOLVED
 | MÉCANISME | DOCUMENT ACTUEL | HEAD ACTUEL | SÉRIE v3.3 | VERDICT RECOVERY-02 |
 |---|---|---|---|---|
 | CKR → nouveau Blueprint | présent de façon partielle/tendue dans v3.2 ; confirmation Steve plus stricte | CKR appelle KRP bookkeeping avant Orchestrator | `2bb88895` route CKR vers création | **KEEP + MODIFY** |
-| KernelBlueprintFactory | DEC-058 : Factory avant KRP | crée Blueprint vide, aucun slot métier | conservée | **KEEP** |
-| Appel KRP | KRP reçoit Blueprint créé et écrit depth+domain | Orchestrator crée Blueprint mais attend Taxonomy avant `applyRotation()` | `900ffa95` écrit immédiatement mais `resolveNextRotation()` reste avant Factory | **MODIFY** |
+| KernelBlueprintFactory | DEC-058 : Factory avant KRP | crée Blueprint vide, aucun slot métier et remet `blueprint_id` | conservée | **KEEP** |
+| Appel KRP | KRP reçoit `blueprint_id`, recharge le Blueprint créé et écrit atomiquement depth+domain_code+DD+DO | Orchestrator crée Blueprint mais attend Taxonomy avant `applyRotation()` | `900ffa95` écrit immédiatement mais `resolveNextRotation()` reste avant Factory | **MODIFY** |
 | Frontière Module 02 / Taxonomy | KRP s’arrête après `fillRotation()` | Orchestrator actuel appelle Taxonomy + KernelCodeEngine | `900ffa95`, `15529c09`, `bb87f8a2` retirent ces dépendances | **KEEP des retraits / MODIFY HEAD** |
 | DepthNeedMatrix | documents réduisent son autorité | possède encore vraie logique de besoin cyclique | `d482821b` la reconnecte à KRP | **KEEP mécanisme / UNRESOLVED autorité exacte** |
 | cycle_target | documents : non autorité | présent avec cibles par Depth | utilisé par v3.3 | **KEEP donnée / UNRESOLVED contrat** |
@@ -281,8 +305,8 @@ REMOVE / NE PAS RÉINTRODUIRE SANS DÉCISION
 KEEP
 - suppression Taxonomy du raccord Module 02
 - suppression KernelCodeEngine du raccord Module 02
-- sortie Blueprint avec taxonomy slots et kernel_code NULL
-- FIN Module 02 après depth + domain
+- sortie du relais avec `blueprint_id` uniquement; `kernel_code` reste NULL
+- FIN Module 02 après l'écriture atomique depth + domain_code + DD + DO
 
 MODIFY
 - KRP.resolveNextRotation() est encore appelé avant Factory.create()
@@ -328,9 +352,9 @@ MODIFY
 
 ```text
 KEEP COMME INTENTION DE TEST
-- Blueprint contient depth+domain seulement
-- Taxonomy slots NULL
-- kernel_code NULL
+- les phases ne reçoivent et ne transmettent que `blueprint_id`
+- Taxonomy slots NULL avant son entrée
+- `kernel_code` NULL avant les six segments
 - Blueprint reste CREATED_UNENGAGED à la sortie Module 02
 
 NE PAS PRENDRE COMME SOURCE D’ARCHITECTURE
@@ -366,7 +390,8 @@ NE PAS DÉCLARER CES TESTS VALIDES AU HEAD
 ```text
 KEEP COMME INTENTION
 - CKR → nouveau Blueprint → Module 02
-- Blueprint sort CREATED_UNENGAGED avec depth + domain
+- Blueprint sort CREATED_UNENGAGED avec `blueprint_id` uniquement; KRP écrit
+  ensuite atomiquement depth + domain_code + DD + DO
 
 MODIFY
 - cette réécriture retire les assertions historiques receipt/kernel_received_total

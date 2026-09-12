@@ -10,6 +10,27 @@ Chaque décision inscrite ici est :
 
 ---
 
+## Canon actif — ownership phased du kernel_code
+
+Un seul `KernelBlueprint` persistant et extérieur aux phases existe pour chaque
+noyau. Seul `blueprint_id` traverse les phases; chaque phase rouvre le même
+persistant par cet identifiant.
+
+`kernel_blueprint_runs` persiste `depth`, `domain_code`, les valeurs complètes
+`subdomain_active`, `subject_active`, `dominant_idea_active` et les six
+segments `kernel_code_dd`, `kernel_code_do`, `kernel_code_sub`,
+`kernel_code_suj`, `kernel_code_ide`, `kernel_code_vvvv`. PostgreSQL génère
+`kernel_code` en lecture seule; sa valeur reste `NULL` tant que les six
+segments ne sont pas présents.
+
+Rotation possède atomiquement `depth`, `domain_code`, `DD` et `DO`.
+Taxonomy possède atomiquement les trois valeurs complètes et `SUB`, `SUJ`,
+`IDE`. QuestionIntent possède uniquement `VVVV`, ne construit jamais et
+n'écrit jamais le `kernel_code` complet. Dans le bloc d'implémentation Phase1,
+la réouverture par `blueprint_id` a lieu à son entrée.
+
+---
+
 ## DEC-027 — Progression individuelle des slots
 
 **Version :** 1.3
@@ -112,7 +133,7 @@ Il est interdit de créer une copie distincte pour chaque slot `FAIL` appartenan
 **Statut :** OFFICIAL
 **Module :** `01_KernelBlueprint.md`
 
-Toutes les propriétés de `KernelBlueprint` sont privées. La lecture publique passe par `__get()` (comportement transparent). L'écriture directe externe est interceptée par `__set()` et lève `LogicException`. Chaque slot ne peut être attribué qu'une seule fois via la méthode `fill*()` de son propriétaire. Un second appel à `fill*()` sur un slot déjà rempli lève `LogicException`. Méthodes d'écriture : `initializeBlueprintId()` (Factory), `fillRotation()` (KRP), `fillTaxonomy()` (Taxonomy), `fillKernelCode()` (KernelCodeEngine).
+Toutes les propriétés de `KernelBlueprint` sont privées. La lecture publique passe par `__get()` (comportement transparent). L'écriture directe externe est interceptée par `__set()` et lève `LogicException`. Chaque slot ne peut être attribué qu'une seule fois via la méthode `fill*()` de son propriétaire. Un second appel à `fill*()` sur un slot déjà rempli lève `LogicException`. Méthodes d'écriture : `initializeBlueprintId()` (Factory), `fillRotation()` (KRP pour `depth`, `domain_code`, `DD`, `DO`), `fillTaxonomy()` (Taxonomy pour les trois valeurs complètes, `SUB`, `SUJ`, `IDE`) et allocation `VVVV` (QuestionIntent). `kernel_code` est généré par PostgreSQL et en lecture seule.
 
 ---
 
@@ -211,8 +232,9 @@ Ancienne décision — remplacée par DEC-094 (DepthCycle intellectuel officiel 
 **Statut :** OFFICIAL
 **Module :** `02_KernelRotationPlanner.md`
 
-`KernelBlueprintFactory` crée le Blueprint avant l'entrée dans KRP.
-KRP reçoit un Blueprint vide et y inscrit uniquement `depth` et `domain`.
+`KernelBlueprintFactory` crée le Blueprint avant l'entrée dans KRP et remet
+uniquement `blueprint_id`. KRP recharge le persistant et y inscrit atomiquement
+`depth`, `domain_code`, `DD` et `DO`.
 
 ---
 
@@ -524,10 +546,14 @@ Remplace : DEC-065.
 
 **Version :** 1.0
 **Date :** 11 août 2026
-**Statut :** OFFICIAL
+**Statut :** SUPERSEDED par le canon actif d'ownership phased
 **Module :** `05_QuestionIntent.md` — v1.1 (12 août 2026)
 
-KernelCodeEngine reçoit le KernelBlueprint dont le territoire intellectuel a été entièrement déterminé et validé, construit son kernel_code canonique selon la structure officielle StrategyBuzzer, attribue un suffixe séquentiel unique dans le bassin (Depth + Domaine), écrit ce kernel_code dans le KernelBlueprint et rend cette identité immuable. KernelCodeEngine ne modifie aucune composante intellectuelle du noyau et ne détermine aucun traitement cognitif de Phase 1.
+Ancienne décision : KernelCodeEngine construisait et écrivait le
+`kernel_code` complet. Le canon actif répartit désormais ses six segments :
+Rotation possède `DD`/`DO`, Taxonomy possède `SUB`/`SUJ`/`IDE`, QuestionIntent
+possède uniquement `VVVV`, et PostgreSQL génère le `kernel_code` en lecture
+seule.
 
 ---
 
@@ -535,10 +561,12 @@ KernelCodeEngine reçoit le KernelBlueprint dont le territoire intellectuel a é
 
 **Version :** 1.0
 **Date :** 11 août 2026
-**Statut :** OFFICIAL
+**Statut :** SUPERSEDED par le canon actif d'ownership phased
 **Module :** `05_QuestionIntent.md`
 
-KernelCodeEngine est le seul moteur autorisé à écrire `kernel_code` dans le KernelBlueprint et dans `kernel_blueprint_runs`. Aucun autre moteur ne peut créer, modifier ou invalider un kernel_code existant. KRP ne l'écrit jamais (DEC-068). Taxonomy, VDI, Phase 1 ne l'écrivent jamais.
+Ancienne décision : KernelCodeEngine était l'unique writer du code complet.
+Le `kernel_code` actif est une colonne PostgreSQL générée et en lecture seule;
+aucun module ne l'écrit. QuestionIntent écrit uniquement `kernel_code_vvvv`.
 
 ---
 
@@ -584,7 +612,10 @@ Table `kernel_code_sequences` — clé primaire composite `(depth, domain_code)`
 **Statut :** OFFICIAL
 **Module :** `05_QuestionIntent.md`
 
-Transition autorisée : `NULL → valeur canonique`. Transition interdite : `valeur → autre valeur`. KernelCodeEngine lui-même ne régénère jamais l'identité d'un noyau déjà identifié. Idempotence : même Blueprint présenté deux fois → même kernel_code retourné, compteur avancé une seule fois.
+Transition générée autorisée : `NULL → valeur canonique` lorsque les six
+segments existent. Transition interdite : `valeur → autre valeur`.
+Idempotence : même Blueprint présenté deux fois → même `kernel_code_vvvv` et
+même `kernel_code` généré, compteur avancé une seule fois.
 
 ---
 
@@ -617,4 +648,11 @@ KernelCodeEngine ne produit aucun contenu cognitif. Il ne choisit pas recognitio
 **Statut :** OFFICIAL
 **Module :** `05_QuestionIntent.md`
 
-KLD et KEY_STRUCTURE sont SUPERSEDED (absorbés par ValidationDominantIdeas). KernelCodeEngine ne les écrit pas et ne les lit pas. `ks_hash`, `kld_hash` et `question_intents.kernel_code` ont été supprimés physiquement le 11 août 2026 (audit #142/#147 : 0 writer, 0 reader, 0 données). Migrations : `2026_08_11_300000` (ks_hash, kld_hash) + `2026_08_11_310000` (kernel_code + index). Chaîne UP→DOWN vérifiée (#146 PASS). Stockage canonique = `kernel_blueprint_runs.kernel_code` (KernelCodeEngine, DEC-070).
+KLD et KEY_STRUCTURE sont SUPERSEDED (absorbés par ValidationDominantIdeas).
+KernelCodeEngine ne les écrit pas et ne les lit pas. `ks_hash`, `kld_hash` et
+`question_intents.kernel_code` ont été supprimés physiquement le 11 août 2026
+(audit #142/#147 : 0 writer, 0 reader, 0 données). Migrations :
+`2026_08_11_300000` (ks_hash, kld_hash) + `2026_08_11_310000` (kernel_code +
+index). Chaîne UP→DOWN vérifiée (#146 PASS). Stockage canonique :
+`kernel_blueprint_runs` persiste les six segments; PostgreSQL y génère
+`kernel_code` en lecture seule.

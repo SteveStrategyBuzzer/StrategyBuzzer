@@ -19,12 +19,13 @@
 
 # 1. Mission
 
-Taxonomy reçoit un territoire fixe déjà inscrit dans le KernelBlueprint :
+Taxonomy reçoit uniquement `blueprint_id`, recharge le KernelBlueprint et lit un
+territoire fixe déjà inscrit dans celui-ci :
 
 ```text
 Blueprint.depth
 +
-Blueprint.domain
+Blueprint.domain_code
 ```
 
 et gère le contenu intellectuel exploitable de l’occurrence active de ce couple :
@@ -43,18 +44,21 @@ sélection exacte
 consommation exacte
 ```
 
-Taxonomy écrit uniquement :
+Taxonomy écrit atomiquement :
 
 ```text
 subdomain_active
 subject_active
 dominant_idea_active
+kernel_code_sub
+kernel_code_suj
+kernel_code_ide
 ```
 
-Ces trois slots forment le seul ownership Blueprint de Taxonomy. Taxonomy ne
-construit, ne projette, ne persiste et ne verrouille aucun segment de
-`kernel_code` : celui-ci est construit intégralement et exclusivement par
-QuestionIntent selon `05_QuestionIntent.md` / DEC-123.
+Ces trois valeurs complètes, non tronquées (`subdomain_active`,
+`subject_active`, `dominant_idea_active`), et leurs trois segments forment le seul ownership
+Blueprint de Taxonomy. Taxonomy ne construit, ne projette, ne persiste et ne
+verrouille aucun autre segment de `kernel_code`.
 
 Lorsqu’il consomme la dernière Dominant Idea du dernier Subject de l’occurrence active, Taxonomy transmet uniquement un **fait terminal de consommation** à KRP.
 
@@ -71,13 +75,13 @@ NOUVEAU Blueprint
 ↓
 KRP
 ↓
-écrit depth + domain
+écrit depth + domain_code + DD + DO
 ↓
 FIN KRP
 ↓
 Taxonomy
 ↓
-reprend ou ouvre l’occurrence du depth + domain reçu
+reprend ou ouvre l’occurrence du depth + domain_code reçu
 ↓
 sélectionne le triplet exact
 ↓
@@ -90,7 +94,7 @@ si dernière Idea du dernier Subject : fait terminal vers KRP
 ↓
 FIN Taxonomy
 ↓
-QuestionIntent
+QuestionIntent alloue uniquement VVVV
 ```
 
 Taxonomy n’appelle pas KRP pour obtenir une rotation et KRP ne lit pas les Banks Taxonomy.
@@ -102,7 +106,7 @@ Taxonomy n’appelle pas KRP pour obtenir une rotation et KRP ne lit pas les Ban
 Taxonomy doit :
 
 1. recevoir uniquement `blueprint_id`, puis recharger le même Blueprint
-   persistant et y lire `depth + domain` déjà remplis ;
+    persistant et y lire `depth + domain_code` déjà remplis ;
 2. lire le `DepthContract` correspondant au `depth` ;
 3. identifier l’occurrence Taxonomy active du `(Depth + Domain)` reçu ;
 4. ouvrir une nouvelle occurrence seulement lorsqu’aucune occurrence exploitable correspondante n’existe ;
@@ -116,10 +120,11 @@ Taxonomy doit :
 12. persister les Dominant Ideas `FAIL` dans la FAIL Bank Dominant Ideas ;
 13. maintenir les mémoires anti-doublon ;
 14. sélectionner un IdeaSlot exact et permanent ;
-15. écrire atomiquement `Subdomain + Subject + Dominant Idea` dans le Blueprint ;
+15. écrire atomiquement `Subdomain + Subject + Dominant Idea` et
+    `SUB + SUJ + IDE` dans le Blueprint ;
 16. marquer **le même IdeaSlot** `CONSUMED` immédiatement après l’écriture réussie ;
 17. faire progresser silencieusement Idea → Subject → occurrence ;
-18. reprendre le curseur de l’occurrence lorsque KRP réattribue ultérieurement le même `depth + domain` ;
+18. reprendre le curseur de l’occurrence lorsque KRP réattribue ultérieurement le même `depth + domain_code` ;
 19. détecter la dernière Dominant Idea du dernier Subject de l’occurrence ;
 20. vérifier qu’aucun contenu exploitable de cette occurrence n’est oublié ;
 21. transmettre une seule fois le fait terminal correspondant à KRP ;
@@ -134,10 +139,11 @@ Taxonomy doit :
 Taxonomy ne doit jamais :
 
 - choisir ou modifier `depth` ;
-- choisir ou modifier `domain` ;
+- choisir ou modifier `domain_code` ;
 - créer le KernelBlueprint ;
 - écrire `blueprint_id` ;
-- écrire `kernel_code` ;
+- écrire `kernel_code_dd`, `kernel_code_do` ou `kernel_code_vvvv` ;
+- écrire ou assembler le `kernel_code` généré ;
 - écrire les CognitiveSlots ou TranslationSlots ;
 - stocker ses Banks dans le Blueprint ;
 - lire ou modifier le `RotationState` KRP ;
@@ -161,7 +167,7 @@ Taxonomy ne doit jamais :
 - forcer 50 Subjects ;
 - forcer 5 Dominant Ideas ;
 - créer plusieurs Subdomains dans la même occurrence ;
-- réutiliser comme occurrence active une occurrence déjà entièrement consommée lorsque KRP réattribue ce même `depth + domain` dans un tour futur.
+- réutiliser comme occurrence active une occurrence déjà entièrement consommée lorsque KRP réattribue ce même `depth + domain_code` dans un tour futur.
 
 ---
 
@@ -173,7 +179,7 @@ Taxonomy lit fonctionnellement :
 
 ```text
 depth
-domain
+    domain_code
 ```
 
 `blueprint_id` peut servir de référence technique mais n’est pas une donnée de création Taxonomy.
@@ -183,7 +189,7 @@ Précondition :
 ```text
 blueprint_id = REMPLI
 depth = REMPLI
-domain = REMPLI
+domain_code = REMPLI
 subdomain_active = NULL
 subject_active = NULL
 dominant_idea_active = NULL
@@ -216,7 +222,7 @@ Le numéro exact de tour KRP n’a pas à être transporté dans le Blueprint.
 Règle de résolution :
 
 ```text
-KRP réattribue depth + domain
+KRP réattribue depth + domain_code
 ↓
 Taxonomy cherche la plus récente occurrence exploitable correspondante
 ├── existe → reprend cette occurrence et son curseur
@@ -278,7 +284,7 @@ Le contrat logique transporte au minimum l’identité nécessaire pour rattache
 
 ```text
 depth
-domain
+    domain_code
 ```
 
 et peut transporter comme références techniques :
@@ -308,11 +314,15 @@ Taxonomy n’émet jamais `DEPTH_EXHAUSTED`.
 |---|---|---|---|
 | `blueprint_id` | KernelBlueprintFactory | lecture technique si nécessaire | jamais modifié |
 | `depth` | KRP | **LIT** | immuable |
-| `domain` | KRP | **LIT** | immuable |
+| `domain_code` | KRP | **LIT** | immuable |
 | `subdomain_active` | Taxonomy | **ÉCRIT** | triplet write-once |
 | `subject_active` | Taxonomy | **ÉCRIT** | même écriture atomique |
 | `dominant_idea_active` | Taxonomy | **ÉCRIT** | même IdeaSlot que celui consommé |
-| `kernel_code` | QuestionIntent | aucun accès fonctionnel | produit après Taxonomy |
+| `kernel_code_sub` | Taxonomy | **ÉCRIT** | avec le triplet |
+| `kernel_code_suj` | Taxonomy | **ÉCRIT** | avec le triplet |
+| `kernel_code_ide` | Taxonomy | **ÉCRIT** | avec le triplet |
+| `kernel_code_vvvv` | QuestionIntent | aucun accès fonctionnel | alloué après Taxonomy |
+| `kernel_code` | PostgreSQL | lecture seule générée | NULL avant six segments |
 
 ---
 
@@ -540,7 +550,8 @@ Si d’autres Subjects restent :
 aucun fait terminal de Domain
 ```
 
-Lors de la **prochaine réattribution du même `depth + domain` par KRP**, Taxonomy reprend cette occurrence et sélectionne le prochain Subject disponible.
+Lors de la **prochaine réattribution du même `depth + domain_code` par KRP**,
+Taxonomy reprend cette occurrence et sélectionne le prochain Subject disponible.
 
 Il ne suppose jamais que le Blueprint immédiatement suivant appartient au même Domain.
 
@@ -608,9 +619,9 @@ Taxonomy ne déclenche aucun changement de Depth.
 
 ```text
 KRP
-→ Blueprint avec depth + domain
+→ transmet `blueprint_id` uniquement
 → FIN KRP
-→ Taxonomy
+→ Taxonomy recharge le Blueprint et lit depth + domain_code
 ```
 
 ## 12.2 Taxonomy → KRP
@@ -650,11 +661,11 @@ ReadyBank ne confirme jamais une consommation Taxonomy et ne fait pas avancer le
 
 ## TAX-C01 — Territoire fixe
 
-`depth + domain` sont immuables pendant une exécution Taxonomy.
+`depth + domain_code` sont immuables pendant une exécution Taxonomy.
 
 ## TAX-C02 — Occurrence active
 
-Taxonomy reprend la plus récente occurrence exploitable du `depth + domain` reçu.
+Taxonomy reprend la plus récente occurrence exploitable du `depth + domain_code` reçu.
 
 Si aucune occurrence exploitable n’existe, il en ouvre une nouvelle.
 
@@ -885,8 +896,8 @@ La spécification est conforme seulement si :
 
 | Invariant | Attendu |
 |---|---|
-| Taxonomy lit seulement depth/domain fonctionnellement | PASS |
-| Taxonomy écrit seulement ses 3 slots | PASS |
+| Taxonomy lit seulement depth/domain_code fonctionnellement | PASS |
+| Taxonomy écrit seulement ses 3 valeurs complètes + SUB/SUJ/IDE | PASS |
 | 1 Subdomain par occurrence | PASS |
 | SubjectBank ≤ 50 sans remplissage | PASS |
 | IdeaBank 1..5 PASS par Subject préparé | PASS |
@@ -917,10 +928,10 @@ Audit croisé :
 
 # 19. Tests minimaux
 
-1. lit `depth + domain` du Blueprint ;
-2. n’écrit que `subdomain_active + subject_active + dominant_idea_active` ;
-3. même `depth + domain` avec occurrence encore exploitable → reprise même occurrence ;
-4. même `depth + domain` avec ancienne occurrence épuisée → nouvelle occurrence ;
+1. lit `depth + domain_code` du Blueprint ;
+2. n’écrit que les trois valeurs complètes et `SUB + SUJ + IDE` ;
+3. même `depth + domain_code` avec occurrence encore exploitable → reprise même occurrence ;
+4. même `depth + domain_code` avec ancienne occurrence épuisée → nouvelle occurrence ;
 5. une occurrence = un Subdomain officiel ;
 6. SubjectBank ≤ 50 ;
 7. aucun remplissage forcé ;

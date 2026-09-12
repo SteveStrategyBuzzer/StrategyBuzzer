@@ -11,10 +11,12 @@
 
 # 1. Mission
 
-En fonctionnement normal, l'entrée contractuelle de Phase1 est exclusivement
-`blueprint_id`. Phase1 retrouve alors le même `KernelBlueprint` persistant, y
-vérifie que la phase précédente est terminée avec son statut terminal et lit
-l'identité intellectuelle inscrite par les vrais propriétaires amont.
+Dans ce bloc d'implémentation, l'entrée contractuelle de Phase1 est
+exclusivement `blueprint_id`. À cette entrée seulement, Phase1 rouvre le même
+`KernelBlueprint` persistant, vérifie que la phase précédente est terminée avec
+son statut terminal et lit l'identité intellectuelle inscrite par les vrais
+propriétaires amont. Aucun objet Blueprint ne lui est transmis ensuite entre
+les phases.
 
 Lorsqu'elle est ciblée directement en test, Phase1 demande un Blueprint par son
 propre point d'entrée et reçoit uniquement `blueprint_id` de KBP. Le Blueprint
@@ -48,11 +50,11 @@ La transmission entre phases est strictement :
 blueprint_id
 ```
 
-Chaque phase relit le Blueprint persistant par cet identifiant, y vérifie la
-phase précédente et son statut terminal, lit et écrit uniquement les champs de
-son ownership, persiste, puis signale sa propre fin.
-Phase1 ne reçoit donc jamais un Blueprint sérialisé en entrée et ne transmet
-jamais un Blueprint en sortie.
+À son entrée, chaque phase relit le Blueprint persistant par cet identifiant, y
+vérifie la phase précédente et son statut terminal, lit et écrit uniquement les
+champs de son ownership, persiste, puis signale sa propre fin. Dans ce bloc,
+Phase1 ne rouvre donc le Blueprint qu'à cette entrée; elle ne reçoit jamais un
+Blueprint sérialisé et n'en transmet jamais un en sortie.
 
 # 2. Unité de création
 
@@ -67,12 +69,18 @@ Les sept slots partagent :
 
 ```text
 blueprint_id
-kernel_code
+kernel_code (généré PostgreSQL, lecture seule)
 depth
-domain
+domain_code
 subdomain_active
 subject_active
 dominant_idea_active
+kernel_code_dd
+kernel_code_do
+kernel_code_sub
+kernel_code_suj
+kernel_code_ide
+kernel_code_vvvv
 source_language
 ```
 
@@ -482,10 +490,10 @@ Un seul appel de création demande les sept slots ensemble.
 
 ## 9.1 Contexte de création dérivé du Blueprint relu
 
-L'entrée de Phase1 est uniquement `blueprint_id`. Phase1 recharge le Blueprint
-persistant et y vérifie l’état terminal précédent, puis construit le contexte suivant pour
-l'appel Gemini ; ce contexte n'est pas un Blueprint reçu ou transmis entre
-phases.
+L'entrée de Phase1 est uniquement `blueprint_id`. Après sa réouverture à cette
+entrée, Phase1 lit le Blueprint persistant et y vérifie l’état terminal
+précédent, puis construit le contexte suivant pour l'appel Gemini ; ce contexte
+n'est pas un Blueprint reçu ou transmis entre phases.
 
 ```text
 schema_version
@@ -493,7 +501,13 @@ generation_contract_version
 blueprint_id
 kernel_code
 depth
-domain
+domain_code
+kernel_code_dd
+kernel_code_do
+kernel_code_sub
+kernel_code_suj
+kernel_code_ide
+kernel_code_vvvv
 subdomain_active
 subject_active
 dominant_idea_active

@@ -65,19 +65,24 @@ uniquement `blueprint_id`.
 | Propriétaire | Zone d'écriture exclusive |
 |---|---|
 | KBP | `blueprint_id`, enveloppe et sept slots vides |
-| Rotation | `depth` + `domain` |
-| Taxonomy | `subdomain_active` + `subject_active` + `dominant_idea_active` |
-| QuestionIntent | `kernel_code` complet |
+| Rotation | `depth` + `domain_code` + `kernel_code_dd` + `kernel_code_do` |
+| Taxonomy | `subdomain_active` + `subject_active` + `dominant_idea_active` + `kernel_code_sub` + `kernel_code_suj` + `kernel_code_ide` |
+| QuestionIntent | `kernel_code_vvvv` uniquement |
+| PostgreSQL | `kernel_code` généré, en lecture seule |
 | Phase1 | sources des sept CognitiveSlots |
 | ValidationPhase1 | états et findings intellectuels |
 | Phase2 | traductions dans les mêmes slots |
 | ValidationPhase2 | états et findings linguistiques |
 | ReadyBank | admissibilité terminale et fusion DEC-122 |
 
-QuestionIntent est l'unique propriétaire du `kernel_code` complet.
-`KernelCodeEngine`, s'il existe techniquement, est seulement un mécanisme
-interne de QuestionIntent : ni module, ni phase, ni copropriétaire, ni porte,
-ni gestionnaire de transmission, ni autorité d'écriture.
+`kernel_code` est une colonne PostgreSQL générée et en lecture seule. Elle reste
+`NULL` tant que les six segments `kernel_code_dd`, `kernel_code_do`,
+`kernel_code_sub`, `kernel_code_suj`, `kernel_code_ide` et
+`kernel_code_vvvv` ne sont pas tous présents. Rotation possède les deux
+premiers segments, Taxonomy les trois suivants et QuestionIntent possède
+uniquement `kernel_code_vvvv`; aucun module n'assemble ni n'écrit le code
+complet. `KernelCodeEngine`, s'il existe techniquement, n'est donc ni un
+propriétaire ni une autorité d'écriture.
 
 # 7. Interdictions de KBP
 
@@ -141,6 +146,13 @@ Cette construction est structurellement complète et intellectuellement vide.
 KBP ne prépare pas artificiellement le Blueprint pour une phase aval et ne
 simule ni Rotation, ni Taxonomy, ni QuestionIntent.
 
+`kernel_blueprint_runs` persiste `depth`, `domain_code`, les valeurs complètes
+`subdomain_active`, `subject_active`, `dominant_idea_active` et les six
+segments `kernel_code_dd`, `kernel_code_do`, `kernel_code_sub`,
+`kernel_code_suj`, `kernel_code_ide`, `kernel_code_vvvv`. La colonne
+PostgreSQL générée `kernel_code` est en lecture seule et reste `NULL` avant la
+présence de ces six segments.
+
 # 13. Factory interne
 
 KBP est la Factory interne de 01. La création normale passe par sa frontière.
@@ -156,9 +168,13 @@ régime séquentiel, l'immuabilité de `blueprint_id`, les sept slots et leurs
 contraintes, ainsi que les gardes write-once. Elle ne permet pas de contourner
 le contrat par écriture directe.
 
-`fillRotation` persiste `depth + domain` ensemble ou aucune modification.
-`fillTaxonomy` persiste son triplet ensemble ou aucune modification. Une
-opération groupée ne laisse aucun état partiel canonique.
+`fillRotation` persiste atomiquement `depth + domain_code + kernel_code_dd +
+kernel_code_do`, ensemble ou aucune modification. `fillTaxonomy` persiste
+atomiquement son triplet complet et `kernel_code_sub + kernel_code_suj +
+kernel_code_ide`, ensemble ou aucune modification. QuestionIntent persiste
+uniquement `kernel_code_vvvv`. Une opération groupée ne laisse aucun état
+partiel canonique; PostgreSQL ne rend `kernel_code` non-NULL qu'après la
+présence des six segments.
 
 # 15. Sept CognitiveSlots
 
@@ -211,9 +227,9 @@ scénario ou mode. Après rollback, aucun Blueprint ni binding
 # 19. Entrée normale Rotation
 
 En production, KBP transmet uniquement `blueprint_id` à Rotation. Rotation
-retrouve le Blueprint, écrit seulement `depth + domain`, persiste, puis
-transmet le même `blueprint_id` à Taxonomy. Rotation ne construit aucune
-partie, projection ou segment du `kernel_code`.
+retrouve le Blueprint, écrit atomiquement `depth + domain_code + DD + DO`,
+persiste, puis transmet le même `blueprint_id` à Taxonomy. Rotation ne
+construit pas le code complet et ne touche à aucun segment Taxonomy.
 
 # 20. Entrée de test de la phase demandeuse
 
@@ -223,24 +239,30 @@ seulement sa zone. Une phase ne reçoit jamais le pouvoir de créer les
 préconditions qui relèvent de phases précédentes; son test ne redéfinit pas le
 contrat du Blueprint.
 
-# 21. kernel_code complet
+# 21. Segments et kernel_code généré
 
-Après lookup persistant et vérification de `depth`, `domain`,
-`subdomain_active`, `subject_active` et `dominant_idea_active`, QuestionIntent
-seul alloue `VVVV`, construit le `kernel_code` canonique complet, le persiste
-et le verrouille. Le code est absent à la création et reste vide après
-Rotation et Taxonomy. KRP et Taxonomy ne projettent ni n'assemblent aucune
-partie du code; Phase1 et les phases suivantes ne le modifient jamais.
+Après lookup persistant par `blueprint_id`, Rotation possède atomiquement
+`depth`, `domain_code`, `kernel_code_dd` et `kernel_code_do`. Taxonomy possède
+atomiquement les trois valeurs complètes et `kernel_code_sub`,
+`kernel_code_suj` et `kernel_code_ide`. QuestionIntent alloue et persiste
+uniquement `kernel_code_vvvv`.
+
+PostgreSQL génère `kernel_code` en lecture seule à partir des six segments. Il
+reste `NULL` à la création, après Rotation et tant que les six segments ne sont
+pas présents. Aucun module ne construit, ne persiste ou ne verrouille
+directement le code complet; Phase1 et les phases suivantes ne le modifient
+jamais.
 
 # 22. Invariants VVVV
 
 Le format final conservé de DEC-121 contient les composantes Depth, Domaine,
 Sous-domaine, Sujet, Idée dominante et le suffixe `VVVV`, en un unique code
-final. `VVVV` est un compteur base36 persistant, transactionnel, unique,
-jamais recyclé et indépendant pour chaque bassin `Depth + Domain`. L'allocation
-et l'écriture complète sont atomiques pour QuestionIntent : un échec ne
-verrouille aucun code partiel. Après verrouillage, toute réécriture est
-refusée.
+final généré par PostgreSQL. `VVVV` est un compteur base36 persistant,
+transactionnel, unique, jamais recyclé et indépendant pour chaque bassin
+`Depth + Domain`. Son allocation et son écriture sont atomiques pour
+QuestionIntent; un échec ne persiste aucun suffixe partiel. Le code généré
+reste `NULL` jusqu'à la présence des six segments et toute réécriture d'un
+segment write-once est refusée.
 
 # 23. Droits de lecture
 
@@ -253,8 +275,9 @@ transportent pas le contenu du Blueprint entre elles.
 
 Chaque propriétaire écrit uniquement la zone de la section 6. Les groupes
 structurels de Section 1 sont write-once dans le chemin normal : identité,
-rotation, Taxonomy et `kernel_code`. Une seconde écriture, même identique, est
-refusée. Aucun propriétaire aval ne compense une précondition amont absente.
+rotation, Taxonomy et les segments du code. `kernel_code` est généré et en
+lecture seule. Une seconde écriture, même identique, est refusée. Aucun
+propriétaire aval ne compense une précondition amont absente.
 
 DEC-106 demeure applicable : l'IdeaSlot sélectionné est exactement la
 `dominant_idea_active` écrite et devient `CONSUMED` seulement après réussite
@@ -293,7 +316,8 @@ fait que transmettre `blueprint_id` selon le scénario externe.
 
 # 28. Absence de préconditions intellectuelles KBP
 
-KBP ne prépare ni `depth`, `domain`, triplet Taxonomy, `kernel_code`, source
+KBP ne prépare ni `depth`, `domain_code`, triplet Taxonomy, segments ou
+`kernel_code`, source
 cognitive, traduction ou état intellectuel pour une phase ciblée. Il n'existe
 pas de Fixture ni de ManualPreconditions dans le contrat actif. Les tests ne
 font pas écrire directement les tables métier pour contourner les propriétaires
@@ -353,9 +377,9 @@ CREATED_UNENGAGED --fillRotation--> CREATED_UNENGAGED
 CREATED_UNENGAGED --fillTaxonomy réussi--> ENGAGED_IN_PIPELINE
 ```
 
-La première écriture Taxonomy réussie engage le Blueprint. `fillKernelCode`,
-les phases aval, Quarantine et ReadyBank ne créent jamais une nouvelle identité
-Blueprint.
+La première écriture Taxonomy réussie engage le Blueprint. La génération de
+`kernel_code`, les phases aval, Quarantine et ReadyBank ne créent jamais une
+nouvelle identité Blueprint.
 
 # 35. Erreurs techniques et cas limites
 
@@ -365,8 +389,8 @@ Blueprint.
 | écriture directe externe | refus |
 | double écriture normale | refus sans écrasement silencieux |
 | groupe incomplet | échec atomique, aucun état partiel |
-| QuestionIntent sans triplet Taxonomy | refus avant écriture |
-| KRP, Taxonomy ou Phase1 écrit `kernel_code` | refus |
+| QuestionIntent sans triplet Taxonomy | refus avant allocation de `VVVV` |
+| un module écrit directement `kernel_code` | refus; colonne générée en lecture seule |
 | rejeu `CURRENT_KERNEL_RECEIVED` | même création, aucun double effet |
 | remise initiale interrompue | `CREATED_UNENGAGED`, rejeu du même identifiant |
 | référence technique ne correspondant pas au Blueprint | refus |
@@ -381,7 +405,9 @@ mélange des choix et leur affichage sont externes.
 
 DEC-034 (write-once), DEC-035 (création atomique), DEC-058 (Factory avant
 KRP), DEC-059 (`blueprint_id` canonique), DEC-068 (KernelCodeEngine hors KRP)
-et DEC-106 (consommation exacte) sont compatibles et conservées.
+et DEC-106 (consommation exacte) sont compatibles et conservées. Le
+`kernel_code` est généré par PostgreSQL à partir des six segments possédés par
+Rotation, Taxonomy et QuestionIntent.
 
 DEC-122 demeure **OFFICIAL** et inchangée. Le canonique contient identité,
 sources et traductions, et poursuit le pipeline jusqu'à ReadyBank. Après
@@ -421,9 +447,11 @@ identifiant, ne circule pas comme objet, reste structurellement complet et
 intellectuellement vide, et les frontières de création/remise/terminaison ne
 créent aucun second Blueprint ou effet lifecycle.
 
-**Tests réservés aux modules propriétaires :** Rotation teste sa rotation;
-Taxonomy son triplet, ses Banks et DEC-106; QuestionIntent teste le format,
-l'allocation et le verrouillage du `kernel_code`; Phase1 et validations testent
+**Tests réservés aux modules propriétaires :** Rotation teste sa rotation et
+ses quatre champs (`depth`, `domain_code`, `DD`, `DO`); Taxonomy son triplet,
+ses trois segments, ses Banks et DEC-106; QuestionIntent teste l'allocation et
+le verrouillage de `VVVV`, ainsi que la génération PostgreSQL de
+`kernel_code`; Phase1 et validations testent
 contenus, erreurs techniques et suspicions; Phase2 et validation linguistique
 testent les traductions; Quarantine et ReadyBank testent la copie et la fusion
 DEC-122. Ces tests ne sont ni définis, ni exécutés, ni remplacés par les tests
