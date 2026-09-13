@@ -130,3 +130,45 @@ Quarantaine ne doit jamais :
 - contourner Phase1, ValidationPhase1, Phase2, ValidationPhase2 ou ReadyBank;
 - conserver plusieurs versions historiques de la même copie;
 - autoriser une réponse périmée à écraser une version plus récente.
+
+
+# 11. Indice de reprise persistant des slots jaunes
+
+## Indice de reprise persistant des slots jaunes
+
+Le jaune n’est pas une simple couleur d’interface. Chaque slot modifié manuellement doit conserver un indice de reprise persistant lié à la version exacte de la copie.
+
+Cet indice permet de connaître :
+
+- la révision manuelle du slot;
+- le numéro de reprise;
+- la version de copie concernée;
+- l’étape actuellement atteinte dans le retour;
+- les créations ou validations qui restent obligatoires;
+- la décision terminale attendue de ReadyBank.
+
+Le sens officiel du jaune est :
+
+> slot modifié manuellement, engagé dans une reprise déterminée et pas encore accepté terminalement par ReadyBank.
+
+La copie complète reprend à Phase1. Chaque slot jaune traverse ensuite seulement les opérations requises par son état, parmi :
+
+```text
+Phase1
+→ ValidationPhase1
+→ Phase2
+→ ValidationPhase2
+→ ReadyBank
+```
+
+Une étape non requise ne recrée ni ne réécrit le contenu; elle constate la précondition persistée et laisse le slot continuer.
+
+L’indice de reprise est mis à jour atomiquement lors de chaque progression. Il reste rattaché à la même révision manuelle et à la même version réclamée. Après interruption, la reprise repart de la dernière frontière persistée sans recommencer une opération déjà terminée.
+
+ReadyBank retire le jaune uniquement après avoir décidé terminalement de cette révision exacte :
+
+- fusion réussie : la correction devient canonique et l’indice est terminé;
+- échec : la position canonique reste vide, la copie retourne en Quarantaine et le slot redevient rouge;
+- retour périmé : aucune écriture canonique et aucun changement de l’indice courant.
+
+Une ancienne reprise, une ancienne version de copie ou une ancienne révision manuelle ne peut jamais terminer, remplacer ou écraser une correction plus récente.

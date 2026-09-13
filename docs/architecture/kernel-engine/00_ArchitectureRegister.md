@@ -280,3 +280,10 @@ Chaque événement prend une seule direction durable et idempotente. Plusieurs c
 La copie Quarantaine est complète, persistée séparément et conserve le `blueprint_id` du canonique. Elle ne devient jamais canonique. Les slots suspects sont copiés avant d’être vidés dans le canonique. Tous les slots de la copie sont modifiables par l’Admin. Toute modification invalide immédiatement l’ancien PASS et rend le slot jaune jusqu’à sa décision ReadyBank.
 
 La copie complète reprend toujours à Phase1. Chaque slot traverse seulement les opérations nécessaires à son état; les slots admissibles continuent même si d’autres échouent. ReadyBank fusionne atomiquement les seuls slots admissibles par `blueprint_id + cognitive_type`; les autres positions restent vides. Une copie peut revenir plusieurs fois en Quarantaine. L’Admin peut supprimer une copie non en cours; aucune ancienne version n’est conservée.
+
+
+## Complément DEC-125 — indice de reprise jaune
+
+Chaque slot jaune porte également un indice de reprise persistant lié à sa révision manuelle et à la version de copie. Cet indice suit sa progression de Phase1 jusqu’à ReadyBank, permet la reprise après interruption et interdit qu’une ancienne reprise termine ou écrase une correction plus récente.
+
+ReadyBank retire le jaune uniquement après sa décision terminale sur la révision exacte identifiée par cet indice.

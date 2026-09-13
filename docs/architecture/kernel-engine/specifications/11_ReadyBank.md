@@ -449,3 +449,21 @@ Cinq demandes prêtes produisent cinq directions Quarantaine successives avant q
 La branche Quarantaine reprend un Blueprint existant à Phase1. Elle ne crée aucun Blueprint, ne déclenche aucune Rotation et ne modifie aucun compteur Rotation.
 
 La branche KBP crée le nouveau Blueprint canonique. KBP transmet ensuite son `blueprint_id` à Rotation; Rotation applique seulement à ce moment sa sélection et sa progression normales.
+
+
+# 12. Indice de reprise des slots jaunes
+
+## Indice de reprise persistant des slots jaunes
+
+Pour chaque slot jaune, ReadyBank vérifie l’indice de reprise persistant avant toute fusion. Cet indice doit correspondre simultanément :
+
+- au même `blueprint_id`;
+- au même `cognitive_type`;
+- à la version de copie réclamée;
+- à la révision manuelle évaluée;
+- à la reprise active;
+- aux validations propriétaires terminées.
+
+ReadyBank ne retire le jaune qu’après sa décision terminale sur cette combinaison exacte. Une divergence rend le retour périmé et produit un NO-OP atomique sur le canonique.
+
+Une fusion réussie termine l’indice et installe la révision corrigée dans le slot canonique. Une fusion refusée maintient le slot canonique vide et renvoie la copie vers Quarantaine avec un nouvel état de travail, sans permettre à une ancienne reprise de se terminer ensuite.
