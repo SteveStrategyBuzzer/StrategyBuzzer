@@ -22,7 +22,7 @@
 `KernelRotationPlanner` (KRP) est l’autorité unique qui détermine le prochain couple :
 
 ```text
-depth + domain_code
+depth + domain
 ```
 
 à écrire dans un **nouveau KernelBlueprint déjà créé et identifié**.
@@ -60,7 +60,7 @@ rotation Depth si nécessaire
 +
 rotation Domain
 ↓
-Blueprint.fillRotation(depth, domain_code, kernel_code_dd, kernel_code_do)
+Blueprint.fillRotation(depth, domain)
 ↓
 persistance KRP
 ↓
@@ -83,8 +83,7 @@ ReadyBank
 NE remet JAMAIS l’ancien Blueprint à KRP.
 ```
 
-KRP reçoit toujours uniquement `blueprint_id` d'une nouvelle enveloppe créée par
-`KernelBlueprintFactory`, puis recharge cette enveloppe persistante.
+KRP reçoit toujours une nouvelle enveloppe créée par `KernelBlueprintFactory`.
 
 ---
 
@@ -121,7 +120,7 @@ Ils ne sont pas des responsabilités Taxonomy.
 
 KRP doit :
 
-1. recevoir uniquement `blueprint_id` du nouveau KernelBlueprint ;
+1. recevoir un KernelBlueprint canonique déjà identifié par `blueprint_id` ;
 2. charger son `RotationState` persistant ;
 3. consommer les faits Taxonomy terminalement reçus et encore en attente ;
 4. exploiter le moteur interne `DOMAIN_EXHAUSTED` ;
@@ -137,8 +136,7 @@ KRP doit :
 14. maintenir `cycle_target`, `cycle_completed` et `cycle_remaining` via `DepthNeedMatrix` ;
 15. choisir le prochain Depth encore nécessaire ;
 16. revenir de Depth 10 vers Depth 2 / le prochain Depth nécessaire tant qu’un besoin global subsiste ;
-17. écrire atomiquement **uniquement** `depth + domain_code + kernel_code_dd +
-    kernel_code_do` dans le Blueprint ;
+17. écrire **uniquement** `depth + domain` dans le Blueprint ;
 18. persister ses transitions avant de les considérer commitées ;
 19. rendre les répétitions techniques idempotentes ;
 20. produire `PRODUCTION_ON_HOLD` uniquement quand tous les besoins globaux sont satisfaits ;
@@ -166,9 +164,7 @@ KRP ne doit jamais :
 - écrire `subdomain_active` ;
 - écrire `subject_active` ;
 - écrire `dominant_idea_active` ;
-- écrire `kernel_code_sub`, `kernel_code_suj`, `kernel_code_ide` ou
-  `kernel_code_vvvv` ;
-- écrire ou assembler le `kernel_code` généré ;
+- écrire `kernel_code` ;
 - créer ou valider du contenu intellectuel ;
 - utiliser `Général` comme domaine de création ;
 - déclarer HOLD à la simple fin du Depth 10 ;
@@ -185,9 +181,7 @@ Préconditions :
 ```text
 blueprint_id = REMPLI
 depth = NULL
-domain_code = NULL
-kernel_code_dd = NULL
-kernel_code_do = NULL
+domain = NULL
 ```
 
 KRP n’est pas propriétaire de la création de cette enveloppe.
@@ -211,7 +205,7 @@ KRP reçoit de Taxonomy uniquement le **fait métier** suivant :
 
 > Taxonomy vient d’utiliser la dernière Dominant Idea du dernier Subject encore exploitable du Domain qui lui avait été attribué.
 
-Ce fait concerne le `depth + domain_code` du noyau courant.
+Ce fait concerne le `depth + domain` du noyau courant.
 
 Il ne contient aucune décision de rotation.
 
@@ -262,23 +256,19 @@ Taxonomy ne possède pas ces besoins quantitatifs.
 
 ## 7.1 Sortie normale vers Taxonomy
 
-KRP persiste le nouveau Blueprint, puis transmet uniquement `blueprint_id`.
-Le persistant contient exactement :
+Le même nouveau Blueprint ressort de KRP avec exactement :
 
 ```text
 blueprint_id           = REMPLI
 depth                  = REMPLI
-domain_code            = REMPLI
-kernel_code_dd         = REMPLI
-kernel_code_do         = REMPLI
+domain                 = REMPLI
 subdomain_active       = NULL
 subject_active         = NULL
 dominant_idea_active   = NULL
-kernel_code            = NULL (généré, lecture seule)
+kernel_code            = NULL
 ```
 
-KRP s’arrête après avoir valablement déterminé, écrit et persisté atomiquement
-`depth + domain_code + kernel_code_dd + kernel_code_do`.
+KRP s’arrête après avoir valablement déterminé, écrit et persisté `depth + domain`.
 
 ## 7.2 Sortie opérationnelle
 
@@ -306,15 +296,13 @@ KRP possède exactement :
 
 ```text
 depth
-domain_code
-kernel_code_dd
-kernel_code_do
+domain
 ```
 
 Écriture :
 
 ```text
-Blueprint.fillRotation(depth, domain_code, kernel_code_dd, kernel_code_do)
+Blueprint.fillRotation(depth, domain)
 ```
 
 Aucun autre slot Blueprint n’appartient à KRP.
@@ -503,7 +491,7 @@ Au premier démarrage absolu :
 
 ```text
 depth = 2
-domain_code = Géographie
+domain = Géographie
 ```
 
 ---
@@ -643,9 +631,9 @@ ReadyBank
 
 ```text
 KRP
-→ transmet blueprint_id uniquement
+→ Blueprint avec blueprint_id + depth + domain
 → FIN KRP
-→ Taxonomy recharge le Blueprint et lit depth + domain_code persistés
+→ Taxonomy
 ```
 
 ## 16.3 Taxonomy → KRP
@@ -681,7 +669,7 @@ KRP ne lit/poll jamais Taxonomy pour obtenir cette information.
 7. **Depth 10 fermé avec besoin restant** → retour cyclique vers Depth 2 / prochain Depth nécessaire.
 8. **Tous les besoins satisfaits** → `PRODUCTION_ON_HOLD`.
 9. **Blueprint sans blueprint_id** → entrée invalide ; KRP ne crée pas l’identité.
-10. **Blueprint déjà doté de depth/domain_code** → aucune réécriture normale.
+10. **Blueprint déjà doté de depth/domain** → aucune réécriture normale.
 11. **Général demandé comme création** → invalide.
 12. **KRP sans signal Taxonomy** → il ne devine jamais qu’un Domain est épuisé à partir des Banks Taxonomy.
 13. **Échec de persistance** → aucune progression jusqu’à résolution ou BLOCKED.
@@ -696,7 +684,7 @@ L’implantation est conforme seulement si les tests prouvent :
 2. KRP reçoit `blueprint_id` déjà rempli ;
 3. aucune route directe `CURRENT_KERNEL_RECEIVED → KRP` ;
 4. KRP ne lit/poll aucune Bank Taxonomy ;
-5. KRP écrit atomiquement uniquement `depth + domain_code + DD + DO` ;
+5. KRP écrit uniquement `depth + domain` ;
 6. DomainCycle contient exactement les huit Domaines de création ;
 7. Général est absent ;
 8. chaque nouveau Blueprint avance au prochain Domain `VISIBLE` ;
@@ -719,9 +707,7 @@ L’implantation est conforme seulement si les tests prouvent :
 25. HOLD uniquement si tous les `cycle_remaining = 0` ;
 26. nouveau tour d’un Depth = huit Domaines `VISIBLE` neufs ;
 27. KRP-002/KRP-003 et politique 1+3 retries respectés ;
-28. Rotation transmet uniquement `blueprint_id`; Taxonomy recharge le même
-    Blueprint persistant et y lit `depth + domain_code`, que KRP a remplis dans sa
-    Section intellectuelle.
+28. le Blueprint ressort avec seulement `blueprint_id + depth + domain` remplis dans la Section intellectuelle KRP.
 
 Les tests Taxonomy sont hors périmètre de cette implantation KRP. Ils seront traités lorsque `03_Taxonomy` sera corrigé et implanté dans son propre bloc.
 
@@ -781,3 +767,23 @@ validation terminale KRP
 ```
 
 `03_Taxonomy` n’est pas modifié pendant cette implantation KRP.
+
+# Frontière DEC-125 — priorité Quarantaine
+
+`CURRENT_KERNEL_RECEIVED` ne réalise aucune sélection Rotation et aucun comptage avant la décision de direction.
+
+```text
+file Quarantaine READY non vide
+→ direction QUARANTINE
+→ reprise de la copie existante à Phase1
+→ KBP non appelé
+→ KRP non appelé
+
+file Quarantaine READY vide
+→ direction KBP
+→ KBP crée le nouveau Blueprint canonique
+→ KBP transmet blueprint_id à KRP
+→ KRP applique alors sa mécanique normale
+```
+
+Une copie Quarantaine conserve le `blueprint_id` existant, ne crée aucun Blueprint, ne relance aucune Rotation et ne compte jamais comme nouveau noyau.

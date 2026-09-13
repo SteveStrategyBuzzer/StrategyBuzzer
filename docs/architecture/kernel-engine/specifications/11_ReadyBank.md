@@ -1,59 +1,19 @@
 # STRATEGYBUZZER — 11_READYBANK
 
-**Version :** 0.3
-**Date :** 2026-09-13
+**Version :** 0.2  
+**Date :** 29 août 2026  
 **Statut :** RÈGLES OFFICIELLES VERROUILLÉES — MODULE À COMPLÉTER  
-**Décision directrice :** DEC-125 — OFFICIAL (clauses compatibles de DEC-122)
+**Décision :** DEC-122  
 **Implémentation :** À AUDITER  
 **Validation terminale :** NON
-
-> **Remplace :** v0.2 sur la fusion des copies, le signal de cycle et le
-> routage. Les clauses contraires sont `SUPERSEDED BY DEC-125` avant leur
-> remplacement; DEC-122 reste actif pour les clauses compatibles.
-
-## 0. Règles actives DEC-125
-
-ReadyBank reçoit les copies complètes et le Blueprint canonique. Une copie
-prête contient les sept slots; les slots rouges (`SUSPICION`/`EMPTY`) et jaunes
-(remplis/modifiés manuellement jusqu’à ReadyBank) sont des marqueurs de
-parcours, tandis que le vert est conforme et jamais encore modifié
-manuellement. Tous les slots restent éditables dans la copie; modifier un vert
-le rend jaune et invalide immédiatement son ancien `PASS`. Les slots conformes
-continuent et les slots échoués restent vides.
-
-ReadyBank fusionne uniquement les slots réussis, par
-`blueprint_id + cognitive_type`, sans remplacement global du canonique. Les
-non résolus restent vides. La copie peut revenir plusieurs fois avec ses
-findings les plus récents; aucune histoire permanente des corrections n’est
-conservée; plusieurs copies prêtes sont permises.
-
-Un renvoi enqueue sans démarrer. Les clics sont traités dans leur ordre exact
-(FIFO), un à la fois. Chaque arrivée émet `CURRENT_KERNEL_RECEIVED` et choisit
-une direction exclusive : si la file Quarantine prête n’est pas vide, `GO`
-vers sa première copie et redémarrage Phase1, sans KBP; sinon `GO` vers KBP.
-Jamais les deux. KBP n’est pas coordinateur de circulation, ne reçoit aucun
-état Quarantine et ne crée/ne retrouve un Blueprint que si `GO` lui est
-destiné. `blueprint_id` reste la clé du parcours normal et des retours.
-
-**OPEN IMPLEMENTATION REQUIREMENTS — solutions non approuvées :**
-
-1. persistance de la copie complète courante;
-2. file d’attente des clics Renvoie;
-3. ordre exact des demandes;
-4. détection des slots modifiés;
-5. conservation du marqueur jaune jusqu’à ReadyBank;
-6. invalidation immédiate d’un ancien PASS après modification;
-7. protection contre les retours périmés;
-8. idempotence de `CURRENT_KERNEL_RECEIVED`;
-9. fusion atomique dans ReadyBank.
 
 ---
 
 # 1. Mission verrouillée
 
-ReadyBank reçoit uniquement `blueprint_id`. Il relit alors le même agrégat
-canonique persistant et y vérifie que la phase précédente est terminée avec le
-statut terminal requis. Il devient le point unique
+ReadyBank reçoit ou détecte un relais minimal composé de `blueprint_id`, de la
+confirmation que la phase précédente est terminée et de son statut terminal.
+Il relit alors le même agrégat canonique persistant. Il devient le point unique
 où une copie complète corrigée issue de Quarantine peut réconcilier cet
 agrégat.
 
@@ -67,10 +27,6 @@ ReadyBank :
 
 # 2. Arrivée du canonique
 
-> **CLAUSE v0.2 CI-DESSOUS — SUPERSEDED BY DEC-125 :** la réception d’un
-> canonique avec slot suspect ou vide ne conserve pas cette position
-> exploitable; sa copie complète porte le contenu rejeté et les findings.
-
 ## 2.1 Contrat de circulation et de propriété
 
 `KernelBlueprint` est une structure persistante extérieure aux phases. Elle est
@@ -79,18 +35,17 @@ créée une seule fois par `KernelBlueprintFactory` (KBP), avec un unique
 unique : aucune copie autoritaire et aucun objet `Blueprint` ne transitent entre
 phases.
 
-La seule valeur transmise entre phases est :
+Le seul relais inter-phase autorisé est :
 
 ```text
-blueprint_id
+blueprint_id + phase précédente terminée + statut terminal
 ```
 
 Chaque phase retrouve le `KernelBlueprint` persistant à partir de cet identifiant,
 lit et écrit exclusivement les données relevant de son ownership, persiste sa
-transaction, puis transmet le même `blueprint_id`. ReadyBank applique exactement ce contrat : il
+transaction, puis signale sa fin. ReadyBank applique exactement ce contrat : il
 ne reçoit, ne conserve ni ne transmet un objet canonique en mémoire. À son
-déclenchement, il relit le même `KernelBlueprint` persistant, y vérifie l’état
-terminal précédent,
+déclenchement, il vérifie le relais, relit le même `KernelBlueprint` persistant
 et évalue l’admissibilité de ses slots.
 
 Le canonique peut, à l’arrivée de ReadyBank, contenir :
@@ -108,10 +63,6 @@ Un slot soupçonné, vide, bloqué ou non validé n’est jamais exploitable par
 L’arrivée du canonique ne supprime pas et n’invalide pas la copie Quarantine correspondante.
 
 # 3. Arrivée de la copie corrigée
-
-> **CLAUSE v0.2 CI-DESSOUS — SUPERSEDED BY DEC-125 :** la copie complète est
-> éditable sur ses sept slots selon les couleurs actives; elle ne se limite pas
-> aux seuls chemins suspects.
 
 La copie Quarantine est non canonique. Elle ne constitue pas un transport du
 `KernelBlueprint` entre phases et ne peut jamais devenir sa source de vérité.
@@ -138,14 +89,8 @@ Une copie ne correspondant pas à la même identité est refusée.
 
 # 4. Réconciliation contrôlée
 
-> **CLAUSE v0.2 CI-DESSOUS — SUPERSEDED BY DEC-125 :** ReadyBank ne remplace
-> pas globalement le canonique, mais la fusion réussie est définie par
-> `blueprint_id + cognitive_type`; les positions non résolues restent vides.
-
-Après avoir relu le canonique, ReadyBank fusionne les seules corrections
-admissibles de la copie avec ce même agrégat. La garantie d’atomicité de cette
-fusion reste une exigence d’implantation ouverte; aucune solution technique
-n’est approuvée par cette clause.
+Après avoir relu le canonique, ReadyBank fusionne atomiquement les seules
+corrections admissibles de la copie avec ce même agrégat.
 
 Opérations autorisées :
 
@@ -194,10 +139,10 @@ vide, bloqué, soupçonné, non validé ou dont la traduction est absente/non va
 reste physiquement présent mais exclu du gameplay.
 
 ReadyBank persiste le résultat de son contrôle ou de sa réconciliation dans le
-canonique, puis émet son signal terminal. La frontière suivante transmet
-uniquement `blueprint_id`; son destinataire relira le même agrégat et y
-vérifiera la fin de ReadyBank ainsi que son statut terminal. Aucune phase ne
-transporte une version sérialisée, mutée ou complète du canonique.
+canonique, puis émet son signal terminal. Le relais suivant ne reçoit que
+`blueprint_id`, la fin de ReadyBank et ce statut terminal; il relira à son tour
+le même agrégat. Aucune phase ne transporte une version sérialisée, mutée ou
+complète du canonique.
 
 ## 4.3 Échecs de Phase1
 
@@ -211,23 +156,25 @@ le statut `SUSPICION` si cette validation le conclut. `CREATION_FAILED` et
 `SUSPICION` sont donc des branches distinctes et ne doivent jamais être
 confondues par ReadyBank ou par leurs relais.
 
-## 4.4 Modes et scénarios de test externes
+## 4.4 Modes externes, fixture et Harness
 
 Les modes production et test sont entièrement externes au `KernelBlueprint`.
 Aucun champ de mode, de target ou de test n’est stocké dans le Blueprint ni
 déduit de son contenu.
 
-Un scénario de test reste entièrement extérieur au Blueprint et à KBP. Il
-demande à KBP un vrai `KernelBlueprint` PostgreSQL isolé avec ses sept slots
-structurels vides; KBP retourne uniquement `blueprint_id`. La phase demandée
-recharge ce Blueprint et les phases précédentes établissent leurs propres
-préconditions selon leurs contrats, sans préparation intellectuelle par KBP.
+Pour une fixture de test, le Harness demande à KBP le scénario ciblé. KBP crée
+atomiquement un vrai `KernelBlueprint` PostgreSQL isolé, déjà préparé pour la
+phase visée : les préconditions existent dès sa création et ses vrais sept slots
+sont présents. KBP retourne uniquement son `blueprint_id`. Cette fixture n’est
+ni un mock, ni un tableau, ni de la mémoire, ni une copie Quarantine. Elle
+n’est pas récupérable par les workers de production non ciblés, mais reste
+accessible à la vraie phase autorisée par `blueprint_id`.
 
-Le scénario définit uniquement la première phase, les transmissions successives
-de `blueprint_id` permises et le point d’arrêt. L’appelant observe ensuite le
-résultat persistant et demande à KBP le nettoyage avec la référence technique
-de création. Il ne constitue ni un Harness architectural ni une variante
-métier de Phase1.
+Le Harness déclenche ensuite la vraie phase avec fournisseur simulé, intercepte
+son signal de fin, bloque la cascade, observe le résultat puis nettoie. Il
+n’écrit aucune précondition, donnée intellectuelle ou validation. Il ne crée pas
+de variante métier de Phase1 : en production Phase1 relaie vers la validation;
+en test elle relaie vers le récepteur terminal externe.
 
 # 5. Exploitabilité gameplay
 
@@ -417,10 +364,6 @@ Cette chaîne est une projection gameplay propre au joueur, jamais le `kernel_co
 
 # 8. Frontière avec KRP
 
-> **CLAUSE v0.2 CI-DESSOUS — SUPERSEDED BY DEC-125 :** `CURRENT_KERNEL_RECEIVED`
-> ne va pas toujours à KRP/KBP. ReadyBank choisit la direction exclusive
-> selon la file Quarantine prête.
-
 ReadyBank peut produire les faits définis par son contrat lifecycle vers KRP, mais :
 
 - la fusion Quarantine ne recrée jamais le Blueprint;
@@ -429,35 +372,14 @@ ReadyBank peut produire les faits définis par son contrat lifecycle vers KRP, m
 - elle ne réinitialise jamais `VVVV`;
 - elle ne compte jamais une copie comme un nouveau noyau canonique.
 
-## 8.1 Routage exclusif DEC-125
-
-À chaque arrivée terminale de ReadyBank, le signal
-`CURRENT_KERNEL_RECEIVED` est idempotent et ne démarre qu’une direction :
-
-```text
-file Quarantine prête non vide
-→ GO vers la première copie (FIFO)
-→ reprise Phase1
-→ KBP ne reçoit rien
-
-file Quarantine prête vide
-→ GO vers KBP
-→ KBP crée ou retrouve le Blueprint demandé
-```
-
-Le renvoi précédent a seulement mis la copie en file; il ne l’a pas démarrée.
-L’ordre exact des clics est conservé et un seul traitement est actif à la fois.
-ReadyBank n’effectue aucun remplacement global : seuls les slots réussis
-portant le même `blueprint_id` et le même `cognitive_type` sont fusionnés.
-
 # 9. Invariants verrouillés
 
 - un seul canonique;
 - copie corrigée complète;
 - fusion uniquement dans ReadyBank;
 - identité identique obligatoire;
-- fusion sélective des seuls slots conformes;
-- un slot vert modifié manuellement n’est plus un slot valide hors cible;
+- fusion ciblée et atomique;
+- slots valides hors cible inchangés;
 - slots suspects non exploitables;
 - slots vides remplissables après reprise;
 - aucune copie comptée comme nouveau noyau;
@@ -482,3 +404,48 @@ Restent à spécifier :
 - comportement multijoueur lorsque plusieurs historiques doivent être combinés.
 
 La présente version verrouille les responsabilités de réconciliation, l’identification exacte du cognitif joué et la frontière gameplay sans déclarer ReadyBank terminé.
+
+
+# 11. Contrat DEC-125 — réconciliation Quarantaine et direction suivante
+
+## 11.1 Fusion atomique
+
+ReadyBank réconcilie une copie Quarantaine uniquement après vérification de son `blueprint_id`, de son `kernel_code`, de son identité de copie, de sa version réclamée et de son droit de terminaison.
+
+La clé de réemboîtement d’un slot est exclusivement :
+
+```text
+blueprint_id + cognitive_type
+```
+
+Chaque slot admissible est fusionné atomiquement. Un slot encore `EMPTY`, `SUSPICION`, non validé ou dont les traductions requises ne sont pas admissibles reste vide dans le canonique. L’échec d’un slot n’empêche pas la fusion des autres slots admissibles.
+
+La fusion termine une version exactement une fois. Un retour ancien, un token expiré ou une version déjà terminée ne modifie rien.
+
+## 11.2 Jaune
+
+Un slot modifié manuellement reste identifié comme jaune pendant toute sa reprise. ReadyBank retire cette indication uniquement après sa décision terminale :
+
+- fusion réussie : la correction devient le contenu canonique;
+- échec : la position canonique reste vide et la copie retourne en Quarantaine avec le slot rouge.
+
+## 11.3 Direction exclusive après CURRENT_KERNEL_RECEIVED
+
+ReadyBank dirige le prochain GO; il ne retient pas un signal.
+
+```text
+CURRENT_KERNEL_RECEIVED
+→ demandes Quarantaine READY présentes
+   → une seule direction QUARANTINE
+   → plus ancienne demande
+   → aucun GO KBP
+
+→ aucune demande Quarantaine READY
+   → une seule direction KBP
+```
+
+Cinq demandes prêtes produisent cinq directions Quarantaine successives avant qu’une direction KBP puisse être choisie. Chaque décision est persistée et idempotente.
+
+La branche Quarantaine reprend un Blueprint existant à Phase1. Elle ne crée aucun Blueprint, ne déclenche aucune Rotation et ne modifie aucun compteur Rotation.
+
+La branche KBP crée le nouveau Blueprint canonique. KBP transmet ensuite son `blueprint_id` à Rotation; Rotation applique seulement à ce moment sa sélection et sa progression normales.

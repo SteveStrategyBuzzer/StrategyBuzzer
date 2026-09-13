@@ -1,221 +1,132 @@
 # STRATEGYBUZZER — 10_QUARANTINE
 
-**Version :** 0.2
-**Date :** 2026-09-13
-**Statut :** RÈGLES OFFICIELLES VERROUILLÉES — MODULE À COMPLÉTER  
-**Décision directrice :** DEC-125 — OFFICIAL (clauses compatibles de DEC-122)
-**Implémentation :** À AUDITER  
+**Version :** 1.0  
+**Date :** 13 septembre 2026  
+**Statut :** RÈGLES OFFICIELLES VERROUILLÉES — MODÈLE PHYSIQUE À IMPLANTER  
+**Décisions :** DEC-122 + DEC-125  
+**Implémentation :** NON TERMINÉE  
 **Validation terminale :** NON
-
-> **Remplace :** v0.1 sur l’autorité de la copie, l’édition, la reprise et le
-> cycle de circulation. Les clauses contraires sont `SUPERSEDED BY DEC-125`
-> avant leur remplacement; DEC-122 reste historique et actif pour ses clauses
-> compatibles.
-
-## 0. Règles actives DEC-125
-
-Quarantine persiste une copie de travail complète et non canonique avec les
-sept slots, contenus et findings disponibles. Lorsqu’un slot canonique est
-`SUSPICION` ou `EMPTY`, sa position est vide; le contenu rejeté et ses findings
-restent dans la copie. Les sept slots sont visibles et éditables : rouge =
-`SUSPICION`/`EMPTY`; vert = conforme et jamais encore modifié manuellement;
-jaune = rempli/modifié manuellement et conservé jusqu’à ReadyBank,
-marqueur de parcours et non état fonctionnel. Modifier un vert le rend jaune
-et invalide immédiatement son ancien `PASS` aval.
-
-Admin est une UI externe, pas une phase; suppression Admin = suppression de la
-copie seulement. Une copie complète recommence toujours en Phase1. Elle
-accompagne les sept slots comme contexte, mais chaque slot ne rejoue que les
-contrôles/créations qui le concernent : Phase1 technique, ValidationPhase1
-intellectuelle, Phase2 autorisée, ValidationPhase2 traduction, puis ReadyBank.
-Les slots conformes continuent, les slots échoués restent vides. Une copie
-peut cycler plusieurs fois avec les findings les plus récents; aucune histoire
-permanente des corrections n’est conservée; plusieurs copies prêtes sont
-permises.
-
-Le renvoi ne démarre pas la copie : il l’enqueue selon l’ordre exact des clics,
-FIFO, un seul traitement à la fois.
-
-**OPEN IMPLEMENTATION REQUIREMENTS — solutions non approuvées :**
-
-1. persistance de la copie complète courante;
-2. file d’attente des clics Renvoie;
-3. ordre exact des demandes;
-4. détection des slots modifiés;
-5. conservation du marqueur jaune jusqu’à ReadyBank;
-6. invalidation immédiate d’un ancien PASS après modification;
-7. protection contre les retours périmés;
-8. idempotence de `CURRENT_KERNEL_RECEIVED`;
-9. fusion atomique dans ReadyBank.
 
 ---
 
-# 1. Mission verrouillée
+# 1. Mission
 
-Quarantine reçoit une copie complète et contextualisée du KernelBlueprint lorsqu’une création source ou une traduction comporte une suspicion d’erreur.
+Quarantaine conserve une copie complète, persistante et non canonique d’un KernelBlueprint nécessitant une correction. Elle ne crée jamais de Blueprint, de `blueprint_id`, de `kernel_code` ni d’identité intellectuelle.
 
-Quarantine ne reçoit jamais seulement le fragment fautif.
+L’interface Admin n’est pas une phase. Elle affiche et permet de modifier les copies persistées par Quarantaine.
 
-Quarantine ne devient jamais propriétaire du Blueprint canonique et ne crée jamais une nouvelle identité intellectuelle.
+# 2. Identité et contenu de la copie
 
-# 2. Contenu obligatoire de la copie
+Une copie conserve obligatoirement :
 
-La copie Quarantine contient l’état complet disponible du Blueprint :
+- le même `blueprint_id` que le canonique;
+- le même `kernel_code`;
+- Depth, Domaine, Sous-domaine, Sujet et Idée dominante;
+- les sept `CognitiveSlots`;
+- pour chaque slot : question, choix, bonne réponse, SV, traductions, états, findings et erreurs disponibles;
+- l’étape d’origine;
+- la version courante nécessaire contre les retours périmés.
 
-- `blueprint_id`;
-- `kernel_code`;
-- identité intellectuelle;
-- sept CognitiveSlots;
-- contenus source déjà produits;
-- réponses;
-- choix;
-- SV;
-- traductions déjà produites;
-- slots vides;
-- créations dépendantes non produites;
-- validations disponibles;
-- chemins soupçonnés;
-- raisons de suspicion;
-- étape d’origine.
+La copie complète n’est jamais insérée dans les tables canoniques et n’est jamais envoyée à KBP ou Rotation.
 
-# 3. Signalement visuel
+# 3. Création de la copie et protection du canonique
 
-Les éléments soupçonnés sont enregistrés sous forme de chemins structurés.
+Lorsqu’un slot est `SUSPICION` ou `EMPTY`, la copie complète est persistée avant toute mutation du canonique.
 
-L’interface Quarantine les affiche en rouge.
+Ensuite, chaque position défaillante du Blueprint canonique devient `EMPTY`. Sa source, ses traductions, son ancien PASS et ses findings ne restent pas exploitables. Le contenu rejeté demeure disponible dans la copie Quarantaine.
 
-Exemples :
+Les slots canoniques conformes restent inchangés et peuvent continuer dans le flow régulier. Une position vide ne doit être traitée ni par Phase2, ni par ValidationPhase2, ni par Gameplay.
 
-```text
-cognitive_slots.QCM_RECOGNITION.source.question
+# 4. Couleurs fonctionnelles
 
-cognitive_slots.QCM_RECOGNITION.translations.el.answer
-```
+La couleur est dérivée de l’état courant :
 
-Règles :
+- **rouge** : `SUSPICION` ou `EMPTY`;
+- **vert** : slot conforme et jamais modifié manuellement dans la copie courante;
+- **jaune** : slot modifié manuellement.
 
-- seuls les éléments soupçonnés sont rouges;
-- les éléments valides restent normaux;
-- les slots dépendants non créés sont affichés comme non créés ou bloqués;
-- une absence causée par un blocage amont n’est pas présentée comme une traduction fautive;
-- la couleur rouge n’est jamais la seule persistance de l’erreur.
+Tous les slots sont modifiables dans l’interface Admin, y compris un slot vert. Dès qu’un slot est modifié, son ancien PASS est invalidé, ses validations requises redeviennent à faire et il devient jaune.
 
-# 4. Le canonique continue
+Un slot jaune reste jaune pendant tout son retour dans le pipeline jusqu’à la décision de ReadyBank. S’il échoue, il redevient rouge dans la copie retournée, sans effacer le fait qu’une correction manuelle a eu lieu.
 
-> **CLAUSE v0.1 CI-DESSOUS — SUPERSEDED BY DEC-125 :** le canonique ne
-> poursuit plus une position suspecte; celle-ci est vidée et la copie porte le
-> contenu rejeté et ses findings. Les slots conformes continuent séparément.
+# 5. Interface Admin
 
-Le Blueprint canonique continue toutes les phases normales jusqu’à ReadyBank.
+L’Admin doit permettre :
 
-La création d’une copie Quarantine ne déplace pas le canonique et ne l’empêche pas d’atteindre ReadyBank.
+- de voir le nombre de copies;
+- de trier par date d’arrivée, Depth, Domaine et état des slots;
+- d’ouvrir une copie complète;
+- de consulter toute sa structure intellectuelle;
+- de modifier un ou plusieurs slots;
+- de cliquer `Renvoie`;
+- de supprimer une copie lorsqu’elle n’est pas en cours de traitement.
 
-Les slots suspects, vides ou non validés restent toutefois non exploitables par le gameplay.
+La suppression retire uniquement la copie de travail. Elle ne remplit pas les positions vides du canonique et ne crée aucun historique de versions.
 
-# 5. Correction de la copie
+# 6. Clic Renvoie et FIFO
 
-> **CLAUSE v0.1 CI-DESSOUS — SUPERSEDED BY DEC-125 :** l’édition n’est plus
-> limitée aux champs suspects et slots dépendants; les sept slots sont
-> éditables, avec les règles de couleur de la section 0.
+Le clic `Renvoie` place la version courante de la copie dans une file persistante.
 
-La correction travaille dans la copie complète avec tout le contexte intellectuel disponible.
+Plusieurs copies peuvent attendre simultanément. Elles sont prises en charge une à la fois, strictement dans l’ordre des clics `Renvoie` acceptés.
 
-Elle modifie uniquement :
+Un clic idempotent ne doit pas créer deux demandes. Une modification ultérieure produit une version supérieure. Une version réclamée ou terminée ne peut pas être remplacée silencieusement par une autre.
 
-- les champs explicitement soupçonnés;
-- les slots dépendants restés vides;
-- les métadonnées de correction et de validation nécessaires.
+# 7. Direction de CURRENT_KERNEL_RECEIVED
 
-Elle ne modifie jamais :
-
-- `blueprint_id`;
-- `kernel_code`;
-- les slots valides non ciblés;
-- les autres langues valides;
-- les autres CognitiveSlots valides.
-
-# 6. Reprise du pipeline
-
-> **CLAUSE v0.1 CI-DESSOUS — SUPERSEDED BY DEC-125 :** toute copie complète
-> corrigée reprend d’abord en Phase1, y compris après une erreur de traduction.
-
-La copie corrigée reprend au propriétaire du premier élément corrigé.
-
-## Erreur source
+Chaque `CURRENT_KERNEL_RECEIVED` produit une seule décision durable et idempotente :
 
 ```text
-copie corrigée
-→ Phase1 ciblée
-→ ValidationPhase1 ciblée
-→ Phase2 ciblée pour les traductions manquantes
-→ ValidationPhase2
-→ ReadyBank
+file Quarantaine READY non vide
+→ GO vers la plus ancienne copie
+→ KBP ne reçoit rien
+
+file Quarantaine READY vide
+→ GO vers KBP
 ```
 
-## Erreur de traduction
+Une copie déjà en cours empêche un événement concurrent de contourner la priorité Quarantaine pour démarrer KBP.
 
-```text
-copie corrigée
-→ Phase2 ciblée
-→ ValidationPhase2 ciblée
-→ ReadyBank
-```
+# 8. Reprise du flow
 
-Aucune étape déjà valide n’est rejouée inutilement.
+La copie complète corrigée reprend toujours à Phase1 avec son `blueprint_id`. Elle ne passe ni par KBP, ni par Rotation, ni par Taxonomy, ni par QuestionIntent.
 
-**Remplacement actif DEC-125 :** la copie recommence toutefois toujours par
-Phase1; les slots accompagnent comme contexte et seuls les contrôles/créations
-concernés sont exécutés à chaque phase. Les conformes continuent, les échoués
-restent vides.
+À partir de Phase1 :
 
-# 7. Sortie Quarantine
+- chaque slot repasse uniquement les contrôles ou créations nécessaires à son état;
+- les slots jaunes repassent les validations propriétaires;
+- un slot vide peut être créé si nécessaire;
+- Phase2 ignore tout slot source non admissible;
+- les slots conformes continuent même si d’autres échouent;
+- la copie corrigée peut revenir en Quarantaine autant de fois que nécessaire.
 
-> **CLAUSE v0.1 CI-DESSOUS — SUPERSEDED BY DEC-125 :** le retour ne porte
-> plus seulement un ciblage forensique; il porte la copie complète courante,
-> avec les sept slots et les findings les plus récents.
+Lors du départ effectif, la copie disparaît de la liste éditable de l’Admin et devient en cours de traitement. Elle réapparaît si le pipeline la retourne.
 
-Quarantine transmet vers le pipeline une copie complète corrigée portant :
-
-- la référence du canonique;
-- les chemins initialement soupçonnés;
-- les valeurs avant correction;
-- les valeurs corrigées;
-- les slots remplis après correction;
-- les validations obtenues;
-- la traçabilité du parcours ciblé.
+# 9. ReadyBank
 
 La copie rejoint le canonique uniquement dans ReadyBank.
 
-# 8. Interdictions
+ReadyBank :
 
-> **CLAUSE v0.1 CI-DESSOUS — SUPERSEDED BY DEC-125, PORTÉE LIMITÉE :**
-> l’interdiction historique d’écraser un slot valide hors cible ne vaut que
-> pour un slot vert non modifié manuellement. Une modification manuelle le
-> rend jaune, invalide son ancien PASS et suit le cycle complet.
+- vérifie l’identité et la version réclamée;
+- refuse tout retour périmé;
+- fusionne atomiquement par `blueprint_id + cognitive_type`;
+- remplace uniquement les slots admissibles;
+- maintient vides les positions encore non conformes;
+- conserve tous les slots canoniques hors fusion;
+- termine la demande exactement une fois.
 
-Quarantine ne doit jamais :
+La copie ne devient jamais canonique. Aucune ancienne version de correction n’est conservée après la décision terminale.
 
-- remplacer globalement le canonique;
-- créer un nouveau `kernel_code`;
-- modifier l’identité intellectuelle;
-- écraser un slot valide hors cible;
-- contourner les validations propriétaires;
-- rendre directement un contenu au gameplay;
-- fusionner elle-même les données dans le canonique;
-- renvoyer le Blueprint canonique vers KRP ou Taxonomy.
+# 10. Interdictions
 
-# 9. Statut restant
+Quarantaine ne doit jamais :
 
-Restent à spécifier :
-
-- modèle persistant exact de copie;
-- états détaillés;
-- acteurs autorisés à corriger;
-- règles automatiques/manuelles;
-- délais et retries;
-- validation de sortie;
-- archivage de la copie après fusion;
-- interface administrative.
-
-La présente version verrouille la copie complète, le ciblage visuel, la reprise
-Phase1 avec contrôles concernés par slot et la frontière ReadyBank.
+- créer ou recycler un Blueprint;
+- déclencher ou modifier Rotation;
+- compter une copie comme nouveau noyau;
+- modifier `blueprint_id`, `kernel_code` ou l’identité;
+- fusionner elle-même dans le canonique;
+- rendre directement un contenu au Gameplay;
+- contourner Phase1, ValidationPhase1, Phase2, ValidationPhase2 ou ReadyBank;
+- conserver plusieurs versions historiques de la même copie;
+- autoriser une réponse périmée à écraser une version plus récente.
