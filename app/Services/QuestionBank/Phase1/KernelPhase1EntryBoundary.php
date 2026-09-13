@@ -20,8 +20,24 @@ final class KernelPhase1EntryBoundary
             new KernelBlueprintProvisionedLoader(),
     ) {}
 
-    public function receive(string $blueprintId): string
+    public function receive(
+        string $blueprintId,
+        ?string $copyId = null,
+        ?int $claimedCopyVersion = null,
+        ?string $claimToken = null,
+    ): string
     {
+        if ($copyId !== null || $claimedCopyVersion !== null || $claimToken !== null) {
+            if ($copyId === null || $claimedCopyVersion === null || $claimToken === null) {
+                throw new RuntimeException('[Phase1] Preuve Quarantaine incomplète.');
+            }
+            return (new KernelQuarantinePhase1EntryBoundary())->receive(
+                $blueprintId,
+                $copyId,
+                $claimedCopyVersion,
+                $claimToken,
+            );
+        }
         $blueprint = $this->loader->loadEngaged($blueprintId);
         if (! $blueprint->isComplete()) {
             throw new RuntimeException(

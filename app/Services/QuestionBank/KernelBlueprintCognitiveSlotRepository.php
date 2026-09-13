@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\QuestionBank;
 
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use LogicException;
 
 class KernelBlueprintCognitiveSlotRepository
@@ -74,18 +75,22 @@ class KernelBlueprintCognitiveSlotRepository
     ): void {
         $this->assertOfficialType($cognitiveType);
 
+        $values = [
+            'source' => $this->encodeJson($source),
+            'creation_failure' => null,
+            'creation_status' => 'CREATED',
+            'validation_status' => 'NOT_VALIDATED',
+            'validation_findings' => '[]',
+            'updated_at' => now(),
+        ];
+        if (DB::getDriverName() !== 'pgsql' && Schema::hasColumn(self::TABLE, 'canonical_revision')) {
+            $values['canonical_revision'] = DB::raw('canonical_revision + 1');
+        }
         $updated = DB::table(self::TABLE)
             ->where('blueprint_id', $blueprintId)
             ->where('cognitive_type', $cognitiveType)
             ->where('creation_status', 'EMPTY')
-            ->update([
-                'source' => $this->encodeJson($source),
-                'creation_failure' => null,
-                'creation_status' => 'CREATED',
-                'validation_status' => 'NOT_VALIDATED',
-                'validation_findings' => '[]',
-                'updated_at' => now(),
-            ]);
+            ->update($values);
 
         if ($updated === 1) {
             return;
@@ -111,20 +116,24 @@ class KernelBlueprintCognitiveSlotRepository
     ): void {
         $this->assertOfficialType($cognitiveType);
 
+        $values = [
+            'source' => $this->encodeJson(
+                KernelBlueprint::emptyCognitiveSlotSource($cognitiveType)
+            ),
+            'creation_failure' => $this->encodeJson($creationFailure),
+            'creation_status' => 'CREATION_FAILED',
+            'validation_status' => 'NOT_VALIDATED',
+            'validation_findings' => '[]',
+            'updated_at' => now(),
+        ];
+        if (DB::getDriverName() !== 'pgsql' && Schema::hasColumn(self::TABLE, 'canonical_revision')) {
+            $values['canonical_revision'] = DB::raw('canonical_revision + 1');
+        }
         $updated = DB::table(self::TABLE)
             ->where('blueprint_id', $blueprintId)
             ->where('cognitive_type', $cognitiveType)
             ->where('creation_status', 'EMPTY')
-            ->update([
-                'source' => $this->encodeJson(
-                    KernelBlueprint::emptyCognitiveSlotSource($cognitiveType)
-                ),
-                'creation_failure' => $this->encodeJson($creationFailure),
-                'creation_status' => 'CREATION_FAILED',
-                'validation_status' => 'NOT_VALIDATED',
-                'validation_findings' => '[]',
-                'updated_at' => now(),
-            ]);
+            ->update($values);
 
         if ($updated === 1) {
             return;
@@ -228,14 +237,18 @@ class KernelBlueprintCognitiveSlotRepository
             foreach ($expected as $cognitiveType) {
                 $requested = $decisions[$cognitiveType];
                 $this->beforeValidationSlotUpdate($blueprintId, $cognitiveType);
+                $values = [
+                    'validation_status' => $requested['validation_status'],
+                    'validation_findings' => $this->encodeJson($requested['validation_findings']),
+                ];
+                if (DB::getDriverName() !== 'pgsql' && Schema::hasColumn(self::TABLE, 'canonical_revision')) {
+                    $values['canonical_revision'] = DB::raw('canonical_revision + 1');
+                }
                 $updated = DB::table(self::TABLE)
                     ->where('blueprint_id', $blueprintId)
                     ->where('cognitive_type', $cognitiveType)
                     ->where('validation_status', 'NOT_VALIDATED')
-                    ->update([
-                        'validation_status' => $requested['validation_status'],
-                        'validation_findings' => $this->encodeJson($requested['validation_findings']),
-                    ]);
+                    ->update($values);
                 if ($updated !== 1) {
                     throw new LogicException(
                         "[KernelBlueprintCognitiveSlotRepository] Écriture atomique de validation interrompue."

@@ -22,8 +22,8 @@ use Tests\TestCase;
  * Tests de ProcessKernelPipelineOutbox V3.
  *
  * Couvre :
- *   1. Réception normale → compteur +1 → Blueprint suivant créé (ENGAGED)
- *   2. Même événement rejoué → compteur inchangé → aucun deuxième Blueprint
+ *   1. Réception normale → ancien compteur inchangé → Blueprint suivant créé (ENGAGED)
+ *   2. Même événement rejoué → aucun compteur legacy → aucun deuxième Blueprint
  *   3. État depth_state = PRODUCTION_ON_HOLD → gate V3 → PRODUCTION_ON_HOLD
  *   4. Événement déjà traité → NO-OP
  *   5. Payload JSON invalide → ERROR, attempt_count++, pas de processed_at
@@ -59,6 +59,9 @@ class ProcessKernelPipelineOutboxTest extends TestCase
         Schema::dropIfExists('kernel_depth_matrix');
         Schema::dropIfExists('kernel_code_sequences');
         Schema::dropIfExists('kernel_blueprint_cognitive_slots');
+        Schema::dropIfExists('kernel_current_kernel_dispatches');
+        Schema::dropIfExists('kernel_current_kernel_route_gate');
+        Schema::dropIfExists('kernel_quarantine_work_copies');
         Schema::dropIfExists('kernel_blueprint_runs');
         parent::tearDown();
     }
@@ -67,7 +70,7 @@ class ProcessKernelPipelineOutboxTest extends TestCase
     // Test 1 — Réception normale
     // =========================================================================
 
-    public function test_normal_processing_increments_counter_and_creates_next_blueprint(): void
+    public function test_kbp_processing_creates_next_blueprint_without_counting_received_legacy(): void
     {
         $eventId     = (string) Str::orderedUuid();
         $blueprintId = 'bp-processed-001';
@@ -87,13 +90,13 @@ class ProcessKernelPipelineOutboxTest extends TestCase
         // Reçu inséré
         $receipt = DB::table('kernel_current_kernel_receipts')
             ->where('blueprint_id', $blueprintId)->first();
-        $this->assertNotNull($receipt, 'Un reçu doit exister pour blueprint_id');
+        $this->assertNull($receipt, 'DEC-125 ne compte plus le Blueprint reçu avant KBP.');
 
         // Compteur incrémenté
         $total = DB::table('kernel_depth_domain_totals')
             ->where('depth', 2)->where('domain_code', 'geographie')
             ->value('kernel_received_total');
-        $this->assertSame(1, (int) $total);
+        $this->assertSame(0, (int) $total);
 
         // Blueprint suivant créé
         $bpCount = DB::table('kernel_blueprint_runs')->count();
@@ -104,7 +107,7 @@ class ProcessKernelPipelineOutboxTest extends TestCase
     // Test 2 — Rejeu idempotent
     // =========================================================================
 
-    public function test_same_event_replayed_does_not_double_count(): void
+    public function test_same_event_replayed_does_not_count_received_legacy(): void
     {
         $eventId     = (string) Str::orderedUuid();
         $blueprintId = 'bp-replay-001';
@@ -133,11 +136,11 @@ class ProcessKernelPipelineOutboxTest extends TestCase
         $total = DB::table('kernel_depth_domain_totals')
             ->where('depth', 2)->where('domain_code', 'geographie')
             ->value('kernel_received_total');
-        $this->assertSame(1, (int) $total, 'Rejeu idempotent : compteur toujours à 1');
+        $this->assertSame(0, (int) $total, 'DEC-125 : le rejeu KBP ne compte pas l’ancien Blueprint.');
 
         $receiptCount = DB::table('kernel_current_kernel_receipts')
             ->where('blueprint_id', $blueprintId)->count();
-        $this->assertSame(1, $receiptCount, 'Un seul reçu malgré le rejeu');
+        $this->assertSame(0, $receiptCount, 'DEC-125 : aucun reçu legacy malgré le rejeu KBP');
     }
 
     // =========================================================================
@@ -273,6 +276,12 @@ class ProcessKernelPipelineOutboxTest extends TestCase
             $table->string('execution_state', 64)->default('CREATED_UNENGAGED');
             $table->smallInteger('depth')->nullable();
             $table->string('domain_code', 64)->nullable();
+            $table->string('kernel_code_dd', 2)->nullable();
+            $table->string('kernel_code_do', 3)->nullable();
+            $table->string('kernel_code_sub', 3)->nullable();
+            $table->string('kernel_code_suj', 3)->nullable();
+            $table->string('kernel_code_ide', 3)->nullable();
+            $table->string('kernel_code_vvvv', 4)->nullable();
             $table->string('kernel_code', 23)->nullable()->unique();
             $table->timestamp('engaged_at')->nullable();
             $table->timestamp('received_at')->nullable();
@@ -347,6 +356,39 @@ class ProcessKernelPipelineOutboxTest extends TestCase
             $table->timestamp('processed_at')->nullable();
             $table->integer('attempt_count')->default(0);
             $table->text('last_error')->nullable();
+            $table->timestamps();
+        });
+
+        Schema::create('kernel_current_kernel_route_gate', function (Blueprint $table) {
+            $table->unsignedTinyInteger('gate_id')->primary();
+            $table->string('active_copy_id')->nullable();
+            $table->unsignedBigInteger('active_copy_version')->nullable();
+            $table->string('active_claim_token')->nullable();
+            $table->timestamps();
+        });
+        Schema::create('kernel_current_kernel_dispatches', function (Blueprint $table) {
+            $table->string('event_id')->primary();
+            $table->string('blueprint_id');
+            $table->string('direction');
+            $table->string('copy_id')->nullable();
+            $table->unsignedBigInteger('copy_version')->nullable();
+            $table->unsignedBigInteger('ready_order')->nullable();
+            $table->string('claim_token')->nullable();
+            $table->string('state')->default('READY');
+            $table->timestamp('claimed_at')->nullable();
+            $table->timestamps();
+        });
+        Schema::create('kernel_quarantine_work_copies', function (Blueprint $table) {
+            $table->string('copy_id')->primary();
+            $table->string('blueprint_id');
+            $table->string('kernel_code')->nullable();
+            $table->string('state')->default('EDITABLE');
+            $table->unsignedBigInteger('copy_version')->default(1);
+            $table->unsignedBigInteger('ready_order')->nullable();
+            $table->string('claim_token')->nullable();
+            $table->string('claimed_event_id')->nullable();
+            $table->unsignedBigInteger('claimed_version')->nullable();
+            $table->timestamp('claimed_at')->nullable();
             $table->timestamps();
         });
 

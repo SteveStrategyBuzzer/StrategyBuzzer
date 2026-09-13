@@ -7,6 +7,9 @@ namespace App\Services\QuestionBank\Rotation;
 use App\Services\QuestionBank\Rotation\Events\CurrentKernelReceived;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
+use App\Services\QuestionBank\Quarantine\KernelCurrentKernelReceivedRouter;
+use App\Services\QuestionBank\Phase1\KernelQuarantinePhase1EntryBoundary;
 use Throwable;
 
 /**
@@ -20,22 +23,16 @@ use Throwable;
  *   1. Sélectionner les événements non traités (attempt_count < MAX_ATTEMPTS).
  *   2. Verrou optimiste (incrémenter attempt_count) — évite traitement parallèle.
  *   3. Reconstruire CurrentKernelReceived depuis le payload JSON.
- *   4. KernelRotationPlanner::receiveKernelReceivedV2() — source unique de vérité :
- *        a. idempotence blueprint_id
- *        b. receipt INSERT
- *        c. kernel_received_total +1
- *   5. KernelPipelineOrchestrator::run() — crée le Blueprint suivant. KRP y
- *      consomme éventuellement un fait terminal, puis exécute ses moteurs
- *      internes DOMAIN_EXHAUSTED / DEPTH_EXHAUSTED.
- *   6. Marquer processed_at UNIQUEMENT après succès complet.
- *   7. En cas d'exception : conserver non traité, sauver last_error, laisser rejouable.
+ *   4. DEC-125 direction: Quarantine enters the four-scalar Phase 1 boundary;
+ *      KBP continues through the planner/orchestrator path.
+ *   5. Mark processed_at only after the selected path succeeds.
+ *   6. On exception: keep pending, save last_error, leave replayable.
  *
  * ═══════════════════════════════════════════════════════════════════════════════
  * UNE RESPONSABILITÉ = UN PROPRIÉTAIRE = UNE IMPLÉMENTATION (DEC-093)
  * ═══════════════════════════════════════════════════════════════════════════════
  *
- * ApplyCurrentKernelReceivedToRotation::applyCount() est DÉSACTIVÉ de ce chemin
- * (marqué @deprecated). Toute la logique métier CKR vit dans receiveKernelReceivedV2.
+ * ApplyCurrentKernelReceivedToRotation::applyCount() is not used by this path.
  *
  * Interdictions :
  *   - N'appelle jamais applyCount() (chemin V2 désactivé — DEC-093).
@@ -53,12 +50,17 @@ final class ProcessKernelPipelineOutbox
     public const OUTCOME_NO_OP             = 'NO_OP';
     public const OUTCOME_ERROR             = 'ERROR';
     public const OUTCOME_ALREADY_PROCESSED = 'ALREADY_PROCESSED';
+    public const OUTCOME_QUARANTINE_DISPATCHED = 'QUARANTINE_DISPATCHED';
 
     public function __construct(
         private readonly KernelRotationPlanner        $planner,
         private readonly KernelPipelineOrchestrator   $orchestrator,
         private readonly KernelPipelineOutboxRepository $outboxRepo,
         private readonly CurrentKernelReceivedKbpAdapter $kbpAdapter,
+        private readonly ?KernelCurrentKernelReceivedRouter $routeGate =
+            new KernelCurrentKernelReceivedRouter(),
+        private readonly ?KernelQuarantinePhase1EntryBoundary $quarantinePhase1 =
+            new KernelQuarantinePhase1EntryBoundary(),
     ) {}
 
     /**
@@ -131,6 +133,61 @@ final class ProcessKernelPipelineOutbox
 
             $event = CurrentKernelReceived::fromPayload($payload);
 
+            // DEC-125 direction is decided before any planner/KBP call.  A
+            // missing routing foundation is a deployment error, never a
+            // reason to fall back to the legacy receive counter.
+            $dec125Route = null;
+            if ($this->routeGate === null
+                || ! Schema::hasTable('kernel_current_kernel_route_gate')
+                || ! Schema::hasTable('kernel_current_kernel_dispatches')
+                || ! Schema::hasTable('kernel_quarantine_work_copies')) {
+                throw new \RuntimeException('DEC-125 routing foundation is not installed.');
+            }
+            if ($this->routeGate !== null) {
+                $route = $this->routeGate->decide($event->eventId, $event->blueprintId);
+                $dec125Route = $route['direction'];
+                if ($route['direction'] === KernelCurrentKernelReceivedRouter::BLOCKED) {
+                    // BLOCKED is a retryable arbitration result, not a
+                    // processing failure: restore the attempt consumed by
+                    // the optimistic claim and keep processed_at NULL.
+                    DB::table(self::OUTBOX_TABLE)->where('event_id', $row->event_id)
+                        ->where('attempt_count', (int) $row->attempt_count + 1)
+                        ->update([
+                            'attempt_count' => (int) $row->attempt_count,
+                            'updated_at' => now(),
+                        ]);
+                    return ['event_id' => $row->event_id, 'outcome' => self::OUTCOME_NO_OP];
+                }
+                if ($route['direction'] === KernelCurrentKernelReceivedRouter::QUARANTINE) {
+                    if ($route['state'] !== 'IN_FLIGHT') {
+                        return [
+                            'event_id' => $row->event_id,
+                            'outcome' => self::OUTCOME_NO_OP,
+                        ];
+                    }
+                    if ($this->quarantinePhase1 === null || $route['copy_id'] === null
+                        || $route['copy_version'] === null || $route['claim_token'] === null) {
+                        throw new \RuntimeException('Relais Quarantaine incomplet.');
+                    }
+                    $this->quarantinePhase1->receive(
+                        $event->blueprintId,
+                        $route['copy_id'],
+                        $route['copy_version'],
+                        $route['claim_token'],
+                    );
+                    DB::table('kernel_current_kernel_dispatches')
+                        ->where('event_id', $event->eventId)
+                        ->update(['state' => 'DONE', 'updated_at' => now()]);
+                    DB::table(self::OUTBOX_TABLE)->where('event_id', $row->event_id)->update([
+                        'processed_at' => now(), 'updated_at' => now(),
+                    ]);
+                    return [
+                        'event_id' => $row->event_id,
+                        'outcome' => self::OUTCOME_QUARANTINE_DISPATCHED,
+                    ];
+                }
+            }
+
             // ── 2. CKR canonique (DEC-093) — source unique de vérité ─────────
             // depth/domain ne circulent pas dans l'événement : ils sont relus
             // depuis l'ancien Blueprint persistant identifié par blueprint_id.
@@ -147,11 +204,16 @@ final class ProcessKernelPipelineOutbox
             }
 
             // Atomiquement : idempotence → receipt → compteur.
-            $this->planner->receiveKernelReceivedV2(
-                $event->blueprintId,
-                (int) $receivedBlueprint->depth,
-                (string) $receivedBlueprint->domain_code,
-            );
+            // DEC-125 removes the legacy "count the old Blueprint before
+            // KBP" side effect.  The normal orchestrator still performs the
+            // regular rotation for the newly provisioned KBP Blueprint.
+            if ($dec125Route !== KernelCurrentKernelReceivedRouter::KBP) {
+                $this->planner->receiveKernelReceivedV2(
+                    $event->blueprintId,
+                    (int) $receivedBlueprint->depth,
+                    (string) $receivedBlueprint->domain_code,
+                );
+            }
 
             // ── 3. KBP idempotent, puis entrée Rotation strictement id-only ───
             $nextBlueprintId = $this->kbpAdapter->provisionNextBlueprint($event);
@@ -159,6 +221,9 @@ final class ProcessKernelPipelineOutbox
             // engagement comme une fin. runProvisioned() distribue selon l'état :
             // Rotation pour CREATED_UNENGAGED, reprise aval pour ENGAGED_IN_PIPELINE.
             $orchResult = $this->orchestrator->runProvisioned($nextBlueprintId);
+            DB::table('kernel_current_kernel_dispatches')
+                ->where('event_id', $event->eventId)
+                ->update(['state' => 'DONE', 'updated_at' => now()]);
 
             Log::info('[ProcessKernelPipelineOutbox] Événement traité.', [
                 'event_id'            => $row->event_id,

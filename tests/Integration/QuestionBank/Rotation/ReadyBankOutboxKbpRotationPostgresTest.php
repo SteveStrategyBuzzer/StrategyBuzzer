@@ -65,6 +65,8 @@ final class ReadyBankOutboxKbpRotationPostgresTest extends TestCase
         );
 
         $this->createSchema();
+        $dec125 = require base_path('database/migrations/2026_09_10_000001_create_dec125_quarantine_foundation.php');
+        $dec125->up();
         $this->seedDepthMatrix();
     }
 
@@ -135,8 +137,8 @@ final class ReadyBankOutboxKbpRotationPostgresTest extends TestCase
         $this->assertSame(1, DB::table('kernel_blueprint_runs')->count());
         $this->assertSame(7, DB::table('kernel_blueprint_cognitive_slots')->count());
         $this->assertSame(0, DB::table('kernel_blueprint_request_refs')->count());
-        $this->assertSame(1, DB::table('kernel_current_kernel_receipts')->count());
-        $this->assertSame(1, $this->receivedTotal());
+        $this->assertSame(0, DB::table('kernel_current_kernel_receipts')->count());
+        $this->assertSame(0, $this->receivedTotal());
 
         DB::statement(
             'ALTER TABLE kernel_blueprint_request_refs '
@@ -148,6 +150,8 @@ final class ReadyBankOutboxKbpRotationPostgresTest extends TestCase
             ProcessKernelPipelineOutbox::OUTCOME_PROCESSED,
             $retried[0]['outcome'],
         );
+        $this->assertSame('DONE', DB::table('kernel_current_kernel_dispatches')
+            ->where('event_id', $event->eventId)->value('state'));
 
         $newBlueprintId = (string) DB::table('kernel_blueprint_request_refs')
             ->where('request_reference', $event->eventId)
@@ -166,8 +170,8 @@ final class ReadyBankOutboxKbpRotationPostgresTest extends TestCase
         $this->assertSame(2, DB::table('kernel_blueprint_runs')->count());
         $this->assertSame(14, DB::table('kernel_blueprint_cognitive_slots')->count());
         $this->assertSame(1, DB::table('kernel_blueprint_request_refs')->count());
-        $this->assertSame(1, DB::table('kernel_current_kernel_receipts')->count());
-        $this->assertSame(1, $this->receivedTotal());
+        $this->assertSame(0, DB::table('kernel_current_kernel_receipts')->count());
+        $this->assertSame(0, $this->receivedTotal());
 
         DB::table('kernel_pipeline_outbox')
             ->where('event_id', $event->eventId)
@@ -189,8 +193,103 @@ final class ReadyBankOutboxKbpRotationPostgresTest extends TestCase
         $this->assertSame(2, DB::table('kernel_blueprint_runs')->count());
         $this->assertSame(14, DB::table('kernel_blueprint_cognitive_slots')->count());
         $this->assertSame(1, DB::table('kernel_blueprint_request_refs')->count());
-        $this->assertSame(1, DB::table('kernel_current_kernel_receipts')->count());
-        $this->assertSame(1, $this->receivedTotal());
+        $this->assertSame(0, DB::table('kernel_current_kernel_receipts')->count());
+        $this->assertSame(0, $this->receivedTotal());
+    }
+
+    public function test_dec125_postgres_trigger_fk_and_private_schema_contracts(): void
+    {
+        self::assertNotSame('public', DB::selectOne('SELECT current_schema() AS name')->name);
+
+        $blueprintId = 'bp-contract';
+        DB::table('kernel_blueprint_runs')->insert(['blueprint_id' => $blueprintId]);
+        DB::table('kernel_blueprint_cognitive_slots')->insert([
+            'blueprint_id' => $blueprintId,
+            'cognitive_type' => 'QCM_RECOGNITION',
+            'source' => '{}',
+        ]);
+        $before = (int) DB::table('kernel_blueprint_cognitive_slots')
+            ->where('blueprint_id', $blueprintId)->where('cognitive_type', 'QCM_RECOGNITION')
+            ->value('canonical_revision');
+        try {
+            DB::transaction(function () use ($blueprintId): void {
+                DB::table('kernel_blueprint_cognitive_slots')
+                    ->where('blueprint_id', $blueprintId)
+                    ->where('cognitive_type', 'QCM_RECOGNITION')
+                    ->update(['source' => '{"changed":true}']);
+                throw new \RuntimeException('rollback');
+            });
+        } catch (\RuntimeException) {
+            // expected rollback
+        }
+        self::assertSame($before, (int) DB::table('kernel_blueprint_cognitive_slots')
+            ->where('blueprint_id', $blueprintId)->where('cognitive_type', 'QCM_RECOGNITION')
+            ->value('canonical_revision'));
+        DB::table('kernel_blueprint_cognitive_slots')
+            ->where('blueprint_id', $blueprintId)->where('cognitive_type', 'QCM_RECOGNITION')
+            ->update(['source' => '{"committed":true}']);
+        self::assertSame($before + 1, (int) DB::table('kernel_blueprint_cognitive_slots')
+            ->where('blueprint_id', $blueprintId)->where('cognitive_type', 'QCM_RECOGNITION')
+            ->value('canonical_revision'));
+        try {
+            DB::table('kernel_blueprint_cognitive_slots')
+                ->where('blueprint_id', $blueprintId)->where('cognitive_type', 'QCM_RECOGNITION')
+                ->update(['canonical_revision' => $before + 2]);
+            self::fail('canonical_revision cannot be changed alone');
+        } catch (\Throwable) {
+            self::assertTrue(true);
+        }
+
+        DB::table('kernel_blueprint_runs')->insert([
+            'blueprint_id' => 'fk-old', 'execution_state' => 'READY_BANK_RECEIVED',
+        ]);
+        DB::table('kernel_blueprint_cognitive_slots')->insert([
+            'blueprint_id' => 'fk-old', 'cognitive_type' => 'QCM_RECOGNITION', 'source' => '{}',
+        ]);
+        DB::table('kernel_blueprint_runs')->where('blueprint_id', 'fk-old')
+            ->update(['blueprint_id' => 'fk-new']);
+        self::assertSame(1, DB::table('kernel_blueprint_cognitive_slots')
+            ->where('blueprint_id', 'fk-new')->count());
+
+        try {
+            DB::transaction(function () use ($blueprintId): void {
+                DB::table('kernel_quarantine_work_copies')->insert([
+                    'copy_id' => 'copy-six', 'blueprint_id' => $blueprintId,
+                    'kernel_code' => '06-SCI-SUB-SUJ-IDE-0001',
+                ]);
+                foreach (array_slice(\App\Services\QuestionBank\KernelBlueprint::COGNITIVE_TYPES, 0, 6) as $type) {
+                    DB::table('kernel_quarantine_work_copy_slots')->insert([
+                        'copy_id' => 'copy-six', 'cognitive_type' => $type, 'source' => '{}',
+                    ]);
+                }
+            });
+            self::fail('A six-slot Quarantine copy must fail at commit.');
+        } catch (\Throwable) {
+            self::assertFalse(DB::table('kernel_quarantine_work_copies')
+                ->where('copy_id', 'copy-six')->exists());
+        }
+
+        DB::transaction(function () use ($blueprintId): void {
+            DB::table('kernel_quarantine_work_copies')->insert([
+                'copy_id' => 'copy-flight-1', 'blueprint_id' => $blueprintId,
+                'kernel_code' => '06-SCI-SUB-SUJ-IDE-0001', 'state' => 'IN_FLIGHT',
+            ]);
+            foreach (\App\Services\QuestionBank\KernelBlueprint::COGNITIVE_TYPES as $type) {
+                DB::table('kernel_quarantine_work_copy_slots')->insert([
+                    'copy_id' => 'copy-flight-1', 'cognitive_type' => $type, 'source' => '{}',
+                ]);
+            }
+        });
+        try {
+            DB::table('kernel_quarantine_work_copies')->insert([
+                'copy_id' => 'copy-flight-2', 'blueprint_id' => $blueprintId,
+                'kernel_code' => '06-SCI-SUB-SUJ-IDE-0001', 'state' => 'IN_FLIGHT',
+            ]);
+            self::fail('The partial unique index must reject a second IN_FLIGHT copy.');
+        } catch (\Throwable) {
+            self::assertSame(1, DB::table('kernel_quarantine_work_copies')
+                ->where('state', 'IN_FLIGHT')->count());
+        }
     }
 
     private function processor(): ProcessKernelPipelineOutbox
@@ -252,7 +351,7 @@ final class ReadyBankOutboxKbpRotationPostgresTest extends TestCase
             $table->jsonb('validation_findings')->default('[]');
             $table->timestampsTz();
             $table->primary(['blueprint_id', 'cognitive_type']);
-            $table->foreign('blueprint_id')
+            $table->foreign('blueprint_id', 'kbcs_blueprint_id_fk')
                 ->references('blueprint_id')
                 ->on('kernel_blueprint_runs')
                 ->cascadeOnDelete();
