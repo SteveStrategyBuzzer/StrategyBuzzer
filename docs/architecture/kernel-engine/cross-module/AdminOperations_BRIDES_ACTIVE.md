@@ -1,7 +1,25 @@
 # Administration opérationnelle StrategyBuzzer — Brides actives
 
-Statut : BRIDES VALIDÉES — spécification détaillée à venir.
+Date : 2026-09-13
+Statut : BRIDES VALIDÉES — DEC-125 — spécification détaillée à venir.
 Nature : couche opérationnelle transverse, extérieure au pipeline intellectuel 01–11.
+
+## Règle DEC-125 — Admin externe
+
+Admin est une interface externe, jamais une phase et jamais un coordinateur de
+circulation. Elle affiche les sept slots d’une copie Quarantine complète :
+rouge pour `SUSPICION`/`EMPTY`, vert pour conforme et jamais encore modifié
+manuellement, jaune pour rempli/modifié manuellement jusqu’à ReadyBank. Tous
+les slots restent éditables; modifier un vert invalide immédiatement son ancien
+`PASS` aval.
+
+Le bouton de renvoi enqueue sans démarrer. La file conserve l’ordre exact des
+clics (FIFO), un seul traitement à la fois. Admin peut supprimer uniquement
+une copie de travail. Toute copie complète repart en Phase1; ReadyBank choisit
+exclusivement la première copie prête, sinon KBP, jamais les deux. Les détails
+de persistance de la copie, détection des modifications, file, invalidation
+PASS, retours obsolètes, idempotence du signal et fusion atomique sont des
+**OPEN IMPLEMENTATION REQUIREMENTS**, non des solutions approuvées.
 
 ## Mission
 Rendre visibles les arrêts de production, persister les incidents, notifier l'administrateur, guider le diagnostic et fournir les actions de reprise autorisées, notamment pour Quarantine.

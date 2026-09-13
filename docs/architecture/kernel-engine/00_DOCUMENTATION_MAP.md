@@ -1,6 +1,10 @@
 # DOCUMENTATION MAP — StrategyBuzzer Kernel Engine
 
-**Date : 2026-09-08**
+**Date : 2026-09-13**
+
+**Autorité courante :** DEC-125 — OFFICIAL. Les versions précédentes restent
+historiques; seules les quatre clauses explicitement annotées SUPERSEDED BY
+DEC-125 sont remplacées.
 
 ## Autorité
 
@@ -19,18 +23,18 @@
 
 | Module | Source | Statut |
 |---|---|---|
-| 01 KernelBlueprint | `specifications/01_KernelBlueprint.md` | **v3.1 VERROUILLÉ — DEC-123 + DEC-124 OFFICIAL; blueprint_id seul transmis; QuestionIntent possède seul le kernel_code complet** |
+| 01 KernelBlueprint | `specifications/01_KernelBlueprint.md` | **v3.2 VERROUILLÉ — DEC-125; Blueprint persistant unique, copie complète et retour Phase1** |
 | 02 KernelRotationPlanner | `specifications/02_KernelRotationPlanner.md` | **v4.0 VERROUILLÉ — DEC-119 OFFICIAL** |
 | 03 Taxonomy | `specifications/03_Taxonomy.md` | **v1.1 VERROUILLÉ — DEC-120 OFFICIAL** |
 | 03 frontière historique | `working/03_Taxonomy/03_Taxonomy_BOUNDARY_BRIDGE_DEC-118.md` | **NON ACTIVE — DEC-118 REJECTED, remplacée par DEC-119/120** |
 | 04 ValidationDominantIdeas | `working/04_ValidationDominantIdeas/` | brides actives; règles utilisées par Gemini pendant Taxonomy |
-| 05 QuestionIntent | `specifications/05_QuestionIntent.md` | **v2.2 VERROUILLÉ — DEC-123 + DEC-124 + DEC-122; construit/persiste/verrouille seul le kernel_code complet** |
-| 06 Phase1 | `specifications/06_Phase1.md` | **v1.0 CONTRAT VERROUILLÉ** |
-| 07 ValidationPhase1 | `specifications/07_ValidationPhase1.md` | **v1.0 FRONTIÈRE VERROUILLÉE** |
-| 08 Phase2 | `specifications/08_Phase2.md` | **v0.1 RÈGLES OFFICIELLES, module à compléter** |
-| 09 ValidationPhase2 | `specifications/09_ValidationPhase2.md` | **v0.1 FRONTIÈRE OFFICIELLE, module à compléter** |
-| 10 Quarantine | `specifications/10_Quarantine.md` | **v0.1 RÈGLES OFFICIELLES, module à compléter** |
-| 11 ReadyBank | `specifications/11_ReadyBank.md` | **v0.2 RÈGLES OFFICIELLES, module à compléter** |
+| 05 QuestionIntent | `specifications/05_QuestionIntent.md` | **v2.3 VERROUILLÉ — DEC-125; aucun coordinateur de circulation** |
+| 06 Phase1 | `specifications/06_Phase1.md` | **v1.1 CONTRAT VERROUILLÉ — DEC-125** |
+| 07 ValidationPhase1 | `specifications/07_ValidationPhase1.md` | **v1.1 FRONTIÈRE VERROUILLÉE — DEC-125** |
+| 08 Phase2 | `specifications/08_Phase2.md` | **v0.2 RÈGLES OFFICIELLES — DEC-125** |
+| 09 ValidationPhase2 | `specifications/09_ValidationPhase2.md` | **v0.2 FRONTIÈRE OFFICIELLE — DEC-125** |
+| 10 Quarantine | `specifications/10_Quarantine.md` | **v0.2 RÈGLES OFFICIELLES — DEC-125** |
+| 11 ReadyBank | `specifications/11_ReadyBank.md` | **v0.3 RÈGLES OFFICIELLES — DEC-125** |
 
 ## KRP — source unique
 
@@ -83,6 +87,10 @@ et l'interprète dans son moteur interne `DOMAIN_EXHAUSTED`.
 
 Puis :
 
+> **Chemin historique — SUPERSEDED BY DEC-125, portée limitée :** la ligne
+> directe vers Factory ci-dessous ne s’applique que si la file Quarantine prête
+> est vide. Sinon ReadyBank envoie exclusivement `GO` à la première copie FIFO.
+
 ```text
 Taxonomy FIN
 ↓
@@ -106,6 +114,16 @@ Domain abstrait/exclu des rotations restantes du tour
 KRP choisit ensuite seul Domain, fin de tour, prochain Depth et HOLD.
 
 Taxonomy n’émet pas `DEPTH_EXHAUSTED` dans le contrat actif.
+
+## Cycle Quarantine actif — DEC-125
+
+Une suspicion ou un slot vide vide la position canonique et crée une copie
+persistante complète non canonique. La copie est visible sur sept slots
+(rouge `SUSPICION`/`EMPTY`, vert conforme non modifiable manuellement, jaune
+rempli/modifié jusqu’à ReadyBank). Toute copie complète repart en Phase1.
+ReadyBank fusionne les seuls slots réussis par `blueprint_id + cognitive_type`.
+Un renvoi met en file FIFO sans démarrer; chaque arrivée choisit exclusivement
+la première copie Quarantine prête, sinon KBP, jamais les deux.
 
 ## Documents KRP non actifs
 
@@ -157,8 +175,8 @@ NON SPÉCIFIÉES
 
 ```text
 06_Phase1
-ALIGN-AUDIT-06-v1.0 = NEXT
+ALIGN-AUDIT-06-v1.1 = NEXT
 ```
 
-But : auditer l’implantation Phase1 contre son contrat v1.0, sans rouvrir KRP
+But : auditer l’implantation Phase1 contre son contrat v1.1, sans rouvrir KRP
 v4.0, Taxonomy v1.1 ou les responsabilités intellectuelles déjà verrouillées.

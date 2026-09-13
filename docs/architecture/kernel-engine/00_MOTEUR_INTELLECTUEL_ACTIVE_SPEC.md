@@ -1,11 +1,63 @@
 # StrategyBuzzer — Moteur intellectuel — Spécification active maître
 
-**Version :** 2.1.0-kbp-v3.1
-**Date :** 2026-09-08
+**Version :** 2.2.0-dec-125
+**Date :** 2026-09-13
 **Statut :** **ACTIF — VÉRITÉ GLOBALE COURANTE**  
 **Portée :** architecture globale, frontières, ownership, communications et état documentaire des modules 01→11.
 
-> Cette version conserve `DEC-119 — OFFICIAL`, `02_KernelRotationPlanner v4.0`, `DEC-120 — OFFICIAL`, `03_Taxonomy v1.1` et `DEC-122 — OFFICIAL` inchangée. `01_KernelBlueprint v3.1`, `DEC-123 — OFFICIAL` et `DEC-124 — OFFICIAL` remplacent la règle de construction progressive de `DEC-121`, désormais **SUPERSEDED**. DEC-124 remplace uniquement les clauses d’autorisation distincte et `destinataire_initial` de DEC-123; son historique reste intact. QuestionIntent est l'unique propriétaire du `kernel_code` complet.
+> Cette version remplace le périmètre de `2.1.0-kbp-v3.1` par **DEC-125 —
+> OFFICIAL**. DEC-119/120 et les clauses compatibles de DEC-122/123/124
+> restent actives. Les quatre contradictions historiques (position canonique
+> suspecte, édition Quarantine ciblée, reprise hors Phase1 et routage toujours
+> KBP) sont uniquement `SUPERSEDED BY DEC-125`; leur prose historique reste
+> conservée dans le registre.
+
+## 0. Autorité courante DEC-125
+
+Un seul Blueprint canonique persistant est identifié définitivement par
+`blueprint_id`. Cet identifiant est conservé entre phases normales uniquement.
+Quand un slot est `SUSPICION` ou `EMPTY`, la position canonique est vide et une
+copie de travail persistante, complète, non canonique, avec sept slots,
+contenus disponibles et findings est créée. Les contenus rejetés et findings
+restent dans la copie. Les sept slots de la copie sont visibles et éditables :
+rouge = `SUSPICION`/`EMPTY`, vert = conforme et jamais encore modifié
+manuellement, jaune = rempli/modifié manuellement jusqu’à ReadyBank (marqueur
+de parcours, pas état de validation). Tous les slots restent éditables :
+modifier un vert le jaunit et invalide immédiatement son ancien `PASS` aval.
+
+Admin est une UI externe, pas une phase; elle ne supprime que des copies.
+Toute copie complète recommence en Phase1. Elle accompagne les sept slots comme
+contexte, mais chaque slot ne rejoue que ses contrôles/créations concernés :
+contrôles techniques Phase1, validation intellectuelle ValidationPhase1,
+Phase2 sur les slots autorisés, ValidationPhase2 pour les traductions et
+ReadyBank pour la copie complète. Les slots conformes continuent, les échoués
+restent vides. ReadyBank fusionne uniquement les slots réussis par
+`blueprint_id + cognitive_type`, jamais un remplacement global; les non résolus
+restent vides. Une copie peut cycler avec les findings les plus récents, sans
+historique permanent de corrections; plusieurs copies prêtes sont permises.
+
+Un renvoi met en file sans démarrer. L’ordre exact des clics est FIFO, un seul
+traitement à la fois. À chaque arrivée ReadyBank, `CURRENT_KERNEL_RECEIVED`
+choisit une seule direction : `GO` vers la première copie Quarantine prête si
+la file n’est pas vide (KBP ne reçoit rien), sinon `GO` vers KBP. Jamais les
+deux. KBP ne coordonne pas la circulation, ne reçoit aucun état Quarantine et
+ne crée/ne retrouve un Blueprint que lorsque `GO` lui est destiné.
+`blueprint_id` reste requis pour le suivi normal et les retours.
+
+### Exigences d’implémentation ouvertes — pas des solutions approuvées
+
+Sont explicitement **OPEN IMPLEMENTATION REQUIREMENTS** et non des solutions
+techniques approuvées :
+
+1. persistance de la copie complète courante;
+2. file d’attente des clics Renvoie;
+3. ordre exact des demandes;
+4. détection des slots modifiés;
+5. conservation du marqueur jaune jusqu’à ReadyBank;
+6. invalidation immédiate d’un ancien PASS après modification;
+7. protection contre les retours périmés;
+8. idempotence de `CURRENT_KERNEL_RECEIVED`;
+9. fusion atomique dans ReadyBank.
 
 ---
 
@@ -88,17 +140,17 @@ Une seule spécification est travaillée à la fois.
 
 | Module | Architecture | Contrat | Implémentation | Validation | Statut |
 |---|---:|---:|---:|---:|---|
-| 01 KernelBlueprint | **100 % intellectuel v3.1** | **100 %** | à auditer contre DEC-123 + DEC-124 + DEC-122 | NON | **VERROUILLÉ — DEC-123 + DEC-124 + DEC-122** |
+| 01 KernelBlueprint | **100 % intellectuel v3.2** | **100 %** | à auditer contre DEC-125 et clauses compatibles DEC-122/123/124 | NON | **VERROUILLÉ — DEC-125** |
 | 02 KernelRotationPlanner | **100 % intellectuel v4.0** | **100 %** | implantation KRP seulement, par micro-blocs | NON | **VERROUILLÉ — DEC-119 OFFICIAL** |
 | 03 Taxonomy | **100 % intellectuel v1.1** | **100 %** | non à poursuivre avant validation KRP | NON | **VERROUILLÉ — DEC-120 OFFICIAL** |
 | 04 ValidationDominantIdeas | règles absorbées par Taxonomy v1.1 | contrat de règles | aucun moteur autonome | N/A | **SUPERSEDED comme étape autonome — DEC-101** |
-| 05 QuestionIntent | **100 % intellectuel v2.2** | **100 %** | à auditer contre DEC-123 + DEC-124 | NON | **VERROUILLÉ — DEC-123 + DEC-124 + DEC-122** |
-| 06 Phase1 | **100 % intellectuel v1.0** | **100 % BUILD-READY** | à auditer/réaligner | NON | **CONTRAT VERROUILLÉ — module actif** |
-| 07 ValidationPhase1 | **100 % intellectuel v1.0** | **100 % BUILD-READY** | à auditer/réaligner après/avec 06 | NON | **CONTRAT VERROUILLÉ — frontière active** |
-| 08 Phase2 | règles traductions DEC-122 | partiel v0.1 | non | non | traductions imbriquées + reprise ciblée verrouillées |
-| 09 ValidationPhase2 | frontière DEC-122 | partiel v0.1 | non | non | signalement traduction + copie complète verrouillés |
-| 10 Quarantine | copie complète DEC-122 | partiel v0.1 | non | non | copie rouge structurée + reprise ciblée verrouillées |
-| 11 ReadyBank | fusion DEC-122 | partiel v0.1 | non | non | réconciliation canonique + masque joueur verrouillés |
+| 05 QuestionIntent | **100 % intellectuel v2.3** | **100 %** | à auditer contre DEC-125 | NON | **VERROUILLÉ — DEC-125** |
+| 06 Phase1 | **100 % intellectuel v1.1** | **100 % BUILD-READY** | à auditer/réaligner | NON | **CONTRAT VERROUILLÉ — DEC-125** |
+| 07 ValidationPhase1 | **100 % intellectuel v1.1** | **100 % BUILD-READY** | à auditer/réaligner après/avec 06 | NON | **CONTRAT VERROUILLÉ — DEC-125** |
+| 08 Phase2 | règles traductions DEC-125 | partiel v0.2 | non | non | slots autorisés + reprise Phase1 verrouillées |
+| 09 ValidationPhase2 | frontière DEC-125 | partiel v0.2 | non | non | traductions + copie complète verrouillées |
+| 10 Quarantine | copie complète DEC-125 | partiel v0.2 | non | non | sept slots éditables + reprise Phase1 verrouillées |
+| 11 ReadyBank | fusion DEC-125 | partiel v0.3 | non | non | fusion sélective + routage FIFO verrouillés |
 
 ---
 
@@ -265,6 +317,10 @@ Aucun `AVAILABLE` n’est nécessaire.
 
 # 9. Application différée par KRP
 
+> **CLAUSE ANTÉRIEURE — SUPERSEDED BY DEC-125, PORTÉE LIMITÉE :** le chemin
+> direct `CURRENT_KERNEL_RECEIVED → Factory` ne s’applique que lorsque la file
+> Quarantine prête est vide. ReadyBank choisit d’abord une éventuelle copie.
+
 ```text
 Taxonomy FIN
 ↓
@@ -294,6 +350,11 @@ Domain abstrait/exclu des rotations restantes du tour
 ```
 
 KRP choisit ensuite seul la rotation.
+
+**Remplacement actif DEC-125 :** à chaque arrivée ReadyBank, le signal choisit
+exclusivement `GO` vers la première copie Quarantine prête en FIFO (reprise
+Phase1, rien vers KBP), ou `GO` vers KBP si la file est vide. Les deux
+destinations ne sont jamais activées.
 
 ---
 
@@ -470,9 +531,9 @@ Gemini utilise les règles `ValidationDominantIdeas` **pendant** la création de
 Références exclusives :
 
 ```text
-specifications/06_Phase1.md v1.0
-specifications/07_ValidationPhase1.md v1.0
-DEC-122
+specifications/06_Phase1.md v1.1
+specifications/07_ValidationPhase1.md v1.1
+DEC-125
 ```
 
 Phase1 reçoit le même Blueprint finalisé par QuestionIntent et remplit sept CognitiveSlots source autonomes dans un appel de création structuré. Aucun slot n’est le master des autres.
@@ -490,22 +551,22 @@ Règles terminales :
 - aucun `question_code`, `COG` ou `VAR`;
 - ValidationPhase1 décide PASS ou SUSPICION par slot;
 - source non PASS non traduite;
-- copie Quarantine complète et reprise ciblée.
+- copie Quarantine complète, reprise Phase1, puis contrôles concernés par slot.
 
 ---
 
 # 17. État opérationnel immédiat
 
-Le module actif unique devient `06_Phase1 v1.0`.
+Le module actif unique devient `06_Phase1 v1.1`, sous DEC-125.
 
 KRP v4, Taxonomy v1.1 et QuestionIntent constituent les frontières amont déjà présentes sur la branche officielle. `KernelCodeEngine`, s'il existe, est uniquement un mécanisme interne de QuestionIntent. Ils ne doivent pas être réimplantés dans ce bloc.
 
 Prochaine opération :
 
 ```text
-ALIGN-AUDIT-06-v1.0
+ALIGN-AUDIT-06-v1.1
 ↓
-audit du code Phase1 réel contre 06 v1.0
+audit du code Phase1 réel contre 06 v1.1
 ↓
 KEEP / MODIFY / REMOVE / MISSING / UNRESOLVED
 ↓
@@ -513,9 +574,9 @@ si aucun UNRESOLVED architectural
 ↓
 patch minimal Phase1
 ↓
-tests contractuels 06 v1.0
+tests contractuels 06 v1.1
 ↓
-ALIGN-AUDIT-07-v1.0
+ALIGN-AUDIT-07-v1.1
 ```
 
 ---
@@ -536,8 +597,8 @@ DEC-115 à DEC-118 : REJECTED, historique seulement. Anciennes versions KRP : hi
 ## Référence canonique QuestionIntent
 
 ```text
-01 → specifications/01_KernelBlueprint.md v3.1 / DEC-123 + DEC-124
-05 → specifications/05_QuestionIntent.md v2.2 / DEC-123 + DEC-124 + DEC-122
+01 → specifications/01_KernelBlueprint.md v3.2 / DEC-125
+05 → specifications/05_QuestionIntent.md v2.3 / DEC-125
 ```
 
 KRP écrit uniquement `depth + domain` et Taxonomy uniquement son triplet métier. QuestionIntent attribue le compteur base36 `VVVV`, indépendant par bassin `Depth + Domain`, puis construit, persiste et verrouille le `kernel_code` complet. Il n'existe aucune projection progressive du code. `KernelCodeEngine`, s'il existe techniquement, demeure interne à QuestionIntent et sans ownership autonome. Phase1 remplit ensuite les sept CognitiveSlots du même Blueprint. L’état cognitif joueur `00n→11o` reste externe au Blueprint.
@@ -546,13 +607,23 @@ KRP écrit uniquement `depth + domain` et Taxonomy uniquement son triplet métie
 ## Référence canonique DEC-122
 
 ```text
-01 → specifications/01_KernelBlueprint.md v3.1 / DEC-123 + DEC-124
-06 → specifications/06_Phase1.md v1.0 — BUILD-READY
-07 → specifications/07_ValidationPhase1.md v1.0 — BUILD-READY
-08 → specifications/08_Phase2.md v0.1
-09 → specifications/09_ValidationPhase2.md v0.1
-10 → specifications/10_Quarantine.md v0.1
-11 → specifications/11_ReadyBank.md v0.1
+01 → specifications/01_KernelBlueprint.md v3.2 — DEC-125
+06 → specifications/06_Phase1.md v1.1 — BUILD-READY
+07 → specifications/07_ValidationPhase1.md v1.1 — BUILD-READY
+08 → specifications/08_Phase2.md v0.2
+09 → specifications/09_ValidationPhase2.md v0.2
+10 → specifications/10_Quarantine.md v0.2
+11 → specifications/11_ReadyBank.md v0.3
 ```
 
+> **Ancienne formulation ci-dessous — SUPERSEDED BY DEC-125 :** elle décrivait
+> une reprise uniquement ciblée et la poursuite de la position suspecte.
+
 Le Blueprint canonique atteint ReadyBank. Une suspicion crée une copie complète Quarantine avec ciblage structuré affichable en rouge. La copie corrigée reprend uniquement les phases nécessaires puis fusionne avec le canonique dans ReadyBank pour remplacer/corriger/remplir les slots ciblés ou vides.
+
+**Remplacement actif :** la position canonique suspecte est vidée; contenu et
+findings restent dans la copie complète. Celle-ci repart en Phase1, puis les
+slots conformes continuent et les échoués restent vides. ReadyBank fusionne
+seulement les slots réussis par `blueprint_id + cognitive_type`; son arrivée
+émet `CURRENT_KERNEL_RECEIVED` vers la première copie prête en FIFO, sinon
+vers KBP, jamais les deux.

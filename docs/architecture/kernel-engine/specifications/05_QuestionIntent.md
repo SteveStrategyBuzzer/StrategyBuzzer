@@ -1,16 +1,25 @@
 # STRATEGYBUZZER — 05_QUESTIONINTENT
 
-**Version :** 2.2
-**Date :** 7 septembre 2026
+**Version :** 2.3
+**Date :** 2026-09-13
 **Statut :** OFFICIAL — CONTRAT ARCHITECTURAL VERROUILLÉ
-**Décisions :** DEC-123 + DEC-124
-**Décision connexe :** DEC-122 — OFFICIAL, inchangée
+**Décision directrice :** DEC-125 — OFFICIAL (clauses compatibles DEC-123 +
+DEC-124)
+**Décision connexe :** DEC-122 — OFFICIAL hors clauses explicitement
+`SUPERSEDED BY DEC-125`
 **Implémentation :** À AUDITER
 **Validation terminale :** NON
 
 > `DEC-121` est conservée comme historique **SUPERSEDED**. Elle est remplacée
 > par `DEC-123`, qui fixe l'ownership exclusif de QuestionIntent sur le
 > `kernel_code` complet et interdit toute projection progressive du code.
+
+> **DEC-125 remplace v2.2 dans son périmètre.** QuestionIntent n’est pas
+> coordinateur de circulation, ne reçoit aucun état Quarantine et n’est appelé
+> que lorsque `GO` de `CURRENT_KERNEL_RECEIVED` lui est destiné via KBP. Le
+> `blueprint_id` immuable reste l’identité essentielle du Blueprint normal et
+> du suivi des retours. Les clauses historiques de routage contraire sont
+> `SUPERSEDED BY DEC-125`, non supprimées.
 
 ---
 
@@ -247,6 +256,12 @@ source, leurs traductions, leurs validations et les éventuelles réconciliation
 Quarantine. La responsabilité détaillée appartient à `11_ReadyBank` et
 DEC-122.
 
+**Règle active DEC-125 :** ReadyBank décide exclusivement la destination de
+chaque `CURRENT_KERNEL_RECEIVED`. Une file Quarantine prête non vide envoie
+`GO` à sa première copie en FIFO et rien à KBP; une file vide envoie `GO` à KBP.
+QuestionIntent n’oriente jamais ce choix et ne reçoit jamais la copie ou son
+état.
+
 ---
 
 # 8. Frontière gameplay et historique joueur
@@ -428,7 +443,7 @@ Ces contrats devront respecter les identités et invariants définis ici.
 ```text
 Architecture :        VERROUILLÉE
 Contrat :             VERROUILLÉ
-Spécification :       OFFICIAL v2.2 / DEC-123 + DEC-124 + DEC-122
+Spécification :       OFFICIAL v2.3 / DEC-125
 DEC-121 :             SUPERSEDED (remplacée par DEC-123)
 Implémentation :      À AUDITER
 Validation terminale : NON
@@ -437,7 +452,7 @@ Validation terminale : NON
 Prochaine opération autorisée :
 
 ```text
-ALIGN-AUDIT-05-v2.2
+ALIGN-AUDIT-05-v2.3
 ↓
 vérifier que QuestionIntent alloue et persiste uniquement VVVV, et que
 PostgreSQL génère le kernel_code en lecture seule après les six segments

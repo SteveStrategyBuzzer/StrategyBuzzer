@@ -1,11 +1,44 @@
 # STRATEGYBUZZER — 08_PHASE2 / TRADUCTIONS
 
-**Version :** 0.1  
-**Date :** 28 août 2026  
+**Version :** 0.2
+**Date :** 2026-09-13
 **Statut :** RÈGLES OFFICIELLES VERROUILLÉES — MODULE À COMPLÉTER  
-**Décision :** DEC-122  
+**Décision directrice :** DEC-125 — OFFICIAL (clauses compatibles de DEC-122)
 **Implémentation :** À AUDITER  
 **Validation terminale :** NON
+
+> **Remplace :** v0.1 sur le cycle Quarantine et la reprise des traductions.
+> Les anciennes clauses de reprise directement en Phase2 sont
+> `SUPERSEDED BY DEC-125`, sans suppression de leur historique.
+
+## 0. Règles actives DEC-125
+
+Phase2 intervient après le redémarrage Phase1 d’une copie complète et traduit
+uniquement les slots autorisés par leur résultat courant. Les sept slots de la
+copie accompagnent le contexte; les slots conformes continuent et les slots
+échoués restent vides. Rouge = `SUSPICION`/`EMPTY`, vert = conforme et jamais
+encore modifié manuellement, jaune = rempli/modifié manuellement
+jusqu’à ReadyBank, marqueur de parcours et non validation. Tous les slots
+restent éditables; une modification d’un vert invalide immédiatement son ancien
+`PASS` aval.
+
+Admin est une UI externe, non une phase. Le renvoi est mis en file dans l’ordre
+exact des clics (FIFO), un seul traitement à la fois, sans démarrage immédiat.
+ReadyBank reçoit toujours la copie complète; plusieurs copies prêtes et des
+cycles successifs avec findings récents sont permis, sans historique permanent
+de corrections.
+
+**OPEN IMPLEMENTATION REQUIREMENTS — solutions non approuvées :**
+
+1. persistance de la copie complète courante;
+2. file d’attente des clics Renvoie;
+3. ordre exact des demandes;
+4. détection des slots modifiés;
+5. conservation du marqueur jaune jusqu’à ReadyBank;
+6. invalidation immédiate d’un ancien PASS après modification;
+7. protection contre les retours périmés;
+8. idempotence de `CURRENT_KERNEL_RECEIVED`;
+9. fusion atomique dans ReadyBank.
 
 ---
 
@@ -70,6 +103,10 @@ Les autres CognitiveSlots admissibles peuvent conserver leurs traductions normal
 
 # 4. Suspicion de traduction
 
+> **CLAUSE v0.1 CI-DESSOUS — SUPERSEDED BY DEC-125 :** la copie conserve
+> toujours les sept slots éditables; l’édition n’est donc pas limitée aux
+> seuls champs soupçonnés et la reprise ne démarre pas directement en Phase2.
+
 Si la source est valide mais qu’une traduction est soupçonnée :
 
 - la copie Quarantine contient le Blueprint complet;
@@ -85,6 +122,10 @@ cognitive_slots.QCM_RECOGNITION.translations.el.answer
 ```
 
 # 5. Reprise après correction
+
+> **CLAUSE v0.1 CI-DESSOUS — SUPERSEDED BY DEC-125 :** toute copie complète
+> corrigée recommence en Phase1. Phase2 ne rejoue ensuite que la traduction
+> autorisée du slot concerné.
 
 La copie corrigée reprend Phase2 uniquement pour :
 
@@ -105,6 +146,10 @@ Phase2 ciblée
 
 Aucune source ou traduction valide non ciblée n’est recréée.
 
+**Remplacement actif DEC-125 :** les slots valides continuent; les slots
+échoués restent vides; la copie complète revient à ReadyBank après les
+contrôles Phase1/ValidationPhase1 puis Phase2/ValidationPhase2 nécessaires.
+
 # 6. Invariants verrouillés
 
 - sept CognitiveSlots seulement;
@@ -113,7 +158,7 @@ Aucune source ou traduction valide non ciblée n’est recréée.
 - aucune traduction d’une source non validée;
 - copie Quarantine complète;
 - suspicion localisée par chemins structurés;
-- reprise ciblée;
+- reprise complète via Phase1, puis contrôles de traduction concernés par slot;
 - fusion finale dans ReadyBank;
 - même `blueprint_id` et même `kernel_code`.
 

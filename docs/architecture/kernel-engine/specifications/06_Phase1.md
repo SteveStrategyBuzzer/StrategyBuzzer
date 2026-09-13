@@ -1,11 +1,45 @@
 # STRATEGYBUZZER — 06_PHASE1 / CRÉATION COGNITIVE SOURCE
 
-**Version :** 1.0  
-**Date :** 30 août 2026  
+**Version :** 1.1
+**Date :** 2026-09-13
 **Statut :** CONTRAT DE BUILD VERROUILLÉ — IMPLANTATION À AUDITER/RÉALIGNER  
-**Décision :** DEC-122  
-**Implémentation :** À AUDITER CONTRE v1.0  
+**Décision directrice :** DEC-125 — OFFICIAL (clauses compatibles de DEC-122)
+**Implémentation :** À AUDITER CONTRE v1.1
 **Validation terminale :** NON
+
+> **Remplace :** v1.0 sur le cycle des copies Quarantine, le statut des
+> modifications manuelles et le routage. Les clauses v1.0 contraires sont
+> conservées comme historique et marquées `SUPERSEDED BY DEC-125` avant leur
+> remplacement.
+
+## 0. Règles actives DEC-125
+
+Phase1 traite le Blueprint canonique normal par son `blueprint_id` permanent.
+Pour une copie Quarantine complète, les sept slots sont toujours présents et
+accompagnent le contexte; tous sont visibles et éditables. Rouge =
+`SUSPICION`/`EMPTY`; vert = conforme et jamais encore modifié manuellement;
+jaune = rempli/modifié manuellement jusqu’à ReadyBank, marqueur de parcours et
+non validation. Tous les slots restent éditables : modifier un vert le rend
+jaune et invalide immédiatement son ancien `PASS` aval.
+
+Une copie complète recommence toujours en Phase1. Phase1 n’exécute que les
+contrôles techniques des slots remplis ou modifiés; les slots conformes
+continuent, les slots échoués restent vides. ValidationPhase1 demeure
+l’autorité intellectuelle. Le retour ne démarre pas une copie : il la met en
+file FIFO dans l’ordre exact des clics, un seul traitement à la fois. Ces
+règles ne font pas de l’Admin une phase.
+
+**OPEN IMPLEMENTATION REQUIREMENTS — solutions non approuvées :**
+
+1. persistance de la copie complète courante;
+2. file d’attente des clics Renvoie;
+3. ordre exact des demandes;
+4. détection des slots modifiés;
+5. conservation du marqueur jaune jusqu’à ReadyBank;
+6. invalidation immédiate d’un ancien PASS après modification;
+7. protection contre les retours périmés;
+8. idempotence de `CURRENT_KERNEL_RECEIVED`;
+9. fusion atomique dans ReadyBank.
 
 ---
 
@@ -704,6 +738,11 @@ et aucune variante métier de Phase1 n'est admise.
 
 # 15. Quarantine et reprise
 
+> **CLAUSE v1.0 CI-DESSOUS — SUPERSEDED BY DEC-125 :** la reprise
+> exclusivement ciblée dans le canonique et l’intouchabilité des slots valides
+> ne gouvernent plus une copie complète. La règle active est celle de la
+> section 0 : copie complète, sept slots visibles/éditables, reprise Phase1.
+
 Toute source soupçonnée est référencée par son `blueprint_id` canonique avec
 ciblage structuré. Une éventuelle Quarantine ne constitue jamais un Blueprint
 copié ou une source de vérité autoritaire.
@@ -716,8 +755,8 @@ cognitive_slots.QCM_RECOGNITION.source.question
 
 Les traductions d’un slot source non validé ne sont pas créées.
 
-La reprise corrigée relit le même Blueprint et reprend uniquement les slots et
-champs ciblés :
+La reprise corrigée de v1.0 relit le même Blueprint et reprend uniquement les
+slots et champs ciblés :
 
 ```text
 Phase1 ciblée
@@ -727,6 +766,11 @@ Phase1 ciblée
 → ReadyBank
 → réconciliation
 ```
+
+**Remplacement actif DEC-125 :** cette reprise est une copie complète non
+canonique. Elle repart toujours par Phase1; les sept slots sont le contexte,
+mais chaque slot ne rejoue ensuite que les contrôles/créations qui le
+concernent. Les slots conformes continuent et les échoués restent vides.
 
 # 16. Invariants
 
@@ -746,7 +790,7 @@ Phase1 ciblée
 - cohérence jusqu’au sous-domaine;
 - écriture atomique par slot;
 - aucune auto-certification Gemini;
-- reprise ciblée;
+- copie complète, reprise Phase1 et contrôles concernés par slot;
 - Section 1 immuable.
 
 # 17. Tests contractuels de Build
@@ -801,7 +845,7 @@ Phase1 ciblée
 
 ```text
 Architecture :          VERROUILLÉE
-Contrat :               VERROUILLÉ v1.0
+Contrat :               VERROUILLÉ v1.1 — DEC-125
 Spécification :         BUILD-READY
 Implémentation :        À AUDITER/RÉALIGNER
 Validation terminale :  NON
@@ -810,7 +854,7 @@ Validation terminale :  NON
 Prochaine opération :
 
 ```text
-ALIGN-AUDIT-06-v1.0
+ALIGN-AUDIT-06-v1.1
 → comparer le code Phase1 réel à ce contrat
 → KEEP / MODIFY / REMOVE / MISSING / UNRESOLVED
 → proposer le patch minimal de Build

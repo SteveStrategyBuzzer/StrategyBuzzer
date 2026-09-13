@@ -1,11 +1,51 @@
 # STRATEGYBUZZER — 11_READYBANK
 
-**Version :** 0.2  
-**Date :** 29 août 2026  
+**Version :** 0.3
+**Date :** 2026-09-13
 **Statut :** RÈGLES OFFICIELLES VERROUILLÉES — MODULE À COMPLÉTER  
-**Décision :** DEC-122  
+**Décision directrice :** DEC-125 — OFFICIAL (clauses compatibles de DEC-122)
 **Implémentation :** À AUDITER  
 **Validation terminale :** NON
+
+> **Remplace :** v0.2 sur la fusion des copies, le signal de cycle et le
+> routage. Les clauses contraires sont `SUPERSEDED BY DEC-125` avant leur
+> remplacement; DEC-122 reste actif pour les clauses compatibles.
+
+## 0. Règles actives DEC-125
+
+ReadyBank reçoit les copies complètes et le Blueprint canonique. Une copie
+prête contient les sept slots; les slots rouges (`SUSPICION`/`EMPTY`) et jaunes
+(remplis/modifiés manuellement jusqu’à ReadyBank) sont des marqueurs de
+parcours, tandis que le vert est conforme et jamais encore modifié
+manuellement. Tous les slots restent éditables dans la copie; modifier un vert
+le rend jaune et invalide immédiatement son ancien `PASS`. Les slots conformes
+continuent et les slots échoués restent vides.
+
+ReadyBank fusionne uniquement les slots réussis, par
+`blueprint_id + cognitive_type`, sans remplacement global du canonique. Les
+non résolus restent vides. La copie peut revenir plusieurs fois avec ses
+findings les plus récents; aucune histoire permanente des corrections n’est
+conservée; plusieurs copies prêtes sont permises.
+
+Un renvoi enqueue sans démarrer. Les clics sont traités dans leur ordre exact
+(FIFO), un à la fois. Chaque arrivée émet `CURRENT_KERNEL_RECEIVED` et choisit
+une direction exclusive : si la file Quarantine prête n’est pas vide, `GO`
+vers sa première copie et redémarrage Phase1, sans KBP; sinon `GO` vers KBP.
+Jamais les deux. KBP n’est pas coordinateur de circulation, ne reçoit aucun
+état Quarantine et ne crée/ne retrouve un Blueprint que si `GO` lui est
+destiné. `blueprint_id` reste la clé du parcours normal et des retours.
+
+**OPEN IMPLEMENTATION REQUIREMENTS — solutions non approuvées :**
+
+1. persistance de la copie complète courante;
+2. file d’attente des clics Renvoie;
+3. ordre exact des demandes;
+4. détection des slots modifiés;
+5. conservation du marqueur jaune jusqu’à ReadyBank;
+6. invalidation immédiate d’un ancien PASS après modification;
+7. protection contre les retours périmés;
+8. idempotence de `CURRENT_KERNEL_RECEIVED`;
+9. fusion atomique dans ReadyBank.
 
 ---
 
@@ -26,6 +66,10 @@ ReadyBank :
 - ne recrée aucun contenu intellectuel.
 
 # 2. Arrivée du canonique
+
+> **CLAUSE v0.2 CI-DESSOUS — SUPERSEDED BY DEC-125 :** la réception d’un
+> canonique avec slot suspect ou vide ne conserve pas cette position
+> exploitable; sa copie complète porte le contenu rejeté et les findings.
 
 ## 2.1 Contrat de circulation et de propriété
 
@@ -65,6 +109,10 @@ L’arrivée du canonique ne supprime pas et n’invalide pas la copie Quarantin
 
 # 3. Arrivée de la copie corrigée
 
+> **CLAUSE v0.2 CI-DESSOUS — SUPERSEDED BY DEC-125 :** la copie complète est
+> éditable sur ses sept slots selon les couleurs actives; elle ne se limite pas
+> aux seuls chemins suspects.
+
 La copie Quarantine est non canonique. Elle ne constitue pas un transport du
 `KernelBlueprint` entre phases et ne peut jamais devenir sa source de vérité.
 Elle est une pièce de reprise ciblée, persistée séparément, que ReadyBank
@@ -90,8 +138,14 @@ Une copie ne correspondant pas à la même identité est refusée.
 
 # 4. Réconciliation contrôlée
 
-Après avoir relu le canonique, ReadyBank fusionne atomiquement les seules
-corrections admissibles de la copie avec ce même agrégat.
+> **CLAUSE v0.2 CI-DESSOUS — SUPERSEDED BY DEC-125 :** ReadyBank ne remplace
+> pas globalement le canonique, mais la fusion réussie est définie par
+> `blueprint_id + cognitive_type`; les positions non résolues restent vides.
+
+Après avoir relu le canonique, ReadyBank fusionne les seules corrections
+admissibles de la copie avec ce même agrégat. La garantie d’atomicité de cette
+fusion reste une exigence d’implantation ouverte; aucune solution technique
+n’est approuvée par cette clause.
 
 Opérations autorisées :
 
@@ -363,6 +417,10 @@ Cette chaîne est une projection gameplay propre au joueur, jamais le `kernel_co
 
 # 8. Frontière avec KRP
 
+> **CLAUSE v0.2 CI-DESSOUS — SUPERSEDED BY DEC-125 :** `CURRENT_KERNEL_RECEIVED`
+> ne va pas toujours à KRP/KBP. ReadyBank choisit la direction exclusive
+> selon la file Quarantine prête.
+
 ReadyBank peut produire les faits définis par son contrat lifecycle vers KRP, mais :
 
 - la fusion Quarantine ne recrée jamais le Blueprint;
@@ -371,14 +429,35 @@ ReadyBank peut produire les faits définis par son contrat lifecycle vers KRP, m
 - elle ne réinitialise jamais `VVVV`;
 - elle ne compte jamais une copie comme un nouveau noyau canonique.
 
+## 8.1 Routage exclusif DEC-125
+
+À chaque arrivée terminale de ReadyBank, le signal
+`CURRENT_KERNEL_RECEIVED` est idempotent et ne démarre qu’une direction :
+
+```text
+file Quarantine prête non vide
+→ GO vers la première copie (FIFO)
+→ reprise Phase1
+→ KBP ne reçoit rien
+
+file Quarantine prête vide
+→ GO vers KBP
+→ KBP crée ou retrouve le Blueprint demandé
+```
+
+Le renvoi précédent a seulement mis la copie en file; il ne l’a pas démarrée.
+L’ordre exact des clics est conservé et un seul traitement est actif à la fois.
+ReadyBank n’effectue aucun remplacement global : seuls les slots réussis
+portant le même `blueprint_id` et le même `cognitive_type` sont fusionnés.
+
 # 9. Invariants verrouillés
 
 - un seul canonique;
 - copie corrigée complète;
 - fusion uniquement dans ReadyBank;
 - identité identique obligatoire;
-- fusion ciblée et atomique;
-- slots valides hors cible inchangés;
+- fusion sélective des seuls slots conformes;
+- un slot vert modifié manuellement n’est plus un slot valide hors cible;
 - slots suspects non exploitables;
 - slots vides remplissables après reprise;
 - aucune copie comptée comme nouveau noyau;

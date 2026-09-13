@@ -1,8 +1,11 @@
 # StrategyBuzzer — Architecture Register actif
 
-**Date :** 2026-09-07
+**Date :** 2026-09-13
 **Statut :** ACTIVE — registre de consolidation de la phase de spécification  
 **Règle :** aucune décision n’est supprimée. Une décision remplacée devient `SUPERSEDED`; une proposition documentaire non autorisée ou refusée devient `REJECTED`.
+**Autorité courante :** **DEC-125 — OFFICIAL (2026-09-13)**. Les décisions
+antérieures restent historiques et conservent leur sens original, sous réserve
+des clauses précisément marquées `SUPERSEDED BY DEC-125` ci-dessous.
 
 ## Statuts
 
@@ -61,8 +64,27 @@ REJECTED
 | DEC-122 | 1.0 | 2026-08-29 | OFFICIAL | Un seul Blueprint canonique contient l’identité, les 7 CognitiveSlots source et leurs traductions. Le canonique poursuit toutes les phases jusqu’à ReadyBank. Quarantine reçoit une copie complète avec chemins soupçonnés affichables en rouge; la copie corrigée reprend le pipeline de façon ciblée puis rejoint le canonique uniquement dans ReadyBank, qui remplace/corrige/remplit les slots ciblés ou vides sans toucher aux slots valides. L’état joueur `00n→11o` reste externe au Blueprint et autorise au maximum un cognitif par chacune des trois familles | 01,05,06,07,08,09,10,11 + Gameplay | anciennes formulations fragment Quarantine et `question_code-COG-VAR` | AUCUNE |
 | DEC-123 | 1.0 | 2026-09-07 | OFFICIAL | Un Blueprint canonique, une porte logique et une autorisation éphémère. KBP crée atomiquement la structure vide et remet `{blueprint_id,destinataire_initial}`. Rotation écrit seulement `depth + domain`; Taxonomy seulement son triplet; QuestionIntent est l’unique propriétaire : il alloue `VVVV`, construit, persiste et verrouille le `kernel_code` complet. `CURRENT_KERNEL_RECEIVED` est l’entrée normale idempotente de création du Blueprint suivant. Aucun Harness, Fixture ou précondition intellectuelle KBP dans le contrat actif; terminaison de test par KBP sur demande autorisée. | 01,02,03,05 + frontières 06..11 | DEC-121 | AUCUNE |
 | DEC-124 | 1.0 | 2026-09-08 | OFFICIAL | `blueprint_id` est l’unique valeur transmise entre toutes les phases. Chaque phase recharge le même Blueprint persistant, lit les préconditions et statuts déjà écrits, écrit seulement sa zone puis transmet le même identifiant. Aucun objet d’autorisation séparé, `destinataire_initial`, propriétaire de clé ou état de circulation. `request_reference → blueprint_id` sert uniquement à l’idempotence de création KBP. | 01 + frontières 02,03,05,06,07,08,09,11 | clauses d’autorisation distincte et `destinataire_initial` de DEC-123 seulement | AUCUNE |
+| DEC-125 | 1.0 | 2026-09-13 | OFFICIAL | Un Blueprint persistant canonique identifié définitivement par `blueprint_id`; copie complète non canonique Quarantine, états/couleurs, reprise Phase1, ReadyBank sélectif et routage exclusif FIFO de `CURRENT_KERNEL_RECEIVED`. | 01,05,06,07,08,09,10,11 + Admin | DEC-122/123/124, portée limitée aux quatre clauses annotées ci-dessous | AUCUNE |
 
 ---
+
+## Annotation normative DEC-125 des décisions historiques
+
+DEC-122, DEC-123 et DEC-124 demeurent **OFFICIAL** et leur prose originale
+ci-dessous n’est pas réécrite. **Seules** les clauses suivantes sont
+`SUPERSEDED BY DEC-125` :
+
+1. le contenu canonique suspect qui continuerait dans sa position : la position
+   canonique est vidée; contenu et findings rejetés restent dans la copie;
+2. l’édition Quarantine ciblée et les slots valides intouchables : la copie
+   complète est éditable sur ses sept slots, y compris les verts;
+3. la reprise de traduction directement en Phase2 ou au propriétaire ciblé :
+   toute copie complète corrigée reprend par Phase1;
+4. `CURRENT_KERNEL_RECEIVED` toujours/exclusivement vers KBP : ReadyBank
+   choisit exclusivement la première copie Quarantine prête, ou KBP si la
+   file Quarantine est vide, jamais les deux.
+
+Toutes les autres clauses compatibles de DEC-122/123/124 restent actives.
 
 # DEC-115 à DEC-118 — historique rejeté
 
@@ -207,6 +229,12 @@ Taxonomy ne suppose jamais que le Blueprint immédiatement suivant appartient au
 - **Décision remplacée :** DEC-121
 - **Décision remplaçante :** AUCUNE
 
+> **SUPERSEDED BY DEC-125 — PORTÉE LIMITÉE.** La poursuite du contenu
+> suspect dans la position canonique est remplacée par la vidange de cette
+> position; la reprise de toute copie complète corrigée repart en Phase1; et
+> `CURRENT_KERNEL_RECEIVED` ne va à KBP que lorsque la file Quarantine prête
+> est vide. Le reste de DEC-123 demeure inchangé et actif.
+
 > **ANNOTATION HISTORIQUE — SUPERSEDED BY DEC-124, PORTÉE LIMITÉE.**
 > Le contenu ci-dessous est conservé intégralement comme décision ayant
 > réellement existé. Seules les clauses qui définissent une autorisation
@@ -256,8 +284,10 @@ externe et `blueprint_id`; KBP vérifie, supprime et nettoie le contexte
 interrompu. Une suppression pendant écriture active est refusée; une seconde
 suppression retourne `ALREADY_TERMINATED`.
 
-DEC-122 demeure **OFFICIAL**, inchangée : un seul canonique, copie Quarantine
-complète non canonique et fusion ciblée uniquement dans ReadyBank.
+DEC-122 demeure **OFFICIAL** pour ses clauses compatibles : un seul canonique,
+copie Quarantine complète non canonique et fusion uniquement dans ReadyBank.
+Ses quatre clauses contraires sont `SUPERSEDED BY DEC-125` selon l’annotation
+normative du présent registre.
 
 ---
 
@@ -271,6 +301,11 @@ complète non canonique et fusion ciblée uniquement dans ReadyBank.
 - **Décision remplacée :** clauses d’autorisation distincte et
   `destinataire_initial` de DEC-123 seulement
 - **Décision remplaçante :** AUCUNE
+
+> **SUPERSEDED BY DEC-125 — PORTÉE LIMITÉE.** La règle de destination
+> exclusive KBP pour `CURRENT_KERNEL_RECEIVED` est remplacée par le choix
+> exclusif ReadyBank : première copie Quarantine prête en FIFO, sinon KBP.
+> Le transport inter-phase par `blueprint_id` demeure actif.
 
 ## Décision
 
@@ -332,7 +367,7 @@ ValidationPhase1, Phase2, ValidationPhase2 ou ReadyBank.
 # Sources canoniques actuelles
 
 ```text
-01 → specifications/01_KernelBlueprint.md v3.1 / DEC-123 + DEC-124
+01 → specifications/01_KernelBlueprint.md v3.2 / DEC-125
 02 → specifications/02_KernelRotationPlanner.md v4.0 / DEC-119
 03 → specifications/03_Taxonomy.md v1.1 / DEC-120
 ```
@@ -368,6 +403,12 @@ Le document historique `docs/architecture/05_QuestionIntent.md` est SUPERSEDED e
 
 # DEC-122 — Blueprint complet, copie Quarantine et fusion ReadyBank
 
+> **SUPERSEDED BY DEC-125 — PORTÉE LIMITÉE.** Dans la prose historique
+> conservée ci-dessous, seules la poursuite du contenu suspect dans le
+> canonique et l’édition strictement ciblée avec slots valides intouchables
+> sont remplacées. La copie complète, la fusion ciblée et les autres clauses
+> compatibles demeurent actives.
+
 ```text
 01 → specifications/01_KernelBlueprint.md v3.1 / DEC-123 + DEC-124
 06 → specifications/06_Phase1.md v0.1
@@ -379,3 +420,66 @@ Le document historique `docs/architecture/05_QuestionIntent.md` est SUPERSEDED e
 ```
 
 Les versions 0.1 verrouillent uniquement les décisions DEC-122 et leurs frontières. Elles ne déclarent pas les modules 06 à 11 entièrement spécifiés, implantés ou validés.
+
+# DEC-125 — Blueprint persistant unique, copies Quarantine et routage FIFO
+
+- **Version :** 1.0
+- **Date :** 2026-09-13
+- **Statut :** **OFFICIAL**
+- **Module propriétaire :** frontière commune `01→11`, ReadyBank et Admin externe
+- **Source canonique :** `00_MOTEUR_INTELLECTUEL_ACTIVE_SPEC.md` v2.2.0 +
+  spécifications `01`, `05` à `11`
+- **Décisions remplacées :** DEC-122, DEC-123 et DEC-124, uniquement selon
+  les quatre clauses explicitement annotées `SUPERSEDED BY DEC-125`
+
+## Titre et décision
+
+**Un Blueprint persistant canonique unique, identifié définitivement par
+`blueprint_id`, avec copies Quarantine complètes, reprise Phase1 et
+routage FIFO exclusif de `CURRENT_KERNEL_RECEIVED`.**
+
+Le même `blueprint_id` est conservé seulement entre les phases normales.
+Dès qu’un `CognitiveSlot` est `SUSPICION` ou `EMPTY`, sa position canonique
+est vidée si elle contenait un contenu rejeté et une copie de travail
+persistante, complète et non canonique est créée avec les sept slots, les
+contenus disponibles et tous les findings. Le contenu rejeté et ses findings
+restent dans cette copie; ils ne restent pas exploitables dans le canonique.
+
+Dans la copie, tous les slots sont visibles et éditables, y compris les verts.
+Rouge signifie `SUSPICION` ou `EMPTY`; vert signifie conforme et jamais
+modifié manuellement dans Quarantine; jaune signifie rempli ou modifié
+manuellement et demeure visible jusqu’à ReadyBank. Le jaune est un marqueur de
+parcours, pas un état fonctionnel de validation. Toute modification d’un vert
+le rend jaune et invalide immédiatement son ancien `PASS` en aval.
+L’Admin est une interface externe, jamais une phase. Sa suppression ne
+supprime qu’une copie.
+
+La copie complète recommence toujours en Phase1. Les sept slots accompagnent
+la copie comme contexte, mais chaque slot ne rejoue que les contrôles et
+créations qui le concernent. Phase1 applique les contrôles techniques aux
+slots remplis ou modifiés; ValidationPhase1 assure la validation intellectuelle;
+Phase2 ne traduit que les slots autorisés; ValidationPhase2 valide les
+traductions; ReadyBank reçoit la copie complète. Les slots conformes continuent
+et les slots échoués restent vides. ReadyBank fusionne seulement les slots
+réussis, par `blueprint_id + cognitive_type`, sans remplacement global du
+canonique; les non résolus restent vides. Une copie peut cycler plusieurs fois
+avec ses findings les plus récents; aucune histoire permanente de corrections
+n’est créée. Plusieurs copies prêtes sont permises.
+
+Un renvoi met en file sans démarrer. La file respecte l’ordre exact des clics,
+FIFO, un seul traitement à la fois. Chaque arrivée ReadyBank émet
+`CURRENT_KERNEL_RECEIVED` et choisit une direction exclusive : si la file
+Quarantine prête n’est pas vide, `GO` va à sa première copie et recommence
+Phase1, sans rien envoyer à KBP; sinon `GO` va à KBP. Il n’y a jamais deux
+destinations. KBP ne coordonne pas la circulation, ne reçoit aucun état
+Quarantine et ne crée/ne retrouve un Blueprint que lorsque `GO` lui est
+destiné. `blueprint_id` reste essentiel au suivi normal et aux retours.
+
+## Exigences d’implémentation ouvertes — non approuvées comme solutions
+
+Les points suivants sont des exigences à implémenter et non des solutions
+architecturales approuvées : persistance de la copie complète courante; file
+des clics Ready; ordre exact; détection des slots modifiés; persistance du jaune
+jusqu’à ReadyBank; invalidation immédiate de l’ancien PASS; protection contre
+les retours obsolètes; idempotence de `CURRENT_KERNEL_RECEIVED`; fusion
+atomique ReadyBank.

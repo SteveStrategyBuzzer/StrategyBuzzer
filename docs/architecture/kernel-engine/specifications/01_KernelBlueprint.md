@@ -1,18 +1,70 @@
 # StrategyBuzzer — 01_KernelBlueprint
 
-**Version :** 3.1
-**Date :** 2026-09-08
+**Version :** 3.2
+**Date :** 2026-09-13
 **Statut documentaire :** **VERROUILLÉ**
 **Architecture :** **100 %**
 **Contrat :** **100 %**
-**Décisions directrices :** **DEC-123 v1.0 + DEC-124 v1.0 — OFFICIAL**
-**Remplace :** v3.0 sur la transmission inter-phase seulement
+**Décision directrice :** **DEC-125 v1.0 — OFFICIAL** (clauses compatibles
+DEC-123/124 conservées)
+**Remplace :** v3.1 sur le cycle canonique/Quarantine/ReadyBank et le routage;
+v3.1 est remplacée dans ce périmètre
 
 > Cette version conserve intégralement les responsabilités intellectuelles de
 > v3.0. DEC-123 demeure historique et **OFFICIAL**, sauf ses seules clauses sur
 > l’autorisation distincte et `destinataire_initial`, marquées
 > **SUPERSEDED BY DEC-124** dans le registre. DEC-124 établit `blueprint_id`
 > comme unique valeur transmise entre toutes les phases.
+
+> **CLAUSES v3.1 SUPERSEDED BY DEC-125 AVANT LECTURE DU RESTE :** le contenu
+> suspect ne continue plus dans sa position canonique; Quarantine n’est plus
+> limitée à une reprise ciblée avec slots valides intouchables; toute copie
+> complète corrigée repart en Phase1; `CURRENT_KERNEL_RECEIVED` ne va à KBP
+> que si la file Quarantine prête est vide. Les formulations contraires plus
+> bas sont historiques, conservées pour traçabilité et non normatives.
+
+## 0. Règle active DEC-125
+
+Le Blueprint canonique persistant est unique et son identité permanente est
+`blueprint_id`. Le même identifiant ne circule qu’entre phases normales.
+Lorsqu’un slot est `SUSPICION` ou `EMPTY`, sa position canonique est vidée et
+une copie de travail persistante, complète et non canonique est créée avec les
+sept slots, contenus disponibles et findings; contenu rejeté et findings
+restent dans la copie. Les slots de la copie sont tous visibles et éditables :
+rouge = `SUSPICION`/`EMPTY`, vert = conforme et jamais encore modifié
+manuellement, jaune = rempli/modifié manuellement jusqu’à ReadyBank (marqueur
+de parcours uniquement). Tous les slots restent éditables : modifier un vert
+le rend jaune et invalide immédiatement son ancien `PASS` aval.
+
+Admin est une interface externe, pas une phase; sa suppression ne porte que sur
+la copie. Toute copie complète recommence en Phase1. Les sept slots sont
+contexte, mais chaque slot ne rejoue que ses contrôles/créations : Phase1
+technique, ValidationPhase1 intellectuelle, Phase2 pour les slots autorisés,
+ValidationPhase2 pour les traductions, puis ReadyBank. Les slots conformes
+continuent, les échoués restent vides. ReadyBank fusionne uniquement les slots
+réussis par `blueprint_id + cognitive_type`, sans remplacement global; les
+non résolus restent vides. Les copies peuvent cycler avec leurs findings les
+plus récents, sans historique permanent; plusieurs copies prêtes sont permises.
+
+Le renvoi met en file sans démarrer, dans l’ordre exact des clics (FIFO), un
+seul traitement à la fois. À chaque arrivée ReadyBank, le signal
+`CURRENT_KERNEL_RECEIVED` choisit une direction exclusive : première copie
+Quarantine prête si la file n’est pas vide, sinon KBP; jamais les deux. KBP ne
+coordonne pas la circulation, ne reçoit aucun état Quarantine et ne crée/ne
+retrouve un Blueprint que lorsque `GO` lui est destiné. `blueprint_id` est
+essentiel au suivi normal et au retour.
+
+**OPEN IMPLEMENTATION REQUIREMENTS — solutions non approuvées :**
+
+1. persistance de la copie complète courante;
+2. file d’attente des clics Renvoie;
+3. ordre exact des demandes;
+4. détection des slots modifiés;
+5. conservation du marqueur jaune jusqu’à ReadyBank;
+6. invalidation immédiate d’un ancien PASS après modification;
+7. protection contre les retours périmés;
+8. idempotence de `CURRENT_KERNEL_RECEIVED`;
+9. fusion atomique dans ReadyBank.
 
 # 1. Mission
 
@@ -37,6 +89,11 @@ ReadyBank → CURRENT_KERNEL_RECEIVED → KBP → nouveau blueprint_id → Rotat
 
 L'ancien Blueprint demeure l'enveloppe de son propre noyau; il n'est jamais
 recyclé, renvoyé à Rotation ou réécrit pour le noyau suivant.
+
+**Condition DEC-125 :** ce chemin vers KBP est utilisé uniquement si aucune
+copie Quarantine prête n’attend. Sinon `CURRENT_KERNEL_RECEIVED` va
+exclusivement à la première copie en FIFO et redémarre Phase1; KBP ne reçoit
+rien.
 
 # 3. Autorité architecturale
 
@@ -95,6 +152,9 @@ Il ne possède ni Banks, curseurs, occurrence, compteur, cycle, état KRP,
 
 # 8. Entrée normale de production
 
+> **CLAUSE v3.1 CI-DESSOUS — SUPERSEDED BY DEC-125, PORTÉE LIMITÉE :**
+> `ReadyBank → CURRENT_KERNEL_RECEIVED → KBP` n’est plus inconditionnel.
+
 L'entrée normale unique est :
 
 ```text
@@ -104,6 +164,9 @@ ReadyBank → CURRENT_KERNEL_RECEIVED → KBP
 `CURRENT_KERNEL_RECEIVED` signifie que ReadyBank a reçu terminalement le noyau
 courant. Il déclenche exclusivement la création du Blueprint suivant, jamais la
 modification ou la retransmission de l'ancien Blueprint.
+
+**Remplacement actif DEC-125 :** le signal choisit une seule destination :
+première copie Quarantine prête en FIFO si la file n’est pas vide, sinon KBP.
 
 # 9. Référence d'idempotence d'une demande
 
@@ -409,17 +472,29 @@ et DEC-106 (consommation exacte) sont compatibles et conservées. Le
 `kernel_code` est généré par PostgreSQL à partir des six segments possédés par
 Rotation, Taxonomy et QuestionIntent.
 
-DEC-122 demeure **OFFICIAL** et inchangée. Le canonique contient identité,
-sources et traductions, et poursuit le pipeline jusqu'à ReadyBank. Après
-`SUSPICION`, Quarantine réalise une copie complète explicitement non canonique,
-avec références de réconciliation et chemins suspects structurés. La copie
-reprend seulement le travail ciblé; les slots valides ne sont pas recréés et
-une source non validée n'est pas traduite.
+> **CLAUSE HISTORIQUE CI-DESSOUS — SUPERSEDED BY DEC-125, PORTÉE LIMITÉE :**
+> le paragraphe historique lignes suivantes est conservé sans réécriture, mais
+> ses affirmations « inchangée », « canonique poursuit », « reprise seulement
+> ciblée » et « slots valides non recréés » ne gouvernent plus le cycle.
+> DEC-122 reste OFFICIAL pour ses responsabilités compatibles.
 
-ReadyBank seul retrouve le canonique et fusionne atomiquement les corrections
-ciblées, les valeurs ciblées ou les slots vides, conserve les slots valides et
-trace avant/après. Une copie d'un autre `blueprint_id` est refusée; elle ne
-devient jamais canonique et ne reçoit jamais un nouveau `kernel_code`.
+> DEC-122 demeure **OFFICIAL** et inchangée. Le canonique contient identité,
+> sources et traductions, et poursuit le pipeline jusqu'à ReadyBank. Après
+> `SUSPICION`, Quarantine réalise une copie complète explicitement non canonique,
+> avec références de réconciliation et chemins suspects structurés. La copie
+> reprend seulement le travail ciblé; les slots valides ne sont pas recréés et
+> une source non validée n'est pas traduite.
+
+> **CLAUSE HISTORIQUE CI-DESSOUS — SUPERSEDED BY DEC-125, PORTÉE LIMITÉE :**
+> la fusion demeure sélective, mais les anciennes limites « corrections
+> ciblées » et « conserve les slots valides » ne s’appliquent plus à un slot
+> vert modifié manuellement. L’atomicité reste une exigence d’implantation
+> ouverte, pas une solution technique déjà approuvée.
+
+> ReadyBank seul retrouve le canonique et fusionne atomiquement les corrections
+> ciblées, les valeurs ciblées ou les slots vides, conserve les slots valides et
+> trace avant/après. Une copie d'un autre `blueprint_id` est refusée; elle ne
+> devient jamais canonique et ne reçoit jamais un nouveau `kernel_code`.
 
 La clé minimale de ciblage DEC-122 est :
 
@@ -429,6 +504,15 @@ blueprint_id + kernel_code + cognitive_slot + couche source/traduction
 ```
 
 Aucun slot suspect, vide ou non validé n'est exposable au gameplay.
+
+**Remplacement actif DEC-125 :** la copie reste complète et éditable sur les
+sept slots. Une source `SUSPICION` ou `EMPTY` est vidée dans le canonique,
+tandis que son contenu et ses findings restent dans la copie. Toute correction
+complète reprend Phase1; les phases suivantes ne rejouent ensuite que les
+contrôles/productions autorisés du slot concerné. Les couleurs rouge/vert/jaune
+et l’invalidation immédiate de l’ancien PASS sont des marqueurs de parcours de
+la copie, non des états de validation du canonique. Leur mécanisme de
+conservation reste une exigence d’implantation ouverte.
 
 # 37. Validation et tests contractuels
 
@@ -460,5 +544,5 @@ de KBP.
 ```text
 Architecture : 100 %
 Contrat :      100 %
-STATUT DOCUMENTAIRE : VERROUILLÉ v3.1
+STATUT DOCUMENTAIRE : VERROUILLÉ v3.2 — DEC-125
 ```

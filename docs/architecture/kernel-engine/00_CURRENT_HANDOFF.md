@@ -1,14 +1,23 @@
 # CURRENT HANDOFF — StrategyBuzzer Kernel Engine
 
-**Mis à jour :** 2026-09-08
+**Mis à jour :** 2026-09-13
 **Branche officielle :** `replit/intellectual-engine-current-2026-08-16`  
 **Module actif unique :** `06_Phase1`  
-**Spécification active :** `specifications/06_Phase1.md` v1.0  
-**Frontière suivante verrouillée :** `07_ValidationPhase1.md` v1.0  
-**Décisions actives :** `DEC-123` (ownership QuestionIntent) ; `DEC-124` (transmission par `blueprint_id`) ; `DEC-122` (inchangée)
-**Prochain bloc exact :** `ALIGN-AUDIT-06-v1.0 → BUILD-06-v1.0`
+**Spécification active :** `specifications/06_Phase1.md` v1.1
+**Frontière suivante verrouillée :** `07_ValidationPhase1.md` v1.1
+**Décision directrice active :** `DEC-125` (clauses compatibles DEC-122/123/124)
+**Prochain bloc exact :** `ALIGN-AUDIT-06-v1.1 → BUILD-06-v1.1`
 
-> Ce fichier est un pointeur opérationnel. En cas de contradiction, `00_ArchitectureRegister.md + 00_MOTEUR_INTELLECTUEL_ACTIVE_SPEC.md + specifications/06_Phase1.md v1.0` priment.
+> Ce fichier est un pointeur opérationnel. En cas de contradiction,
+> `00_ArchitectureRegister.md + 00_MOTEUR_INTELLECTUEL_ACTIVE_SPEC.md +
+> specifications/06_Phase1.md v1.1` priment; DEC-125 est l’autorité courante.
+
+> **Règle DEC-125 :** un slot `SUSPICION` ou `EMPTY` vide sa position
+> canonique et crée une copie persistante complète. Tous ses sept slots sont
+> visibles/éditables (rouge suspicion/vide, vert conforme intouchable
+> manuellement, jaune rempli/modifié jusqu’à ReadyBank); toute copie repart en
+> Phase1. Le renvoi enqueue sans démarrer, FIFO exact, un à la fois. ReadyBank
+> choisit exclusivement la première copie prête, sinon KBP; jamais les deux.
 
 ---
 
@@ -35,9 +44,9 @@ working tree = propre
 La branche distante doit contenir les contrats documentaires successifs se terminant par :
 
 ```text
-06_Phase1 v1.0
-07_ValidationPhase1 v1.0
-00_MOTEUR_INTELLECTUEL_ACTIVE_SPEC v1.9.0
+06_Phase1 v1.1
+07_ValidationPhase1 v1.1
+00_MOTEUR_INTELLECTUEL_ACTIVE_SPEC v2.2.0-dec-125
 ce CURRENT_HANDOFF
 ```
 
@@ -68,7 +77,7 @@ Ne pas restaurer :
 - limites de caractères par Depth;
 - tests ou contrats KRP v3.
 
-# 3. Mission Phase1 v1.0
+# 3. Mission Phase1 v1.1
 
 Recevoir uniquement un `blueprint_id` par lookup, après fin confirmée de la phase
 précédente et statut terminal attendu, retrouver le `KernelBlueprint` persistant
@@ -128,11 +137,21 @@ KBP
 → ReadyBank
 ```
 
+À chaque arrivée ReadyBank, `CURRENT_KERNEL_RECEIVED` choisit exclusivement :
+
+```text
+file Quarantine prête non vide → première copie FIFO → reprise Phase1
+file Quarantine prête vide → KBP → nouveau Blueprint
+```
+
+Le signal n’envoie jamais aux deux destinations. Un renvoi met en file sans
+démarrer; un seul traitement est actif à la fois.
+
 `KernelBlueprintFactory` / KBP crée une seule fois le vrai
 `KernelBlueprint` PostgreSQL et lui attribue son `blueprint_id`. Cette
 structure persistante est extérieure aux phases, progressivement remplie et
-l'unique source de vérité ; elle conserve le même `blueprint_id` pendant tout
-le pipeline.
+l'unique source de vérité ; elle conserve le même `blueprint_id` pendant les
+phases normales. Une copie Quarantine complète est non canonique.
 
 Il n'existe aucune copie autoritaire, aucun agrégat Blueprint de transport et
 aucun passage d'objet `KernelBlueprint` entre phases. La seule valeur transmise
@@ -202,9 +221,9 @@ Blueprint.
 - le résultat joueur conserve la clé canonique du choix sélectionné, pas seulement sa lettre affichée;
 - aucun contenu partiel déclaré CREATED.
 
-# 5. Premier travail — ALIGN-AUDIT-06-v1.0
+# 5. Premier travail — ALIGN-AUDIT-06-v1.1
 
-Avant le patch, comparer le code réel à `06_Phase1.md v1.0`.
+Avant le patch, comparer le code réel à `06_Phase1.md v1.1`.
 
 Rapporter :
 
@@ -361,6 +380,6 @@ commit local propre
 Ensuite seulement :
 
 ```text
-ALIGN-AUDIT-07-v1.0
+ALIGN-AUDIT-07-v1.1
 → ValidationPhase1
 ```

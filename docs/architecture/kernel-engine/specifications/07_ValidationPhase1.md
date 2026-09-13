@@ -1,11 +1,41 @@
 # STRATEGYBUZZER — 07_VALIDATIONPHASE1
 
-**Version :** 1.0  
-**Date :** 30 août 2026  
+**Version :** 1.1
+**Date :** 2026-09-13
 **Statut :** CONTRAT DE BUILD VERROUILLÉ — IMPLANTATION À AUDITER/RÉALIGNER  
-**Décision :** DEC-122  
-**Implémentation :** À AUDITER CONTRE v1.0  
+**Décision directrice :** DEC-125 — OFFICIAL (clauses compatibles de DEC-122)
+**Implémentation :** À AUDITER CONTRE v1.1
 **Validation terminale :** NON
+
+> **Remplace :** v1.0 sur le cycle Quarantine, l’édition des slots et le
+> retour. Les clauses v1.0 contraires sont marquées `SUPERSEDED BY DEC-125`
+> avant leur remplacement.
+
+## 0. Règles actives DEC-125
+
+ValidationPhase1 valide intellectuellement les slots remplis ou modifiés d’un
+Blueprint normal ou d’une copie complète. Les sept slots de la copie restent
+visibles et éditables : rouge = `SUSPICION`/`EMPTY`, vert = conforme et jamais
+encore modifié manuellement, jaune = rempli/modifié manuellement jusqu’à
+ReadyBank (marqueur de parcours, pas état fonctionnel). Toute
+modification d’un vert invalide immédiatement son ancien `PASS` aval.
+
+Une copie complète corrigée recommence Phase1; ValidationPhase1 ne revalide
+ensuite que les contrôles intellectuels concernés par chaque slot. Les slots
+conformes continuent et ceux qui échouent restent vides. Le renvoi est mis en
+file FIFO par l’interface externe et n’est pas démarré par l’Admin.
+
+**OPEN IMPLEMENTATION REQUIREMENTS — solutions non approuvées :**
+
+1. persistance de la copie complète courante;
+2. file d’attente des clics Renvoie;
+3. ordre exact des demandes;
+4. détection des slots modifiés;
+5. conservation du marqueur jaune jusqu’à ReadyBank;
+6. invalidation immédiate d’un ancien PASS après modification;
+7. protection contre les retours périmés;
+8. idempotence de `CURRENT_KERNEL_RECEIVED`;
+9. fusion atomique dans ReadyBank.
 
 ---
 
@@ -351,6 +381,11 @@ arrêtée par Phase1 en `CREATION_FAILED` et ne peut pas être reclassée en
 
 # 12. Quarantine
 
+> **CLAUSE v1.0 CI-DESSOUS — SUPERSEDED BY DEC-125 :** la copie seulement
+> forensique, l’édition des seuls chemins suspects et la reprise ciblée ne
+> sont plus les règles de cycle. La copie complète est la copie de travail
+> éditable définie en section 0.
+
 Le traitement Quarantine, extérieur à ValidationPhase1 et déclenché après son
 statut terminal, traite toute `SUSPICION` intellectuelle ou due à l’échec
 technique du fournisseur de validation :
@@ -375,6 +410,11 @@ cognitive_slots.QCM_REASONING.source.correct_answer_key
 
 # 13. Revalidation ciblée
 
+> **CLAUSE v1.0 CI-DESSOUS — SUPERSEDED BY DEC-125 :** une correction ne
+> reprend plus directement le propriétaire ciblé. Toute copie complète repart
+> en Phase1, puis ValidationPhase1 ne rejoue que les contrôles concernés par
+> chaque slot.
+
 Une correction reprend uniquement les slots et champs ciblés dans le
 `KernelBlueprint` persistant. Elle passe par le chemin de création approprié;
 le relais vers ValidationPhase1 reste un `blueprint_id`, non une copie
@@ -388,6 +428,9 @@ correction Phase1
 ```
 
 Les slots PASS non ciblés ne sont pas rejoués.
+
+**Remplacement actif DEC-125 :** les sept slots accompagnent la copie comme
+contexte; les slots conformes continuent, les slots échoués restent vides.
 
 # 14. Invariants
 
@@ -484,7 +527,7 @@ constitue pas un Harness architectural.
 
 ```text
 Architecture :          VERROUILLÉE
-Contrat :               VERROUILLÉ v1.0
+Contrat :               VERROUILLÉ v1.1 — DEC-125
 Spécification :         BUILD-READY
 Implémentation :        À AUDITER/RÉALIGNER
 Validation terminale :  NON
@@ -493,7 +536,7 @@ Validation terminale :  NON
 Prochaine opération :
 
 ```text
-ALIGN-AUDIT-07-v1.0
+ALIGN-AUDIT-07-v1.1
 → audit du code après ou avec Phase1
 → KEEP / MODIFY / REMOVE / MISSING / UNRESOLVED
 → patch minimal séparé de Phase1 si nécessaire

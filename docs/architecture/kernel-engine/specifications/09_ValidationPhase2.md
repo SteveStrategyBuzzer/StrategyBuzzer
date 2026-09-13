@@ -1,11 +1,41 @@
 # STRATEGYBUZZER — 09_VALIDATIONPHASE2
 
-**Version :** 0.1  
-**Date :** 29 août 2026  
+**Version :** 0.2
+**Date :** 2026-09-13
 **Statut :** FRONTIÈRE OFFICIELLE VERROUILLÉE — MODULE À COMPLÉTER  
-**Décision :** DEC-122  
+**Décision directrice :** DEC-125 — OFFICIAL (clauses compatibles de DEC-122)
 **Implémentation :** À AUDITER  
 **Validation terminale :** NON
+
+> **Remplace :** v0.1 sur la reprise directe en ValidationPhase2 et les slots
+> intouchables. Ces anciennes clauses sont `SUPERSEDED BY DEC-125` avant leur
+> remplacement ci-dessous.
+
+## 0. Règles actives DEC-125
+
+ValidationPhase2 valide les traductions autorisées après le redémarrage
+Phase1 d’une copie complète. Les sept slots accompagnent toujours la copie;
+les slots conformes continuent, les slots échoués restent vides. Tous sont
+visibles et éditables : rouge = `SUSPICION`/`EMPTY`, vert = conforme et jamais
+encore modifié manuellement, jaune = rempli/modifié manuellement
+jusqu’à ReadyBank, marqueur de parcours et non validation. Tous les slots
+restent éditables; modifier un vert invalide immédiatement son ancien `PASS`
+aval.
+
+Le renvoi est une mise en file FIFO suivant l’ordre exact des clics, un seul
+traitement à la fois, et non un démarrage. Admin est externe au pipeline.
+
+**OPEN IMPLEMENTATION REQUIREMENTS — solutions non approuvées :**
+
+1. persistance de la copie complète courante;
+2. file d’attente des clics Renvoie;
+3. ordre exact des demandes;
+4. détection des slots modifiés;
+5. conservation du marqueur jaune jusqu’à ReadyBank;
+6. invalidation immédiate d’un ancien PASS après modification;
+7. protection contre les retours périmés;
+8. idempotence de `CURRENT_KERNEL_RECEIVED`;
+9. fusion atomique dans ReadyBank.
 
 ---
 
@@ -25,6 +55,10 @@ Après validation, ValidationPhase2 transmet uniquement le même `blueprint_id`
 
 # 3. Sortie avec suspicion
 
+> **CLAUSE v0.1 CI-DESSOUS — SUPERSEDED BY DEC-125 :** la copie corrigée ne
+> reprend plus directement en Phase2 et l’édition n’est plus limitée aux seuls
+> chemins suspects.
+
 Toute suspicion de traduction :
 
 - identifie le CognitiveSlot;
@@ -39,6 +73,10 @@ Toute suspicion de traduction :
 
 # 4. Revalidation d’une copie corrigée
 
+> **CLAUSE v0.1 CI-DESSOUS — SUPERSEDED BY DEC-125 :** toute copie complète
+> corrigée repart en Phase1; ValidationPhase2 ne rejoue ensuite que les
+> contrôles de traduction autorisés.
+
 Une copie corrigée reprend ValidationPhase2 uniquement pour :
 
 ```text
@@ -49,13 +87,16 @@ CognitiveSlot ciblé
 
 Après PASS, elle poursuit vers ReadyBank pour réconciliation avec le canonique.
 
+**Remplacement actif DEC-125 :** les slots conformes continuent; les slots
+échoués restent vides et ReadyBank reçoit la copie complète.
+
 # 5. Invariants
 
 - copie Quarantine complète;
 - source valide inchangée;
 - autres langues valides inchangées;
 - ciblage structuré;
-- reprise ciblée;
+- reprise complète via Phase1, puis validation de traduction concernée par slot;
 - même `blueprint_id`;
 - même `kernel_code`;
 - aucune traduction suspecte exposée au gameplay.
