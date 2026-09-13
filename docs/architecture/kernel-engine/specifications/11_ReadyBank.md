@@ -404,3 +404,48 @@ Restent à spécifier :
 - comportement multijoueur lorsque plusieurs historiques doivent être combinés.
 
 La présente version verrouille les responsabilités de réconciliation, l’identification exacte du cognitif joué et la frontière gameplay sans déclarer ReadyBank terminé.
+
+
+# 11. Contrat DEC-125 — réconciliation Quarantaine et direction suivante
+
+## 11.1 Fusion atomique
+
+ReadyBank réconcilie une copie Quarantaine uniquement après vérification de son `blueprint_id`, de son `kernel_code`, de son identité de copie, de sa version réclamée et de son droit de terminaison.
+
+La clé de réemboîtement d’un slot est exclusivement :
+
+```text
+blueprint_id + cognitive_type
+```
+
+Chaque slot admissible est fusionné atomiquement. Un slot encore `EMPTY`, `SUSPICION`, non validé ou dont les traductions requises ne sont pas admissibles reste vide dans le canonique. L’échec d’un slot n’empêche pas la fusion des autres slots admissibles.
+
+La fusion termine une version exactement une fois. Un retour ancien, un token expiré ou une version déjà terminée ne modifie rien.
+
+## 11.2 Jaune
+
+Un slot modifié manuellement reste identifié comme jaune pendant toute sa reprise. ReadyBank retire cette indication uniquement après sa décision terminale :
+
+- fusion réussie : la correction devient le contenu canonique;
+- échec : la position canonique reste vide et la copie retourne en Quarantaine avec le slot rouge.
+
+## 11.3 Direction exclusive après CURRENT_KERNEL_RECEIVED
+
+ReadyBank dirige le prochain GO; il ne retient pas un signal.
+
+```text
+CURRENT_KERNEL_RECEIVED
+→ demandes Quarantaine READY présentes
+   → une seule direction QUARANTINE
+   → plus ancienne demande
+   → aucun GO KBP
+
+→ aucune demande Quarantaine READY
+   → une seule direction KBP
+```
+
+Cinq demandes prêtes produisent cinq directions Quarantaine successives avant qu’une direction KBP puisse être choisie. Chaque décision est persistée et idempotente.
+
+La branche Quarantaine reprend un Blueprint existant à Phase1. Elle ne crée aucun Blueprint, ne déclenche aucune Rotation et ne modifie aucun compteur Rotation.
+
+La branche KBP crée le nouveau Blueprint canonique. KBP transmet ensuite son `blueprint_id` à Rotation; Rotation applique seulement à ce moment sa sélection et sa progression normales.

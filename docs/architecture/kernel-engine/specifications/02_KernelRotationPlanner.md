@@ -767,3 +767,23 @@ validation terminale KRP
 ```
 
 `03_Taxonomy` n’est pas modifié pendant cette implantation KRP.
+
+# Frontière DEC-125 — priorité Quarantaine
+
+`CURRENT_KERNEL_RECEIVED` ne réalise aucune sélection Rotation et aucun comptage avant la décision de direction.
+
+```text
+file Quarantaine READY non vide
+→ direction QUARANTINE
+→ reprise de la copie existante à Phase1
+→ KBP non appelé
+→ KRP non appelé
+
+file Quarantaine READY vide
+→ direction KBP
+→ KBP crée le nouveau Blueprint canonique
+→ KBP transmet blueprint_id à KRP
+→ KRP applique alors sa mécanique normale
+```
+
+Une copie Quarantaine conserve le `blueprint_id` existant, ne crée aucun Blueprint, ne relance aucune Rotation et ne compte jamais comme nouveau noyau.

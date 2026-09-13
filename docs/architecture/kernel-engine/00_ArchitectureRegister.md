@@ -59,6 +59,7 @@ REJECTED
 | DEC-120 | 1.1 | 2026-08-24 | OFFICIAL | Taxonomy v1.1 : conserve ses Banks et sa consommation exacte; transmet seulement le fait terminal « dernière Dominant Idea du dernier Subject de ce Domain utilisée »; aucun moteur `DOMAIN_EXHAUSTED`, aucun `DEPTH_EXHAUSTED`, aucune DepthNeedMatrix ni rotation globale dans Taxonomy | 03 + frontière 02 | DEC-112 + DEC-107/108 sur frontière | AUCUNE |
 | DEC-121 | 2.2 | 2026-08-29 | OFFICIAL | `kernel_code` se construit progressivement dans le même KernelBlueprint : écritures KRP → projection `DD-DO`; écritures Taxonomy → projection `SUB-SUJ-IDE`; QuestionIntent/KernelCodeEngine alloue uniquement `VVVV`, assemble et verrouille le code final. `VVVV` est un compteur base36 persistant, transactionnel, jamais recyclé et indépendant par bassin `Depth + Domain`. Phase1 remplit ensuite les sept CognitiveSlots sans modifier `kernel_code`; l’état cognitif joueur demeure externe | 01,02,03,05 + frontière 06/11 | formulations DEC-121 v2.0/v2.1 portant `question_code-COG-VAR` | DEC-122 |
 | DEC-122 | 1.0 | 2026-08-29 | OFFICIAL | Un seul Blueprint canonique contient l’identité, les 7 CognitiveSlots source et leurs traductions. Le canonique poursuit toutes les phases jusqu’à ReadyBank. Quarantine reçoit une copie complète avec chemins soupçonnés affichables en rouge; la copie corrigée reprend le pipeline de façon ciblée puis rejoint le canonique uniquement dans ReadyBank, qui remplace/corrige/remplit les slots ciblés ou vides sans toucher aux slots valides. L’état joueur `00n→11o` reste externe au Blueprint et autorise au maximum un cognitif par chacune des trois familles | 01,05,06,07,08,09,10,11 + Gameplay | anciennes formulations fragment Quarantine et `question_code-COG-VAR` | AUCUNE |
+| DEC-125 | 1.0 | 2026-09-13 | OFFICIAL | Quarantaine conserve une copie complète non canonique liée au même `blueprint_id`; l’Admin peut modifier tout slot; rouge = `SUSPICION` ou `EMPTY`, vert = conforme jamais modifié, jaune = modifié manuellement jusqu’à ReadyBank. Le clic `Renvoie` place la copie dans une FIFO. À chaque `CURRENT_KERNEL_RECEIVED`, ReadyBank choisit exclusivement la plus ancienne copie prête ou KBP. Une copie reprend à Phase1, ne passe jamais par KBP/Rotation et ne compte jamais comme nouveau Blueprint. ReadyBank fusionne atomiquement par `blueprint_id + cognitive_type`. | 01,02,06,07,08,09,10,11 + Admin | complète DEC-122 | AUCUNE |
 
 ---
 
@@ -245,3 +246,37 @@ Le document historique `docs/architecture/05_QuestionIntent.md` est SUPERSEDED e
 ```
 
 Les versions 0.1 verrouillent uniquement les décisions DEC-122 et leurs frontières. Elles ne déclarent pas les modules 06 à 11 entièrement spécifiés, implantés ou validés.
+
+
+# DEC-125 — Quarantaine, FIFO et direction terminale
+
+- **Version :** 1.0
+- **Date :** 2026-09-13
+- **Statut :** **OFFICIAL**
+- **Modules :** 01, 02, 06, 07, 08, 09, 10, 11 et interface Admin
+
+## Direction exclusive
+
+```text
+CURRENT_KERNEL_RECEIVED
+→ file Quarantaine READY non vide
+   → GO vers la plus ancienne copie
+   → reprise à Phase1 avec le même blueprint_id
+   → aucun GO KBP
+   → aucune Rotation
+   → aucun comptage de nouveau Blueprint
+
+→ file Quarantaine READY vide
+   → GO KBP
+   → KBP crée le nouveau Blueprint canonique
+   → KBP transmet blueprint_id à Rotation
+   → Rotation effectue alors sa sélection et sa progression normales
+```
+
+Chaque événement prend une seule direction durable et idempotente. Plusieurs clics `Renvoie` s’accumulent et sont servis un à un selon leur ordre accepté.
+
+## Copie et réconciliation
+
+La copie Quarantaine est complète, persistée séparément et conserve le `blueprint_id` du canonique. Elle ne devient jamais canonique. Les slots suspects sont copiés avant d’être vidés dans le canonique. Tous les slots de la copie sont modifiables par l’Admin. Toute modification invalide immédiatement l’ancien PASS et rend le slot jaune jusqu’à sa décision ReadyBank.
+
+La copie complète reprend toujours à Phase1. Chaque slot traverse seulement les opérations nécessaires à son état; les slots admissibles continuent même si d’autres échouent. ReadyBank fusionne atomiquement les seuls slots admissibles par `blueprint_id + cognitive_type`; les autres positions restent vides. Une copie peut revenir plusieurs fois en Quarantaine. L’Admin peut supprimer une copie non en cours; aucune ancienne version n’est conservée.
