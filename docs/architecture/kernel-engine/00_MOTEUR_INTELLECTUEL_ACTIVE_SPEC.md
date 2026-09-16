@@ -113,6 +113,13 @@ autorisés. Un finding bloquant sans preuve pertinente rend le résultat de
 validation techniquement invalide et ne produit ni finding courant, ni PASS, ni
 SUSPICION.
 
+Une traduction cible est admissible seulement si elle est complète,
+`CREATED + PASS`, rattachée aux révisions courantes et sans opération technique
+en attente. Un CognitiveSlot est admissible seulement si sa source anglaise est
+PASS et si ses neuf traductions obligatoires sont toutes admissibles. L’indice
+jaune n’interdit pas cette admissibilité; seul ReadyBank le retire après sa
+décision sur la révision exacte.
+
 La Bible, les règles, les titres structurels « Domaine », « Sous-domaine »,
 « Sujet » et « Idée dominante », les explications et l’interface Admin restent
 en français. La langue d’affichage du jeu demeure choisie par le joueur.

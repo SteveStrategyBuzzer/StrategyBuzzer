@@ -218,6 +218,69 @@ affichés comme courants, recopiés dans une nouvelle copie Quarantaine, report�
 sur une nouvelle révision, utilisés pour colorer un champ ou consultés pour une
 décision ValidationPhase2 ou ReadyBank.
 
+## 1.2 Prédicats d’admissibilité
+
+Une traduction cible est admissible si et seulement si :
+
+```text
+blueprint_id courant
+AND cognitive_type courant
+AND language_code attendu
+AND source_revision courante
+AND translation_revision courante
+AND creation_status = CREATED
+AND validation_status = PASS
+AND question traduite présente
+AND tous les choix traduits présents
+AND correct_answer_key identique à la source anglaise
+AND correct_answer_text = choix situé sous cette clé
+AND SV traduit présent
+AND aucun finding BLOCKING courant
+AND aucun claim courant non terminé
+AND aucun retry courant en attente
+AND aucun résultat technique invalide non résolu
+```
+
+Le `PASS` certifie également que la cible a été traduite directement depuis la
+source anglaise courante, que tous les contrôles contractuels ont été exécutés
+et qu’aucun invariant intellectuel, cognitif, factuel, structurel ou temporel
+n’est violé.
+
+Une cible `SUSPICION`, `RETRYABLE_FAILURE`, `PERMANENT_FAILURE`, périmée,
+incomplète ou non validée est inadmissible.
+
+Un CognitiveSlot est admissible si et seulement si :
+
+```text
+source anglaise complète
+AND source_revision courante
+AND validation source Phase1 = PASS
+AND aucune reprise source requise
+AND exactement neuf language_code distincts attendus
+AND chacune des neuf traductions est admissible
+```
+
+Les neuf langues sont `fr, es, de, it, pt, ru, zh, ar, el`. Aucune absence,
+substitution, duplication, traduction de fallback ou langue facultative n’est
+admise. Aucune langue n’emprunte le PASS d’une autre.
+
+L’indice jaune ne rend pas une cible inadmissible par lui-même. Une révision
+jaune courante peut devenir admissible après son propre `PASS`; elle reste jaune
+jusqu’à la décision ReadyBank portant sur cette révision exacte.
+
+L’admissibilité est calculée dans cet ordre :
+
+```text
+traduction par langue
+→ CognitiveSlot complet
+→ position ReadyBank du CognitiveSlot
+```
+
+L’inadmissibilité d’un slot ne contamine pas les autres slots. Aucun finding
+historique ni aucune décision fournisseur non persistée ne participe au calcul.
+La progression terminale d’un Blueprint partiel reste réservée au contrat
+ReadyBank.
+
 Toute ancienne clause évaluant une source française ou une traduction anglaise
 depuis le français est `SUPERSEDED BY DEC-126`. Les contenus historiques ne
 sont ni réécrits ni convertis par cette révision documentaire.
@@ -279,7 +342,7 @@ Après PASS, elle poursuit vers ReadyBank pour réconciliation avec le canonique
 
 # 6. Statut restant
 
-Les seuils qui ne sont pas déjà verrouillés, retries, prédicats terminaux
-d’admissibilité, interface fournisseur, idempotence et progression partielle
-restent à spécifier. La langue source, les neuf langues cibles, les machines
-d’état et les findings linguistiques ne sont plus ouverts.
+Les seuils qui ne sont pas déjà verrouillés, retries, interface fournisseur,
+idempotence et progression partielle restent à spécifier. La langue source, les
+neuf langues cibles, les machines d’état, les findings linguistiques et les
+prédicats d’admissibilité ne sont plus ouverts.

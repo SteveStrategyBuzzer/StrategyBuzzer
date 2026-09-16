@@ -31,6 +31,19 @@ requises sont rattachées aux neuf codes `fr, es, de, it, pt, ru, zh, ar, el`
 selon le contrat Phase2/ValidationPhase2. L’interface et la sélection de la
 langue du joueur restent externes.
 
+Avant toute fusion ou exposition, ReadyBank recalcule depuis l’état persistant
+courant le prédicat de chaque traduction, puis celui du CognitiveSlot. Une
+traduction doit être complète, `CREATED + PASS`, rattachée aux
+`source_revision` et `translation_revision` courantes, sans finding bloquant ni
+opération technique en attente. Un slot exige sa source anglaise Phase1 PASS et
+ses neuf traductions obligatoires admissibles.
+
+Aucune donnée legacy, absence, substitution, duplication, langue de fallback,
+langue facultative, décision fournisseur non persistée ou PASS d’une autre
+langue ne satisfait implicitement ce prédicat. L’indice jaune est compatible
+avec l’admissibilité, mais seul ReadyBank le retire après sa décision terminale
+portant sur la révision exacte.
+
 # 2. Arrivée du canonique
 
 ## 2.1 Contrat de circulation et de propriété
