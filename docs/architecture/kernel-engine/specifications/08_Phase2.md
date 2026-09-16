@@ -433,3 +433,12 @@ appartiennent à un travail technique ultérieur distinct.
 
 La présente version n’autorise aucune modification de code, migration, schéma,
 donnée, fournisseur ou conversion.
+
+# 8. Annexe officielle de conformité
+
+La projection vérifiable de ce contrat dans la matrice consolidée DEC-127 est :
+
+[`DEC-127_PHASE2_VALIDATION_COMPLIANCE_ANNEX.md`](../DEC-127_PHASE2_VALIDATION_COMPLIANCE_ANNEX.md)
+
+La présente spécification reste propriétaire et autoritative. En cas d’écart,
+l’annexe doit être corrigée.

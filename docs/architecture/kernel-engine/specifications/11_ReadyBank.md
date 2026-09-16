@@ -603,3 +603,12 @@ Gameplay peut consommer les slots `PUBLISHED` d’un Blueprint partiel tant que
 leur manifeste reste courant et non modifié. Il ne voit jamais un slot non
 publié, une traduction manquante, rouge, jaune non acceptée, périmée ou
 techniquement bloquée.
+
+# 14. Annexe officielle de conformité
+
+La projection vérifiable des frontières ReadyBank de DEC-127 est :
+
+[`DEC-127_PHASE2_VALIDATION_COMPLIANCE_ANNEX.md`](../DEC-127_PHASE2_VALIDATION_COMPLIANCE_ANNEX.md)
+
+La présente spécification reste propriétaire et autoritative. En cas d’écart,
+l’annexe doit être corrigée.

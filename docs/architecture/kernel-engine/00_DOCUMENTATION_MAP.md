@@ -177,3 +177,12 @@ IMPLÉMENTATION DEC-127 = NON, tâche technique distincte
 Le prochain travail technique doit appliquer DEC-127 sans rouvrir KRP v4.0,
 Taxonomy v1.1, l’identité Blueprint, la langue canonique anglaise ou le contrat
 des neuf traductions.
+
+## Annexe officielle de conformité DEC-127
+
+| Type | Source | Autorité |
+|---|---|---|
+| Projection de conformité vérifiable | [`DEC-127_PHASE2_VALIDATION_COMPLIANCE_ANNEX.md`](DEC-127_PHASE2_VALIDATION_COMPLIANCE_ANNEX.md) | NON autonome — DEC-127 et les spécifications propriétaires priment |
+
+En cas d’écart, l’annexe est corrigée. Elle ne remplace aucune spécification et
+n’autorise aucune implantation.

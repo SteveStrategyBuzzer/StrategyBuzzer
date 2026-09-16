@@ -750,3 +750,13 @@ slots conformes continuent et les échoués restent vides. ReadyBank fusionne
 seulement les slots réussis par `blueprint_id + cognitive_type`; son arrivée
 émet `CURRENT_KERNEL_RECEIVED` vers la première copie prête en FIFO, sinon
 vers KBP, jamais les deux.
+
+# 19. Annexe officielle de conformité DEC-127
+
+La matrice consolidée destinée au futur comparatif d’implantation est :
+
+[`DEC-127_PHASE2_VALIDATION_COMPLIANCE_ANNEX.md`](DEC-127_PHASE2_VALIDATION_COMPLIANCE_ANNEX.md)
+
+Elle projette les autorités propriétaires sans les remplacer. Toute divergence
+se corrige dans l’annexe, jamais par contournement de DEC-127 ou des
+spécifications.

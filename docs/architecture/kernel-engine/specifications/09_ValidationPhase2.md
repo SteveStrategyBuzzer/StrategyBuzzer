@@ -449,3 +449,12 @@ complément DEC-127 de `11_ReadyBank.md`.
 
 Le modèle physique, l’implantation et les tests appartiennent à un travail
 technique ultérieur distinct.
+
+# 7. Annexe officielle de conformité
+
+La projection vérifiable de ce contrat dans la matrice consolidée DEC-127 est :
+
+[`DEC-127_PHASE2_VALIDATION_COMPLIANCE_ANNEX.md`](../DEC-127_PHASE2_VALIDATION_COMPLIANCE_ANNEX.md)
+
+La présente spécification reste propriétaire et autoritative. En cas d’écart,
+l’annexe doit être corrigée.

@@ -243,3 +243,12 @@ CognitiveSlot complet parce que la publication demeure atomique par slot.
 
 Cette opération ne retire, ne révise et ne relance aucun autre CognitiveSlot
 publié et non modifié du même Blueprint.
+
+# 12. Annexe officielle de conformité
+
+La projection vérifiable des frontières Quarantaine de DEC-127 est :
+
+[`DEC-127_PHASE2_VALIDATION_COMPLIANCE_ANNEX.md`](../DEC-127_PHASE2_VALIDATION_COMPLIANCE_ANNEX.md)
+
+La présente spécification reste propriétaire et autoritative. En cas d’écart,
+l’annexe doit être corrigée.

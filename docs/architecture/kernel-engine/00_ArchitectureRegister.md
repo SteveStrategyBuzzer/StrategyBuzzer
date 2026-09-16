@@ -399,3 +399,13 @@ Quarantaine READY sur KBP sont obligatoires.
 
 DEC-127 ne choisit aucun fournisseur, ne modifie aucun code, schéma ou donnée et
 n’autorise aucune conversion des contenus historiques.
+
+## Annexe officielle de conformité
+
+La projection vérifiable de DEC-127 est :
+
+[`DEC-127_PHASE2_VALIDATION_COMPLIANCE_ANNEX.md`](DEC-127_PHASE2_VALIDATION_COMPLIANCE_ANNEX.md)
+
+DEC-127 et les spécifications propriétaires restent l’autorité. En cas d’écart,
+l’annexe doit être corrigée; elle ne peut jamais remplacer ou contourner
+l’autorité.
