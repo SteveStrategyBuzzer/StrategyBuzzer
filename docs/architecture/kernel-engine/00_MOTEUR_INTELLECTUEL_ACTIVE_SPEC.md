@@ -96,6 +96,16 @@ CognitiveSlot. Elle augmente lorsqu’au moins une de ces composantes est
 modifiée; toutes les traductions de la révision anglaise antérieure deviennent
 alors périmées. Modifier une cible ne modifie jamais `source_revision`.
 
+Chaque cible possède en plus une `translation_revision`, distincte de
+`source_revision`. Toute modification réelle d’une composante cible crée une
+nouvelle révision cible et invalide atomiquement l’ancien résultat de validation.
+Les états Phase2 et ValidationPhase2 restent séparés.
+
+Une correction Quarantaine complète peut réparer un `PERMANENT_FAILURE` du
+cycle automatisé sous la même `source_revision`, en créant une nouvelle
+`translation_revision` `CREATED + NOT_VALIDATED` avec indice jaune. Cet indice
+et la protection contre les retours périmés demeurent actifs jusqu’à ReadyBank.
+
 La Bible, les règles, les titres structurels « Domaine », « Sous-domaine »,
 « Sujet » et « Idée dominante », les explications et l’interface Admin restent
 en français. La langue d’affichage du jeu demeure choisie par le joueur.

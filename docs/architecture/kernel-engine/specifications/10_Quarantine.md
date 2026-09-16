@@ -181,3 +181,14 @@ ReadyBank retire le jaune uniquement après avoir décidé terminalement de cett
 - retour périmé : aucune écriture canonique et aucun changement de l’indice courant.
 
 Une ancienne reprise, une ancienne version de copie ou une ancienne révision manuelle ne peut jamais terminer, remplacer ou écraser une correction plus récente.
+
+Pour une traduction cible, toute création ou modification manuelle réelle sous
+la même `source_revision` augmente sa `translation_revision`, invalide
+atomiquement son ancien résultat ValidationPhase2 et la remet à
+`CREATED + NOT_VALIDATED`. Cette nouvelle révision jaune peut réparer un
+`PERMANENT_FAILURE` du cycle automatisé.
+
+Tout claim, résultat fournisseur ou résultat de validation portant une ancienne
+`source_revision`, une ancienne `translation_revision` ou un ancien jeton est
+refusé comme périmé. Phase2 ne peut jamais écraser la révision jaune courante
+avec un résultat fournisseur antérieur.

@@ -128,6 +128,61 @@ La modification d’une traduction cible ne change jamais `source_revision`.
 Toute révision propre au contenu cible demeure distincte et ne change pas
 l’identité anglaise du CognitiveSlot.
 
+## 2.2 Révision cible et états Phase2
+
+Chaque traduction possède une `translation_revision` distincte de
+`source_revision`. Tous les états, claims et résultats s’appliquent au couple
+exact :
+
+```text
+source_revision + translation_revision
+```
+
+La machine de création automatisée Phase2 est :
+
+```text
+PENDING
+→ IN_PROGRESS
+→ CREATED
+  ou RETRYABLE_FAILURE
+  ou PERMANENT_FAILURE
+
+RETRYABLE_FAILURE → PENDING
+```
+
+Phase2 est seule propriétaire de ces états. `CREATED` signifie uniquement que
+les quatre composantes cibles sont complètes; il ne signifie jamais `PASS`.
+`PERMANENT_FAILURE` est terminal pour le cycle automatisé et la
+`translation_revision` concernés.
+
+Une création ou correction manuelle complète en Quarantaine peut réparer cet
+échec sous la même `source_revision` :
+
+```text
+PERMANENT_FAILURE
+→ modification manuelle réelle
+→ translation_revision + 1
+→ CREATED + NOT_VALIDATED + indice JAUNE
+```
+
+Toute modification réelle de la question traduite, des choix traduits, de la
+bonne réponse traduite ou du SV traduit augmente atomiquement
+`translation_revision` et invalide l’ancien résultat de validation. La
+traduction corrigée conserve son indice jaune jusqu’à la réconciliation
+ReadyBank.
+
+Chaque claim et chaque résultat fournisseur porte au minimum l’identité
+complète, `source_revision`, `translation_revision` et son jeton de claim. Tout
+retour ne correspondant plus aux révisions et au claim courants est périmé et
+refusé. Phase2 ne peut notamment jamais écraser une correction manuelle jaune
+avec un résultat fournisseur antérieur.
+
+L’autorisation d’un nouveau cycle technique après `PERMANENT_FAILURE`, sans
+modification artificielle d’une cible correcte, reste réservée au contrat des
+retries. L’attribution de la première `translation_revision` et la création
+atomique d’une nouvelle révision par un résultat fournisseur restent réservées
+au contrat d’interface fournisseur.
+
 # 3. Précondition source
 
 Aucune traduction n’est créée pour un CognitiveSlot source soupçonné, invalide ou incomplet.
@@ -210,7 +265,6 @@ Restent à spécifier :
 - validations linguistiques détaillées;
 - retries;
 - politiques de contenu intraduisible;
-- états détaillés;
 - structure des findings linguistiques et schémas de preuve;
 - prédicats exacts d’admissibilité de la traduction et du slot;
 - interface fournisseur et garanties d’idempotence;

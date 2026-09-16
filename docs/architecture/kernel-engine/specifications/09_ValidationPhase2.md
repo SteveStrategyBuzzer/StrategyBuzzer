@@ -64,6 +64,35 @@ révision est périmée et ne peut recevoir ni conserver un PASS applicable à l
 révision courante. Une modification de la cible ne modifie jamais
 `source_revision`.
 
+Tous ses états et résultats s’appliquent également à la
+`translation_revision` cible courante. Sa machine est :
+
+```text
+NOT_VALIDATED
+→ IN_PROGRESS
+→ PASS
+  ou SUSPICION
+  ou RETRYABLE_FAILURE
+  ou PERMANENT_FAILURE
+
+RETRYABLE_FAILURE → NOT_VALIDATED
+```
+
+ValidationPhase2 est seule propriétaire de ces états. `PASS` et `SUSPICION`
+sont des résultats intellectuels; les états d’échec concernent l’exécution
+technique du cycle de validation. ValidationPhase2 ne modifie aucun contenu.
+
+Une modification réelle d’une composante cible augmente atomiquement
+`translation_revision`, remet le résultat courant à `NOT_VALIDATED` et rend
+l’ancien résultat périmé. Un passage de `PASS` ou `SUSPICION` à
+`NOT_VALIDATED` est interdit sans changement réel de contenu et nouvelle
+`translation_revision`.
+
+Chaque claim et chaque résultat de validation doit correspondre à
+`source_revision + translation_revision` et au claim courants. Sinon il est
+refusé comme périmé. L’indice jaune d’une correction Quarantaine est conservé
+pendant cette validation et jusqu’à la réconciliation ReadyBank.
+
 Toute ancienne clause évaluant une source française ou une traduction anglaise
 depuis le français est `SUPERSEDED BY DEC-126`. Les contenus historiques ne
 sont ni réécrits ni convertis par cette révision documentaire.
