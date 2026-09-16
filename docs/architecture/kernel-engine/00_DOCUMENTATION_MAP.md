@@ -1,10 +1,10 @@
 # DOCUMENTATION MAP — StrategyBuzzer Kernel Engine
 
-**Date : 2026-09-13**
+**Date : 2026-09-16**
 
-**Autorité courante :** DEC-125 — OFFICIAL. Les versions précédentes restent
-historiques; seules les quatre clauses explicitement annotées SUPERSEDED BY
-DEC-125 sont remplacées.
+**Autorité courante :** DEC-119, DEC-120, DEC-125, DEC-126 et DEC-127 —
+OFFICIAL selon leur module. Les versions précédentes restent historiques; les
+clauses annotées `SUPERSEDED` sont conservées comme historique non actif.
 
 ## Autorité
 
@@ -29,12 +29,12 @@ DEC-125 sont remplacées.
 | 03 frontière historique | `working/03_Taxonomy/03_Taxonomy_BOUNDARY_BRIDGE_DEC-118.md` | **NON ACTIVE — DEC-118 REJECTED, remplacée par DEC-119/120** |
 | 04 ValidationDominantIdeas | `working/04_ValidationDominantIdeas/` | brides actives; règles utilisées par Gemini pendant Taxonomy |
 | 05 QuestionIntent | `specifications/05_QuestionIntent.md` | **v2.3 VERROUILLÉ — DEC-125; aucun coordinateur de circulation** |
-| 06 Phase1 | `specifications/06_Phase1.md` | **v1.1 CONTRAT VERROUILLÉ — DEC-125** |
-| 07 ValidationPhase1 | `specifications/07_ValidationPhase1.md` | **v1.1 FRONTIÈRE VERROUILLÉE — DEC-125** |
-| 08 Phase2 | `specifications/08_Phase2.md` | **v0.2 RÈGLES OFFICIELLES — DEC-125** |
-| 09 ValidationPhase2 | `specifications/09_ValidationPhase2.md` | **v0.2 FRONTIÈRE OFFICIELLE — DEC-125** |
-| 10 Quarantine | `specifications/10_Quarantine.md` | **v0.2 RÈGLES OFFICIELLES — DEC-125** |
-| 11 ReadyBank | `specifications/11_ReadyBank.md` | **v0.3 RÈGLES OFFICIELLES — DEC-125** |
+| 06 Phase1 | `specifications/06_Phase1.md` | **v1.2 CONTRAT DOCUMENTAIRE — DEC-125/126** |
+| 07 ValidationPhase1 | `specifications/07_ValidationPhase1.md` | **v1.2 CONTRAT DOCUMENTAIRE — DEC-125/126** |
+| 08 Phase2 | `specifications/08_Phase2.md` | **v1.0 CONTRAT TERMINAL — DEC-127** |
+| 09 ValidationPhase2 | `specifications/09_ValidationPhase2.md` | **v1.0 CONTRAT TERMINAL — DEC-127** |
+| 10 Quarantine | `specifications/10_Quarantine.md` | **v1.1 FRONTIÈRES VERROUILLÉES — DEC-125/127** |
+| 11 ReadyBank | `specifications/11_ReadyBank.md` | **v0.4 FRONTIÈRE PHASE2 VERROUILLÉE — DEC-127; module global à compléter** |
 
 ## KRP — source unique
 
@@ -118,12 +118,14 @@ Taxonomy n’émet pas `DEPTH_EXHAUSTED` dans le contrat actif.
 ## Cycle Quarantine actif — DEC-125
 
 Une suspicion ou un slot vide vide la position canonique et crée une copie
-persistante complète non canonique. La copie est visible sur sept slots
-(rouge `SUSPICION`/`EMPTY`, vert conforme non modifiable manuellement, jaune
-rempli/modifié jusqu’à ReadyBank). Toute copie complète repart en Phase1.
-ReadyBank fusionne les seuls slots réussis par `blueprint_id + cognitive_type`.
-Un renvoi met en file FIFO sans démarrer; chaque arrivée choisit exclusivement
-la première copie Quarantine prête, sinon KBP, jamais les deux.
+persistante complète non canonique. Les sept slots sont visibles et modifiables
+par l’Admin : rouge `SUSPICION`/`EMPTY`, vert conforme non encore modifié,
+jaune modifié manuellement jusqu’à ReadyBank. Toute copie complète repart en
+Phase1, puis chaque source ou traduction reprend uniquement à l’étape indiquée
+par son indice persistant. ReadyBank publie atomiquement un CognitiveSlot avec
+sa source anglaise PASS et ses neuf traductions admissibles, ou ne publie
+aucune position du slot. Un renvoi met en file FIFO sans démarrer; chaque
+arrivée choisit exclusivement la première copie Quarantine prête, sinon KBP.
 
 ## Documents KRP non actifs
 
@@ -162,21 +164,16 @@ AUDIT-02-00 v3.3
 → preuve historique; ne suffit plus comme cible d’implantation
 ```
 
-## Extension KRP future
-
-Les éventuelles interfaces Phase1/Phase2 restent :
+## Bloc documentaire courant
 
 ```text
-RÉSERVÉES
-NON SPÉCIFIÉES
+DEC-127
+08_Phase2 v1.0
+09_ValidationPhase2 v1.0
+VALIDATION DOCUMENTAIRE = PASS
+IMPLÉMENTATION DEC-127 = NON, tâche technique distincte
 ```
 
-## Bloc actif
-
-```text
-06_Phase1
-ALIGN-AUDIT-06-v1.1 = NEXT
-```
-
-But : auditer l’implantation Phase1 contre son contrat v1.1, sans rouvrir KRP
-v4.0, Taxonomy v1.1 ou les responsabilités intellectuelles déjà verrouillées.
+Le prochain travail technique doit appliquer DEC-127 sans rouvrir KRP v4.0,
+Taxonomy v1.1, l’identité Blueprint, la langue canonique anglaise ou le contrat
+des neuf traductions.

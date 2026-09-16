@@ -206,7 +206,7 @@ Le reviewer :
 
 - reçoit une projection de revue en lecture seule, produite depuis le
   Blueprint persisté, sans pouvoir la modifier;
-- reçoit les règles v1.0;
+- reçoit les règles v1.2;
 - retourne uniquement PASS ou des findings structurés;
 - ne génère aucun remplacement;
 - ne modifie aucune identité;

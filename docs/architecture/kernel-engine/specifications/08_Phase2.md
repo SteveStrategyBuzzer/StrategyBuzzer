@@ -1,11 +1,11 @@
 # STRATEGYBUZZER — 08_PHASE2 / TRADUCTIONS
 
-**Version :** 0.3
+**Version :** 1.0
 **Date :** 2026-09-16
-**Statut :** RÈGLES OFFICIELLES VERROUILLÉES — MODULE À COMPLÉTER  
-**Décisions directrices :** DEC-125 + DEC-126 — OFFICIAL (clauses compatibles de DEC-122)
-**Implémentation :** À AUDITER  
-**Validation terminale :** NON
+**Statut :** CONTRAT DOCUMENTAIRE TERMINAL VERROUILLÉ
+**Décisions directrices :** DEC-125 + DEC-126 + DEC-127 — OFFICIAL (clauses compatibles de DEC-122)
+**Implémentation DEC-127 :** NON — TÂCHE TECHNIQUE DISTINCTE
+**Validation documentaire :** PASS
 
 > **Remplace :** v0.1 sur le cycle Quarantine et la reprise des traductions.
 > Les anciennes clauses de reprise directement en Phase2 sont
@@ -28,7 +28,10 @@ ReadyBank reçoit toujours la copie complète; plusieurs copies prêtes et des
 cycles successifs avec findings récents sont permis, sans historique permanent
 de corrections.
 
-**OPEN IMPLEMENTATION REQUIREMENTS — solutions non approuvées :**
+**CHECKLIST D’ALIGNEMENT TECHNIQUE — aucune décision fonctionnelle ouverte :**
+
+Les comportements ci-dessous sont verrouillés par DEC-125/127. Seuls leur
+modèle physique, leur audit d’implantation et leurs tests restent à traiter :
 
 1. persistance de la copie complète courante;
 2. file d’attente des clics Renvoie;
@@ -422,17 +425,11 @@ contrôles Phase1/ValidationPhase1 puis Phase2/ValidationPhase2 nécessaires.
 - fusion finale dans ReadyBank;
 - même `blueprint_id` et même `kernel_code`.
 
-# 7. Statut restant
+# 7. Statut terminal documentaire
 
-Restent à spécifier :
+Le contrat fonctionnel Phase2 est complet et verrouillé par DEC-127. La sélection
+du fournisseur concret, le modèle physique, l’implantation et les tests
+appartiennent à un travail technique ultérieur distinct.
 
-- moteur de traduction;
-- validations linguistiques détaillées;
-- politiques de contenu intraduisible;
-- structure des findings linguistiques et schémas de preuve;
-- prédicats exacts d’admissibilité de la traduction et du slot;
-- frontière terminale et progression partielle vers ReadyBank.
-
-La présente version verrouille la structure, les frontières, la source anglaise
-et les neuf codes cibles. Elle ne verrouille pas encore les décisions
-fonctionnelles listées ci-dessus.
+La présente version n’autorise aucune modification de code, migration, schéma,
+donnée, fournisseur ou conversion.

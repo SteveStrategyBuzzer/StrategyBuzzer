@@ -1,11 +1,11 @@
 # STRATEGYBUZZER — 09_VALIDATIONPHASE2
 
-**Version :** 0.3
+**Version :** 1.0
 **Date :** 2026-09-16
-**Statut :** FRONTIÈRE OFFICIELLE VERROUILLÉE — MODULE À COMPLÉTER  
-**Décisions directrices :** DEC-125 + DEC-126 — OFFICIAL (clauses compatibles de DEC-122)
-**Implémentation :** À AUDITER  
-**Validation terminale :** NON
+**Statut :** CONTRAT DOCUMENTAIRE TERMINAL VERROUILLÉ
+**Décisions directrices :** DEC-125 + DEC-126 + DEC-127 — OFFICIAL (clauses compatibles de DEC-122)
+**Implémentation DEC-127 :** NON — TÂCHE TECHNIQUE DISTINCTE
+**Validation documentaire :** PASS
 
 > **Remplace :** v0.1 sur la reprise directe en ValidationPhase2 et les slots
 > intouchables. Ces anciennes clauses sont `SUPERSEDED BY DEC-125` avant leur
@@ -25,7 +25,10 @@ aval.
 Le renvoi est une mise en file FIFO suivant l’ordre exact des clics, un seul
 traitement à la fois, et non un démarrage. Admin est externe au pipeline.
 
-**OPEN IMPLEMENTATION REQUIREMENTS — solutions non approuvées :**
+**CHECKLIST D’ALIGNEMENT TECHNIQUE — aucune décision fonctionnelle ouverte :**
+
+Les comportements ci-dessous sont verrouillés par DEC-125/127. Seuls leur
+modèle physique, leur audit d’implantation et leurs tests restent à traiter :
 
 1. persistance de la copie complète courante;
 2. file d’attente des clics Renvoie;
@@ -438,9 +441,11 @@ Après PASS, elle poursuit vers ReadyBank pour réconciliation avec le canonique
 - même `kernel_code`;
 - aucune traduction suspecte exposée au gameplay.
 
-# 6. Statut restant
+# 6. Statut terminal documentaire
 
-La progression partielle et la frontière terminale ReadyBank restent à
-spécifier. La langue source, les neuf langues cibles, les machines d’état, les
-findings linguistiques, les prédicats d’admissibilité, les retries, le contenu
-intraduisible, les interfaces fournisseur et l’idempotence ne sont plus ouverts.
+Le contrat fonctionnel ValidationPhase2 est complet et verrouillé par DEC-127.
+La progression partielle et la frontière terminale ReadyBank sont fixées par le
+complément DEC-127 de `11_ReadyBank.md`.
+
+Le modèle physique, l’implantation et les tests appartiennent à un travail
+technique ultérieur distinct.

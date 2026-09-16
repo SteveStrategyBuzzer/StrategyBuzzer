@@ -1,9 +1,9 @@
 # STRATEGYBUZZER — 10_QUARANTINE
 
-**Version :** 1.0  
-**Date :** 13 septembre 2026  
+**Version :** 1.1
+**Date :** 16 septembre 2026
 **Statut :** RÈGLES OFFICIELLES VERROUILLÉES — MODÈLE PHYSIQUE À IMPLANTER  
-**Décisions :** DEC-122 + DEC-125 + invariant linguistique DEC-126
+**Décisions :** DEC-122 + DEC-125 + DEC-126 + DEC-127
 **Implémentation :** NON TERMINÉE  
 **Validation terminale :** NON
 
@@ -227,3 +227,19 @@ sa `translation_revision`, sans périmer les huit autres ni les autres slots.
 Une panne réseau, un quota, un timeout, une authentification invalide, une
 configuration fournisseur ou l’épuisement d’un cycle technique ne colore aucun
 contenu et ne crée pas seul une copie Quarantaine.
+
+## Retrait d’un CognitiveSlot déjà publié
+
+Si l’Admin modifie réellement la source anglaise ou une traduction d’un slot
+déjà publié, une seule transaction verrouille `blueprint_id + cognitive_type`,
+crée la nouvelle révision jaune, invalide le manifeste publié, rend
+immédiatement le slot non exploitable dans toutes les langues et persiste son
+indice de reprise.
+
+Le contenu antérieur peut être conservé pour audit, mais Gameplay ne peut plus
+l’utiliser. Modifier la source anglaise périme les neuf traductions. Modifier
+une seule cible ne périme pas les huit autres, mais retire temporairement le
+CognitiveSlot complet parce que la publication demeure atomique par slot.
+
+Cette opération ne retire, ne révise et ne relance aucun autre CognitiveSlot
+publié et non modifié du même Blueprint.

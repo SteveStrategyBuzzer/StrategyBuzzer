@@ -1,148 +1,94 @@
 # START HERE — StrategyBuzzer Kernel Engine
 
-Ce dossier est la **mémoire architecturale persistante** du moteur intellectuel. Un changement de chat ne doit jamais modifier la source de vérité.
+Ce dossier est la mémoire architecturale persistante du moteur intellectuel.
+Un changement de chat ou l’état courant du code ne remplace jamais les contrats
+officiels.
 
 ## Ordre obligatoire de lecture
 
 1. `00_ConstitutionCognitive.md`
 2. `00_ArchitectureRegister.md`
 3. `00_MOTEUR_INTELLECTUEL_ACTIVE_SPEC.md`
-4. `00_CURRENT_HANDOFF.md`
-5. les spécifications verrouillées nécessaires dans `specifications/`
-6. le boundary bridge explicitement actif du module suivant, seulement si requis par la frontière courante
+4. `00_DOCUMENTATION_MAP.md`
+5. `00_CURRENT_HANDOFF.md`
+6. les spécifications canoniques nécessaires dans `specifications/`
+7. un boundary bridge uniquement s’il est explicitement déclaré actif par les
+   sources précédentes
 
 ## Hiérarchie
 
-- `specifications/` = contrats canoniques verrouillés seulement ;
-- `working/` = reconstruction, références et boundary bridges explicitement déclarés ;
-- `cross-module/` = brides transversales qui ne constituent pas un moteur 01–11 ;
-- `audits/` = preuves d’audit, ne remplacent jamais les contrats ;
-- `certificates/` = preuves de verrouillage/validation, ne remplacent jamais les contrats ;
-- `archive/` + documents marqués `SUPERSEDED/HISTORIQUE` = non autoritatifs.
+- `specifications/` : contrats canoniques verrouillés;
+- `working/` : reconstruction ou bridges, autoritatifs seulement si le registre
+  courant les active explicitement;
+- `cross-module/` : brides transversales, jamais un moteur 01–11 autonome;
+- `audits/` et `certificates/` : preuves, jamais contrats de remplacement;
+- historique Git et documents `SUPERSEDED`, `REJECTED` ou `HISTORIQUE` :
+  non autoritatifs.
 
-## État de reprise actuel
+## État courant
 
 ```text
-01 KernelBlueprint
-→ contrat canonique disponible pour la frontière intellectuelle
-
-02 KernelRotationPlanner
-→ specifications/02_KernelRotationPlanner.md
-→ v3.7 VERROUILLÉ — PARTIE INTELLECTUELLE
-→ DEC-118
-→ RÉAUDIT-02-v3.7 NEXT
-
-03 Taxonomy
-→ spécification v1.0 historique sur la frontière KRP
-→ boundary bridge actif : working/03_Taxonomy/03_Taxonomy_BOUNDARY_BRIDGE_DEC-118.md
-→ réécriture complète dans son propre tour
+01 KernelBlueprint       v3.2  — DEC-125
+02 KernelRotationPlanner v4.0  — DEC-119 + langue DEC-126
+03 Taxonomy              v1.1  — DEC-120 + langue DEC-126
+05 QuestionIntent        v2.3  — DEC-125/126
+06 Phase1                v1.2  — contrat documentaire DEC-125/126
+07 ValidationPhase1      v1.2  — contrat documentaire DEC-125/126
+08 Phase2                v1.0  — contrat terminal DEC-127
+09 ValidationPhase2      v1.0  — contrat terminal DEC-127
+10 Quarantine            v1.1  — frontières DEC-125/127
+11 ReadyBank             v0.4  — frontière Phase2 DEC-127
 ```
 
-## KRP — règle active fondamentale
+La validation documentaire Phase2/ValidationPhase2 est PASS. L’implantation
+DEC-127 n’est pas incluse dans ce verrouillage et appartient à une tâche
+technique distincte.
+
+## Pipeline canonique
 
 ```text
-UN SEUL MODULE MÉTIER ACTIF À LA FOIS
-```
-
-Taxonomy communique uniquement un **changement réel de besoin** dans sa fermeture de sortie :
-
-```text
-triplet Blueprint écrit avec succès
-↓
-même IdeaSlot consommé
-↓
-si le Domain reste exploitable : silence
-
-si ENCORE EXPLOITABLE → VIDE :
-DOMAIN_EXHAUSTED(depth,domain)
-```
-
-Signification :
-
-```text
-CE DOMAIN EST VIDE
-```
-
-Le fait reste en attente sans activer KRP.
-
-KRP le consomme seulement lors de sa prochaine activation après :
-
-```text
-ReadyBank
-→ CURRENT_KERNEL_RECEIVED
-→ Factory
-→ NOUVEAU Blueprint
+KBP
 → KRP
+→ Taxonomy
+→ QuestionIntent
+→ Phase1
+→ ValidationPhase1
+→ Phase2
+→ ValidationPhase2
+→ ReadyBank
 ```
 
-KRP fait alors :
+Un seul module métier est actif à la fois. Les phases reçoivent uniquement le
+`blueprint_id` et rechargent le même KernelBlueprint persistant.
 
-```text
-VISIBLE → ESTOMPÉ
-```
+## Règles courantes décisives
 
-`ESTOMPÉ` = Domain abstrait/exclu des rotations restantes du tour courant.
+- KRP v4.0 possède les moteurs `DOMAIN_EXHAUSTED` et `DEPTH_EXHAUSTED`;
+- Taxonomy transmet uniquement son fait terminal de consommation et ne possède
+  aucun moteur global d’épuisement;
+- l’anglais est la langue intellectuelle canonique;
+- Phase2 crée exactement `fr, es, de, it, pt, ru, zh, ar, el`, directement
+  depuis l’anglais;
+- `General` est uniquement un mode Shuffle gameplay;
+- les sept slots Quarantaine sont modifiables, y compris les verts;
+- ReadyBank publie atomiquement un CognitiveSlot uniquement lorsque la source
+  et les neuf traductions courantes sont admissibles;
+- `CURRENT_KERNEL_RECEIVED` suit sept issues terminales, pas nécessairement sept
+  publications;
+- une file Quarantaine READY est toujours prioritaire sur KBP;
+- aucune conversion legacy n’est autorisée par DEC-126/127.
 
-Taxonomy ne choisit aucun prochain Domain/Depth et n’émet pas `DEPTH_EXHAUSTED` dans le contrat actif.
+## Sources historiques interdites comme vérité active
 
-## KRP — interdiction de sources historiques
+Ne jamais reconstruire l’architecture depuis :
 
-Ne jamais reconstruire ou auditer KRP depuis :
+- `docs/architecture/02_KernelRotationPlanner.md`;
+- les variantes KRP v3.x;
+- DEC-115 à DEC-118;
+- un fichier `REFERENCE`, `RECONSTRUCTION`, `BRIDES`, `SUPERSEDED`, `REJECTED`
+  ou `HISTORIQUE`;
+- un ancien chat;
+- le comportement du code existant lorsqu’il diverge de la spécification.
 
-```text
-docs/architecture/02_KernelRotationPlanner.md
-→ HISTORIQUE v3.2
-
-docs/architecture/02_KernelRotationPlanner_v3.3_ALIGNMENT.md
-→ SUPERSEDED
-
-working/02_KernelRotationPlanner/02_KernelRotationPlanner_REFERENCE_ACTIVE.md
-→ PROMOTED / CLOSED
-
-KRP v3.3 / DEC-114
-→ SUPERSEDED
-
-KRP v3.4 / DEC-115
-→ SUPERSEDED
-
-KRP v3.5 / DEC-116
-→ SUPERSEDED
-
-KRP v3.6 / DEC-117
-→ SUPERSEDED
-```
-
-Source KRP unique :
-
-```text
-docs/architecture/kernel-engine/specifications/02_KernelRotationPlanner.md v3.7
-```
-
-## Interdictions générales
-
-- ne jamais utiliser `archive/` comme vérité active ;
-- ne jamais déduire l’architecture depuis le code ;
-- ne jamais travailler deux spécifications en parallèle ;
-- ne jamais modifier une spécification verrouillée sans révision complète/versionnement lorsque son architecture évolue ;
-- ne jamais inventer un contrat manquant depuis un ancien chat ;
-- ne jamais promouvoir un fichier `BRIDES`, `REFERENCE` ou `RECONSTRUCTION` dans `specifications/` sans verrouillage/certification explicite.
-
-## Extension KRP Phases 1–2
-
-KRP est complet pour la partie intellectuelle. Les éventuelles interfaces provenant plus tard de Phase1/Phase2 sont **réservées, non spécifiées et non bloquantes pour la fermeture intellectuelle actuelle**.
-
-Toute extension future de KRP exige une nouvelle version complète + une nouvelle DEC.
-
-## Branche officielle
-
-```text
-replit/intellectual-engine-current-2026-08-16
-```
-
-## Prochaine opération exacte
-
-```text
-RÉAUDIT-02-v3.7
-```
-
-Comparer le diff local Replit déjà commencé contre la v3.7 canonique. Classer `KEEP / REVERT / MODIFY / MISSING`. Aucun nouveau patch avant fermeture de ce réaudit.
+Toute divergence entre code et contrat est un écart d’implantation à nommer et
+à traiter séparément; elle ne réécrit jamais la spécification.

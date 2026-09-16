@@ -933,10 +933,10 @@ La spécification est conforme seulement si :
 Audit croisé :
 
 ```text
-01_KernelBlueprint v3.1 / DEC-123 + DEC-124
+01_KernelBlueprint v3.2 / DEC-125
 02_KernelRotationPlanner v4.0 / DEC-119
 04_ValidationDominantIdeas — interface
-05_QuestionIntent — frontière aval
+05_QuestionIntent v2.3 / DEC-125 + DEC-126 — frontière aval
 ```
 
 ---

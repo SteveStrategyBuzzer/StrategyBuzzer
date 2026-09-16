@@ -1,9 +1,9 @@
 # STRATEGYBUZZER — 11_READYBANK
 
-**Version :** 0.3
+**Version :** 0.4
 **Date :** 16 septembre 2026
 **Statut :** RÈGLES OFFICIELLES VERROUILLÉES — MODULE À COMPLÉTER  
-**Décisions :** DEC-122 + DEC-125 + invariant linguistique DEC-126
+**Décisions :** DEC-122 + DEC-125 + DEC-126 + DEC-127
 **Implémentation :** À AUDITER  
 **Validation terminale :** NON
 
@@ -502,3 +502,102 @@ Pour chaque slot jaune, ReadyBank vérifie l’indice de reprise persistant avan
 ReadyBank ne retire le jaune qu’après sa décision terminale sur cette combinaison exacte. Une divergence rend le retour périmé et produit un NO-OP atomique sur le canonique.
 
 Une fusion réussie termine l’indice et installe la révision corrigée dans le slot canonique. Une fusion refusée maintient le slot canonique vide et renvoie la copie vers Quarantaine avec un nouvel état de travail, sans permettre à une ancienne reprise de se terminer ensuite.
+
+# 13. Frontière terminale Phase2 — DEC-127
+
+## 13.1 Trois issues terminales
+
+Pour le passage ReadyBank courant, chaque CognitiveSlot atteint exactement une
+issue :
+
+```text
+PUBLISHED
+CONTENT_QUARANTINED
+TECHNICALLY_BLOCKED
+```
+
+`PUBLISHED` exige la source anglaise PASS et les neuf traductions admissibles.
+`CONTENT_QUARANTINED` couvre `SUSPICION`, `CONTENT_UNTRANSLATABLE` ou une
+intervention manuelle demandée. `TECHNICALLY_BLOCKED` couvre un cycle technique
+en `PERMANENT_FAILURE`, sans rouge ni Quarantaine automatique.
+
+Un slot avec claim actif, retry planifié, validation ou fusion en cours n’est
+pas terminal.
+
+## 13.2 Passage terminal et CURRENT_KERNEL_RECEIVED
+
+Le passage devient terminal lorsque les sept CognitiveSlots ont chacun une
+issue terminale et qu’aucune opération courante n’est active. ReadyBank persiste
+alors :
+
+```text
+receipt_event_id
+blueprint_id
+receipt_kind
+cause_reference
+slot_outcomes
+published_slot_count
+quarantined_slot_count
+technically_blocked_slot_count
+completed_at
+```
+
+`receipt_kind` vaut `INITIAL_PASS`, `QUARANTINE_RETURN` ou
+`TECHNICAL_RECOVERY`. Pour une même `cause_reference`, un seul événement est
+créé, `CURRENT_KERNEL_RECEIVED` est émis une seule fois et la direction suivante
+est décidée une seule fois. Tout replay est un NO-OP. Aucun contenu intellectuel
+ne transite dans cet événement.
+
+`CURRENT_KERNEL_RECEIVED` signifie que ReadyBank a persisté une décision
+terminale pour chacun des sept slots du passage; il ne signifie pas que les sept
+slots sont publiés. La priorité Quarantaine FIFO puis KBP de DEC-125 reste
+inchangée.
+
+## 13.3 Manifeste de publication atomique
+
+Chaque CognitiveSlot publié est lié au manifeste exact :
+
+```text
+blueprint_id
++ cognitive_type
++ source_revision
++ translation_revision.fr
++ translation_revision.es
++ translation_revision.de
++ translation_revision.it
++ translation_revision.pt
++ translation_revision.ru
++ translation_revision.zh
++ translation_revision.ar
++ translation_revision.el
+```
+
+ReadyBank vérifie et fusionne ce manifeste dans une seule transaction. Une
+divergence produit un NO-OP atomique et ne peut jamais écraser un manifeste
+canonique plus récent.
+
+## 13.4 Retrait et republication
+
+Si l’Admin modifie la source anglaise ou une traduction d’un slot publié, la
+même transaction qui crée la révision jaune invalide le manifeste et retire
+immédiatement le CognitiveSlot de Gameplay dans toutes les langues.
+
+Une modification cible ne périme pas les huit autres traductions, mais aucune
+langue du slot n’est exposée avant que la source courante et les neuf cibles
+soient de nouveau admissibles. ReadyBank republie alors atomiquement le slot
+complet avec son nouveau manifeste.
+
+Les autres CognitiveSlots publiés et non modifiés restent disponibles. Lors
+d’un retour Quarantaine, un slot déjà publié, courant et non modifié produit un
+NO-OP : aucune republication, révision, revalidation ou perte de disponibilité.
+
+## 13.5 Réparation et Gameplay
+
+Un slot `CONTENT_QUARANTINED` revient par sa version de copie et son indice de
+reprise. Un slot `TECHNICALLY_BLOCKED` revient après un `resolution_event_id`
+autorisé. Seul le slot concerné reprend; les autres restent inchangés.
+
+Gameplay peut consommer les slots `PUBLISHED` d’un Blueprint partiel tant que
+leur manifeste reste courant et non modifié. Il ne voit jamais un slot non
+publié, une traduction manquante, rouge, jaune non acceptée, périmée ou
+techniquement bloquée.

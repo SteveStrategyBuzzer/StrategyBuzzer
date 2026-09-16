@@ -1,6 +1,6 @@
 # StrategyBuzzer — Moteur intellectuel — Spécification active maître
 
-**Version :** 2.3.0-dec-126
+**Version :** 2.4.0-dec-127
 **Date :** 2026-09-16
 **Statut :** **ACTIF — VÉRITÉ GLOBALE COURANTE**  
 **Portée :** architecture globale, frontières, ownership, communications et état documentaire des modules 01→11.
@@ -16,6 +16,10 @@
 > responsabilité : elle fixe l’anglais comme langue de création intellectuelle
 > canonique, le français comme langue architecturale et administrative, et la
 > langue choisie par le joueur comme langue de présentation.
+>
+> **DEC-127 — OFFICIAL** verrouille le contrat terminal Phase2 et
+> ValidationPhase2 : identité et révisions, états, findings, admissibilité,
+> retries, interfaces opaques, reprise Quarantaine et frontière ReadyBank.
 
 ## 0. Autorité courante DEC-125
 
@@ -49,10 +53,11 @@ deux. KBP ne coordonne pas la circulation, ne reçoit aucun état Quarantine et
 ne crée/ne retrouve un Blueprint que lorsque `GO` lui est destiné.
 `blueprint_id` reste requis pour le suivi normal et les retours.
 
-### Exigences d’implémentation ouvertes — pas des solutions approuvées
+### Checklist d’alignement technique — aucune décision fonctionnelle ouverte
 
-Sont explicitement **OPEN IMPLEMENTATION REQUIREMENTS** et non des solutions
-techniques approuvées :
+Les comportements suivants sont verrouillés par DEC-125/127. Seuls leur modèle
+physique, leur audit d’implantation et leurs tests appartiennent à une tâche
+technique ultérieure :
 
 1. persistance de la copie complète courante;
 2. file d’attente des clics Renvoie;
@@ -236,10 +241,10 @@ Une seule spécification est travaillée à la fois.
 | 05 QuestionIntent | **100 % intellectuel v2.3 + langue DEC-126** | **100 %** | alignement technique ultérieur | NON | **VERROUILLÉ — DEC-125 + DEC-126** |
 | 06 Phase1 | **100 % intellectuel v1.2** | langue source verrouillée; contrat fonctionnel antérieur conservé | alignement technique ultérieur | NON | **DOCUMENTAIRE — DEC-125 + DEC-126** |
 | 07 ValidationPhase1 | **100 % intellectuel v1.2** | langue source verrouillée; contrat fonctionnel antérieur conservé | alignement technique ultérieur | NON | **DOCUMENTAIRE — DEC-125 + DEC-126** |
-| 08 Phase2 | source/cibles DEC-126 + frontières DEC-125 | partiel v0.3 | non | non | décisions fonctionnelles détaillées ouvertes |
-| 09 ValidationPhase2 | source/cibles DEC-126 + frontières DEC-125 | partiel v0.3 | non | non | décisions fonctionnelles détaillées ouvertes |
-| 10 Quarantine | copie complète DEC-125 | partiel v0.2 | non | non | sept slots éditables + reprise Phase1 verrouillées |
-| 11 ReadyBank | fusion DEC-125 | partiel v0.3 | non | non | fusion sélective + routage FIFO verrouillés |
+| 08 Phase2 | **100 % intellectuel v1.0** | **100 % documentaire** | NON — tâche technique distincte | PASS documentaire | **CONTRAT TERMINAL — DEC-127** |
+| 09 ValidationPhase2 | **100 % intellectuel v1.0** | **100 % documentaire** | NON — tâche technique distincte | PASS documentaire | **CONTRAT TERMINAL — DEC-127** |
+| 10 Quarantine | copie complète et reprise sélective v1.1 | contrat documentaire DEC-125/127 | modèle physique DEC-125 partiel; DEC-127 non implanté | NON | **FRONTIÈRES VERROUILLÉES** |
+| 11 ReadyBank | fusion et publication atomiques v0.4 | frontière Phase2 DEC-127 verrouillée | DEC-125 partiel; DEC-127 non implanté | NON | **MODULE GLOBAL À COMPLÉTER** |
 
 ---
 
@@ -706,10 +711,10 @@ KRP écrit uniquement `depth + domain` et Taxonomy uniquement son triplet métie
 01 → specifications/01_KernelBlueprint.md v3.2 — DEC-125
 06 → specifications/06_Phase1.md v1.2 — CONTRAT DOCUMENTAIRE
 07 → specifications/07_ValidationPhase1.md v1.2 — CONTRAT DOCUMENTAIRE
-08 → specifications/08_Phase2.md v0.3 — MODULE À COMPLÉTER
-09 → specifications/09_ValidationPhase2.md v0.3 — MODULE À COMPLÉTER
-10 → specifications/10_Quarantine.md v0.2
-11 → specifications/11_ReadyBank.md v0.3
+08 → specifications/08_Phase2.md v1.0 — CONTRAT TERMINAL DEC-127
+09 → specifications/09_ValidationPhase2.md v1.0 — CONTRAT TERMINAL DEC-127
+10 → specifications/10_Quarantine.md v1.1 — FRONTIÈRES DEC-125/127
+11 → specifications/11_ReadyBank.md v0.4 — FRONTIÈRE PHASE2 DEC-127
 ```
 
 ## Inventaire documentaire des surfaces persistantes à auditer ultérieurement

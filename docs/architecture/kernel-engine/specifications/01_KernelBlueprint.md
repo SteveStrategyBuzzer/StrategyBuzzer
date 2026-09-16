@@ -5,7 +5,7 @@
 **Statut documentaire :** **VERROUILLÉ**
 **Architecture :** **100 %**
 **Contrat :** **100 %**
-**Décision directrice :** **DEC-125 v1.0 — OFFICIAL** (clauses compatibles
+**Décision directrice :** **DEC-125 v1.1 — OFFICIAL** (clauses compatibles
 DEC-123/124 conservées)
 **Remplace :** v3.1 sur le cycle canonique/Quarantine/ReadyBank et le routage;
 v3.1 est remplacée dans ce périmètre

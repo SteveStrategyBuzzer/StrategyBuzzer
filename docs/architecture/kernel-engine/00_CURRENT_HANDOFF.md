@@ -1,385 +1,132 @@
 # CURRENT HANDOFF — StrategyBuzzer Kernel Engine
 
-**Mis à jour :** 2026-09-13
-**Branche officielle :** `replit/intellectual-engine-current-2026-08-16`  
-**Module actif unique :** `06_Phase1`  
-**Spécification active :** `specifications/06_Phase1.md` v1.1
-**Frontière suivante verrouillée :** `07_ValidationPhase1.md` v1.1
-**Décision directrice active :** `DEC-125` (clauses compatibles DEC-122/123/124)
-**Prochain bloc exact :** `ALIGN-AUDIT-06-v1.1 → BUILD-06-v1.1`
+**Mis à jour :** 2026-09-16
+**Branche officielle :** `replit/intellectual-engine-current-2026-08-16`
+**Autorité documentaire courante :** DEC-119, DEC-120, DEC-125, DEC-126 et
+DEC-127 selon leur module
+**Contrat nouvellement verrouillé :** Phase2 v1.0 + ValidationPhase2 v1.0
+**Implémentation DEC-127 :** NON — tâche technique distincte
+**Validation documentaire :** PASS
 
-> Ce fichier est un pointeur opérationnel. En cas de contradiction,
-> `00_ArchitectureRegister.md + 00_MOTEUR_INTELLECTUEL_ACTIVE_SPEC.md +
-> specifications/06_Phase1.md v1.1` priment; DEC-125 est l’autorité courante.
-
-> **Règle DEC-125 :** un slot `SUSPICION` ou `EMPTY` vide sa position
-> canonique et crée une copie persistante complète. Tous ses sept slots sont
-> visibles/éditables (rouge suspicion/vide, vert conforme intouchable
-> manuellement, jaune rempli/modifié jusqu’à ReadyBank); toute copie repart en
-> Phase1. Le renvoi enqueue sans démarrer, FIFO exact, un à la fois. ReadyBank
-> choisit exclusivement la première copie prête, sinon KBP; jamais les deux.
-
----
-
-# 1. Synchronisation obligatoire
-
-Replit ne doit pas travailler depuis l’ancien HEAD `2c4fee75`.
-
-Avant toute inspection ou modification :
-
-```bash
-git fetch origin
-git switch replit/intellectual-engine-current-2026-08-16
-git pull --ff-only origin replit/intellectual-engine-current-2026-08-16
-```
-
-Puis vérifier :
+Ce fichier est un pointeur opérationnel courant. En cas de contradiction,
+l’ordre d’autorité est :
 
 ```text
-HEAD local = HEAD origin
-divergence = 0/0
-working tree = propre
+00_ConstitutionCognitive.md
+→ 00_ArchitectureRegister.md
+→ 00_MOTEUR_INTELLECTUEL_ACTIVE_SPEC.md
+→ spécification canonique du module concerné
 ```
 
-La branche distante doit contenir les contrats documentaires successifs se terminant par :
+# 1. Sources actives
 
 ```text
-06_Phase1 v1.1
-07_ValidationPhase1 v1.1
-00_MOTEUR_INTELLECTUEL_ACTIVE_SPEC v2.2.0-dec-125
-ce CURRENT_HANDOFF
+01 KernelBlueprint       → specifications/01_KernelBlueprint.md v3.2
+02 KRP                   → specifications/02_KernelRotationPlanner.md v4.0
+03 Taxonomy              → specifications/03_Taxonomy.md v1.1
+05 QuestionIntent        → specifications/05_QuestionIntent.md v2.3
+06 Phase1                → specifications/06_Phase1.md v1.2
+07 ValidationPhase1      → specifications/07_ValidationPhase1.md v1.2
+08 Phase2                → specifications/08_Phase2.md v1.0
+09 ValidationPhase2      → specifications/09_ValidationPhase2.md v1.0
+10 Quarantine            → specifications/10_Quarantine.md v1.1
+11 ReadyBank             → specifications/11_ReadyBank.md v0.4
 ```
 
-Si le pull n’est pas strictement fast-forward ou si le working tree n’est pas propre : STOP.
+ReadyBank demeure un module global à compléter. Sa frontière terminale Phase2,
+sa publication par CognitiveSlot et son routage Quarantaine/KBP sont néanmoins
+verrouillés par DEC-125/127.
 
-# 2. Ne pas refaire
+# 2. Langue intellectuelle canonique — DEC-126
 
-Ne pas réimplanter ni redéfinir :
-
-- KernelBlueprint Section 1;
-- KRP v4 / DEC-119;
-- Taxonomy v1.1 / DEC-120;
-- QuestionIntent / DEC-123 : construction, persistance et verrouillage du `kernel_code` complet;
-- frontières / DEC-124 : transmission de `blueprint_id` uniquement, puis lookup persistant;
-- migrations historiques DEC-121 ;
-- tests KRP v4;
-- masque joueur;
-- ReadyBank;
-- Quarantine complet;
-- traductions Phase2.
-
-Ne pas restaurer :
-
-- QCM_RECOGNITION master;
-- six cognitifs dérivés;
-- `question_code`;
-- segments `COG` ou `VAR`;
-- limites de caractères par Depth;
-- tests ou contrats KRP v3.
-
-# 3. Mission Phase1 v1.1
-
-Recevoir uniquement un `blueprint_id` par lookup, après fin confirmée de la phase
-précédente et statut terminal attendu, retrouver le `KernelBlueprint` persistant
-et produire les sept créations source autonomes :
+L’anglais est la langue de création intellectuelle :
 
 ```text
-QCM_RECOGNITION
-QCM_REASONING
-QCM_TRAP
-TRUE_FALSE_RECOGNITION_TRUE
-TRUE_FALSE_RECOGNITION_FALSE
-TRUE_FALSE_REASONING_TRUE
-TRUE_FALSE_REASONING_FALSE
+Domain
+Subdomain
+Subject
+Dominant Idea
+question source
+choix source
+bonne réponse source
+SV source
 ```
 
-Un seul appel de création structuré peut demander les sept slots ensemble.
-
-L’écriture demeure atomique par slot.
-
-Phase1 possède :
+Phase2 crée exactement neuf traductions directes et indépendantes depuis la
+même source anglaise :
 
 ```text
-EMPTY
-CREATED
-CREATION_FAILED
+fr, es, de, it, pt, ru, zh, ar, el
 ```
 
-Phase1 ne possède pas :
+`General` appartient uniquement au mode Shuffle gameplay. Il n’est jamais un
+Domaine créateur. La Bible, les règles, les titres et l’Admin restent français.
+La langue choisie par le joueur reste externe à l’identité intellectuelle.
 
-```text
-NOT_VALIDATED
-PASS
-SUSPICION
-READY
-CONSUMED
-```
+Aucune donnée française existante n’est convertie par DEC-126/127.
 
-Les erreurs techniques de Phase1 (fournisseur, décodage, schéma, persistance ou
-infrastructure) produisent `CREATION_FAILED`. Un contenu intellectuel
-techniquement persistable est transmis à ValidationPhase1 ; cette validation,
-et elle seule, peut conclure à `SUSPICION`. Ces deux issues ne sont jamais
-interchangeables.
+# 3. Contrat terminal Phase2 — DEC-127
 
-# 3.1 Relais et résumé opérationnel verrouillés
-
-Le pipeline canonique est :
-
-```text
-KBP
-→ KRP
-→ Taxonomy
-→ QuestionIntent
-→ Phase1
-→ ValidationPhase1
-→ Traductions
-→ ValidationPhase2
-→ ReadyBank
-```
-
-À chaque arrivée ReadyBank, `CURRENT_KERNEL_RECEIVED` choisit exclusivement :
-
-```text
-file Quarantine prête non vide → première copie FIFO → reprise Phase1
-file Quarantine prête vide → KBP → nouveau Blueprint
-```
-
-Le signal n’envoie jamais aux deux destinations. Un renvoi met en file sans
-démarrer; un seul traitement est actif à la fois.
-
-`KernelBlueprintFactory` / KBP crée une seule fois le vrai
-`KernelBlueprint` PostgreSQL et lui attribue son `blueprint_id`. Cette
-structure persistante est extérieure aux phases, progressivement remplie et
-l'unique source de vérité ; elle conserve le même `blueprint_id` pendant les
-phases normales. Une copie Quarantine complète est non canonique.
-
-Il n'existe aucune copie autoritaire, aucun agrégat Blueprint de transport et
-aucun passage d'objet `KernelBlueprint` entre phases. La seule valeur transmise
-est strictement :
-strictement :
+L’identité logique d’une traduction est :
 
 ```text
 blueprint_id
++ cognitive_type
++ language_code
++ source_revision
 ```
 
-Chaque phase retrouve le Blueprint persistant par cet identifiant, y vérifie
-la phase précédente terminée et son statut terminal, lit
-uniquement les préconditions relevant des ownerships amont, écrit uniquement
-son propre ownership, persiste puis signale sa fin.
+Chaque cible possède sa propre `translation_revision`. Phase2 possède les états
+de création; ValidationPhase2 possède les états de validation. Un retour
+portant une ancienne révision, un ancien cycle ou un ancien claim est un NO-OP.
 
-Les modes production et test sont entièrement externes au Blueprint : aucun
-champ `mode`, `target`, `test` ou équivalent n'y est autorisé. Phase1 garde la
-même logique métier dans les deux cas : pour un contenu techniquement
-persistable, en production son relais externe va vers ValidationPhase1 ; en
-test, il va vers un récepteur terminal qui bloque la cascade.
+Une cible admissible doit être `CREATED + PASS`, complète, courante et sans
+finding `BLOCKING`, claim ou retry actif. Un CognitiveSlot admissible exige la
+source anglaise PASS et les neuf cibles admissibles.
 
-# 3.2 Frontière de persistance canonique
+Les pannes techniques autorisent une tentative initiale et trois retries aux
+planchers `1 / 5 / 15 minutes`; un `Retry-After` supérieur prévaut. Elles ne
+créent ni rouge, ni finding intellectuel, ni Quarantaine automatique. Seule
+ValidationPhase2 indépendante peut conclure `CONTENT_UNTRANSLATABLE`.
 
-Le `KernelBlueprint` est l’unique agrégat canonique.
+Les enveloppes internes, identités, révisions, claims et références de stockage
+ne sont jamais transmis aux fournisseurs. Les références externes sont opaques.
+
+# 4. Quarantaine et ReadyBank
+
+Les sept slots d’une copie Quarantaine sont visibles et modifiables par
+l’Admin, y compris les slots verts. Une modification réelle invalide l’ancien
+PASS, crée une révision jaune et interdit tout écrasement par un ancien retour.
+
+Un slot publié retouché est retiré de Gameplay dans toutes les langues dans la
+même transaction. Les autres slots publiés et non modifiés restent disponibles.
+
+ReadyBank publie atomiquement par `blueprint_id + cognitive_type` avec un
+manifeste comprenant `source_revision` et les neuf `translation_revision`.
+Chaque slot termine le passage comme :
 
 ```text
-kernel_blueprint_runs
-→ Section 1 immuable
-
-kernel_blueprint_cognitive_slots
-→ sept CognitiveSlots persistés séparément
+PUBLISHED
+CONTENT_QUARANTINED
+TECHNICALLY_BLOCKED
 ```
 
-Chaque slot est identifié par `(blueprint_id, cognitive_type)` et une
-contrainte unique garantit une seule occurrence de chaque type par Blueprint.
-L’écriture est atomique par slot.
+`CURRENT_KERNEL_RECEIVED` exige sept issues terminales et aucune opération
+active; il n’exige pas sept slots publiés. Chaque événement et chaque direction
+sont persistés une fois. La Quarantaine READY FIFO reste prioritaire sur KBP.
 
-`question_intents.frame_en` est legacy et non autoritaire. Phase1 ne réécrit
-jamais un frame global, ne persiste aucune traduction et ne persiste aucune
-donnée joueur. Le masque joueur et le mélange des choix restent externes au
-Blueprint.
+# 5. Prochain travail autorisable
 
-# 4. Contrat intellectuel obligatoire
+Le contrat documentaire est terminé. Une tâche technique distincte peut
+maintenant auditer puis implanter DEC-127.
 
-- sept mécanismes cognitifs autonomes;
-- aucun master;
-- aucune reformulation inter-slot;
-- aucune conversion mécanique QCM ↔ Vrai/Faux;
-- aucune négation mécanique vrai ↔ faux;
-- QCM_RECOGNITION = rappel direct;
-- QCM_REASONING = lien logique;
-- QCM_TRAP = intuition/confusion plausible, jamais piège typographique;
-- TF_RECOGNITION = fait atomique vrai/faux;
-- TF_REASONING = relation logique vraie/fausse;
-- texte de la question lisible en huit secondes ou moins;
-- chaque bonne réponse et distracteur QCM = un mot, un nom propre, une valeur courte ou une expression courte représentant une seule idée indivisible;
-- aucune phrase explicative, justification, énumération ou combinaison de plusieurs idées dans un choix;
-- quatre choix QCM de même catégorie sémantique, forme grammaticale et concision comparables;
-- SV explicatif lisible en trente secondes ou moins;
-- difficulté portée par la connaissance ou le raisonnement;
-- cohérence jusqu’au sous-domaine;
-- QCM = quatre choix et une bonne réponse;
-- pour les trois QCM, `choices.a` est toujours la bonne réponse et `correct_answer_key = a`;
-- les distracteurs QCM restent canoniquement en `b`, `c`, `d`;
-- Vrai/Faux = deux choix et polarité imposée;
-- le mélange des choix appartient exclusivement au gameplay et ne réécrit jamais le Blueprint;
-- le résultat joueur conserve la clé canonique du choix sélectionné, pas seulement sa lettre affichée;
-- aucun contenu partiel déclaré CREATED.
+Cette future tâche ne doit pas :
 
-# 5. Premier travail — ALIGN-AUDIT-06-v1.1
-
-Avant le patch, comparer le code réel à `06_Phase1.md v1.1`.
-
-Rapporter :
-
-```text
-composants Phase1 existants
-pipeline d’appel actuel
-client Gemini actuel réutilisable
-structure actuelle des CognitiveSlots
-persistance actuelle
-tests actuels
-KEEP
-MODIFY
-REMOVE
-MISSING
-UNRESOLVED
-fichiers exacts nécessaires
-migration réellement nécessaire : OUI/NON + preuve
-```
-
-Ne pas utiliser les anciens chats, `.agents/**`, `attached_assets/**` ou un document historique comme contrat.
-
-# 6. Autorisation de Build
-
-Si et seulement si l’audit ne révèle aucun `UNRESOLVED` architectural :
-
-```text
-BUILD-06-v1.0 autorisé
-```
-
-Le patch doit rester limité à Phase1 et aux adaptations indispensables des sept CognitiveSlots.
-
-Une migration additive est autorisée uniquement si un blocage de schéma est démontré. Aucune migration historique ne peut être modifiée.
-
-# 7. Gemini
-
-Implémenter :
-
-- contrat d’entrée versionné;
-- schéma JSON `phase1.source.v1`;
-- un appel pour les sept slots;
-- preuves internes;
-- idempotency key;
-- maximum trois tentatives techniques au total;
-- aucun retry intellectuel automatique;
-- aucun appel Gemini réel pendant les tests;
-- fournisseur simulé déterministe uniquement derrière l'interface fournisseur;
-- aucune exposition de credential.
-
-Gemini ne décide jamais le PASS officiel.
-
-# 8. Persistance
-
-- sept conteneurs permanents;
-- écriture atomique par slot;
-- identité Section 1 immuable;
-- replay idempotent;
-- slot techniquement invalide non persisté comme CREATED;
-- autres slots valides conservés;
-- aucun état joueur dans le Blueprint;
-- aucune traduction.
-
-# 9. Tests Phase1 obligatoires
-
-Couvrir au minimum les vingt tests contractuels de `06_Phase1 v1.0`, notamment :
-
-- discriminateurs des sept cognitifs;
-- refus des mécaniques voisines;
-- structure QCM/Vrai-Faux;
-- polarités;
-- absence de master;
-- anti-conversion mécanique;
-- lecture question/SV;
-- Depth élevé avec question courte;
-- cohérence sous-domaine;
-- atomicité par slot;
-- retries;
-- idempotence;
-- immutabilité Section 1.
-
-Les tests PostgreSQL utilisent un schéma aléatoire isolé, jamais `public`, Neon ou la VM.
-
-Le scénario de test reste extérieur à KBP et au Blueprint :
-
-- KBP crée atomiquement le vrai `KernelBlueprint` PostgreSQL isolé,
-  structurellement complet avec ses sept slots et intellectuellement vide ;
-- KBP retourne uniquement `blueprint_id` ;
-- les phases précédentes établissent leurs propres préconditions selon leurs
-  contrats; KBP n'en prépare aucune ;
-- le scénario externe définit la première phase, les transmissions successives
-  de `blueprint_id` et le point d'arrêt, puis observe et demande le nettoyage ;
-- aucun Harness, Fixture ou coordinateur central n'appartient au contrat
-  architectural actif.
-
-# 10. Frontière de sortie
-
-Phase1 se termine après :
-
-```text
-réponse structurée
-→ contrôles techniques locaux
-→ écriture des slots créés
-→ persistance des creation_status
-```
-
-Pour un contenu techniquement persistable, Phase1 signale sa fin et relaie
-externement vers ValidationPhase1. Pour une erreur technique, elle persiste
-`CREATION_FAILED` et signale cette fin terminale sans l'envoyer à la validation.
-Phase1 ne décide ni PASS ni SUSPICION.
-
-# 11. Git et livraison
-
-Pendant le Build :
-
-- aucun push automatique;
-- aucun fichier `.agents/**`;
-- aucun `attached_assets/**`;
-- aucune modification documentaire hors correction démontrée;
-- aucun secret;
-- aucun workflow externe;
-- aucun déploiement.
-
-Après code et tests, produire un rapport avec :
-
-```text
-HEAD de départ
-fichiers modifiés
-migration éventuelle
-tests exécutés
-résultats
-diff
-working tree
-commit local
-UNRESOLVED
-```
-
-Le push nécessite une autorisation séparée.
-
-# 12. Critère de sortie
-
-```text
-audit conforme
-+
-implémentation Phase1 v1.0
-+
-tests contractuels verts
-+
-aucune régression amont
-+
-diff limité
-+
-commit local propre
-```
-
-Ensuite seulement :
-
-```text
-ALIGN-AUDIT-07-v1.1
-→ ValidationPhase1
-```
+- rouvrir les décisions fonctionnelles;
+- déduire l’architecture depuis le code;
+- convertir les données françaises historiques;
+- choisir silencieusement un fournisseur;
+- modifier KRP, Taxonomy ou l’identité Blueprint hors adaptation indispensable
+  et explicitement prouvée;
+- regrouper implantation, conversion legacy et validation PostgreSQL finale en
+  un seul changement non auditable.

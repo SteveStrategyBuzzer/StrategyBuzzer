@@ -59,8 +59,9 @@ REJECTED
 | DEC-120 | 1.1 | 2026-08-24 | OFFICIAL | Taxonomy v1.1 : conserve ses Banks et sa consommation exacte; transmet seulement le fait terminal « dernière Dominant Idea du dernier Subject de ce Domain utilisée »; aucun moteur `DOMAIN_EXHAUSTED`, aucun `DEPTH_EXHAUSTED`, aucune DepthNeedMatrix ni rotation globale dans Taxonomy | 03 + frontière 02 | DEC-112 + DEC-107/108 sur frontière | AUCUNE |
 | DEC-121 | 2.2 | 2026-08-29 | OFFICIAL | `kernel_code` se construit progressivement dans le même KernelBlueprint : écritures KRP → projection `DD-DO`; écritures Taxonomy → projection `SUB-SUJ-IDE`; QuestionIntent/KernelCodeEngine alloue uniquement `VVVV`, assemble et verrouille le code final. `VVVV` est un compteur base36 persistant, transactionnel, jamais recyclé et indépendant par bassin `Depth + Domain`. Phase1 remplit ensuite les sept CognitiveSlots sans modifier `kernel_code`; l’état cognitif joueur demeure externe | 01,02,03,05 + frontière 06/11 | formulations DEC-121 v2.0/v2.1 portant `question_code-COG-VAR` | DEC-122 |
 | DEC-122 | 1.0 | 2026-08-29 | OFFICIAL | Un seul Blueprint canonique contient l’identité, les 7 CognitiveSlots source et leurs traductions. Le canonique poursuit toutes les phases jusqu’à ReadyBank. Quarantine reçoit une copie complète avec chemins soupçonnés affichables en rouge; la copie corrigée reprend le pipeline de façon ciblée puis rejoint le canonique uniquement dans ReadyBank, qui remplace/corrige/remplit les slots ciblés ou vides sans toucher aux slots valides. L’état joueur `00n→11o` reste externe au Blueprint et autorise au maximum un cognitif par chacune des trois familles | 01,05,06,07,08,09,10,11 + Gameplay | anciennes formulations fragment Quarantine et `question_code-COG-VAR` | AUCUNE |
-| DEC-125 | 1.0 | 2026-09-13 | OFFICIAL | Quarantaine conserve une copie complète non canonique liée au même `blueprint_id`; l’Admin peut modifier tout slot; rouge = `SUSPICION` ou `EMPTY`, vert = conforme jamais modifié, jaune = modifié manuellement jusqu’à ReadyBank. Le clic `Renvoie` place la copie dans une FIFO. À chaque `CURRENT_KERNEL_RECEIVED`, ReadyBank choisit exclusivement la plus ancienne copie prête ou KBP. Une copie reprend à Phase1, ne passe jamais par KBP/Rotation et ne compte jamais comme nouveau Blueprint. ReadyBank fusionne atomiquement par `blueprint_id + cognitive_type`. | 01,02,06,07,08,09,10,11 + Admin | complète DEC-122 | AUCUNE |
+| DEC-125 | 1.1 | 2026-09-13 | OFFICIAL | Quarantaine conserve une copie complète non canonique liée au même `blueprint_id`; l’Admin peut modifier tout slot; rouge = `SUSPICION` ou `EMPTY`, vert = conforme jamais modifié, jaune = modifié manuellement jusqu’à ReadyBank. Le clic `Renvoie` place la copie dans une FIFO. À chaque `CURRENT_KERNEL_RECEIVED`, ReadyBank choisit exclusivement la plus ancienne copie prête ou KBP. Une copie reprend à Phase1, ne passe jamais par KBP/Rotation et ne compte jamais comme nouveau Blueprint. ReadyBank fusionne atomiquement par `blueprint_id + cognitive_type`. | 01,02,06,07,08,09,10,11 + Admin | complète DEC-122 | AUCUNE |
 | DEC-126 | 1.1 | 2026-09-16 | OFFICIAL | L’anglais est la langue canonique de création intellectuelle : valeurs Domaine/Taxonomy puis question, choix, bonne réponse et SV des sept sources Phase1. Chaque langue cible est traduite indépendamment et directement depuis la même source anglaise; aucune traduction en chaîne. Phase2 produit les neuf langues obligatoires `fr, es, de, it, pt, ru, zh, ar, el`, sans langue facultative. `General` est un mode Shuffle gameplay, jamais un Domaine créateur. La Bible, les règles, les titres et l’Admin restent français; la langue joueur reste indépendante. Codes et identités techniques inchangés; données françaises existantes inventoriées sans conversion. | 00,02,03,05,06,07,08,09,10,11 + Gameplay/Admin | clauses Phase1 `source_language=fr` et valeurs intellectuelles françaises implicites | AUCUNE |
+| DEC-127 | 1.0 | 2026-09-16 | OFFICIAL | Contrat terminal Phase2/ValidationPhase2 : identité par source_revision et translation_revision; états séparés; findings BLOCKING déterministes; admissibilité stricte des neuf cibles; retries 1+3 à 1/5/15 min; panne technique sans rouge; CONTENT_UNTRANSLATABLE décidé uniquement par ValidationPhase2; enveloppes internes et fournisseurs opaques; reprise Quarantaine sélective; publication ReadyBank atomique par CognitiveSlot et CURRENT_KERNEL_RECEIVED idempotent après sept issues terminales. | 08,09,10,11 + Admin/Gameplay | complète DEC-125/126 | AUCUNE |
 
 ---
 
@@ -227,8 +228,16 @@ Ne jamais demander à Replit d’implanter KRP et Taxonomy dans le même bloc.
 
 # DEC-121 — Construction progressive, suffixe VVVV et anti-répétition joueur
 
+Référence historique au verrouillage DEC-121 :
+
 ```text
 05 → specifications/05_QuestionIntent.md v2.2 / DEC-121 + DEC-122
+```
+
+Référence active courante :
+
+```text
+05 → specifications/05_QuestionIntent.md v2.3 / DEC-125 + DEC-126
 ```
 
 Le document historique `docs/architecture/05_QuestionIntent.md` est SUPERSEDED et retiré de l’arbre actif. Son historique demeure récupérable dans Git.
@@ -291,7 +300,7 @@ ReadyBank retire le jaune uniquement après sa décision terminale sur la révis
 
 # DEC-126 — Langue intellectuelle canonique anglaise
 
-- **Version :** 1.0
+- **Version :** 1.1
 - **Date :** 2026-09-16
 - **Statut :** **OFFICIAL**
 - **Modules :** 00, 02, 03, 05, 06, 07, 08, 09, 10, 11, Admin et Gameplay
@@ -338,3 +347,35 @@ autre traduction.
 
 Cette décision ne convertit aucune donnée persistante. Les données françaises
 existantes sont seulement inventoriées pour un travail technique ultérieur.
+
+# DEC-127 — Contrat terminal Phase2 et ValidationPhase2
+
+- **Version :** 1.0
+- **Date :** 2026-09-16
+- **Statut :** **OFFICIAL**
+- **Modules :** 08, 09, 10, 11, Admin et Gameplay
+
+DEC-127 verrouille le contrat fonctionnel complet de traduction et validation
+linguistique décrit par `08_Phase2.md v1.0` et
+`09_ValidationPhase2.md v1.0`.
+
+Il verrouille notamment :
+
+- l’identité persistante d’une traduction et ses deux révisions distinctes;
+- les machines d’état séparées de Phase2 et ValidationPhase2;
+- la reprise jaune Quarantaine et le refus des claims périmés;
+- les findings `BLOCKING` déterministes et leur preuve obligatoire;
+- l’admissibilité stricte de chacune des neuf langues et du CognitiveSlot;
+- quatre tentatives par cycle, aux planchers `1 / 5 / 15 minutes`;
+- la réouverture idempotente par événement de résolution;
+- la distinction absolue entre défaillance technique et défaut du contenu;
+- l’autorité exclusive de ValidationPhase2 sur `CONTENT_UNTRANSLATABLE`;
+- la séparation entre enveloppe interne et échanges fournisseurs opaques;
+- l’attribution atomique de `translation_revision`;
+- la copie Quarantaine complète avec reprise sélective;
+- la publication et le retrait atomiques d’un CognitiveSlot;
+- les trois issues terminales et l’idempotence de
+  `CURRENT_KERNEL_RECEIVED`.
+
+DEC-127 ne choisit aucun fournisseur, ne modifie aucun code, schéma ou donnée et
+n’autorise aucune conversion des contenus historiques.
