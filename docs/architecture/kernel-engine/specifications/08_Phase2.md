@@ -104,6 +104,30 @@ CognitiveSlot
 
 La source n’est jamais remplacée par sa traduction.
 
+## 2.1 Identité persistante d’une traduction
+
+L’identité persistante logique de chaque traduction est le quadruplet :
+
+```text
+blueprint_id
++ cognitive_type
++ language_code
++ source_revision
+```
+
+`source_revision` désigne uniquement la version du contenu source anglais du
+CognitiveSlot, composé de la question, des choix, de la bonne réponse et du SV.
+Elle augmente dès qu’au moins une de ces composantes anglaises est modifiée.
+
+Toutes les traductions rattachées à l’ancienne `source_revision` deviennent
+alors périmées et ne peuvent ni valider, ni remplacer, ni rendre admissible la
+révision courante. Chaque langue cible repart directement de la nouvelle source
+anglaise.
+
+La modification d’une traduction cible ne change jamais `source_revision`.
+Toute révision propre au contenu cible demeure distincte et ne change pas
+l’identité anglaise du CognitiveSlot.
+
 # 3. Précondition source
 
 Aucune traduction n’est créée pour un CognitiveSlot source soupçonné, invalide ou incomplet.
@@ -187,7 +211,6 @@ Restent à spécifier :
 - retries;
 - politiques de contenu intraduisible;
 - états détaillés;
-- identité persistante exacte d’une traduction et rattachement à la révision source;
 - structure des findings linguistiques et schémas de preuve;
 - prédicats exacts d’admissibilité de la traduction et du slot;
 - interface fournisseur et garanties d’idempotence;

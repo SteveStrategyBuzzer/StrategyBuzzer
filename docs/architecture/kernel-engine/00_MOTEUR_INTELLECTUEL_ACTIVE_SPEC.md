@@ -85,6 +85,17 @@ fr, es, de, it, pt, ru, zh, ar, el
 Chaque cible est traduite indépendamment et directement depuis la même source
 anglaise. Les traductions en chaîne entre langues sont interdites.
 
+L’identité persistante logique d’une traduction est :
+
+```text
+blueprint_id + cognitive_type + language_code + source_revision
+```
+
+`source_revision` versionne uniquement les quatre composantes anglaises du
+CognitiveSlot. Elle augmente lorsqu’au moins une de ces composantes est
+modifiée; toutes les traductions de la révision anglaise antérieure deviennent
+alors périmées. Modifier une cible ne modifie jamais `source_revision`.
+
 La Bible, les règles, les titres structurels « Domaine », « Sous-domaine »,
 « Sujet » et « Idée dominante », les explications et l’interface Admin restent
 en français. La langue d’affichage du jeu demeure choisie par le joueur.

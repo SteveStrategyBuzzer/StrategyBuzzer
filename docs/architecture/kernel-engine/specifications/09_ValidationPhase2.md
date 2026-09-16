@@ -57,6 +57,13 @@ ValidationPhase2 vérifie que chaque cible a été produite indépendamment et
 directement depuis la même source anglaise. Toute traduction en chaîne entre
 langues est interdite.
 
+Elle valide uniquement une traduction dont l’identité
+`blueprint_id + cognitive_type + language_code + source_revision` correspond à
+la `source_revision` anglaise courante. Une traduction rattachée à une ancienne
+révision est périmée et ne peut recevoir ni conserver un PASS applicable à la
+révision courante. Une modification de la cible ne modifie jamais
+`source_revision`.
+
 Toute ancienne clause évaluant une source française ou une traduction anglaise
 depuis le français est `SUPERSEDED BY DEC-126`. Les contenus historiques ne
 sont ni réécrits ni convertis par cette révision documentaire.
