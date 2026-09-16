@@ -192,3 +192,10 @@ Tout claim, résultat fournisseur ou résultat de validation portant une ancienn
 `source_revision`, une ancienne `translation_revision` ou un ancien jeton est
 refusé comme périmé. Phase2 ne peut jamais écraser la révision jaune courante
 avec un résultat fournisseur antérieur.
+
+Seuls les findings ValidationPhase2 des `source_revision` et
+`translation_revision` courantes sont opérationnels et peuvent produire des
+chemins rouges. Les anciens findings peuvent subsister pour audit technique et
+idempotence, mais ne constituent pas un historique éditable : ils ne sont
+jamais affichés comme courants, recopiés dans une nouvelle copie, reportés sur
+une nouvelle révision ni utilisés pour colorer un slot.

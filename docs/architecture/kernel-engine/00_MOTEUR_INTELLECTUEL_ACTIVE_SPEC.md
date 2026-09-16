@@ -106,6 +106,13 @@ cycle automatisé sous la même `source_revision`, en créant une nouvelle
 `translation_revision` `CREATED + NOT_VALIDATED` avec indice jaune. Cet indice
 et la protection contre les retours périmés demeurent actifs jusqu’à ReadyBank.
 
+Les findings ValidationPhase2 sont immuables et rattachés aux deux révisions
+courantes. Tous les codes minimaux de violation du contrat ont une sévérité
+déterministe `BLOCKING`; `INFO` exige des codes distincts explicitement
+autorisés. Un finding bloquant sans preuve pertinente rend le résultat de
+validation techniquement invalide et ne produit ni finding courant, ni PASS, ni
+SUSPICION.
+
 La Bible, les règles, les titres structurels « Domaine », « Sous-domaine »,
 « Sujet » et « Idée dominante », les explications et l’interface Admin restent
 en français. La langue d’affichage du jeu demeure choisie par le joueur.

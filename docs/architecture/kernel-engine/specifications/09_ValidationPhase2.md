@@ -93,6 +93,131 @@ Chaque claim et chaque résultat de validation doit correspondre à
 refusé comme périmé. L’indice jaune d’une correction Quarantaine est conservé
 pendant cette validation et jusqu’à la réconciliation ReadyBank.
 
+## 1.1 Findings linguistiques déterministes
+
+Chaque finding est immuable et contient :
+
+```text
+finding_id
+validation_run_id
+blueprint_id
+cognitive_type
+language_code
+source_revision
+translation_revision
+field_path
+rule_code
+severity
+evidence
+created_at
+```
+
+Les `field_path` autorisés distinguent la clé de réponse de sa valeur :
+
+```text
+question
+choices.<key>.text
+correct_answer_key
+correct_answer_text
+sv
+translation
+```
+
+`correct_answer_key` est immuable pendant la traduction.
+`correct_answer_text` doit correspondre au choix situé sous cette même clé.
+`translation` désigne un constat portant sur la cible complète.
+
+Tous les codes minimaux suivants ont obligatoirement
+`severity = BLOCKING` :
+
+```text
+TARGET_LANGUAGE_INCORRECT
+UNTRANSLATED_SOURCE_FRAGMENT
+REQUIRED_COMPONENT_MISSING
+TARGET_FORMAT_INVALID
+TARGET_CONCISION_INVALID
+TARGET_READING_TIME_INVALID
+
+MEANING_DRIFT
+FACTUAL_ACCURACY_DRIFT
+DEPTH_LEVEL_DRIFT
+SUBJECT_ALIGNMENT_DRIFT
+DOMINANT_IDEA_DRIFT
+COGNITIVE_FUNCTION_DRIFT
+AMBIGUITY_INTRODUCED
+
+QUESTION_ANSWER_MISMATCH
+ANSWER_KEY_CHANGED
+ANSWER_TEXT_KEY_MISMATCH
+CHOICE_COUNT_CHANGED
+MULTIPLE_CORRECT_ANSWERS_INTRODUCED
+DISTRACTOR_BECAME_TRUE
+DISTRACTOR_PLAUSIBILITY_LOST
+CHOICE_SEMANTIC_CATEGORY_DRIFT
+CHOICE_GRAMMATICAL_COHERENCE_DRIFT
+
+REASONING_RELATION_DRIFT
+TRAP_CONFUSION_DRIFT
+TRUE_FALSE_POLARITY_CHANGED
+FALSE_STATEMENT_ERROR_COUNT_DRIFT
+
+SV_CONTRADICTS_SOURCE
+SV_CONTRADICTS_ANSWER
+SV_PEDAGOGICAL_VALUE_LOST
+SV_MERE_REPETITION
+```
+
+`REASONING_RELATION_DRIFT` couvre l’affaiblissement ou la perte d’un mécanisme
+causal, comparatif, conséquentiel ou déductif. `TRAP_CONFUSION_DRIFT` couvre la
+transformation d’un piège intellectuel en piège grammatical.
+`FALSE_STATEMENT_ERROR_COUNT_DRIFT` couvre une erreur unique devenue multiple
+ou disparue.
+
+Un même `rule_code` ne change jamais de sévérité selon la langue, le
+CognitiveSlot, le fournisseur ou la révision. `INFO` est réservé à des codes
+distincts, non contractuels et explicitement inscrits comme informatifs dans le
+registre. En l’absence de code `INFO` autorisé, aucun finding informatif n’est
+accepté.
+
+Chaque finding `BLOCKING` doit fournir une preuve structurée :
+
+```text
+expected_rule
+observed_result
+source_excerpt
+target_excerpt
+details
+```
+
+`expected_rule` identifie la règle attendue; `observed_result` décrit l’écart;
+le `field_path` autoritatif situé au niveau racine du finding identifie le
+champ. `evidence` ne stocke aucune seconde valeur `field_path`; elle se rapporte
+obligatoirement au chemin racine. Au moins un extrait pertinent ou un détail
+vérifiable est obligatoire. Lorsque le code exige une comparaison
+source/cible, les deux extraits sont obligatoires. Une preuve vide, générique
+ou invérifiable rend le résultat complet de validation invalide :
+
+```text
+aucun finding courant persisté
+aucun PASS ou SUSPICION appliqué
+validation_status = RETRYABLE_FAILURE
+```
+
+Les conséquences sont déterministes :
+
+```text
+au moins un finding BLOCKING valide → SUSPICION
+zéro finding BLOCKING + tous les contrôles exécutés → PASS
+finding BLOCKING mal formé → résultat technique invalide
+```
+
+Seuls les findings correspondant aux `source_revision` et
+`translation_revision` courantes sont opérationnels. Les anciens findings
+peuvent être conservés pour audit technique et idempotence, mais ne sont jamais
+affichés comme courants, recopiés dans une nouvelle copie Quarantaine, reportés
+sur une nouvelle révision, utilisés pour colorer un champ ou consultés pour une
+décision ValidationPhase2 ou ReadyBank.
+
 Toute ancienne clause évaluant une source française ou une traduction anglaise
 depuis le français est `SUPERSEDED BY DEC-126`. Les contenus historiques ne
 sont ni réécrits ni convertis par cette révision documentaire.
@@ -154,7 +279,7 @@ Après PASS, elle poursuit vers ReadyBank pour réconciliation avec le canonique
 
 # 6. Statut restant
 
-Les règles linguistiques détaillées, codes PASS/FAIL, seuils, retries, schémas
-de preuve, findings par champ, prédicats terminaux d’admissibilité, interface
-fournisseur, idempotence et progression partielle restent à spécifier. La
-langue source et les neuf langues cibles ne sont plus ouvertes.
+Les seuils qui ne sont pas déjà verrouillés, retries, prédicats terminaux
+d’admissibilité, interface fournisseur, idempotence et progression partielle
+restent à spécifier. La langue source, les neuf langues cibles, les machines
+d’état et les findings linguistiques ne sont plus ouverts.
