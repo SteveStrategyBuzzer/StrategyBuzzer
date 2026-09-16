@@ -59,6 +59,10 @@ facultative :
 fr, es, de, it, pt, ru, zh, ar, el
 ```
 
+Chaque langue cible est traduite indépendamment et directement depuis la même
+source anglaise du CognitiveSlot. Une traduction cible ne peut jamais servir de
+source à une autre langue.
+
 Toute ancienne clause imposant une source française ou incluant `en` parmi les
 langues cibles est `SUPERSEDED BY DEC-126`. Son historique n’est pas effacé et
 aucune donnée existante n’est convertie par cette révision documentaire.

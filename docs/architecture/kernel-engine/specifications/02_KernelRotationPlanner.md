@@ -166,7 +166,9 @@ KRP ne doit jamais :
 - écrire `dominant_idea_active` ;
 - écrire `kernel_code` ;
 - créer ou valider du contenu intellectuel ;
-- utiliser `Général` comme domaine de création ;
+- recevoir `General` comme Domaine : le mode Shuffle gameplay doit sélectionner
+  des questions déjà créées dans les huit Domaines sans créer de Blueprint
+  `General` ;
 - déclarer HOLD à la simple fin du Depth 10 ;
 - inventer une logique Phase1/Phase2 non spécifiée.
 
@@ -679,7 +681,8 @@ KRP ne lit/poll jamais Taxonomy pour obtenir cette information.
 8. **Tous les besoins satisfaits** → `PRODUCTION_ON_HOLD`.
 9. **Blueprint sans blueprint_id** → entrée invalide ; KRP ne crée pas l’identité.
 10. **Blueprint déjà doté de depth/domain** → aucune réécriture normale.
-11. **Général demandé comme création** → invalide.
+11. **Mode Shuffle gameplay** → reste hors KRP; il mélange des questions des
+    huit Domaines créateurs et ne demande jamais un Blueprint `General`.
 12. **KRP sans signal Taxonomy** → il ne devine jamais qu’un Domain est épuisé à partir des Banks Taxonomy.
 13. **Échec de persistance** → aucune progression jusqu’à résolution ou BLOCKED.
 
@@ -695,7 +698,7 @@ L’implantation est conforme seulement si les tests prouvent :
 4. KRP ne lit/poll aucune Bank Taxonomy ;
 5. KRP écrit uniquement `depth + domain` ;
 6. DomainCycle contient exactement les huit Domaines de création ;
-7. Général est absent ;
+7. `General` est absent parce qu’il relève exclusivement du Shuffle gameplay ;
 8. chaque nouveau Blueprint avance au prochain Domain `VISIBLE` ;
 9. un Domain `ESTOMPÉ` est sauté ;
 10. le tour Domain boucle correctement après Science ;

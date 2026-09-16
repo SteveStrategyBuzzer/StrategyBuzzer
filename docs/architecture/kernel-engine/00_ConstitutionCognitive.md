@@ -22,6 +22,15 @@ Trois couches indépendantes doivent toujours être distinguées :
 3. **présentation au joueur** : l’interface et le contenu joué utilisent la
    langue choisie par le joueur.
 
+Chaque langue cible est traduite indépendamment et directement depuis la même
+source anglaise. Une traduction ne peut jamais servir de source à une autre
+langue.
+
+`General` n’est pas un Domaine intellectuel canonique. C’est un mode Shuffle du
+gameplay qui sélectionne et mélange des questions déjà créées dans les huit
+Domaines intellectuels créateurs. Aucun Blueprint, réservoir Taxonomy ou
+contenu Phase1 n’est créé sous `General`.
+
 Les identifiants, codes techniques et relations persistantes sont indépendants
 de toute langue. Un changement de langue ne crée jamais une nouvelle identité
 intellectuelle et ne modifie jamais les responsabilités des modules.

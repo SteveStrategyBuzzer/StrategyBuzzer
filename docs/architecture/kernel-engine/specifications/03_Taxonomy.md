@@ -71,6 +71,10 @@ Toute ancienne production française de ces valeurs est `SUPERSEDED BY DEC-126`
 pour les nouvelles créations, mais demeure une donnée historique à inventorier
 sans conversion dans ce travail documentaire.
 
+`General` n’est pas un Domaine Taxonomy. Le mode Shuffle gameplay sélectionne et
+mélange des questions issues des huit Domaines créateurs; Taxonomy ne crée donc
+aucun réservoir, Sous-domaine, Sujet ou Idée dominante sous `General`.
+
 Lorsqu’il consomme la dernière Dominant Idea du dernier Subject de l’occurrence active, Taxonomy transmet uniquement un **fait terminal de consommation** à KRP.
 
 Taxonomy ne décide jamais la rotation.

@@ -70,6 +70,10 @@ Cette décision concerne exclusivement, pour chaque slot, la `question`, les
 `choices`, la `correct_answer` et le `SV`. Elle ne traduit ni la Bible, ni les
 règles, ni les titres structurels, ni les libellés administratifs français.
 
+`General` ne peut jamais être un référent reçu par Phase1 : le mode Shuffle
+gameplay mélange des questions déjà créées sous les huit Domaines intellectuels
+créateurs et ne produit aucun Blueprint ni contenu Phase1 propre.
+
 Phase1 :
 
 - ne crée aucun nouveau Blueprint;

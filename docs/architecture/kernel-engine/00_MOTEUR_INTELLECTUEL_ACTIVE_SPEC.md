@@ -82,6 +82,9 @@ langue facultative :
 fr, es, de, it, pt, ru, zh, ar, el
 ```
 
+Chaque cible est traduite indépendamment et directement depuis la même source
+anglaise. Les traductions en chaîne entre langues sont interdites.
+
 La Bible, les règles, les titres structurels « Domaine », « Sous-domaine »,
 « Sujet » et « Idée dominante », les explications et l’interface Admin restent
 en français. La langue d’affichage du jeu demeure choisie par le joueur.
@@ -412,6 +415,11 @@ destinations ne sont jamais activées.
 
 Le DomainCycle conserve son ordre et ses codes techniques actuels. Les valeurs
 anglaises sont intellectuelles et ne deviennent jamais des clés de rotation.
+
+`General` est absent de cette table parce qu’il n’est pas un Domaine canonique
+de création. C’est un mode Shuffle gameplay qui sélectionne et mélange des
+questions issues de ces huit Domaines. Aucun Blueprint, réservoir Taxonomy ou
+contenu Phase1 n’est créé sous `General`.
 
 ## Rotation normale
 

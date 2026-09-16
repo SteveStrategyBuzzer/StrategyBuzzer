@@ -60,7 +60,7 @@ REJECTED
 | DEC-121 | 2.2 | 2026-08-29 | OFFICIAL | `kernel_code` se construit progressivement dans le même KernelBlueprint : écritures KRP → projection `DD-DO`; écritures Taxonomy → projection `SUB-SUJ-IDE`; QuestionIntent/KernelCodeEngine alloue uniquement `VVVV`, assemble et verrouille le code final. `VVVV` est un compteur base36 persistant, transactionnel, jamais recyclé et indépendant par bassin `Depth + Domain`. Phase1 remplit ensuite les sept CognitiveSlots sans modifier `kernel_code`; l’état cognitif joueur demeure externe | 01,02,03,05 + frontière 06/11 | formulations DEC-121 v2.0/v2.1 portant `question_code-COG-VAR` | DEC-122 |
 | DEC-122 | 1.0 | 2026-08-29 | OFFICIAL | Un seul Blueprint canonique contient l’identité, les 7 CognitiveSlots source et leurs traductions. Le canonique poursuit toutes les phases jusqu’à ReadyBank. Quarantine reçoit une copie complète avec chemins soupçonnés affichables en rouge; la copie corrigée reprend le pipeline de façon ciblée puis rejoint le canonique uniquement dans ReadyBank, qui remplace/corrige/remplit les slots ciblés ou vides sans toucher aux slots valides. L’état joueur `00n→11o` reste externe au Blueprint et autorise au maximum un cognitif par chacune des trois familles | 01,05,06,07,08,09,10,11 + Gameplay | anciennes formulations fragment Quarantine et `question_code-COG-VAR` | AUCUNE |
 | DEC-125 | 1.0 | 2026-09-13 | OFFICIAL | Quarantaine conserve une copie complète non canonique liée au même `blueprint_id`; l’Admin peut modifier tout slot; rouge = `SUSPICION` ou `EMPTY`, vert = conforme jamais modifié, jaune = modifié manuellement jusqu’à ReadyBank. Le clic `Renvoie` place la copie dans une FIFO. À chaque `CURRENT_KERNEL_RECEIVED`, ReadyBank choisit exclusivement la plus ancienne copie prête ou KBP. Une copie reprend à Phase1, ne passe jamais par KBP/Rotation et ne compte jamais comme nouveau Blueprint. ReadyBank fusionne atomiquement par `blueprint_id + cognitive_type`. | 01,02,06,07,08,09,10,11 + Admin | complète DEC-122 | AUCUNE |
-| DEC-126 | 1.0 | 2026-09-16 | OFFICIAL | L’anglais est la langue canonique de création intellectuelle : valeurs Domaine/Taxonomy puis question, choix, bonne réponse et SV des sept sources Phase1. Phase2 traduit vers les neuf langues obligatoires `fr, es, de, it, pt, ru, zh, ar, el`, sans langue facultative. La Bible, les règles, les titres et l’Admin restent français; la langue joueur reste indépendante. Codes et identités techniques inchangés; données françaises existantes inventoriées sans conversion. | 00,02,03,05,06,07,08,09,10,11 + Gameplay/Admin | clauses Phase1 `source_language=fr` et valeurs intellectuelles françaises implicites | AUCUNE |
+| DEC-126 | 1.1 | 2026-09-16 | OFFICIAL | L’anglais est la langue canonique de création intellectuelle : valeurs Domaine/Taxonomy puis question, choix, bonne réponse et SV des sept sources Phase1. Chaque langue cible est traduite indépendamment et directement depuis la même source anglaise; aucune traduction en chaîne. Phase2 produit les neuf langues obligatoires `fr, es, de, it, pt, ru, zh, ar, el`, sans langue facultative. `General` est un mode Shuffle gameplay, jamais un Domaine créateur. La Bible, les règles, les titres et l’Admin restent français; la langue joueur reste indépendante. Codes et identités techniques inchangés; données françaises existantes inventoriées sans conversion. | 00,02,03,05,06,07,08,09,10,11 + Gameplay/Admin | clauses Phase1 `source_language=fr` et valeurs intellectuelles françaises implicites | AUCUNE |
 
 ---
 
@@ -251,7 +251,7 @@ Les versions 0.1 verrouillent uniquement les décisions DEC-122 et leurs fronti�
 
 # DEC-125 — Quarantaine, FIFO et direction terminale
 
-- **Version :** 1.0
+- **Version :** 1.1
 - **Date :** 2026-09-13
 - **Statut :** **OFFICIAL**
 - **Modules :** 01, 02, 06, 07, 08, 09, 10, 11 et interface Admin
@@ -312,6 +312,11 @@ ReadyBank retire le jaune uniquement après sa décision terminale sur la révis
 Les codes techniques restent les identités stables. Les libellés anglais ne
 deviennent jamais des clés de rotation.
 
+`General` n’est ni une neuvième ligne de cette table ni un Domaine de création.
+Il appartient exclusivement au gameplay comme mode Shuffle : il sélectionne et
+mélange des questions issues des huit Domaines créateurs. Aucun Blueprint,
+réservoir Taxonomy ou contenu Phase1 n’est créé sous `General`.
+
 ## Trois couches linguistiques
 
 ```text
@@ -326,6 +331,10 @@ obligatoires, sans langue facultative :
 ```text
 fr, es, de, it, pt, ru, zh, ar, el
 ```
+
+Chaque langue cible est traduite indépendamment et directement depuis la même
+source anglaise. Une traduction cible ne peut jamais devenir la source d’une
+autre traduction.
 
 Cette décision ne convertit aucune donnée persistante. Les données françaises
 existantes sont seulement inventoriées pour un travail technique ultérieur.

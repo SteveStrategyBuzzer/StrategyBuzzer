@@ -53,6 +53,10 @@ Les traductions validées appartiennent exactement aux neuf codes obligatoires :
 fr, es, de, it, pt, ru, zh, ar, el
 ```
 
+ValidationPhase2 vérifie que chaque cible a été produite indépendamment et
+directement depuis la même source anglaise. Toute traduction en chaîne entre
+langues est interdite.
+
 Toute ancienne clause évaluant une source française ou une traduction anglaise
 depuis le français est `SUPERSEDED BY DEC-126`. Les contenus historiques ne
 sont ni réécrits ni convertis par cette révision documentaire.
