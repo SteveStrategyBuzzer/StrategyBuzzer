@@ -7,6 +7,7 @@
 DEC-124)
 **Décision connexe :** DEC-122 — OFFICIAL hors clauses explicitement
 `SUPERSEDED BY DEC-125`
+**Complément linguistique :** DEC-126 — OFFICIAL
 **Implémentation :** À AUDITER
 **Validation terminale :** NON
 
@@ -435,6 +436,18 @@ Ce document ne définit pas :
 - les objectifs quantitatifs de `READY_BANK`.
 
 Ces contrats devront respecter les identités et invariants définis ici.
+
+## 13.1 Invariant linguistique transversal
+
+QuestionIntent lit et conserve sans traduction les référents intellectuels
+anglais déjà inscrits dans `domain`, `subdomain_active`, `subject_active` et
+`dominant_idea_active`. Il continue d’allouer et d’inscrire uniquement `VVVV`.
+
+Cette règle DEC-126 ne confère à QuestionIntent aucune responsabilité de
+création linguistique ou de traduction. Les codes et segments techniques
+demeurent indépendants de la langue. Toute ancienne interprétation selon
+laquelle QuestionIntent pourrait franciser ces référents est
+`SUPERSEDED BY DEC-126`; aucun historique persistant n’est converti ici.
 
 ---
 

@@ -1,9 +1,9 @@
 # STRATEGYBUZZER — 08_PHASE2 / TRADUCTIONS
 
-**Version :** 0.2
-**Date :** 2026-09-13
+**Version :** 0.3
+**Date :** 2026-09-16
 **Statut :** RÈGLES OFFICIELLES VERROUILLÉES — MODULE À COMPLÉTER  
-**Décision directrice :** DEC-125 — OFFICIAL (clauses compatibles de DEC-122)
+**Décisions directrices :** DEC-125 + DEC-126 — OFFICIAL (clauses compatibles de DEC-122)
 **Implémentation :** À AUDITER  
 **Validation terminale :** NON
 
@@ -50,6 +50,18 @@ source admissibles. Après son travail, elle transmet uniquement le même
 `blueprint_id` à ValidationPhase2.
 
 Elle ajoute, à l’intérieur de chacun des sept CognitiveSlots, les représentations linguistiques supplémentaires.
+
+La source canonique est anglaise (`source_language = en`). Phase2 crée
+exactement les neuf représentations obligatoires suivantes, sans langue
+facultative :
+
+```text
+fr, es, de, it, pt, ru, zh, ar, el
+```
+
+Toute ancienne clause imposant une source française ou incluant `en` parmi les
+langues cibles est `SUPERSEDED BY DEC-126`. Son historique n’est pas effacé et
+aucune donnée existante n’est convertie par cette révision documentaire.
 
 Une traduction ne crée jamais :
 
@@ -166,13 +178,17 @@ contrôles Phase1/ValidationPhase1 puis Phase2/ValidationPhase2 nécessaires.
 
 Restent à spécifier :
 
-- langue source canonique;
-- liste des langues obligatoires;
-- codes linguistiques officiels;
 - moteur de traduction;
 - validations linguistiques détaillées;
 - retries;
 - politiques de contenu intraduisible;
-- états détaillés.
+- états détaillés;
+- identité persistante exacte d’une traduction et rattachement à la révision source;
+- structure des findings linguistiques et schémas de preuve;
+- prédicats exacts d’admissibilité de la traduction et du slot;
+- interface fournisseur et garanties d’idempotence;
+- frontière terminale et progression partielle vers ReadyBank.
 
-La présente version verrouille uniquement la structure et les frontières.
+La présente version verrouille la structure, les frontières, la source anglaise
+et les neuf codes cibles. Elle ne verrouille pas encore les décisions
+fonctionnelles listées ci-dessus.

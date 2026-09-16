@@ -1,10 +1,10 @@
 # STRATEGYBUZZER — 07_VALIDATIONPHASE1
 
-**Version :** 1.1
-**Date :** 2026-09-13
-**Statut :** CONTRAT DE BUILD VERROUILLÉ — IMPLANTATION À AUDITER/RÉALIGNER  
-**Décision directrice :** DEC-125 — OFFICIAL (clauses compatibles de DEC-122)
-**Implémentation :** À AUDITER CONTRE v1.1
+**Version :** 1.2
+**Date :** 2026-09-16
+**Statut :** CONTRAT DOCUMENTAIRE VERROUILLÉ — IMPLANTATION À RÉALIGNER
+**Décisions directrices :** DEC-125 + DEC-126 — OFFICIAL (clauses compatibles de DEC-122)
+**Implémentation :** À RÉALIGNER PAR UN TRAVAIL TECHNIQUE ULTÉRIEUR
 **Validation terminale :** NON
 
 > **Remplace :** v1.0 sur le cycle Quarantine, l’édition des slots et le
@@ -42,7 +42,12 @@ file FIFO par l’interface externe et n’est pas démarré par l’Admin.
 # 1. Mission
 
 ValidationPhase1 valide officiellement les contenus source techniquement
-persistables des sept `CognitiveSlots` du même `KernelBlueprint`.
+persistables des sept `CognitiveSlots` du même `KernelBlueprint`. La langue
+source active est l’anglais (`source_language = en`).
+
+Toute ancienne hypothèse d’une source intellectuelle française est
+`SUPERSEDED BY DEC-126`. ValidationPhase1 ne traduit rien et ne modifie pas la
+langue administrative française ni la langue d’affichage choisie par le joueur.
 
 Elle :
 
@@ -527,8 +532,8 @@ constitue pas un Harness architectural.
 
 ```text
 Architecture :          VERROUILLÉE
-Contrat :               VERROUILLÉ v1.1 — DEC-125
-Spécification :         BUILD-READY
+Contrat :               VERROUILLÉ v1.2 — DEC-125 + DEC-126
+Spécification :         DOCUMENTAIRE — ALIGNEMENT TECHNIQUE ULTÉRIEUR
 Implémentation :        À AUDITER/RÉALIGNER
 Validation terminale :  NON
 ```
@@ -536,7 +541,7 @@ Validation terminale :  NON
 Prochaine opération :
 
 ```text
-ALIGN-AUDIT-07-v1.1
+ALIGN-AUDIT-07-v1.2
 → audit du code après ou avec Phase1
 → KEEP / MODIFY / REMOVE / MISSING / UNRESOLVED
 → patch minimal séparé de Phase1 si nécessaire

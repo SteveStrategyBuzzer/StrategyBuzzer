@@ -1,9 +1,9 @@
 # STRATEGYBUZZER — 11_READYBANK
 
-**Version :** 0.2  
-**Date :** 29 août 2026  
+**Version :** 0.3
+**Date :** 16 septembre 2026
 **Statut :** RÈGLES OFFICIELLES VERROUILLÉES — MODULE À COMPLÉTER  
-**Décision :** DEC-122  
+**Décisions :** DEC-122 + DEC-125 + invariant linguistique DEC-126
 **Implémentation :** À AUDITER  
 **Validation terminale :** NON
 
@@ -24,6 +24,12 @@ ReadyBank :
 - réconcilie une copie corrigée avec le bon Blueprint;
 - expose au gameplay uniquement les contenus admissibles;
 - ne recrée aucun contenu intellectuel.
+
+ReadyBank ne convertit aucune langue. Il contrôle que la source canonique
+admissible est anglaise (`source_language = en`) et que les traductions
+requises sont rattachées aux neuf codes `fr, es, de, it, pt, ru, zh, ar, el`
+selon le contrat Phase2/ValidationPhase2. L’interface et la sélection de la
+langue du joueur restent externes.
 
 # 2. Arrivée du canonique
 

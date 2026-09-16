@@ -7,13 +7,20 @@
 **Contrat :** 100 %  
 **Statut d’implémentation :** NON IMPLANTÉE / code existant à auditer après fermeture documentaire  
 **Position Blueprint :** SECTION 1 — CRÉATION INTELLECTUELLE  
-**Décision de verrouillage :** DEC-120
+**Décisions de verrouillage :** DEC-120 + complément linguistique DEC-126
 
 > Cette v1.1 réécrit intégralement Taxonomy depuis la v1.0 en conservant sa mécanique intellectuelle interne valide : Subdomain unique, SubjectBank, IdeaBanks, ValidationDominantIdeas pendant la création, sélection exacte et consommation exacte.
 >
 > La correction architecturale porte sur la frontière KRP : Taxonomy **ne possède plus** `DOMAIN_EXHAUSTED` ni `DEPTH_EXHAUSTED`. Taxonomy constate seulement qu’il vient d’utiliser la dernière Dominant Idea du dernier Subject de l’occurrence de Domain qui lui a été attribuée et transmet ce **fait terminal**. Toute interprétation de rotation appartient ensuite à KRP v4.0.
 >
 > Taxonomy ne connaît pas le cadran global des Domaines, ne sait pas si le Domain qu’il termine est le dernier Domain actif du Depth et ne consulte jamais `DepthNeedMatrix`.
+
+> **DEC-126 — règle linguistique active :** les nouvelles valeurs
+> `subdomain_active`, `subject_active` et `dominant_idea_active` créées et
+> persistées par les réservoirs Taxonomy sont intellectuellement anglaises.
+> Les titres administratifs français restent inchangés. Cette règle ne modifie
+> ni les codes, ni les curseurs, ni la sélection, ni la consommation, ni la
+> frontière avec KRP.
 
 ---
 
@@ -59,6 +66,10 @@ Ces trois valeurs complètes, non tronquées (`subdomain_active`,
 `subject_active`, `dominant_idea_active`), et leurs trois segments forment le seul ownership
 Blueprint de Taxonomy. Taxonomy ne construit, ne projette, ne persiste et ne
 verrouille aucun autre segment de `kernel_code`.
+
+Toute ancienne production française de ces valeurs est `SUPERSEDED BY DEC-126`
+pour les nouvelles créations, mais demeure une donnée historique à inventorier
+sans conversion dans ce travail documentaire.
 
 Lorsqu’il consomme la dernière Dominant Idea du dernier Subject de l’occurrence active, Taxonomy transmet uniquement un **fait terminal de consommation** à KRP.
 

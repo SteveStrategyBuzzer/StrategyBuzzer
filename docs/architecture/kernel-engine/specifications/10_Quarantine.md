@@ -3,7 +3,7 @@
 **Version :** 1.0  
 **Date :** 13 septembre 2026  
 **Statut :** RÈGLES OFFICIELLES VERROUILLÉES — MODÈLE PHYSIQUE À IMPLANTER  
-**Décisions :** DEC-122 + DEC-125  
+**Décisions :** DEC-122 + DEC-125 + invariant linguistique DEC-126
 **Implémentation :** NON TERMINÉE  
 **Validation terminale :** NON
 
@@ -26,6 +26,15 @@ Une copie conserve obligatoirement :
 - pour chaque slot : question, choix, bonne réponse, SV, traductions, états, findings et erreurs disponibles;
 - l’étape d’origine;
 - la version courante nécessaire contre les retours périmés.
+
+Les valeurs intellectuelles canoniques de la copie conservent leur langue
+d’origine anglaise, et chaque traduction conserve son code parmi
+`fr, es, de, it, pt, ru, zh, ar, el`. Quarantaine ne traduit, ne francise et ne
+change jamais l’identité d’une valeur. Ses libellés d’interface restent
+français; la langue choisie par le joueur reste externe.
+
+Les anciennes données intellectuelles françaises restent inventoriables dans
+la copie mais ne sont pas converties par le contrat documentaire DEC-126.
 
 La copie complète n’est jamais insérée dans les tables canoniques et n’est jamais envoyée à KBP ou Rotation.
 

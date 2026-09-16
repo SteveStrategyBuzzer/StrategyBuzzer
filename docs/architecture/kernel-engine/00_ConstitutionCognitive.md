@@ -1,9 +1,30 @@
 # 📘 DOCUMENT 1 — CONSTITUTION COGNITIVE STRATEGYBUZZER
 
-**Version officielle : 1.1.0**
+**Version officielle : 1.2.0**
  **Statut : OFFICIAL**
 
 **Harmonisation documentaire : 2026-08-19** — cette révision ne crée aucune nouvelle décision métier ; elle retire des formulations devenues incompatibles avec les sources actives.
+
+**Décision linguistique transversale : 2026-09-16** — l’anglais est la langue
+canonique de création intellectuelle; le français demeure la langue de la
+présente Constitution, de l’architecture et de l’administration; la langue
+affichée au joueur demeure son choix.
+
+## 0. Invariant linguistique constitutionnel
+
+Trois couches indépendantes doivent toujours être distinguées :
+
+1. **administration et architecture** : Bible, règles, titres, sections,
+   explications et libellés de lecture restent en français;
+2. **création intellectuelle canonique** : les valeurs de Domaine,
+   Sous-domaine, Sujet et Idée dominante, puis les sept sources Phase1
+   (`question`, `choix`, `bonne réponse`, `SV`), sont créées en anglais;
+3. **présentation au joueur** : l’interface et le contenu joué utilisent la
+   langue choisie par le joueur.
+
+Les identifiants, codes techniques et relations persistantes sont indépendants
+de toute langue. Un changement de langue ne crée jamais une nouvelle identité
+intellectuelle et ne modifie jamais les responsabilités des modules.
 
 ## 1. Mission
 

@@ -1,16 +1,21 @@
 # STRATEGYBUZZER — 06_PHASE1 / CRÉATION COGNITIVE SOURCE
 
-**Version :** 1.1
-**Date :** 2026-09-13
-**Statut :** CONTRAT DE BUILD VERROUILLÉ — IMPLANTATION À AUDITER/RÉALIGNER  
-**Décision directrice :** DEC-125 — OFFICIAL (clauses compatibles de DEC-122)
-**Implémentation :** À AUDITER CONTRE v1.1
+**Version :** 1.2
+**Date :** 2026-09-16
+**Statut :** CONTRAT DOCUMENTAIRE VERROUILLÉ — IMPLANTATION À RÉALIGNER
+**Décisions directrices :** DEC-125 + DEC-126 — OFFICIAL (clauses compatibles de DEC-122)
+**Implémentation :** À RÉALIGNER PAR UN TRAVAIL TECHNIQUE ULTÉRIEUR
 **Validation terminale :** NON
 
 > **Remplace :** v1.0 sur le cycle des copies Quarantine, le statut des
 > modifications manuelles et le routage. Les clauses v1.0 contraires sont
 > conservées comme historique et marquées `SUPERSEDED BY DEC-125` avant leur
 > remplacement.
+
+> **Remplace aussi :** toute clause imposant ou illustrant le français comme
+> langue du contenu intellectuel source. Ces clauses sont conservées comme
+> historique et marquées `SUPERSEDED BY DEC-126`; la valeur active est
+> `source_language = en`.
 
 ## 0. Règles actives DEC-125
 
@@ -58,7 +63,12 @@ demeure intellectuellement vide à sa création; les paramètres nécessaires au
 test appartiennent à Phase1 et à ses dépendances simulées, jamais à KBP.
 
 Dans les deux chemins, Phase1 remplit exactement sept `CognitiveSlots` dans la
-langue source et écrit uniquement dans sa zone d'ownership.
+langue source anglaise (`source_language = en`) et écrit uniquement dans sa
+zone d'ownership.
+
+Cette décision concerne exclusivement, pour chaque slot, la `question`, les
+`choices`, la `correct_answer` et le `SV`. Elle ne traduit ni la Bible, ni les
+règles, ni les titres structurels, ni les libellés administratifs français.
 
 Phase1 :
 
@@ -553,12 +563,17 @@ output_schema
 
 ## 9.2 Sortie JSON v1
 
+> **CLAUSE v1.1 SUPERSEDED BY DEC-126 — historique conservé :**
+> `"source_language": "fr"`.
+>
+> **Remplacement actif DEC-126 :** `"source_language": "en"`.
+
 ```json
 {
   "schema_version": "phase1.source.v1",
   "blueprint_id": "...",
   "kernel_code": "...",
-  "source_language": "fr",
+  "source_language": "en",
   "slots": [
     {
       "cognitive_type": "QCM_RECOGNITION",
@@ -845,8 +860,8 @@ concernent. Les slots conformes continuent et les échoués restent vides.
 
 ```text
 Architecture :          VERROUILLÉE
-Contrat :               VERROUILLÉ v1.1 — DEC-125
-Spécification :         BUILD-READY
+Contrat :               VERROUILLÉ v1.2 — DEC-125 + DEC-126
+Spécification :         DOCUMENTAIRE — ALIGNEMENT TECHNIQUE ULTÉRIEUR
 Implémentation :        À AUDITER/RÉALIGNER
 Validation terminale :  NON
 ```
@@ -854,7 +869,7 @@ Validation terminale :  NON
 Prochaine opération :
 
 ```text
-ALIGN-AUDIT-06-v1.1
+ALIGN-AUDIT-06-v1.2
 → comparer le code Phase1 réel à ce contrat
 → KEEP / MODIFY / REMOVE / MISSING / UNRESOLVED
 → proposer le patch minimal de Build

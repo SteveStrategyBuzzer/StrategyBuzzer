@@ -7,7 +7,7 @@
 **Contrat intellectuel :** 100 %  
 **Implémentation :** À RÉAUDITER CONTRE v4.0  
 **Validation terminale code :** NON  
-**Décision de verrouillage :** DEC-119
+**Décisions de verrouillage :** DEC-119 + complément linguistique DEC-126
 
 > Cette v4.0 est reconstruite depuis la v3.3 canonique, qui possédait déjà la bonne mécanique de cadran : à chaque nouveau Blueprint, KRP avance vers le prochain Domain `VISIBLE` du `DomainCycle`, et tout Domain `ESTOMPÉ` est ignoré pour le reste du tour.
 >
@@ -313,19 +313,27 @@ Aucun autre slot Blueprint n’appartient à KRP.
 
 DomainCycle officiel :
 
-```text
-Géographie
-→ Histoire
-→ Faune
-→ Art
-→ Sport
-→ Cinéma
-→ Cuisine
-→ Science
-→ retour à Géographie
-```
+| Identité stable | Valeur intellectuelle anglaise |
+|---|---|
+| GEO | Geography |
+| HIS | History |
+| FAU | Wildlife |
+| ART | Art |
+| SPO | Sports |
+| CIN | Cinema |
+| CUI | Cuisine |
+| SCI | Science |
 
-`Général` est exclu de la création.
+Les codes techniques actuels demeurent inchangés et sont les seules identités
+stables utilisées par Rotation. Le texte anglais est une valeur intellectuelle,
+jamais une clé de rotation. L’ordre du cadran demeure celui de la table, avec
+retour de `SCI` à `GEO`.
+
+> **CLAUSE DEC-119 SUPERSEDED BY DEC-126 SUR LA LANGUE UNIQUEMENT — historique
+> conservé :** le DomainCycle était exprimé par les valeurs intellectuelles
+> françaises `Géographie → Histoire → Faune → Art → Sport → Cinéma → Cuisine →
+> Science → retour à Géographie`. Son ordre et ses identités techniques restent
+> actifs; seule la langue des valeurs intellectuelles est remplacée.
 
 ## 9.1 Règle fondamentale
 
@@ -341,20 +349,20 @@ Un Domain `ESTOMPÉ` est sauté.
 Exemple sans Domain épuisé :
 
 ```text
-Blueprint N   → Géographie
-Blueprint N+1 → Histoire
-Blueprint N+2 → Faune
+Blueprint N   → GEO / Geography
+Blueprint N+1 → HIS / History
+Blueprint N+2 → FAU / Wildlife
 ...
-Blueprint N+7 → Science
-Blueprint N+8 → Géographie
+Blueprint N+7 → SCI / Science
+Blueprint N+8 → GEO / Geography
 ```
 
-Exemple avec `Histoire = ESTOMPÉ` :
+Exemple avec `HIS / History = ESTOMPÉ` :
 
 ```text
-Géographie
-→ Faune
-→ Art
+GEO / Geography
+→ FAU / Wildlife
+→ ART / Art
 ...
 ```
 
@@ -486,12 +494,13 @@ Au premier démarrage absolu :
 2. avec les cibles initiales, ce Depth est `2` ;
 3. KRP ouvre un tour neuf de Depth 2 ;
 4. les huit Domaines sont `VISIBLE` ;
-5. la première position du DomainCycle est `Géographie` ;
+5. la première position du DomainCycle est `GEO / Geography` ;
 6. KRP écrit :
 
 ```text
 depth = 2
-domain = Géographie
+domain_code = GEO
+domain = Geography
 ```
 
 ---

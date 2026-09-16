@@ -1,7 +1,7 @@
 # StrategyBuzzer — Moteur intellectuel — Spécification active maître
 
-**Version :** 2.2.0-dec-125
-**Date :** 2026-09-13
+**Version :** 2.3.0-dec-126
+**Date :** 2026-09-16
 **Statut :** **ACTIF — VÉRITÉ GLOBALE COURANTE**  
 **Portée :** architecture globale, frontières, ownership, communications et état documentaire des modules 01→11.
 
@@ -11,6 +11,11 @@
 > suspecte, édition Quarantine ciblée, reprise hors Phase1 et routage toujours
 > KBP) sont uniquement `SUPERSEDED BY DEC-125`; leur prose historique reste
 > conservée dans le registre.
+
+> **DEC-126 — OFFICIAL** complète ces décisions sans déplacer aucune
+> responsabilité : elle fixe l’anglais comme langue de création intellectuelle
+> canonique, le français comme langue architecturale et administrative, et la
+> langue choisie par le joueur comme langue de présentation.
 
 ## 0. Autorité courante DEC-125
 
@@ -58,6 +63,32 @@ techniques approuvées :
 7. protection contre les retours périmés;
 8. idempotence de `CURRENT_KERNEL_RECEIVED`;
 9. fusion atomique dans ReadyBank.
+
+## 0.1 Autorité linguistique courante — DEC-126
+
+Les identités et codes techniques actuels restent inchangés et indépendants de
+la langue. Les valeurs intellectuelles `domain`, `subdomain_active`,
+`subject_active` et `dominant_idea_active` sont canoniquement anglaises. Les
+réservoirs Taxonomy produisent leurs nouvelles valeurs en anglais.
+
+Phase1 crée en anglais, pour chacun des sept CognitiveSlots, la `question`, les
+`choices`, la `correct_answer` et le `SV`. La valeur active est
+`source_language = en`.
+
+Phase2 traduit cette source vers exactement neuf langues obligatoires, sans
+langue facultative :
+
+```text
+fr, es, de, it, pt, ru, zh, ar, el
+```
+
+La Bible, les règles, les titres structurels « Domaine », « Sous-domaine »,
+« Sujet » et « Idée dominante », les explications et l’interface Admin restent
+en français. La langue d’affichage du jeu demeure choisie par le joueur.
+
+Les données intellectuelles françaises déjà persistées ne sont pas converties
+par cette décision documentaire. Elles sont seulement inventoriées pour un
+travail technique ultérieur, après validation terminale du présent contrat.
 
 ---
 
@@ -141,14 +172,14 @@ Une seule spécification est travaillée à la fois.
 | Module | Architecture | Contrat | Implémentation | Validation | Statut |
 |---|---:|---:|---:|---:|---|
 | 01 KernelBlueprint | **100 % intellectuel v3.2** | **100 %** | à auditer contre DEC-125 et clauses compatibles DEC-122/123/124 | NON | **VERROUILLÉ — DEC-125** |
-| 02 KernelRotationPlanner | **100 % intellectuel v4.0** | **100 %** | implantation KRP seulement, par micro-blocs | NON | **VERROUILLÉ — DEC-119 OFFICIAL** |
-| 03 Taxonomy | **100 % intellectuel v1.1** | **100 %** | non à poursuivre avant validation KRP | NON | **VERROUILLÉ — DEC-120 OFFICIAL** |
+| 02 KernelRotationPlanner | **100 % intellectuel v4.0 + langue DEC-126** | **100 %** | alignement technique ultérieur | NON | **VERROUILLÉ — DEC-119 + DEC-126** |
+| 03 Taxonomy | **100 % intellectuel v1.1 + langue DEC-126** | **100 %** | alignement technique ultérieur | NON | **VERROUILLÉ — DEC-120 + DEC-126** |
 | 04 ValidationDominantIdeas | règles absorbées par Taxonomy v1.1 | contrat de règles | aucun moteur autonome | N/A | **SUPERSEDED comme étape autonome — DEC-101** |
-| 05 QuestionIntent | **100 % intellectuel v2.3** | **100 %** | à auditer contre DEC-125 | NON | **VERROUILLÉ — DEC-125** |
-| 06 Phase1 | **100 % intellectuel v1.1** | **100 % BUILD-READY** | à auditer/réaligner | NON | **CONTRAT VERROUILLÉ — DEC-125** |
-| 07 ValidationPhase1 | **100 % intellectuel v1.1** | **100 % BUILD-READY** | à auditer/réaligner après/avec 06 | NON | **CONTRAT VERROUILLÉ — DEC-125** |
-| 08 Phase2 | règles traductions DEC-125 | partiel v0.2 | non | non | slots autorisés + reprise Phase1 verrouillées |
-| 09 ValidationPhase2 | frontière DEC-125 | partiel v0.2 | non | non | traductions + copie complète verrouillées |
+| 05 QuestionIntent | **100 % intellectuel v2.3 + langue DEC-126** | **100 %** | alignement technique ultérieur | NON | **VERROUILLÉ — DEC-125 + DEC-126** |
+| 06 Phase1 | **100 % intellectuel v1.2** | langue source verrouillée; contrat fonctionnel antérieur conservé | alignement technique ultérieur | NON | **DOCUMENTAIRE — DEC-125 + DEC-126** |
+| 07 ValidationPhase1 | **100 % intellectuel v1.2** | langue source verrouillée; contrat fonctionnel antérieur conservé | alignement technique ultérieur | NON | **DOCUMENTAIRE — DEC-125 + DEC-126** |
+| 08 Phase2 | source/cibles DEC-126 + frontières DEC-125 | partiel v0.3 | non | non | décisions fonctionnelles détaillées ouvertes |
+| 09 ValidationPhase2 | source/cibles DEC-126 + frontières DEC-125 | partiel v0.3 | non | non | décisions fonctionnelles détaillées ouvertes |
 | 10 Quarantine | copie complète DEC-125 | partiel v0.2 | non | non | sept slots éditables + reprise Phase1 verrouillées |
 | 11 ReadyBank | fusion DEC-125 | partiel v0.3 | non | non | fusion sélective + routage FIFO verrouillés |
 
@@ -368,18 +399,19 @@ destinations ne sont jamais activées.
 
 ## DomainCycle
 
-```text
-Géographie
-→ Histoire
-→ Faune
-→ Art
-→ Sport
-→ Cinéma
-→ Cuisine
-→ Science
-```
+| Identité stable | Valeur intellectuelle anglaise |
+|---|---|
+| GEO | Geography |
+| HIS | History |
+| FAU | Wildlife |
+| ART | Art |
+| SPO | Sports |
+| CIN | Cinema |
+| CUI | Cuisine |
+| SCI | Science |
 
-`Général` n’est pas un domaine de création.
+Le DomainCycle conserve son ordre et ses codes techniques actuels. Les valeurs
+anglaises sont intellectuelles et ne deviennent jamais des clés de rotation.
 
 ## Rotation normale
 
@@ -531,9 +563,9 @@ Gemini utilise les règles `ValidationDominantIdeas` **pendant** la création de
 Références exclusives :
 
 ```text
-specifications/06_Phase1.md v1.1
-specifications/07_ValidationPhase1.md v1.1
-DEC-125
+specifications/06_Phase1.md v1.2
+specifications/07_ValidationPhase1.md v1.2
+DEC-125 + DEC-126
 ```
 
 Phase1 reçoit le même Blueprint finalisé par QuestionIntent et remplit sept CognitiveSlots source autonomes dans un appel de création structuré. Aucun slot n’est le master des autres.
@@ -557,16 +589,17 @@ Règles terminales :
 
 # 17. État opérationnel immédiat
 
-Le module actif unique devient `06_Phase1 v1.1`, sous DEC-125.
+Le contrat documentaire actif devient `06_Phase1 v1.2`, sous DEC-125 et
+DEC-126. Son alignement technique reste un travail ultérieur distinct.
 
 KRP v4, Taxonomy v1.1 et QuestionIntent constituent les frontières amont déjà présentes sur la branche officielle. `KernelCodeEngine`, s'il existe, est uniquement un mécanisme interne de QuestionIntent. Ils ne doivent pas être réimplantés dans ce bloc.
 
 Prochaine opération :
 
 ```text
-ALIGN-AUDIT-06-v1.1
+ALIGN-AUDIT-06-v1.2
 ↓
-audit du code Phase1 réel contre 06 v1.1
+audit du code Phase1 réel contre 06 v1.2
 ↓
 KEEP / MODIFY / REMOVE / MISSING / UNRESOLVED
 ↓
@@ -574,9 +607,9 @@ si aucun UNRESOLVED architectural
 ↓
 patch minimal Phase1
 ↓
-tests contractuels 06 v1.1
+tests contractuels 06 v1.2
 ↓
-ALIGN-AUDIT-07-v1.1
+ALIGN-AUDIT-07-v1.2
 ```
 
 ---
@@ -598,7 +631,7 @@ DEC-115 à DEC-118 : REJECTED, historique seulement. Anciennes versions KRP : hi
 
 ```text
 01 → specifications/01_KernelBlueprint.md v3.2 / DEC-125
-05 → specifications/05_QuestionIntent.md v2.3 / DEC-125
+05 → specifications/05_QuestionIntent.md v2.3 / DEC-125 + DEC-126
 ```
 
 KRP écrit uniquement `depth + domain` et Taxonomy uniquement son triplet métier. QuestionIntent attribue le compteur base36 `VVVV`, indépendant par bassin `Depth + Domain`, puis construit, persiste et verrouille le `kernel_code` complet. Il n'existe aucune projection progressive du code. `KernelCodeEngine`, s'il existe techniquement, demeure interne à QuestionIntent et sans ownership autonome. Phase1 remplit ensuite les sept CognitiveSlots du même Blueprint. L’état cognitif joueur `00n→11o` reste externe au Blueprint.
@@ -608,13 +641,35 @@ KRP écrit uniquement `depth + domain` et Taxonomy uniquement son triplet métie
 
 ```text
 01 → specifications/01_KernelBlueprint.md v3.2 — DEC-125
-06 → specifications/06_Phase1.md v1.1 — BUILD-READY
-07 → specifications/07_ValidationPhase1.md v1.1 — BUILD-READY
-08 → specifications/08_Phase2.md v0.2
-09 → specifications/09_ValidationPhase2.md v0.2
+06 → specifications/06_Phase1.md v1.2 — CONTRAT DOCUMENTAIRE
+07 → specifications/07_ValidationPhase1.md v1.2 — CONTRAT DOCUMENTAIRE
+08 → specifications/08_Phase2.md v0.3 — MODULE À COMPLÉTER
+09 → specifications/09_ValidationPhase2.md v0.3 — MODULE À COMPLÉTER
 10 → specifications/10_Quarantine.md v0.2
 11 → specifications/11_ReadyBank.md v0.3
 ```
+
+## Inventaire documentaire des surfaces persistantes à auditer ultérieurement
+
+Cet inventaire identifie des surfaces; il ne constate, ne compte, ne convertit
+et ne réécrit aucune donnée :
+
+- `kernel_blueprint_runs` : `domain_code`, `subdomain_active`,
+  `subject_active`, `dominant_idea_active`;
+- `taxonomy_v11_subdomains.subdomain_name`;
+- `taxonomy_v11_subjects.subject_name`;
+- `taxonomy_v11_ideas.idea_value`;
+- `taxonomy_v11_generation_memory` : candidats, PASS et FAIL JSON pouvant
+  contenir les mêmes valeurs intellectuelles;
+- `kernel_blueprint_cognitive_slots.source` et `translations`;
+- `kernel_quarantine_work_copies` : `domain_code`, `subdomain_active`,
+  `subject_active`, `dominant_idea_active`;
+- `kernel_quarantine_work_copy_slots.source` et `translations`;
+- `question_intents.frame_en`, stockage legacy non autoritaire;
+- `question_translations`, stockage relationnel legacy de l’ancienne banque.
+
+La présence réelle, la langue et le volume des lignes de ces surfaces restent à
+auditer lors du travail technique autorisé après le PASS documentaire terminal.
 
 > **Ancienne formulation ci-dessous — SUPERSEDED BY DEC-125 :** elle décrivait
 > une reprise uniquement ciblée et la poursuite de la position suspecte.

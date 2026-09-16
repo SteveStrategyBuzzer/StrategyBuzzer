@@ -1,9 +1,9 @@
 # STRATEGYBUZZER — 09_VALIDATIONPHASE2
 
-**Version :** 0.2
-**Date :** 2026-09-13
+**Version :** 0.3
+**Date :** 2026-09-16
 **Statut :** FRONTIÈRE OFFICIELLE VERROUILLÉE — MODULE À COMPLÉTER  
-**Décision directrice :** DEC-125 — OFFICIAL (clauses compatibles de DEC-122)
+**Décisions directrices :** DEC-125 + DEC-126 — OFFICIAL (clauses compatibles de DEC-122)
 **Implémentation :** À AUDITER  
 **Validation terminale :** NON
 
@@ -45,6 +45,17 @@ ValidationPhase2 reçoit uniquement `blueprint_id`, recharge le même
 KernelBlueprint persistant, vérifie l’état terminal de Phase2, puis valide les
 traductions de la question, de la réponse, des choix et du SV à l’intérieur de
 ses sept CognitiveSlots.
+
+La source de référence est exclusivement anglaise (`source_language = en`).
+Les traductions validées appartiennent exactement aux neuf codes obligatoires :
+
+```text
+fr, es, de, it, pt, ru, zh, ar, el
+```
+
+Toute ancienne clause évaluant une source française ou une traduction anglaise
+depuis le français est `SUPERSEDED BY DEC-126`. Les contenus historiques ne
+sont ni réécrits ni convertis par cette révision documentaire.
 
 Elle ne remplace jamais la source et ne crée aucun nouveau CognitiveSlot.
 
@@ -103,4 +114,7 @@ Après PASS, elle poursuit vers ReadyBank pour réconciliation avec le canonique
 
 # 6. Statut restant
 
-Les règles linguistiques détaillées, codes PASS/FAIL, seuils, retries et schémas de preuve restent à spécifier.
+Les règles linguistiques détaillées, codes PASS/FAIL, seuils, retries, schémas
+de preuve, findings par champ, prédicats terminaux d’admissibilité, interface
+fournisseur, idempotence et progression partielle restent à spécifier. La
+langue source et les neuf langues cibles ne sont plus ouvertes.
