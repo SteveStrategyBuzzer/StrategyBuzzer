@@ -339,6 +339,46 @@ Après `CONTENT_UNTRANSLATABLE`, deux réparations sont autorisées :
 Aucune traduction en chaîne, omission de langue, modification silencieuse de
 clé, perte cognitive ou langue de fallback n’est autorisée.
 
+## 1.4 Interface indépendante du validateur
+
+L’adaptateur ValidationPhase2 conserve sa propre enveloppe interne : claim,
+révisions, cycle, tentative, état jaune, idempotence et références de stockage.
+Cette enveloppe n’est jamais transmise au validateur.
+
+Le validateur reçoit uniquement :
+
+```text
+validation_request_reference opaque
+external_validation_idempotency_key opaque
+source anglaise conforme au cognitive_type
+cible traduite conforme au même cognitive_type
+contexte cognitif strictement nécessaire
+référents intellectuels anglais nécessaires
+registre des rule_code
+schéma des findings
+```
+
+Il ne reçoit jamais :
+
+```text
+claim_token
+creation_evidence
+self_checks
+conclusions du fournisseur de traduction
+références de stockage
+état jaune
+```
+
+La réponse externe contient la référence opaque, l’identifiant du validateur,
+`PASS` ou `SUSPICION` et les findings structurés, ou une erreur technique
+typée. Le validateur ne crée aucune `translation_revision` et ne modifie aucun
+contenu.
+
+Après réception, l’adaptateur recharge l’enveloppe interne et vérifie
+atomiquement le claim, les révisions, le cycle, la tentative, l’idempotence,
+l’absence d’une correction plus récente et le schéma propre au
+`cognitive_type`. Un retour périmé ou contradictoire ne produit aucune écriture.
+
 Toute ancienne clause évaluant une source française ou une traduction anglaise
 depuis le français est `SUPERSEDED BY DEC-126`. Les contenus historiques ne
 sont ni réécrits ni convertis par cette révision documentaire.
@@ -400,7 +440,7 @@ Après PASS, elle poursuit vers ReadyBank pour réconciliation avec le canonique
 
 # 6. Statut restant
 
-L’interface fournisseur, l’idempotence et la progression partielle restent à
+La progression partielle et la frontière terminale ReadyBank restent à
 spécifier. La langue source, les neuf langues cibles, les machines d’état, les
-findings linguistiques, les prédicats d’admissibilité, les retries et le contenu
-intraduisible ne sont plus ouverts.
+findings linguistiques, les prédicats d’admissibilité, les retries, le contenu
+intraduisible, les interfaces fournisseur et l’idempotence ne sont plus ouverts.

@@ -261,6 +261,93 @@ Phase2 et son fournisseur ne peuvent jamais conclure
 `CONTENT_UNTRANSLATABLE`. Ils produisent une cible structurée ou une erreur
 technique. Seule ValidationPhase2 indépendante possède cette décision.
 
+## 2.4 Interface fournisseur et idempotence
+
+L’adaptateur Phase2 conserve dans une enveloppe interne :
+
+```text
+operation_id
+blueprint_id
+source_revision
+expected_translation_revision
+retry_cycle
+attempt_number
+internal_idempotency_record
+claim_token
+claimed_at
+claim_expires_at
+état jaune
+références de stockage
+source_payload_hash
+```
+
+Cette enveloppe n’est jamais transmise au fournisseur. Elle est l’unique
+autorité permettant de décider si un résultat reste applicable.
+
+L’échange externe utilise seulement une `provider_request_reference` et une
+`external_idempotency_key` opaques. Elles n’encodent aucune identité interne,
+révision, tentative ou claim et ne donnent aucun accès au stockage. La même
+tentative réseau conserve la même clé; une tentative contractuelle suivante
+reçoit une nouvelle clé.
+
+La requête externe minimale contient :
+
+```text
+provider_request_reference
+external_idempotency_key
+source_language = en
+target_language
+cognitive_type
+depth
+référents intellectuels anglais strictement nécessaires
+payload source conforme au cognitive_type
+schéma de réponse exigé
+```
+
+Elle ne contient jamais le claim, `blueprint_id`, les révisions, le cycle,
+l’état jaune ou les références de stockage.
+
+Le payload des QCM contient la question, les quatre choix `a..d`,
+`correct_answer_key = a` et le SV. Le payload Vrai/Faux contient la question,
+les deux choix `a = VRAI`, `b = FAUX`, la clé `a` ou `b` correspondant à la
+polarité canonique, et le SV. La réponse conserve le nombre et les clés propres
+au `cognitive_type`; aucune structure QCM à quatre choix n’est imposée à un
+Vrai/Faux.
+
+La réponse externe contient :
+
+```text
+provider_request_reference
+provider_request_id
+target_language
+question traduite
+choix traduits sous les mêmes clés
+correct_answer_key inchangé
+SV traduit
+```
+
+ou une erreur technique typée. Le fournisseur ne crée aucune révision, ne
+décide jamais l’applicabilité, ne reçoit aucun claim et n’écrit aucun état.
+
+Au retour, l’adaptateur recharge l’enveloppe interne et revérifie atomiquement
+le claim, les révisions, le cycle, la tentative, l’idempotence, l’état jaune et
+le schéma cognitif. Dans une seule transaction :
+
+```text
+premier contenu accepté sous l’identité
+→ translation_revision = 1
+
+modification réelle autorisée sous la même source_revision
+→ translation_revision courante + 1
+
+résultat identique déjà appliqué
+→ no-op, même translation_revision
+```
+
+Le contenu, `CREATED + NOT_VALIDATED`, la fin du claim et l’enregistrement
+d’idempotence sont persistés ensemble. Si une condition échoue, aucune écriture
+partielle n’est autorisée. Tout ancien retour est `STALE_RESULT`.
+
 # 3. Précondition source
 
 Aucune traduction n’est créée pour un CognitiveSlot source soupçonné, invalide ou incomplet.
@@ -344,7 +431,6 @@ Restent à spécifier :
 - politiques de contenu intraduisible;
 - structure des findings linguistiques et schémas de preuve;
 - prédicats exacts d’admissibilité de la traduction et du slot;
-- interface fournisseur et garanties d’idempotence;
 - frontière terminale et progression partielle vers ReadyBank.
 
 La présente version verrouille la structure, les frontières, la source anglaise

@@ -133,6 +133,13 @@ conserve toujours la copie complète, mais chaque cible reprend exactement à
 l’étape indiquée par son indice. ReadyBank publie atomiquement un CognitiveSlot
 avec ses neuf traductions admissibles, ou ne publie aucune position du slot.
 
+Les claims, révisions, cycles, tentatives, états jaunes et références de stockage
+restent dans une enveloppe interne jamais transmise aux fournisseurs. Les
+interfaces externes utilisent des références et clés d’idempotence opaques. Le
+premier contenu cible accepté reçoit atomiquement `translation_revision = 1`;
+un replay identique est un no-op. Les payloads respectent le schéma réel du
+CognitiveSlot : quatre choix pour un QCM, deux pour un Vrai/Faux.
+
 La Bible, les règles, les titres structurels « Domaine », « Sous-domaine »,
 « Sujet » et « Idée dominante », les explications et l’interface Admin restent
 en français. La langue d’affichage du jeu demeure choisie par le joueur.
