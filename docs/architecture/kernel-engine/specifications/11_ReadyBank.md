@@ -44,6 +44,22 @@ langue ne satisfait implicitement ce prédicat. L’indice jaune est compatible
 avec l’admissibilité, mais seul ReadyBank le retire après sa décision terminale
 portant sur la révision exacte.
 
+La décision de fusion et publication est atomique par CognitiveSlot :
+
+```text
+source anglaise PASS
++ neuf traductions admissibles
+→ fusion et publication du CognitiveSlot
+
+sinon
+→ aucune publication du CognitiveSlot
+```
+
+ReadyBank ne publie jamais un slot avec huit langues, une cible de fallback ou
+une traduction rouge, manquante, périmée ou non PASS. Une panne purement
+technique maintient la position non publiable sans colorer le contenu ni exiger
+à elle seule une copie Quarantaine.
+
 # 2. Arrivée du canonique
 
 ## 2.1 Contrat de circulation et de propriété

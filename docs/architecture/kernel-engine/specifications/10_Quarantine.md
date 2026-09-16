@@ -199,3 +199,31 @@ chemins rouges. Les anciens findings peuvent subsister pour audit technique et
 idempotence, mais ne constituent pas un historique éditable : ils ne sont
 jamais affichés comme courants, recopiés dans une nouvelle copie, reportés sur
 une nouvelle révision ni utilisés pour colorer un slot.
+
+## Copie linguistique complète et reprise sélective
+
+La copie Quarantaine comprend toujours les sept CognitiveSlots. Pour chacun,
+elle conserve la source anglaise et sa révision, les neuf traductions et leurs
+révisions, les validations, les findings courants et les indices de reprise.
+
+Cette complétude ne provoque aucune recréation générale. Chaque cible reprend
+exactement à la frontière persistée :
+
+| État courant | Contenu conservé | Reprise |
+|---|---|---|
+| jaune après modification manuelle complète | oui | ValidationPhase2 |
+| rouge ou manquante avec création requise | non ou incomplet | Phase2 |
+| périmée après modification de la source anglaise | ancien contenu non réutilisé | nouvelle traduction Phase2 |
+| PASS, courante et non modifiée | oui | aucune création ni revalidation |
+
+Une cible jaune complète reste `CREATED`, passe à `NOT_VALIDATED` et ne rejoue
+pas sa création Phase2. Une étape déjà satisfaite ne recrée, ne réécrit et ne
+revalide rien.
+
+Modifier la source anglaise augmente `source_revision` et périme les neuf
+traductions de ce CognitiveSlot. Modifier une seule cible augmente uniquement
+sa `translation_revision`, sans périmer les huit autres ni les autres slots.
+
+Une panne réseau, un quota, un timeout, une authentification invalide, une
+configuration fournisseur ou l’épuisement d’un cycle technique ne colore aucun
+contenu et ne crée pas seul une copie Quarantaine.

@@ -183,6 +183,84 @@ retries. L’attribution de la première `translation_revision` et la création
 atomique d’une nouvelle révision par un résultat fournisseur restent réservées
 au contrat d’interface fournisseur.
 
+## 2.3 Cycles techniques et retries
+
+Les cycles techniques sont indépendants par identité, langue, phase propriétaire
+et `retry_cycle`. L’échec d’une langue ne relance jamais les huit autres;
+l’échec de ValidationPhase2 ne relance jamais automatiquement Phase2.
+
+Les issues techniques sont :
+
+```text
+PRECONDITION_BLOCKED
+STALE_RESULT
+RETRYABLE_TECHNICAL_FAILURE
+NON_RETRYABLE_TECHNICAL_FAILURE
+```
+
+`PRECONDITION_BLOCKED` ne démarre aucun cycle et ne consomme aucune tentative.
+`STALE_RESULT` refuse un retour périmé sans modifier l’état ni consommer une
+tentative du cycle courant. Un timeout, une indisponibilité temporaire, une
+limite fournisseur, une erreur réseau ou une réponse structurée invalide sont
+retryables. Une requête contractuellement invalide, une configuration ou une
+autorisation fournisseur invalide sont non retryables.
+
+Chaque cycle autorise :
+
+```text
+tentative initiale
+retry 1 après au moins 1 minute
+retry 2 après au moins 5 minutes
+retry 3 après au moins 15 minutes
+```
+
+Si un `Retry-After` fiable du fournisseur est supérieur au plancher applicable,
+il est prioritaire :
+
+```text
+prochain délai = max(plancher contractuel, Retry-After fiable)
+```
+
+Après quatre échecs techniques, ou après un échec non retryable, le cycle
+courant atteint `PERMANENT_FAILURE`. Cet état ne signifie jamais que le contenu
+est intellectuellement défectueux, ne crée aucun finding rouge et n’envoie pas
+seul le Blueprint en Quarantaine. La langue concernée demeure techniquement
+bloquée; les autres langues et slots continuent.
+
+Un signal opérationnel persistant contient au minimum :
+
+```text
+blueprint_id
+cognitive_type
+language_code
+source_revision
+translation_revision si elle existe
+owner_phase
+retry_cycle
+technical_reason_code
+blocked_at
+```
+
+Un nouveau cycle peut être autorisé sans modification du contenu par :
+
+```text
+retry_cycle + 1
+resolution_event_id
+authorized_by = ADMIN | SYSTEM_RECOVERY
+authorization_reason_code
+authorized_at
+```
+
+`resolution_event_id` est obligatoire et unique. `SYSTEM_RECOVERY` est
+idempotent et ne peut ouvrir qu’un cycle pour cet événement. Un nouveau blocage
+exige un nouvel événement réel; aucun événement ne peut créer une boucle de
+réouvertures. Les révisions doivent être courantes et tout ancien claim ou
+résultat demeure périmé.
+
+Phase2 et son fournisseur ne peuvent jamais conclure
+`CONTENT_UNTRANSLATABLE`. Ils produisent une cible structurée ou une erreur
+technique. Seule ValidationPhase2 indépendante possède cette décision.
+
 # 3. Précondition source
 
 Aucune traduction n’est créée pour un CognitiveSlot source soupçonné, invalide ou incomplet.
@@ -263,7 +341,6 @@ Restent à spécifier :
 
 - moteur de traduction;
 - validations linguistiques détaillées;
-- retries;
 - politiques de contenu intraduisible;
 - structure des findings linguistiques et schémas de preuve;
 - prédicats exacts d’admissibilité de la traduction et du slot;

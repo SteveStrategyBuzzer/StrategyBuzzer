@@ -281,6 +281,64 @@ historique ni aucune décision fournisseur non persistée ne participe au calcul
 La progression terminale d’un Blueprint partiel reste réservée au contrat
 ReadyBank.
 
+## 1.3 Frontière technique et contenu intraduisible
+
+ValidationPhase2, indépendante du fournisseur Phase2, est seule autorisée à
+conclure `CONTENT_UNTRANSLATABLE`. Ce code rejoint le registre des codes
+`BLOCKING` et produit :
+
+```text
+validation_status = SUSPICION
+rule_code = CONTENT_UNTRANSLATABLE
+severity = BLOCKING
+```
+
+Sa preuve contient obligatoirement :
+
+```text
+language_code
+source_revision
+translation_revision si elle existe
+components_concerned
+contract_rules_in_conflict
+source_excerpts
+target_excerpts si une cible existe
+expected_rule
+observed_result
+explanation
+```
+
+Une preuve incomplète rend le résultat techniquement invalide. Phase2 et son
+fournisseur ne peuvent proposer ni persister cette conclusion.
+
+Un échec technique, y compris l’épuisement d’un cycle, ne prouve aucun défaut
+du contenu. Il ne produit ni rouge, ni finding intellectuel, ni copie
+Quarantaine automatique. Il bloque seulement la langue et la phase concernées,
+laisse les autres unités continuer et attend un événement de résolution
+autorisé.
+
+La copie Quarantaine complète est créée seulement pour :
+
+```text
+SUSPICION
+CONTENT_UNTRANSLATABLE
+correction manuelle explicitement demandée
+```
+
+Une cible `SUSPICION` ne peut jamais être rouverte par une autorisation
+technique. Elle exige une modification réelle en Quarantaine, une nouvelle
+`translation_revision` jaune et une nouvelle validation.
+
+Après `CONTENT_UNTRANSLATABLE`, deux réparations sont autorisées :
+
+1. créer manuellement une cible conforme sous la même `source_revision`, avec
+   une nouvelle `translation_revision` jaune;
+2. modifier réellement la source anglaise, augmenter `source_revision` et
+   rendre périmées les neuf traductions du CognitiveSlot.
+
+Aucune traduction en chaîne, omission de langue, modification silencieuse de
+clé, perte cognitive ou langue de fallback n’est autorisée.
+
 Toute ancienne clause évaluant une source française ou une traduction anglaise
 depuis le français est `SUPERSEDED BY DEC-126`. Les contenus historiques ne
 sont ni réécrits ni convertis par cette révision documentaire.
@@ -342,7 +400,7 @@ Après PASS, elle poursuit vers ReadyBank pour réconciliation avec le canonique
 
 # 6. Statut restant
 
-Les seuils qui ne sont pas déjà verrouillés, retries, interface fournisseur,
-idempotence et progression partielle restent à spécifier. La langue source, les
-neuf langues cibles, les machines d’état, les findings linguistiques et les
-prédicats d’admissibilité ne sont plus ouverts.
+L’interface fournisseur, l’idempotence et la progression partielle restent à
+spécifier. La langue source, les neuf langues cibles, les machines d’état, les
+findings linguistiques, les prédicats d’admissibilité, les retries et le contenu
+intraduisible ne sont plus ouverts.

@@ -120,6 +120,19 @@ PASS et si ses neuf traductions obligatoires sont toutes admissibles. L’indice
 jaune n’interdit pas cette admissibilité; seul ReadyBank le retire après sa
 décision sur la révision exacte.
 
+Chaque cycle technique possède quatre tentatives au maximum, avec planchers de
+retry `1 / 5 / 15 minutes`; un `Retry-After` fiable supérieur est prioritaire.
+Après `PERMANENT_FAILURE`, un nouveau `retry_cycle` peut être autorisé par un
+événement de résolution persistant et idempotent sans modification artificielle
+du contenu.
+
+Une panne technique ne colore pas le contenu et ne crée pas seule une copie
+Quarantaine. Seule ValidationPhase2, indépendante du fournisseur de traduction,
+peut conclure `CONTENT_UNTRANSLATABLE` avec un finding `BLOCKING`. Quarantaine
+conserve toujours la copie complète, mais chaque cible reprend exactement à
+l’étape indiquée par son indice. ReadyBank publie atomiquement un CognitiveSlot
+avec ses neuf traductions admissibles, ou ne publie aucune position du slot.
+
 La Bible, les règles, les titres structurels « Domaine », « Sous-domaine »,
 « Sujet » et « Idée dominante », les explications et l’interface Admin restent
 en français. La langue d’affichage du jeu demeure choisie par le joueur.
