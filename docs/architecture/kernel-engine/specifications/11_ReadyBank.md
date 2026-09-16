@@ -505,6 +505,8 @@ Une fusion réussie termine l’indice et installe la révision corrigée dans l
 
 # 13. Frontière terminale Phase2 — DEC-127
 
+**Décision 7 révisée : APPROUVÉE EXPLICITEMENT — AUTORITÉ OFFICIELLE.**
+
 ## 13.1 Trois issues terminales
 
 Pour le passage ReadyBank courant, chaque CognitiveSlot atteint exactement une

@@ -353,6 +353,7 @@ existantes sont seulement inventoriées pour un travail technique ultérieur.
 - **Version :** 1.0
 - **Date :** 2026-09-16
 - **Statut :** **OFFICIAL**
+- **Décision 7 révisée :** **APPROUVÉE EXPLICITEMENT ET INSCRITE COMME AUTORITÉ**
 - **Modules :** 08, 09, 10, 11, Admin et Gameplay
 
 DEC-127 verrouille le contrat fonctionnel complet de traduction et validation
@@ -376,6 +377,25 @@ Il verrouille notamment :
 - la publication et le retrait atomiques d’un CognitiveSlot;
 - les trois issues terminales et l’idempotence de
   `CURRENT_KERNEL_RECEIVED`.
+
+L’autorité DEC-127 inclut expressément le maintien en Gameplay de tout
+CognitiveSlot `PUBLISHED`, courant et non modifié, même si d’autres slots sont
+bloqués. Toute modification Admin réelle d’un slot publié invalide
+atomiquement son manifeste, retire uniquement ce slot dans toutes les langues,
+crée la révision jaune et persiste son indice de reprise. Une cible modifiée ne
+périme pas les huit autres, mais le slot complet demeure non publié jusqu’au
+retour de neuf traductions admissibles.
+
+ReadyBank vérifie atomiquement `blueprint_id + cognitive_type +
+source_revision + les neuf translation_revision`. Tout retour périmé est un
+NO-OP. Un slot publié, courant et non modifié pendant un retour Quarantaine
+reste disponible sans republication, révision ou revalidation. La republication
+du slot multilingue complet exige de nouveau la source anglaise et les neuf
+traductions courantes admissibles.
+
+Les trois issues terminales, les sept issues avant
+`CURRENT_KERNEL_RECEIVED`, l’idempotence par `cause_reference` et la priorité
+Quarantaine READY sur KBP sont obligatoires.
 
 DEC-127 ne choisit aucun fournisseur, ne modifie aucun code, schéma ou donnée et
 n’autorise aucune conversion des contenus historiques.
