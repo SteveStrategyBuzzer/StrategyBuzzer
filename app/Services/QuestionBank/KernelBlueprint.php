@@ -112,8 +112,8 @@ class KernelBlueprint
     private ?string $dominant_idea_active = null;
 
     /**
-     * Projection PostgreSQL read-only. In-memory compatibility callers may
-     * still use fillKernelCode(), but phases persist only VVVV.
+     * Projection PostgreSQL read-only. No method accepts a complete code;
+     * every writer persists only VVVV via fillVvvv().
      */
     private ?string $kernel_code = null;
 
@@ -291,40 +291,14 @@ class KernelBlueprint
     }
 
     /**
-     * Compatibility shim for callers that still hand a complete code to the
-     * aggregate. New phase code writes only VVVV; kernel_code is a DB
-     * generated projection.
-     *
-     * Précondition : blueprint_id et isIdentityComplete() sont définis.
-     * Lit les champs précédents — ne les modifie jamais.
-     *
-     * @throws \LogicException si la Section 1 n'est pas prête pour le code.
-     * @throws \LogicException si kernel_code est déjà défini (write-once).
-     */
-    public function fillKernelCode(string $kernelCode): void
-    {
-        if ($this->blueprint_id === null || ! $this->isIdentityComplete()) {
-            throw new \LogicException(
-                '[KernelBlueprint] Identité canonique, Rotation et Taxonomy requises avant kernel_code.'
-            );
-        }
-
-        $prefix = $this->kernelCodePrefix();
-        if (! preg_match(KernelCodeFormat::FORMAT_REGEX, $kernelCode)
-            || $prefix === null
-            || ! str_starts_with($kernelCode, $prefix . '-')) {
-            throw new \LogicException(
-                '[KernelBlueprint] kernel_code invalide ou divergent de la projection canonique.'
-            );
-        }
-
-        $this->fillVvvv(substr($kernelCode, -4));
-        $this->kernel_code = $kernelCode;
-    }
-
-    /**
      * QuestionIntent owns this final segment. It is deliberately the only
      * mutation method after Taxonomy and never accepts a complete code.
+     *
+     * There is no method that accepts a full kernel_code: kernel_code is
+     * exclusively a PostgreSQL-generated read-only projection (see
+     * kernelCodeProjection()). A caller reconstructing a Blueprint from an
+     * already-persisted kernel_code must extract the trailing VVVV segment
+     * itself and pass only that to fillVvvv().
      */
     public function fillVvvv(string $vvvv): void
     {

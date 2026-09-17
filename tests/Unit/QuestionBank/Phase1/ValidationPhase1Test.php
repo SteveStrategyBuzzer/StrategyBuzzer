@@ -62,7 +62,7 @@ class ValidationPhase1Test extends TestCase
         $this->blueprint->initializeBlueprintId('bp-validation-1');
         $this->blueprint->fillRotation(4, 'science');
         $this->blueprint->fillTaxonomy('Physique', 'Lumière', 'Réfraction');
-        $this->blueprint->fillKernelCode($this->blueprint->kernelCodePrefix() . '-0000');
+        $this->blueprint->fillVvvv('0000');
 
         DB::table('kernel_blueprint_runs')->insert([
             'blueprint_id' => $this->blueprint->blueprint_id,

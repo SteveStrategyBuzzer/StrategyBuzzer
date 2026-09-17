@@ -25,7 +25,7 @@ final class QuestionApiKernelQuarantinePhase1Provider implements KernelQuarantin
             (string) ($copy->subject_active ?? 'science'),
             (string) ($copy->dominant_idea_active ?? 'science'),
         );
-        $blueprint->fillKernelCode((string) $copy->kernel_code);
+        $blueprint->fillVvvv(substr((string) $copy->kernel_code, -4));
         $last = 'Aucune réponse Phase 1 valide.';
         for ($attempt = 1; $attempt <= KernelPhase1Generator::MAX_TECHNICAL_ATTEMPTS; $attempt++) {
             try {

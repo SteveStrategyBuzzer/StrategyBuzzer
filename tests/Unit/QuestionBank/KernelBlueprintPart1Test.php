@@ -339,51 +339,67 @@ class KernelBlueprintPart1Test extends TestCase
     }
 
     // =========================================================================
-    // 5. fillKernelCode — responsabilité KernelCodeEngine
+    // 5. fillVvvv — responsabilité exclusive de QuestionIntent/KernelCodeEngine
+    //
+    // Il n'existe plus de méthode acceptant un kernel_code complet : seule
+    // fillVvvv() peut écrire ce dernier segment, et uniquement à partir d'un
+    // suffixe déjà alloué par PostgreSQL (KernelCodeEngine). Ceci prouve que
+    // l'injection manuelle d'un kernel_code complet est neutralisée au niveau
+    // du Blueprint lui-même.
     // =========================================================================
 
-    public function test_fillKernelCode_sets_kernel_code(): void
+    public function test_fillVvvv_sets_kernel_code_projection(): void
     {
         $bp = $this->identifiedBlueprint();
         $bp->fillRotation(4, 'science');
         $bp->fillTaxonomy('Physique', 'Lumière', 'réfraction');
-        $bp->fillKernelCode('04-SCI-PHY-LUM-REF-0001');
+        $bp->fillVvvv('0001');
 
         $this->assertSame('04-SCI-PHY-LUM-REF-0001', $bp->kernel_code);
         $this->assertSame($bp->kernel_code, $bp->kernelCodeProjection());
     }
 
-    public function test_fillKernelCode_does_not_overwrite_rotation_fields(): void
+    public function test_fillVvvv_does_not_overwrite_rotation_fields(): void
     {
         $bp = $this->identifiedBlueprint();
         $bp->fillRotation(4, 'science');
         $bp->fillTaxonomy('Physique', 'Lumière', 'réfraction');
-        $bp->fillKernelCode('04-SCI-PHY-LUM-REF-0001');
+        $bp->fillVvvv('0001');
 
-        $this->assertSame(4,         $bp->depth,  'fillKernelCode ne doit pas modifier depth');
-        $this->assertSame('SCI', $bp->domain, 'fillKernelCode ne doit pas modifier domain');
+        $this->assertSame(4,         $bp->depth,  'fillVvvv ne doit pas modifier depth');
+        $this->assertSame('SCI', $bp->domain, 'fillVvvv ne doit pas modifier domain');
     }
 
-    public function test_fillKernelCode_does_not_overwrite_taxonomy_fields(): void
+    public function test_fillVvvv_does_not_overwrite_taxonomy_fields(): void
     {
         $bp = $this->identifiedBlueprint();
         $bp->fillRotation(4, 'science');
         $bp->fillTaxonomy('Physique', 'Lumière', 'réfraction');
-        $bp->fillKernelCode('04-SCI-PHY-LUM-REF-0001');
+        $bp->fillVvvv('0001');
 
-        $this->assertSame('Physique',    $bp->subdomain_active,     'fillKernelCode ne doit pas modifier subdomain_active');
-        $this->assertSame('Lumière',     $bp->subject_active,        'fillKernelCode ne doit pas modifier subject_active');
-        $this->assertSame('réfraction',  $bp->dominant_idea_active,  'fillKernelCode ne doit pas modifier dominant_idea_active');
+        $this->assertSame('Physique',    $bp->subdomain_active,     'fillVvvv ne doit pas modifier subdomain_active');
+        $this->assertSame('Lumière',     $bp->subject_active,        'fillVvvv ne doit pas modifier subject_active');
+        $this->assertSame('réfraction',  $bp->dominant_idea_active,  'fillVvvv ne doit pas modifier dominant_idea_active');
     }
 
-    public function test_fillKernelCode_requires_rotation_and_taxonomy(): void
+    public function test_fillVvvv_requires_rotation_and_taxonomy(): void
     {
         $this->expectException(\LogicException::class);
-        $this->expectExceptionMessageMatches('/Rotation et Taxonomy requises/');
+        $this->expectExceptionMessageMatches('/Taxonomy complète et VVVV canonique requis/');
 
         $bp = $this->identifiedBlueprint();
         $bp->fillRotation(4, 'science');
-        $bp->fillKernelCode('04-SCI-PHY-LUM-REF-0001');
+        $bp->fillVvvv('0001');
+    }
+
+    public function test_no_method_accepts_a_complete_kernel_code(): void
+    {
+        // Preuve négative : l'entrée qui permettait autrefois d'injecter
+        // manuellement un kernel_code complet (fillKernelCode) n'existe plus.
+        $this->assertFalse(
+            method_exists(KernelBlueprint::class, 'fillKernelCode'),
+            'KernelBlueprint ne doit exposer aucune méthode acceptant un kernel_code complet.'
+        );
     }
 
     // =========================================================================
@@ -454,7 +470,7 @@ class KernelBlueprintPart1Test extends TestCase
         $bp = $this->identifiedBlueprint();
         $bp->fillRotation(4, 'science');
         $bp->fillTaxonomy('Physique', 'Lumière', 'réfraction');
-        $bp->fillKernelCode('04-SCI-PHY-LUM-REF-0001');
+        $bp->fillVvvv('0001');
 
         $this->assertTrue($bp->isComplete());
     }
@@ -484,7 +500,7 @@ class KernelBlueprintPart1Test extends TestCase
         $this->assertFalse($bp->isComplete());
 
         // Étape 3 — KernelCodeEngine
-        $bp->fillKernelCode('06-HIS-REV-BAS-PRI-0001');
+        $bp->fillVvvv('0001');
 
         $this->assertTrue($bp->isComplete());
         $this->assertSame('06-HIS-REV-BAS-PRI-0001', $bp->kernel_code);
@@ -495,7 +511,7 @@ class KernelBlueprintPart1Test extends TestCase
         $bp = $this->identifiedBlueprint();
         $bp->fillRotation(6, 'histoire');
         $bp->fillTaxonomy('Révolutions', 'Bastille', 'prise_1789');
-        $bp->fillKernelCode('06-HIS-REV-BAS-PRI-0001');
+        $bp->fillVvvv('0001');
 
         $arr = $bp->toArray();
 
@@ -576,7 +592,7 @@ class KernelBlueprintPart1Test extends TestCase
         $bp->fillTaxonomy('SD2', 'S2', 'I2'); // doit lever une LogicException
     }
 
-    public function test_fillKernelCode_write_once_throws_on_second_call(): void
+    public function test_fillVvvv_write_once_throws_on_second_call_with_different_value(): void
     {
         $this->expectException(\LogicException::class);
         $this->expectExceptionMessageMatches('/write-once violation/');
@@ -584,8 +600,19 @@ class KernelBlueprintPart1Test extends TestCase
         $bp = $this->identifiedBlueprint();
         $bp->fillRotation(4, 'science');
         $bp->fillTaxonomy('SD1', 'S1', 'I1');
-        $bp->fillKernelCode('04-SCI-SD1-S1X-I1X-0001');
-        $bp->fillKernelCode('04-SCI-SD1-S1X-I1X-0002'); // doit lever une LogicException
+        $bp->fillVvvv('0001');
+        $bp->fillVvvv('0002'); // doit lever une LogicException — VVVV immuable
+    }
+
+    public function test_fillVvvv_second_call_with_same_value_is_idempotent_noop(): void
+    {
+        $bp = $this->identifiedBlueprint();
+        $bp->fillRotation(4, 'science');
+        $bp->fillTaxonomy('SD1', 'S1', 'I1');
+        $bp->fillVvvv('0001');
+        $bp->fillVvvv('0001'); // rejeu identique — ne doit pas lever
+
+        $this->assertSame('0001', $bp->kernel_code_vvvv);
     }
 
     public function test_read_via_magic_get_works_before_fill(): void

@@ -438,7 +438,7 @@ class KernelFrameBuilderBlueprintTest extends TestCase
         $blueprint->initializeBlueprintId('bp-frame-0001');
         $blueprint->fillRotation(4, 'Science');
         $blueprint->fillTaxonomy('Physique', 'Lumière', 'Réfraction');
-        $blueprint->fillKernelCode('04-SCI-PHY-LUM-REF-0001');
+        $blueprint->fillVvvv('0001');
 
         $frame = $this->builder->buildSkeleton($this->intent, $blueprint);
 
