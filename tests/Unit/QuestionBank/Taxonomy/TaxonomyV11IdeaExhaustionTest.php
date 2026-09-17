@@ -93,7 +93,7 @@ final class TaxonomyV11IdeaExhaustionTest extends TestCase
     public function test_fail_ideas_and_operation_number_survive_preparation_exception(): void
     {
         [$occurrence, $subdomain, $subject] = $this->seedSubject();
-        $this->mockIdeaResponse('CANDIDATES', ['Particules élémentaires']);
+        $this->mockIdeaResponse('CANDIDATES', ['Elementary Particles']);
 
         $this->assertPreparationFailure($occurrence, $subdomain, $subject);
 
@@ -150,7 +150,7 @@ final class TaxonomyV11IdeaExhaustionTest extends TestCase
     public function test_four_existing_passes_plus_one_new_pass_reaches_five_and_exhausts(): void
     {
         [$occurrence, $subdomain, $subject] = $this->seedSubject(4);
-        $this->mockIdeaResponse('CANDIDATES', ['Moment magnétique']);
+        $this->mockIdeaResponse('CANDIDATES', ['Magnetic Moment']);
 
         $this->invokeIdeaGeneration($occurrence, $subdomain, $subject);
 
@@ -166,7 +166,7 @@ final class TaxonomyV11IdeaExhaustionTest extends TestCase
             ->method('generateIdeas')
             ->willReturnOnConsecutiveCalls(
                 ['status' => 'CANDIDATES', 'candidates' => []],
-                ['status' => 'CANDIDATES', 'candidates' => [['value' => 'Moment magnétique']]],
+                ['status' => 'CANDIDATES', 'candidates' => [['value' => 'Magnetic Moment']]],
             );
 
         $this->assertPreparationFailure($occurrence, $subdomain, $subject);
@@ -230,16 +230,16 @@ final class TaxonomyV11IdeaExhaustionTest extends TestCase
         $occurrence = $this->repo->findOrCreateV11Occurrence(2, 'SCI');
         $subdomain = $this->repo->createV11Subdomain(
             (int) $occurrence->id,
-            'Propriétés de la matière',
+            'Matter Properties',
         );
-        $this->repo->createV11Subjects((int) $subdomain->id, ['Particules élémentaires']);
+        $this->repo->createV11Subjects((int) $subdomain->id, ['Elementary Particles']);
         $subject = $this->repo->getV11SubjectsForSubdomain((int) $subdomain->id)[0];
 
         $ideas = [
-            'Charge électrique',
-            'Masse inertielle',
-            'Spin quantique',
-            'Nombre baryonique',
+            'Electric Charge',
+            'Inertial Mass',
+            'Quantum Spin',
+            'Baryon Number',
         ];
 
         foreach (array_slice($ideas, 0, $passCount) as $idea) {

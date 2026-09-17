@@ -139,16 +139,34 @@ final class KernelBlueprintRunRepository
      * Projection Taxonomy write-once. Retourne false si une projection existe
      * déjà afin que le propriétaire appelant puisse vérifier l'idempotence.
      *
-     * @param array<string, string|null> $projection
+     * Les colonnes sont volontairement des paramètres fixes : Taxonomy ne peut
+     * pas utiliser cette API pour écrire une colonne appartenant à Rotation ou
+     * à une autre zone du Blueprint.
      */
-    public function writeTaxonomyProjection(string $blueprintId, array $projection): bool
+    public function writeTaxonomyProjection(
+        string $blueprintId,
+        ?string $subdomainActive,
+        ?string $subjectActive,
+        ?string $dominantIdeaActive,
+        ?string $kernelCodeSub,
+        ?string $kernelCodeSuj,
+        ?string $kernelCodeIde,
+    ): bool
     {
         return DB::table(self::TABLE)
             ->where('blueprint_id', $blueprintId)
             ->whereNull('subdomain_active')
             ->whereNull('subject_active')
             ->whereNull('dominant_idea_active')
-            ->update($projection + ['updated_at' => now()]) === 1;
+            ->update([
+                'subdomain_active'     => $subdomainActive,
+                'subject_active'       => $subjectActive,
+                'dominant_idea_active' => $dominantIdeaActive,
+                'kernel_code_sub'      => $kernelCodeSub,
+                'kernel_code_suj'      => $kernelCodeSuj,
+                'kernel_code_ide'      => $kernelCodeIde,
+                'updated_at'           => now(),
+            ]) === 1;
     }
 
     public function findByIdForUpdate(string $blueprintId): ?object

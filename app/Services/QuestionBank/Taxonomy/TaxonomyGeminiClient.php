@@ -71,6 +71,10 @@ Tu prépares une OCCURRENCE Taxonomy complète pour un pipeline pédagogique.
 
 DOMAINE : {$domainLabel}
 
+LANGUE OBLIGATOIRE : retourne le Sous-domaine et tous les Subjects en anglais.
+Les valeurs intellectuelles ne doivent contenir aucun français; le nom du
+Domaine reste celui fourni par le registre canonique.
+
 Retourne, dans le même travail intellectuel :
 - exactement 1 Sous-domaine officiel et viable;
 - entre 1 et {$maxFirstBatch} Subjects PASS qui appartiennent strictement à ce Sous-domaine
@@ -103,6 +107,21 @@ PROMPT;
 
         $subdomain = $response['subdomain'] ?? null;
         $subjects = $response['subjects'] ?? [];
+        if (($response['status'] ?? null) === 'CANDIDATES') {
+            $subdomain = $subdomain === null
+                ? null
+                : TaxonomyEnglishContract::assertValue((string) $subdomain, 'Sous-domaine');
+            $subjects = TaxonomyEnglishContract::assertValues(
+                array_values(array_filter(
+                    array_map(
+                        static fn($subject) => is_string($subject) ? trim($subject) : '',
+                        is_array($subjects) ? $subjects : [],
+                    ),
+                    static fn(string $subject): bool => $subject !== '',
+                )),
+                'Subject',
+            );
+        }
 
         return [
             'status' => (string) ($response['status'] ?? 'NO_MORE_OCCURRENCES'),
@@ -152,6 +171,9 @@ Tu es un générateur de SOUS-DOMAINES pour un pipeline Taxonomy pédagogique.
 
 DOMAINE : {$domainLabel}
 
+LANGUE OBLIGATOIRE : tous les noms de Sous-domaines doivent être en anglais.
+Retourne uniquement des valeurs intellectuelles anglaises.
+
 RÈGLES OBLIGATOIRES pour chaque Sous-domaine :
 - Être un grain inférieur du Domaine (catégorie sous le Domaine)
 - Rester strictement dans l'angle du Domaine
@@ -176,10 +198,16 @@ Si aucun nouveau Sous-domaine valide n'est disponible pour ce Domaine à ce Dept
 IMPORTANT : Retourne UNIQUEMENT du JSON valide, sans markdown, sans explication.
 PROMPT;
 
-        return $this->callGemini($prompt, 'generateSubdomains', [
+        $result = $this->callGemini($prompt, 'generateSubdomains', [
             'domain' => $domain,
             'depth'  => $contract->depth,
         ]);
+        if ($result['status'] === 'CANDIDATES') {
+            foreach ($result['candidates'] as $candidate) {
+                TaxonomyEnglishContract::assertValue((string) $candidate['value'], 'Sous-domaine');
+            }
+        }
+        return $result;
     }
 
     // =========================================================================
@@ -228,6 +256,9 @@ GÉNÉALOGIE OBLIGATOIRE :
   DOMAINE    : {$domainLabel}
   SOUS-DOMAINE : {$subDomain}
 
+LANGUE OBLIGATOIRE : tous les Subjects doivent être en anglais.
+Retourne uniquement des valeurs intellectuelles anglaises.
+
 Chaque Sujet candidat doit respecter :
 1. Être une subdivision directe du Sous-domaine
 2. Rester STRICTEMENT dans l'angle du Domaine — le Domaine est l'angle intellectuel, pas un simple contexte
@@ -260,11 +291,17 @@ Si aucun nouveau Sujet valide n'est disponible pour ce Sous-domaine, retourne :
 IMPORTANT : Retourne UNIQUEMENT du JSON valide, sans markdown, sans explication.
 PROMPT;
 
-        return $this->callGemini($prompt, 'generateSubjects', [
+        $result = $this->callGemini($prompt, 'generateSubjects', [
             'domain'     => $domain,
             'sub_domain' => $subDomain,
             'depth'      => $contract->depth,
         ]);
+        if ($result['status'] === 'CANDIDATES') {
+            foreach ($result['candidates'] as $candidate) {
+                TaxonomyEnglishContract::assertValue((string) $candidate['value'], 'Subject');
+            }
+        }
+        return $result;
     }
 
     // =========================================================================
@@ -326,6 +363,9 @@ GÉNÉALOGIE COMPLÈTE OBLIGATOIRE :
   SOUS-DOMAINE : {$subDomain}
   SUJET        : {$subject}
 
+LANGUE OBLIGATOIRE : toutes les Idées Dominantes doivent être en anglais.
+Retourne uniquement des valeurs intellectuelles anglaises.
+
 Question conceptuelle à satisfaire pour chaque candidat :
 "Cette Idée est-elle une CONNAISSANCE DOMINANTE RÉELLE du Sujet '{$subject}',
 dans le Sous-domaine '{$subDomain}', vue selon le Domaine '{$domainLabel}',
@@ -369,12 +409,18 @@ Si aucune nouvelle direction de connaissance valide n'est disponible, retourne :
 IMPORTANT : Retourne UNIQUEMENT du JSON valide, sans markdown, sans explication.
 PROMPT;
 
-        return $this->callGemini($prompt, 'generateIdeas', [
+        $result = $this->callGemini($prompt, 'generateIdeas', [
             'domain'     => $domain,
             'sub_domain' => $subDomain,
             'subject'    => $subject,
             'depth'      => $contract->depth,
         ]);
+        if ($result['status'] === 'CANDIDATES') {
+            foreach ($result['candidates'] as $candidate) {
+                TaxonomyEnglishContract::assertValue((string) $candidate['value'], 'Idée dominante');
+            }
+        }
+        return $result;
     }
 
     // =========================================================================

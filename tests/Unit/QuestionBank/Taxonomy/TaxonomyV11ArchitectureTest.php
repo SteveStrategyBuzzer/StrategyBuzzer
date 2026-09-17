@@ -69,6 +69,7 @@ final class TaxonomyV11ArchitectureTest extends TestCase
                     $file->isFile()
                     && $file->getExtension() === 'php'
                     && $file->getPathname() !== __FILE__
+                    && ! str_contains($file->getPathname(), DIRECTORY_SEPARATOR . 'Architecture' . DIRECTORY_SEPARATOR)
                 ) {
                     $sources .= "\n" . file_get_contents($file->getPathname());
                 }

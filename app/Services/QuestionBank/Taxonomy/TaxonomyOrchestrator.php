@@ -253,6 +253,14 @@ final class TaxonomyOrchestrator
                 . "pour Depth {$contract->depth} / Domaine {$domainCode}."
             );
         }
+        $response['subdomain'] = TaxonomyEnglishContract::assertValue(
+            (string) $response['subdomain'],
+            'Sous-domaine',
+        );
+        $response['subjects'] = TaxonomyEnglishContract::assertValues(
+            array_values(array_map('strval', $response['subjects'])),
+            'Subject',
+        );
 
         // DEC-100 : capacité technique = MAX_SUBJECTS_PER_GEMINI_CALL Subjects par appel.
         // Le premier lot persisté avec le Sous-domaine ne dépasse jamais cette capacité ;
@@ -343,6 +351,7 @@ final class TaxonomyOrchestrator
                 if ($value === '' || in_array($value, $existingSubjects, true) || in_array($value, $newNames, true)) {
                     continue;
                 }
+                $value = TaxonomyEnglishContract::assertValue($value, 'Subject');
                 $newNames[] = $value;
             }
 
@@ -421,6 +430,7 @@ final class TaxonomyOrchestrator
             if ($value === '') {
                 continue;
             }
+            $value = TaxonomyEnglishContract::assertValue($value, 'Idée dominante');
 
             // DEC-102 : ne jamais dépasser le plafond de 5 Idées PASS par Sujet,
             // même si Gemini a proposé plus de candidats que de slots restants.

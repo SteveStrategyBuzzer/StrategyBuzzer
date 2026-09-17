@@ -6,8 +6,8 @@ namespace Tests\Unit\QuestionBank\Architecture;
 
 use App\Services\QuestionBank\KernelCodeEngine;
 use App\Services\QuestionBank\Rotation\KernelBlueprintRunRepository;
-use App\Services\QuestionBank\Rotation\KernelTerminalFactRepository;
 use App\Services\QuestionBank\Taxonomy\TaxonomyBankRepository;
+use ReflectionMethod;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
 use Tests\TestCase;
@@ -90,6 +90,31 @@ final class OwnerWriteBoundaryTest extends TestCase
         );
         $this->assertTrue(method_exists(KernelCodeEngine::class, 'assignKernelCode'));
         $this->assertTrue(method_exists(TaxonomyBankRepository::class, 'findOrCreateV11Occurrence'));
+    }
+
+    public function test_taxonomy_projection_api_has_only_fixed_owned_columns(): void
+    {
+        $method = new ReflectionMethod(KernelBlueprintRunRepository::class, 'writeTaxonomyProjection');
+        $parameters = $method->getParameters();
+
+        $this->assertSame(
+            [
+                'blueprintId',
+                'subdomainActive',
+                'subjectActive',
+                'dominantIdeaActive',
+                'kernelCodeSub',
+                'kernelCodeSuj',
+                'kernelCodeIde',
+            ],
+            array_map(static fn ($parameter) => $parameter->getName(), $parameters)
+        );
+        $this->assertFalse($parameters[1]->getType()?->getName() === 'array');
+        $this->assertFalse($parameters[2]->getType()?->getName() === 'array');
+        $this->assertFalse($parameters[3]->getType()?->getName() === 'array');
+        $this->assertFalse($parameters[4]->getType()?->getName() === 'array');
+        $this->assertFalse($parameters[5]->getType()?->getName() === 'array');
+        $this->assertFalse($parameters[6]->getType()?->getName() === 'array');
     }
 
     private static function withoutComments(string $source): string

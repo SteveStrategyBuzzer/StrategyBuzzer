@@ -22,8 +22,8 @@ final class TaxonomyGeminiClientLookbackTest extends TestCase
                         'parts' => [[
                             'text' => json_encode([
                                 'status' => 'CANDIDATES',
-                                'subdomain' => 'Physique',
-                                'subjects' => [['value' => 'Mécanique']],
+                                'subdomain' => 'Physics',
+                                'subjects' => [['value' => 'Mechanics']],
                             ]),
                         ]],
                     ],

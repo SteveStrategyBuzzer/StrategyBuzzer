@@ -91,8 +91,8 @@ final class TaxonomyOrchestratorWarmUpTest extends TestCase
     {
         $this->gemini->expects($this->once())->method('generateOccurrence')->willReturn([
             'status' => 'CANDIDATES',
-            'subdomain' => 'Propriétés de la matière',
-            'subjects' => ['Particules élémentaires'],
+            'subdomain' => 'Matter Properties',
+            'subjects' => ['Elementary Particles'],
         ]);
         $this->gemini->expects($this->once())->method('generateSubjects')->willReturn([
             'status' => 'NO_MORE_SUBJECTS',
@@ -100,7 +100,7 @@ final class TaxonomyOrchestratorWarmUpTest extends TestCase
         ]);
         $this->gemini->expects($this->once())->method('generateIdeas')->willReturn([
             'status' => 'CANDIDATES',
-            'candidates' => [['value' => 'Charge électrique']],
+            'candidates' => [['value' => 'Electric Charge']],
         ]);
     }
 

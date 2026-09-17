@@ -45,14 +45,12 @@ final class TaxonomyPipelineBridge implements TaxonomyBlueprintIdReceiver
             $this->taxonomy->assignToBlueprint($blueprint);
             $updated = $this->runs->writeTaxonomyProjection(
                 (string) $blueprint->blueprint_id,
-                [
-                    'subdomain_active'     => $blueprint->subdomain_active,
-                    'subject_active'       => $blueprint->subject_active,
-                    'dominant_idea_active' => $blueprint->dominant_idea_active,
-                    'kernel_code_sub'      => $blueprint->kernel_code_sub,
-                    'kernel_code_suj'      => $blueprint->kernel_code_suj,
-                    'kernel_code_ide'      => $blueprint->kernel_code_ide,
-                ],
+                $blueprint->subdomain_active,
+                $blueprint->subject_active,
+                $blueprint->dominant_idea_active,
+                $blueprint->kernel_code_sub,
+                $blueprint->kernel_code_suj,
+                $blueprint->kernel_code_ide,
             );
 
             if ($updated === 0) {
