@@ -8,6 +8,7 @@ use App\Services\QuestionBank\KernelBlueprint;
 use App\Services\QuestionBank\KernelBlueprintCognitiveSlotRepository;
 use App\Services\QuestionBank\QuestionIntentBlueprintIdReceiver;
 use App\Services\QuestionBank\Rotation\KernelRotationPlanner;
+use App\Services\QuestionBank\Rotation\KernelBlueprintRunRepository;
 use App\Services\QuestionBank\Rotation\TaxonomyBlueprintIdReceiver;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -29,6 +30,8 @@ final class TaxonomyPipelineBridge implements TaxonomyBlueprintIdReceiver
         private readonly QuestionIntentBlueprintIdReceiver $questionIntent,
         private readonly KernelBlueprintCognitiveSlotRepository $slots =
             new KernelBlueprintCognitiveSlotRepository(),
+        private readonly KernelBlueprintRunRepository $runs =
+            new KernelBlueprintRunRepository(),
     ) {}
 
     public function process(string $blueprintId): void
@@ -40,25 +43,20 @@ final class TaxonomyPipelineBridge implements TaxonomyBlueprintIdReceiver
     {
         DB::transaction(function () use ($blueprint): void {
             $this->taxonomy->assignToBlueprint($blueprint);
-            $updated = DB::table('kernel_blueprint_runs')
-                ->where('blueprint_id', $blueprint->blueprint_id)
-                ->whereNull('subdomain_active')
-                ->whereNull('subject_active')
-                ->whereNull('dominant_idea_active')
-                ->update([
+            $updated = $this->runs->writeTaxonomyProjection(
+                (string) $blueprint->blueprint_id,
+                [
                     'subdomain_active'     => $blueprint->subdomain_active,
                     'subject_active'       => $blueprint->subject_active,
                     'dominant_idea_active' => $blueprint->dominant_idea_active,
-                    'kernel_code_sub'     => $blueprint->kernel_code_sub,
-                    'kernel_code_suj'     => $blueprint->kernel_code_suj,
-                    'kernel_code_ide'     => $blueprint->kernel_code_ide,
-                    'updated_at'            => now(),
-                ]);
+                    'kernel_code_sub'      => $blueprint->kernel_code_sub,
+                    'kernel_code_suj'      => $blueprint->kernel_code_suj,
+                    'kernel_code_ide'      => $blueprint->kernel_code_ide,
+                ],
+            );
 
             if ($updated === 0) {
-                $existing = DB::table('kernel_blueprint_runs')
-                    ->where('blueprint_id', $blueprint->blueprint_id)
-                    ->first();
+                $existing = $this->runs->findById((string) $blueprint->blueprint_id);
                 if ($existing === null
                     || $existing->subdomain_active !== $blueprint->subdomain_active
                     || $existing->subject_active !== $blueprint->subject_active
@@ -84,10 +82,7 @@ final class TaxonomyPipelineBridge implements TaxonomyBlueprintIdReceiver
      */
     public function resumeActiveBlueprint(): ?KernelBlueprint
     {
-        $run = DB::table('kernel_blueprint_runs')
-            ->where('execution_state', 'ENGAGED_IN_PIPELINE')
-            ->orderByDesc('created_at')
-            ->first();
+        $run = $this->runs->findActive();
 
         if ($run === null) {
             return null;

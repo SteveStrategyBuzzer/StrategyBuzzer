@@ -90,17 +90,73 @@ final class KernelBlueprintRunRepository
      */
     public function markEngaged(string $blueprintId, int $depth, string $domain): void
     {
-        DB::table(self::TABLE)
+        $updated = DB::table(self::TABLE)
             ->where('blueprint_id', $blueprintId)
+            ->where('execution_state', 'CREATED_UNENGAGED')
+            ->whereNull('depth')
+            ->whereNull('domain_code')
+            ->whereNull('kernel_code_dd')
+            ->whereNull('kernel_code_do')
             ->update([
                 'execution_state' => 'ENGAGED_IN_PIPELINE',
                 'depth'           => $depth,
                 'domain_code'     => $domain,
-            'kernel_code_dd'  => \App\Services\QuestionBank\KernelCodeFormat::depth($depth),
-            'kernel_code_do'  => \App\Services\QuestionBank\KernelCodeFormat::domain($domain),
+                'kernel_code_dd'  => \App\Services\QuestionBank\KernelCodeFormat::depth($depth),
+                'kernel_code_do'  => \App\Services\QuestionBank\KernelCodeFormat::domain($domain),
                 'engaged_at'      => now(),
                 'updated_at'      => now(),
             ]);
+
+        if ($updated !== 1) {
+            throw new RuntimeException(
+                "[KernelBlueprintRunRepository] Écriture Rotation refusée: {$blueprintId}."
+            );
+        }
+    }
+
+    /**
+     * Supprime uniquement une enveloppe qui n'a pas encore franchi Rotation.
+     */
+    public function deleteUnengaged(string $blueprintId): void
+    {
+        DB::table(self::TABLE)
+            ->where('blueprint_id', $blueprintId)
+            ->where('execution_state', 'CREATED_UNENGAGED')
+            ->delete();
+    }
+
+    /**
+     * Nettoyage réservé au contexte de test/provisionnement.
+     */
+    public function deleteById(string $blueprintId): void
+    {
+        DB::table(self::TABLE)
+            ->where('blueprint_id', $blueprintId)
+            ->delete();
+    }
+
+    /**
+     * Projection Taxonomy write-once. Retourne false si une projection existe
+     * déjà afin que le propriétaire appelant puisse vérifier l'idempotence.
+     *
+     * @param array<string, string|null> $projection
+     */
+    public function writeTaxonomyProjection(string $blueprintId, array $projection): bool
+    {
+        return DB::table(self::TABLE)
+            ->where('blueprint_id', $blueprintId)
+            ->whereNull('subdomain_active')
+            ->whereNull('subject_active')
+            ->whereNull('dominant_idea_active')
+            ->update($projection + ['updated_at' => now()]) === 1;
+    }
+
+    public function findByIdForUpdate(string $blueprintId): ?object
+    {
+        return DB::table(self::TABLE)
+            ->where('blueprint_id', $blueprintId)
+            ->lockForUpdate()
+            ->first();
     }
 
     /**

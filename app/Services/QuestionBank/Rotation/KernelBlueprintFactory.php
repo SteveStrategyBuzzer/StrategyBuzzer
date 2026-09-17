@@ -37,6 +37,8 @@ final class KernelBlueprintFactory
     public function __construct(
         private readonly KernelBlueprintCognitiveSlotRepository $slots =
             new KernelBlueprintCognitiveSlotRepository(),
+        private readonly KernelBlueprintRunRepository $runs =
+            new KernelBlueprintRunRepository(),
     ) {}
 
     /**
@@ -57,16 +59,7 @@ final class KernelBlueprintFactory
         $blueprintId = (string) Str::orderedUuid();
 
         $slots = DB::transaction(function () use ($blueprintId): array {
-            DB::table(self::RUNS_TABLE)->insert([
-                'blueprint_id'    => $blueprintId,
-                'execution_state' => 'CREATED_UNENGAGED',
-                'depth'           => null,
-                'domain_code'     => null,
-                'engaged_at'      => null,
-                'received_at'     => null,
-                'created_at'      => now(),
-                'updated_at'      => now(),
-            ]);
+            $this->runs->create($blueprintId);
 
             return $this->slots->initializeEmptySlots($blueprintId);
         });

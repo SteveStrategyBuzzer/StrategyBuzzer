@@ -25,6 +25,7 @@ final class KernelPipelineOrchestrator
         private readonly KernelRotationStateRepository $stateRepository,
         private readonly KernelBlueprintProvisionedLoader $loader = new KernelBlueprintProvisionedLoader(),
         private readonly ?TaxonomyBlueprintIdReceiver $taxonomyBridge = null,
+        private readonly KernelBlueprintRunRepository $runRepository = new KernelBlueprintRunRepository(),
     ) {}
 
     /** @return array{status: string, blueprint_id: string|null} */
@@ -67,7 +68,11 @@ final class KernelPipelineOrchestrator
                 return;
             }
 
-            $this->engageBlueprint($candidate);
+        $this->runRepository->markEngaged(
+            (string) $candidate->blueprint_id,
+            (int) $candidate->depth,
+            (string) $candidate->domain,
+        );
             $blueprint = $candidate;
         });
 
@@ -90,36 +95,16 @@ final class KernelPipelineOrchestrator
 
     private function deleteUnengagedBlueprint(string $blueprintId): void
     {
-        DB::table(self::RUNS_TABLE)
-            ->where('blueprint_id', $blueprintId)
-            ->where('execution_state', 'CREATED_UNENGAGED')
-            ->delete();
+        $this->runRepository->deleteUnengaged($blueprintId);
     }
 
     private function engageBlueprint(KernelBlueprint $blueprint): void
     {
-        $updated = DB::table(self::RUNS_TABLE)
-            ->where('blueprint_id', $blueprint->blueprint_id)
-            ->where('execution_state', 'CREATED_UNENGAGED')
-            ->whereNull('depth')
-            ->whereNull('domain_code')
-            ->whereNull('kernel_code_dd')
-            ->whereNull('kernel_code_do')
-            ->update([
-                'execution_state' => 'ENGAGED_IN_PIPELINE',
-                'depth' => $blueprint->depth,
-                'domain_code' => $blueprint->domain,
-            'kernel_code_dd' => $blueprint->kernel_code_dd,
-            'kernel_code_do' => $blueprint->kernel_code_do,
-                'engaged_at' => now(),
-                'updated_at' => now(),
-            ]);
-
-        if ($updated !== 1) {
-            throw new \RuntimeException(
-                "[KernelPipelineOrchestrator] Écriture Rotation refusée: {$blueprint->blueprint_id}."
-            );
-        }
+        $this->runRepository->markEngaged(
+            (string) $blueprint->blueprint_id,
+            (int) $blueprint->depth,
+            (string) $blueprint->domain,
+        );
     }
 
 }

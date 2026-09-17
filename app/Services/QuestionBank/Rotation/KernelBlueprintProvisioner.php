@@ -20,6 +20,7 @@ final class KernelBlueprintProvisioner
 
     public function __construct(
         private readonly KernelBlueprintFactory $factory = new KernelBlueprintFactory(),
+        private readonly KernelBlueprintRunRepository $runs = new KernelBlueprintRunRepository(),
     ) {}
 
     /**
@@ -57,9 +58,7 @@ final class KernelBlueprintProvisioner
         $this->assertNonPublicSchema();
 
         DB::transaction(function () use ($blueprintId): void {
-            DB::table(self::RUNS_TABLE)
-                ->where('blueprint_id', $blueprintId)
-                ->delete();
+            $this->runs->deleteById($blueprintId);
         });
     }
 
