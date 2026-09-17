@@ -227,7 +227,7 @@ final class TaxonomyV11IdeaExhaustionTest extends TestCase
      */
     private function seedSubject(int $passCount = 0): array
     {
-        $occurrence = $this->repo->findOrCreateV11Occurrence(2, 'science');
+        $occurrence = $this->repo->findOrCreateV11Occurrence(2, 'SCI');
         $subdomain = $this->repo->createV11Subdomain(
             (int) $occurrence->id,
             'Propriétés de la matière',
@@ -310,7 +310,7 @@ final class TaxonomyV11IdeaExhaustionTest extends TestCase
             $occurrence,
             $subdomain,
             $subject,
-            'science',
+            'SCI',
             DepthContractRegistry::get(2),
         );
     }
@@ -345,7 +345,7 @@ final class TaxonomyV11IdeaExhaustionTest extends TestCase
     {
         $blueprint = new KernelBlueprint();
         $blueprint->initializeBlueprintId($id);
-        $blueprint->fillRotation(2, 'science');
+        $blueprint->fillRotation(2, 'SCI');
 
         return $blueprint;
     }

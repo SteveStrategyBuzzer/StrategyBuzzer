@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\QuestionBank\Taxonomy;
 
+use App\Services\QuestionBank\CreatorDomainRegistry;
 use InvalidArgumentException;
 
 /**
@@ -57,7 +58,7 @@ final class DepthContractRegistry
      */
     public static function officialDepths(): array
     {
-        return [2, 4, 6, 7, 8, 9, 10];
+        return CreatorDomainRegistry::officialDepths();
     }
 
     /**
@@ -65,7 +66,7 @@ final class DepthContractRegistry
      */
     public static function isKnown(int $depth): bool
     {
-        return in_array($depth, self::officialDepths(), true);
+        return CreatorDomainRegistry::isOfficialDepth($depth);
     }
 
     // =========================================================================

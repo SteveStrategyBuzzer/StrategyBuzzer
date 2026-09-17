@@ -76,7 +76,7 @@ final class TaxonomyOrchestratorTest extends TestCase
         $this->orchestrator->assignToBlueprint($blueprint);
 
         $this->assertSame(2, $blueprint->depth);
-        $this->assertSame('science', $blueprint->domain);
+        $this->assertSame('SCI', $blueprint->domain);
         $this->assertSame('Propriétés de la matière', $blueprint->subdomain_active);
         $this->assertSame('Particules élémentaires', $blueprint->subject_active);
         $this->assertSame('Charge électrique', $blueprint->dominant_idea_active);
@@ -145,7 +145,7 @@ final class TaxonomyOrchestratorTest extends TestCase
                 'subject_id'           => $subject->id,
                 'idea_id'              => $winnerIdea->id,
                 'depth'                => 2,
-                'domain_code'          => 'science',
+                'domain_code'          => 'SCI',
                 'subdomain_active'     => $subdomain->subdomain_name,
                 'subject_active'       => $subject->subject_name,
                 'dominant_idea_active' => $winnerIdea->idea_value,
@@ -172,11 +172,11 @@ final class TaxonomyOrchestratorTest extends TestCase
 
     public function test_terminal_fact_is_persistent_and_idempotent(): void
     {
-        $occurrence = $this->repo->findOrCreateV11Occurrence(2, 'science');
+        $occurrence = $this->repo->findOrCreateV11Occurrence(2, 'SCI');
         $this->repo->markV11OccurrenceOpen((int) $occurrence->id);
 
-        $this->repo->markV11OccurrenceExhausted((int) $occurrence->id, 2, 'science');
-        $this->repo->markV11OccurrenceExhausted((int) $occurrence->id, 2, 'science');
+        $this->repo->markV11OccurrenceExhausted((int) $occurrence->id, 2, 'SCI');
+        $this->repo->markV11OccurrenceExhausted((int) $occurrence->id, 2, 'SCI');
 
         $this->assertSame('EXHAUSTED', DB::table('taxonomy_v11_occurrences')->value('status'));
         $this->assertSame(1, DB::table('taxonomy_v11_terminal_facts')->count());
@@ -185,13 +185,13 @@ final class TaxonomyOrchestratorTest extends TestCase
 
     public function test_lookback_two_is_scoped_by_depth_and_domain_and_keeps_subject_ideas_together(): void
     {
-        $this->seedExhaustedOccurrence(2, 'science', 'A', 'Sujet A', 'PASS A', 'FAIL A');
-        $this->seedExhaustedOccurrence(2, 'science', 'B', 'Sujet B', 'PASS B', 'FAIL B');
-        $this->seedExhaustedOccurrence(2, 'science', 'C', 'Sujet C', 'PASS C', 'FAIL C');
-        $this->seedExhaustedOccurrence(4, 'science', 'Hors profondeur', 'Sujet D', 'PASS D', 'FAIL D');
-        $this->seedExhaustedOccurrence(2, 'histoire', 'Hors domaine', 'Sujet E', 'PASS E', 'FAIL E');
+        $this->seedExhaustedOccurrence(2, 'SCI', 'A', 'Sujet A', 'PASS A', 'FAIL A');
+        $this->seedExhaustedOccurrence(2, 'SCI', 'B', 'Sujet B', 'PASS B', 'FAIL B');
+        $this->seedExhaustedOccurrence(2, 'SCI', 'C', 'Sujet C', 'PASS C', 'FAIL C');
+        $this->seedExhaustedOccurrence(4, 'SCI', 'Hors profondeur', 'Sujet D', 'PASS D', 'FAIL D');
+        $this->seedExhaustedOccurrence(2, 'HIS', 'Hors domaine', 'Sujet E', 'PASS E', 'FAIL E');
 
-        $lookback = $this->repo->v11Lookback(2, 'science');
+        $lookback = $this->repo->v11Lookback(2, 'SCI');
 
         $this->assertCount(2, $lookback);
         $this->assertSame(['C', 'B'], array_column($lookback, 'subdomain'));
@@ -205,7 +205,7 @@ final class TaxonomyOrchestratorTest extends TestCase
 
     public function test_blocked_occurrence_refuses_assignment_before_any_gemini_call(): void
     {
-        $occurrence = $this->repo->findOrCreateV11Occurrence(2, 'science');
+        $occurrence = $this->repo->findOrCreateV11Occurrence(2, 'SCI');
         $this->repo->recordV11TechnicalFailure((int) $occurrence->id, 'failure 1');
         $this->repo->recordV11TechnicalFailure((int) $occurrence->id, 'failure 2');
         $this->repo->recordV11TechnicalFailure((int) $occurrence->id, 'failure 3');
@@ -222,24 +222,24 @@ final class TaxonomyOrchestratorTest extends TestCase
     public function test_peek_next_tombstone_throws_runtime_exception(): void
     {
         $this->expectException(RuntimeException::class);
-        $this->orchestrator->peekNext(2, 'science');
+        $this->orchestrator->peekNext(2, 'SCI');
     }
 
     public function test_confirm_consumed_tombstone_throws_runtime_exception(): void
     {
         $this->expectException(RuntimeException::class);
-        $this->orchestrator->confirmConsumed(2, 'science');
+        $this->orchestrator->confirmConsumed(2, 'SCI');
     }
 
     public function test_is_exhausted_tombstone_throws_runtime_exception(): void
     {
         $this->expectException(RuntimeException::class);
-        $this->orchestrator->isExhausted(2, 'science');
+        $this->orchestrator->isExhausted(2, 'SCI');
     }
 
     private function seedAvailableIdeas(array $ideas): void
     {
-        $occurrence = $this->repo->findOrCreateV11Occurrence(2, 'science');
+        $occurrence = $this->repo->findOrCreateV11Occurrence(2, 'SCI');
         $subdomain = $this->repo->createV11Subdomain(
             (int) $occurrence->id,
             'Propriétés de la matière',
@@ -274,7 +274,7 @@ final class TaxonomyOrchestratorTest extends TestCase
     {
         $blueprint = new KernelBlueprint();
         $blueprint->initializeBlueprintId($id);
-        $blueprint->fillRotation(2, 'science');
+        $blueprint->fillRotation(2, 'SCI');
         return $blueprint;
     }
 

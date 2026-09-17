@@ -37,7 +37,7 @@ use Tests\TestCase;
  * TaxonomyOrchestrator, TaxonomyBankRepository (classes final — non mockables).
  * Le déterminisme du couple depth+domain vient des constantes officielles :
  *   - premier Depth requis  = DepthNeedMatrix::DEPTH_CYCLE[0]
- *   - premier Domaine ON    = DepthTourState::DOMAIN_CYCLE[0] ('geographie')
+ *   - premier Domaine ON    = DepthTourState::DOMAIN_CYCLE[0] ('GEO')
  * Seul TaxonomyGeminiClient est mocké — et le test prouve qu'il n'est
  * JAMAIS appelé quand la banque est déjà semée.
  *
@@ -45,10 +45,10 @@ use Tests\TestCase;
  */
 class SeededBankRotationBlueprintTest extends TestCase
 {
-    private const DOMAINS = ['geographie', 'histoire', 'faune', 'art', 'sport', 'cinema', 'cuisine', 'science'];
+    private const DOMAINS = ['GEO', 'HIS', 'FAU', 'ART', 'SPO', 'CIN', 'CUI', 'SCI'];
 
     /** Premier domaine du DomainCycle officiel — celui que planV2 choisit au premier appel. */
-    private const FIRST_DOMAIN = 'geographie';
+    private const FIRST_DOMAIN = 'GEO';
 
     private TaxonomyBankRepository $repo;
     private MockObject&TaxonomyGeminiClient $gemini;

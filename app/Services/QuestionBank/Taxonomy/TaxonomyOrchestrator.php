@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\QuestionBank\Taxonomy;
 
+use App\Services\QuestionBank\CreatorDomainRegistry;
 use App\Services\QuestionBank\KernelBlueprint;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
@@ -22,22 +23,6 @@ final class TaxonomyOrchestrator
 {
     /** Garde anti-boucle infinie du warm-up v1.1. */
     private const MAX_FILL_ITERATIONS = 32;
-
-    /**
-     * Résolution domain_code (lowercase ASCII) → nom lisible pour les prompts Gemini.
-     * Miroir du DOMAIN_MAP de l'ancien TaxonomyReader.
-     */
-    private const DOMAIN_LABELS = [
-        'histoire'   => 'Histoire',
-        'geographie' => 'Géographie',
-        'sport'      => 'Sport',
-        'art'        => 'Art',
-        'cuisine'    => 'Cuisine',
-        'science'    => 'Science',
-        'cinema'     => 'Cinéma',
-        'faune'      => 'Faune',
-        'general'    => 'Général',
-    ];
 
     public function __construct(
         private readonly TaxonomyBankRepository   $repo,
@@ -70,7 +55,7 @@ final class TaxonomyOrchestrator
 
         $blueprintId = (string) $blueprint->blueprint_id;
         $depth = (int) $blueprint->depth;
-        $domainCode = (string) $blueprint->domain;
+        $domainCode = $this->canonicalDomainCode((string) $blueprint->domain);
 
         $assignment = $this->repo->findV11BlueprintAssignment($blueprintId);
         if ($assignment !== null) {
@@ -570,6 +555,7 @@ final class TaxonomyOrchestrator
      */
     public function warmUpV11Cell(int $depth, string $domainCode, int $targetSubjectsWithIdeas = 1): int
     {
+        $domainCode = $this->canonicalDomainCode($domainCode);
         $contract = DepthContractRegistry::get($depth);
         $target = max(1, $targetSubjectsWithIdeas);
         $iterations = 0;
@@ -661,6 +647,11 @@ final class TaxonomyOrchestrator
 
     private function domainLabel(string $domainCode): string
     {
-        return self::DOMAIN_LABELS[$domainCode] ?? ucfirst($domainCode);
+        return CreatorDomainRegistry::get($domainCode)['english'];
+    }
+
+    private function canonicalDomainCode(string $domainCode): string
+    {
+        return CreatorDomainRegistry::get($domainCode)['code'];
     }
 }

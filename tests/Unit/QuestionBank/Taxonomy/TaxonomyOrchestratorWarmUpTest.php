@@ -60,7 +60,7 @@ final class TaxonomyOrchestratorWarmUpTest extends TestCase
     {
         $this->mockPreparation();
 
-        $result = $this->orchestrator->warmUpV11Cell(2, 'science', 1);
+        $result = $this->orchestrator->warmUpV11Cell(2, 'SCI', 1);
 
         $this->assertSame(1, $result);
         $this->assertSame(1, DB::table('taxonomy_v11_ideas')->where('status', 'AVAILABLE')->count());
@@ -71,7 +71,7 @@ final class TaxonomyOrchestratorWarmUpTest extends TestCase
     public function test_warm_up_v11_is_idempotent_when_target_is_already_reached(): void
     {
         $this->mockPreparation();
-        $this->orchestrator->warmUpV11Cell(2, 'science', 1);
+        $this->orchestrator->warmUpV11Cell(2, 'SCI', 1);
 
         $freshGemini = $this->createMock(TaxonomyGeminiClient::class);
         $freshGemini->expects($this->never())->method('generateOccurrence');
@@ -83,7 +83,7 @@ final class TaxonomyOrchestratorWarmUpTest extends TestCase
             new ValidationDominantIdeas(),
         );
 
-        $this->assertSame(1, $fresh->warmUpV11Cell(2, 'science', 1));
+        $this->assertSame(1, $fresh->warmUpV11Cell(2, 'SCI', 1));
         $this->assertSame(1, DB::table('taxonomy_v11_ideas')->count());
     }
 
