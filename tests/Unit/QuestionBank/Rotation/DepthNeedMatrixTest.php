@@ -168,25 +168,36 @@ class DepthNeedMatrixTest extends TestCase
 
     public function test_get_kernel_received_total_returns_0_initially(): void
     {
-        $total = $this->matrix->getKernelReceivedTotal(2, 'geographie');
+        $total = $this->matrix->getKernelReceivedTotal(2, 'GEO');
         $this->assertSame(0, $total);
+    }
+
+    public function test_legacy_slug_rows_are_read_through_as_canonical_codes(): void
+    {
+        DB::table('kernel_depth_domain_totals')
+            ->where('depth', 2)
+            ->where('domain_code', 'geographie')
+            ->update(['kernel_received_total' => 3]);
+
+        $this->assertSame(3, $this->matrix->getKernelReceivedTotal(2, 'GEO'));
+        $this->assertSame(3, $this->matrix->getKernelReceivedTotal(2, 'geographie'));
     }
 
     public function test_increment_kernel_received_increments_by_1(): void
     {
-        $this->matrix->incrementKernelReceived(4, 'histoire');
-        $this->matrix->incrementKernelReceived(4, 'histoire');
+        $this->matrix->incrementKernelReceived(4, 'HIS');
+        $this->matrix->incrementKernelReceived(4, 'HIS');
 
-        $this->assertSame(2, $this->matrix->getKernelReceivedTotal(4, 'histoire'));
+        $this->assertSame(2, $this->matrix->getKernelReceivedTotal(4, 'HIS'));
     }
 
     public function test_increment_kernel_received_is_per_depth_domain(): void
     {
-        $this->matrix->incrementKernelReceived(4, 'sport');
-        $this->matrix->incrementKernelReceived(6, 'sport');
+        $this->matrix->incrementKernelReceived(4, 'SPO');
+        $this->matrix->incrementKernelReceived(6, 'SPO');
 
-        $this->assertSame(1, $this->matrix->getKernelReceivedTotal(4, 'sport'));
-        $this->assertSame(1, $this->matrix->getKernelReceivedTotal(6, 'sport'));
+        $this->assertSame(1, $this->matrix->getKernelReceivedTotal(4, 'SPO'));
+        $this->assertSame(1, $this->matrix->getKernelReceivedTotal(6, 'SPO'));
     }
 
     // =========================================================================
@@ -195,10 +206,10 @@ class DepthNeedMatrixTest extends TestCase
 
     public function test_initialize_from_ready_bank_sets_totals(): void
     {
-        $this->matrix->initializeFromReadyBank(7, ['geographie' => 15, 'histoire' => 8]);
+        $this->matrix->initializeFromReadyBank(7, ['GEO' => 15, 'HIS' => 8]);
 
-        $this->assertSame(15, $this->matrix->getKernelReceivedTotal(7, 'geographie'));
-        $this->assertSame(8,  $this->matrix->getKernelReceivedTotal(7, 'histoire'));
+        $this->assertSame(15, $this->matrix->getKernelReceivedTotal(7, 'GEO'));
+        $this->assertSame(8,  $this->matrix->getKernelReceivedTotal(7, 'HIS'));
     }
 
     public function test_initialize_from_ready_bank_does_not_overwrite_higher_value(): void
@@ -210,9 +221,9 @@ class DepthNeedMatrixTest extends TestCase
             ->update(['kernel_received_total' => 20]);
 
         // Initialiser à 10 (inférieur) → ne doit pas écraser
-        $this->matrix->initializeFromReadyBank(8, ['faune' => 10]);
+        $this->matrix->initializeFromReadyBank(8, ['FAU' => 10]);
 
-        $this->assertSame(20, $this->matrix->getKernelReceivedTotal(8, 'faune'),
+        $this->assertSame(20, $this->matrix->getKernelReceivedTotal(8, 'FAU'),
             'initializeFromReadyBank ne doit pas écraser une valeur plus haute');
     }
 

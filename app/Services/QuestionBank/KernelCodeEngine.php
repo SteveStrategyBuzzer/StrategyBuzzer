@@ -105,9 +105,14 @@ final class KernelCodeEngine
                 'kernel_code_suj' => $blueprint->kernel_code_suj,
                 'kernel_code_ide' => $blueprint->kernel_code_ide,
             ] as $column => $expected) {
+                $persisted = property_exists($run, $column) ? $run->{$column} : null;
+                if ($column === 'domain_code' && $persisted !== null) {
+                    $persisted = CreatorDomainRegistry::fromInput((string) $persisted);
+                }
+
                 if (property_exists($run, $column)
-                    && $run->{$column} !== null
-                    && (string) $run->{$column} !== (string) $expected) {
+                    && $persisted !== null
+                    && (string) $persisted !== (string) $expected) {
                     throw new KernelCodeEngineException(
                         KernelCodeEngineException::IDENTITY_CONFLICT,
                         "Champ persisté {$column} divergent du Blueprint {$blueprint->blueprint_id}."

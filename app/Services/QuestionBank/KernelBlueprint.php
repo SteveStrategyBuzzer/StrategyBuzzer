@@ -246,10 +246,12 @@ class KernelBlueprint
             );
         }
 
+        $canonicalDomain = CreatorDomainRegistry::fromInput($domain);
+
         $this->depth  = $depth;
-        $this->domain = $domain;
+        $this->domain = $canonicalDomain;
         $this->kernel_code_dd = KernelCodeFormat::depth($depth);
-        $this->kernel_code_do = KernelCodeFormat::domain($domain);
+        $this->kernel_code_do = KernelCodeFormat::domain($canonicalDomain);
     }
 
     /**

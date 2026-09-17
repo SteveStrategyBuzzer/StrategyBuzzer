@@ -224,7 +224,7 @@ class KernelBlueprintPart1Test extends TestCase
         $bp = $this->identifiedBlueprint();
         $bp->fillRotation(4, 'science');
 
-        $this->assertSame('science', $bp->domain);
+        $this->assertSame('SCI', $bp->domain);
     }
 
     public function test_fillRotation_does_not_touch_taxonomy_fields(): void
@@ -250,6 +250,7 @@ class KernelBlueprintPart1Test extends TestCase
         $bp = $this->identifiedBlueprint();
         $bp->fillRotation(2, 'histoire');
 
+        $this->assertSame('HIS', $bp->domain);
         $this->assertNull($bp->kernelCodeProjection());
     }
 
@@ -308,7 +309,7 @@ class KernelBlueprintPart1Test extends TestCase
         $bp->fillTaxonomy('Révolutions', 'Bastille', 'prise_1789');
 
         $this->assertSame(6,         $bp->depth,  'fillTaxonomy ne doit pas modifier depth');
-        $this->assertSame('histoire', $bp->domain, 'fillTaxonomy ne doit pas modifier domain');
+        $this->assertSame('HIS', $bp->domain, 'fillTaxonomy ne doit pas modifier domain');
     }
 
     public function test_fillTaxonomy_does_not_touch_kernel_code(): void
@@ -360,7 +361,7 @@ class KernelBlueprintPart1Test extends TestCase
         $bp->fillKernelCode('04-SCI-PHY-LUM-REF-0001');
 
         $this->assertSame(4,         $bp->depth,  'fillKernelCode ne doit pas modifier depth');
-        $this->assertSame('science', $bp->domain, 'fillKernelCode ne doit pas modifier domain');
+        $this->assertSame('SCI', $bp->domain, 'fillKernelCode ne doit pas modifier domain');
     }
 
     public function test_fillKernelCode_does_not_overwrite_taxonomy_fields(): void
@@ -499,7 +500,7 @@ class KernelBlueprintPart1Test extends TestCase
         $arr = $bp->toArray();
 
         $this->assertSame(6,                   $arr['depth']);
-        $this->assertSame('histoire',            $arr['domain']);
+        $this->assertSame('HIS',                 $arr['domain']);
         $this->assertSame('Révolutions',         $arr['subdomain_active']);
         $this->assertSame('Bastille',            $arr['subject_active']);
         $this->assertSame('prise_1789',          $arr['dominant_idea_active']);
@@ -521,7 +522,7 @@ class KernelBlueprintPart1Test extends TestCase
         $bp->fillTaxonomy('Capitales', 'Nairobi', 'hub_économique');
 
         $this->assertSame(8,            $bp->depth,  'depth doit rester inchangé après fillTaxonomy');
-        $this->assertSame('Géographie', $bp->domain, 'domain doit rester inchangé après fillTaxonomy');
+        $this->assertSame('GEO', $bp->domain, 'domain doit rester inchangé après fillTaxonomy');
     }
 
     // =========================================================================
@@ -601,6 +602,6 @@ class KernelBlueprintPart1Test extends TestCase
         $bp = $this->identifiedBlueprint();
         $bp->fillRotation(7, 'sport');
         $this->assertSame(7,       $bp->depth);
-        $this->assertSame('sport', $bp->domain);
+        $this->assertSame('SPO',   $bp->domain);
     }
 }

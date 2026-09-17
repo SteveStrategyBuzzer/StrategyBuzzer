@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Services\QuestionBank;
 
 use App\Exceptions\QuestionBank\KernelCodeEngineException;
-use App\Services\QuestionBank\Taxonomy\DepthContractRegistry;
 
 /**
  * Encodage canonique partagé des segments du kernel_code DEC-121 v2.2.
@@ -17,13 +16,6 @@ final class KernelCodeFormat
 {
     public const FORMAT_REGEX = '/^[0-9]{2}-[A-Z0-9]{3}-[A-Z0-9]{3}-[A-Z0-9]{3}-[A-Z0-9]{3}-[0-9A-Z]{4}$/';
     public const CODE_LENGTH = 23;
-
-    private const OFFICIAL_DOMAINS = [
-        'Géographie', 'Histoire', 'Faune', 'Art',
-        'Sport', 'Cinéma', 'Cuisine', 'Science',
-        'geographie', 'histoire', 'faune', 'art',
-        'sport', 'cinema', 'cinéma', 'cuisine', 'science',
-    ];
 
     /**
      * Mapping historique exact observé dans KernelCodeEngine avant DEC-121 v2.2.
@@ -51,10 +43,10 @@ final class KernelCodeFormat
 
     public static function depth(int $depth): string
     {
-        if (! DepthContractRegistry::isKnown($depth)) {
+        if (! CreatorDomainRegistry::isOfficialDepth($depth)) {
             throw new KernelCodeEngineException(
                 KernelCodeEngineException::INVALID_DEPTH,
-                "Depth non reconnu par DepthContractRegistry : {$depth}"
+                "Depth non reconnu par le registre officiel : {$depth}"
             );
         }
 
@@ -63,19 +55,16 @@ final class KernelCodeFormat
 
     public static function domain(string $domain): string
     {
-        if (! in_array($domain, self::OFFICIAL_DOMAINS, true)) {
-            throw new KernelCodeEngineException(
-                KernelCodeEngineException::INVALID_DOMAIN,
-                "Domaine non reconnu ou non autorisé en création : «{$domain}»"
-            );
-        }
-
-        return self::segment($domain);
+        return CreatorDomainRegistry::fromInput($domain);
     }
 
     public static function legacyDomain(string $domain): ?string
     {
-        return self::LEGACY_DOMAIN_CODES[$domain] ?? null;
+        try {
+            return CreatorDomainRegistry::legacyAlias(CreatorDomainRegistry::fromInput($domain));
+        } catch (KernelCodeEngineException) {
+            return self::LEGACY_DOMAIN_CODES[$domain] ?? null;
+        }
     }
 
     public static function segment(string $value): string

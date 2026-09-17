@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\QuestionBank\Rotation;
 
+use App\Services\QuestionBank\CreatorDomainRegistry;
 use RuntimeException;
 
 /**
@@ -27,16 +28,16 @@ use RuntimeException;
  */
 final class DepthTourState
 {
-    /** Ordre officiel du DomainCycle. Général exclu. */
+    /** Ordre officiel du DomainCycle. General exclu. */
     public const DOMAIN_CYCLE = [
-        'geographie',
-        'histoire',
-        'faune',
-        'art',
-        'sport',
-        'cinema',
-        'cuisine',
-        'science',
+        'GEO',
+        'HIS',
+        'FAU',
+        'ART',
+        'SPO',
+        'CIN',
+        'CUI',
+        'SCI',
     ];
 
     public const STATE_ON  = 'ON';
@@ -78,8 +79,13 @@ final class DepthTourState
      */
     public static function fromArray(array $data): self
     {
+        $states = [];
+        foreach ($data['states'] as $domain => $state) {
+            $states[CreatorDomainRegistry::fromInput((string) $domain)] = $state;
+        }
+
         return new self(
-            $data['states'],
+            $states,
             (int) ($data['empty_progress'] ?? 0)
         );
     }
@@ -98,6 +104,8 @@ final class DepthTourState
      */
     public function applyEmpty(string $domain): self
     {
+        $domain = CreatorDomainRegistry::fromInput($domain);
+
         if (! array_key_exists($domain, $this->states)) {
             throw new RuntimeException(
                 "[DepthTourState] Domaine inconnu : '{$domain}'. "
@@ -126,6 +134,8 @@ final class DepthTourState
      */
     public function isOn(string $domain): bool
     {
+        $domain = CreatorDomainRegistry::fromInput($domain);
+
         if (! array_key_exists($domain, $this->states)) {
             throw new RuntimeException(
                 "[DepthTourState] Domaine inconnu : '{$domain}'."
@@ -186,6 +196,10 @@ final class DepthTourState
      */
     public function getNextOnDomain(?string $previousDomain): ?string
     {
+        if ($previousDomain !== null) {
+            $previousDomain = CreatorDomainRegistry::fromInput($previousDomain);
+        }
+
         $cycle = self::DOMAIN_CYCLE;
         $count = count($cycle);
 

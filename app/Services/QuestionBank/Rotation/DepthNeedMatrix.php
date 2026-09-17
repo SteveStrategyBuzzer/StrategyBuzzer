@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\QuestionBank\Rotation;
 
+use App\Services\QuestionBank\CreatorDomainRegistry;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
@@ -182,10 +183,7 @@ final class DepthNeedMatrix
      */
     public function getKernelReceivedTotal(int $depth, string $domain): int
     {
-        $row = DB::table(self::DEPTH_TOTALS_TABLE)
-            ->where('depth', $depth)
-            ->where('domain_code', $domain)
-            ->first();
+        $row = $this->findDomainTotalRow($depth, $domain);
 
         return $row ? (int) $row->kernel_received_total : 0;
     }
@@ -197,9 +195,35 @@ final class DepthNeedMatrix
      */
     public function incrementKernelReceived(int $depth, string $domain): void
     {
+        $canonical = CreatorDomainRegistry::fromInput($domain);
+        $slug = CreatorDomainRegistry::get($canonical)['slug'];
+        $canonicalExists = DB::table(self::DEPTH_TOTALS_TABLE)
+            ->where('depth', $depth)
+            ->where('domain_code', $canonical)
+            ->exists();
+        $legacyExists = DB::table(self::DEPTH_TOTALS_TABLE)
+            ->where('depth', $depth)
+            ->where('domain_code', $slug)
+            ->exists();
+
+        if ($canonicalExists && $legacyExists) {
+            throw new RuntimeException(
+                "Représentations concurrentes pour {$depth}/{$canonical} dans "
+                . self::DEPTH_TOTALS_TABLE . '.'
+            );
+        }
+
+        $storedDomain = $canonicalExists ? $canonical : ($legacyExists ? $slug : null);
+        if ($storedDomain === null) {
+            throw new RuntimeException(
+                "Ligne absente pour {$depth}/{$canonical} dans "
+                . self::DEPTH_TOTALS_TABLE . '.'
+            );
+        }
+
         DB::table(self::DEPTH_TOTALS_TABLE)
             ->where('depth', $depth)
-            ->where('domain_code', $domain)
+            ->where('domain_code', $storedDomain)
             ->increment('kernel_received_total');
     }
 
@@ -215,13 +239,16 @@ final class DepthNeedMatrix
     public function initializeFromReadyBank(int $depth, array $receivedByDomain): void
     {
         foreach ($receivedByDomain as $domain => $count) {
+            $canonical = CreatorDomainRegistry::fromInput((string) $domain);
+            $slug = CreatorDomainRegistry::get($canonical)['slug'];
             if ($count <= 0) {
                 continue;
             }
 
+            $storedDomain = $this->findStoredDomain($depth, $canonical, $slug);
             DB::table(self::DEPTH_TOTALS_TABLE)
                 ->where('depth', $depth)
-                ->where('domain_code', $domain)
+                ->where('domain_code', $storedDomain)
                 ->where('kernel_received_total', '<', $count)
                 ->update([
                     'kernel_received_total' => $count,
@@ -254,11 +281,17 @@ final class DepthNeedMatrix
             ->first();
         $matrixRow = $this->requireExistingMatrixRow($matrixRow, $depth);
 
-        $totals = DB::table(self::DEPTH_TOTALS_TABLE)
-            ->where('depth', $depth)
-            ->get()
-            ->pluck('kernel_received_total', 'domain_code')
-            ->toArray();
+        $totals = [];
+        foreach (DB::table(self::DEPTH_TOTALS_TABLE)->where('depth', $depth)->get() as $row) {
+            $code = CreatorDomainRegistry::fromInput((string) $row->domain_code);
+            if (array_key_exists($code, $totals)) {
+                throw new RuntimeException(
+                    "Représentations concurrentes pour {$depth}/{$code} dans "
+                    . self::DEPTH_TOTALS_TABLE . '.'
+                );
+            }
+            $totals[$code] = (int) $row->kernel_received_total;
+        }
 
         $target    = self::CYCLE_TARGET[$depth];
         $completed = (int) $matrixRow->cycle_completed;
@@ -285,5 +318,60 @@ final class DepthNeedMatrix
         }
 
         return $row;
+    }
+
+    private function findDomainTotalRow(int $depth, string $domain): ?object
+    {
+        $canonical = CreatorDomainRegistry::fromInput($domain);
+        $slug = CreatorDomainRegistry::get($canonical)['slug'];
+        $canonicalRow = DB::table(self::DEPTH_TOTALS_TABLE)
+            ->where('depth', $depth)
+            ->where('domain_code', $canonical)
+            ->first();
+        $legacyRow = DB::table(self::DEPTH_TOTALS_TABLE)
+            ->where('depth', $depth)
+            ->where('domain_code', $slug)
+            ->first();
+
+        if ($canonicalRow !== null && $legacyRow !== null) {
+            throw new RuntimeException(
+                "Représentations concurrentes pour {$depth}/{$canonical} dans "
+                . self::DEPTH_TOTALS_TABLE . '.'
+            );
+        }
+
+        return $canonicalRow ?? $legacyRow;
+    }
+
+    private function findStoredDomain(int $depth, string $canonical, string $slug): string
+    {
+        $canonicalExists = DB::table(self::DEPTH_TOTALS_TABLE)
+            ->where('depth', $depth)
+            ->where('domain_code', $canonical)
+            ->exists();
+        $legacyExists = DB::table(self::DEPTH_TOTALS_TABLE)
+            ->where('depth', $depth)
+            ->where('domain_code', $slug)
+            ->exists();
+
+        if ($canonicalExists && $legacyExists) {
+            throw new RuntimeException(
+                "Représentations concurrentes pour {$depth}/{$canonical} dans "
+                . self::DEPTH_TOTALS_TABLE . '.'
+            );
+        }
+
+        if ($canonicalExists) {
+            return $canonical;
+        }
+
+        if ($legacyExists) {
+            return $slug;
+        }
+
+        throw new RuntimeException(
+            "Ligne absente pour {$depth}/{$canonical} dans "
+            . self::DEPTH_TOTALS_TABLE . '.'
+        );
     }
 }

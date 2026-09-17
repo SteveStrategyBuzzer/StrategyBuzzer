@@ -38,14 +38,14 @@ class DepthTourStateTest extends TestCase
 
     public function test_init_tour_contains_exactly_the_8_official_domains(): void
     {
-        $expected = ['geographie', 'histoire', 'faune', 'art', 'sport', 'cinema', 'cuisine', 'science'];
+        $expected = ['GEO', 'HIS', 'FAU', 'ART', 'SPO', 'CIN', 'CUI', 'SCI'];
 
         $this->assertSame($expected, DepthTourState::DOMAIN_CYCLE);
     }
 
     public function test_init_tour_excludes_general(): void
     {
-        $this->assertNotContains('general', DepthTourState::DOMAIN_CYCLE);
+        $this->assertNotContains('General', DepthTourState::DOMAIN_CYCLE);
     }
 
     // =========================================================================
@@ -55,7 +55,7 @@ class DepthTourStateTest extends TestCase
     public function test_apply_empty_returns_new_instance(): void
     {
         $tour    = DepthTourState::initTour();
-        $newTour = $tour->applyEmpty('geographie');
+        $newTour = $tour->applyEmpty('GEO');
 
         $this->assertNotSame($tour, $newTour, 'applyEmpty doit retourner une nouvelle instance');
     }
@@ -63,9 +63,9 @@ class DepthTourStateTest extends TestCase
     public function test_apply_empty_does_not_mutate_original(): void
     {
         $tour = DepthTourState::initTour();
-        $tour->applyEmpty('geographie');
+        $tour->applyEmpty('GEO');
 
-        $this->assertTrue($tour->isOn('geographie'), 'L\'instance originale est immuable');
+        $this->assertTrue($tour->isOn('GEO'), 'L\'instance originale est immuable');
         $this->assertSame(0, $tour->getEmptyProgress());
     }
 
@@ -76,24 +76,24 @@ class DepthTourStateTest extends TestCase
     public function test_apply_empty_passes_domain_to_off(): void
     {
         $tour    = DepthTourState::initTour();
-        $newTour = $tour->applyEmpty('histoire');
+        $newTour = $tour->applyEmpty('HIS');
 
-        $this->assertTrue($newTour->isOff('histoire'), 'histoire doit être OFF après EMPTY');
+        $this->assertTrue($newTour->isOff('HIS'), 'HIS doit être OFF après EMPTY');
     }
 
     public function test_apply_empty_increments_progress(): void
     {
         $tour = DepthTourState::initTour()
-            ->applyEmpty('geographie')
-            ->applyEmpty('histoire');
+            ->applyEmpty('GEO')
+            ->applyEmpty('HIS');
 
         $this->assertSame(2, $tour->getEmptyProgress());
     }
 
     public function test_apply_empty_idempotent_on_off_domain(): void
     {
-        $tour      = DepthTourState::initTour()->applyEmpty('art');
-        $tourAgain = $tour->applyEmpty('art'); // déjà OFF
+        $tour      = DepthTourState::initTour()->applyEmpty('ART');
+        $tourAgain = $tour->applyEmpty('ART'); // déjà OFF
 
         $this->assertSame($tour, $tourAgain, 'NO-OP si Domaine déjà OFF');
         $this->assertSame(1, $tourAgain->getEmptyProgress(), 'Pas de double incrément');
@@ -102,7 +102,7 @@ class DepthTourStateTest extends TestCase
     public function test_apply_empty_throws_on_unknown_domain(): void
     {
         $this->expectException(RuntimeException::class);
-        $this->expectExceptionMessageMatches('/Domaine inconnu/');
+        $this->expectExceptionMessageMatches('/Domaine créateur inconnu/');
 
         DepthTourState::initTour()->applyEmpty('unknown_domain');
     }
@@ -142,21 +142,21 @@ class DepthTourStateTest extends TestCase
     public function test_get_on_domains_reflects_transitions(): void
     {
         $tour = DepthTourState::initTour()
-            ->applyEmpty('geographie')
-            ->applyEmpty('histoire');
+            ->applyEmpty('GEO')
+            ->applyEmpty('HIS');
 
         $on = $tour->getOnDomains();
 
-        $this->assertNotContains('geographie', $on);
-        $this->assertNotContains('histoire',   $on);
+        $this->assertNotContains('GEO', $on);
+        $this->assertNotContains('HIS', $on);
         $this->assertCount(6, $on);
     }
 
     public function test_get_on_domains_maintains_domain_cycle_order(): void
     {
-        $tour       = DepthTourState::initTour()->applyEmpty('faune')->applyEmpty('art');
+        $tour       = DepthTourState::initTour()->applyEmpty('FAU')->applyEmpty('ART');
         $on         = $tour->getOnDomains();
-        $remaining  = ['geographie', 'histoire', 'sport', 'cinema', 'cuisine', 'science'];
+        $remaining  = ['GEO', 'HIS', 'SPO', 'CIN', 'CUI', 'SCI'];
 
         $this->assertSame($remaining, $on, 'Ordre DomainCycle respecté');
     }
@@ -169,33 +169,33 @@ class DepthTourStateTest extends TestCase
     {
         $tour = DepthTourState::initTour();
 
-        $this->assertSame('geographie', $tour->getNextOnDomain(null));
+        $this->assertSame('GEO', $tour->getNextOnDomain(null));
     }
 
     public function test_get_next_on_domain_advances_sequentially(): void
     {
         $tour = DepthTourState::initTour();
 
-        $this->assertSame('histoire', $tour->getNextOnDomain('geographie'));
-        $this->assertSame('faune',    $tour->getNextOnDomain('histoire'));
-        $this->assertSame('art',      $tour->getNextOnDomain('faune'));
+        $this->assertSame('HIS', $tour->getNextOnDomain('GEO'));
+        $this->assertSame('FAU', $tour->getNextOnDomain('HIS'));
+        $this->assertSame('ART', $tour->getNextOnDomain('FAU'));
     }
 
     public function test_get_next_on_domain_wraps_after_last(): void
     {
         $tour = DepthTourState::initTour();
 
-        $this->assertSame('geographie', $tour->getNextOnDomain('science'));
+        $this->assertSame('GEO', $tour->getNextOnDomain('SCI'));
     }
 
     public function test_get_next_on_domain_skips_off_domains(): void
     {
         $tour = DepthTourState::initTour()
-            ->applyEmpty('histoire')
-            ->applyEmpty('faune');
+            ->applyEmpty('HIS')
+            ->applyEmpty('FAU');
 
-        // Après geographie (ON), le suivant ON est art (histoire et faune sont OFF)
-        $this->assertSame('art', $tour->getNextOnDomain('geographie'));
+        // Après GEO (ON), le suivant ON est ART (HIS et FAU sont OFF)
+        $this->assertSame('ART', $tour->getNextOnDomain('GEO'));
     }
 
     public function test_get_next_on_domain_returns_null_when_all_off(): void
@@ -207,16 +207,15 @@ class DepthTourStateTest extends TestCase
         }
 
         $this->assertNull($tour->getNextOnDomain(null));
-        $this->assertNull($tour->getNextOnDomain('geographie'));
+        $this->assertNull($tour->getNextOnDomain('GEO'));
     }
 
-    public function test_get_next_on_domain_unknown_previous_returns_first_on(): void
+    public function test_get_next_on_domain_unknown_previous_is_rejected(): void
     {
         $tour = DepthTourState::initTour();
 
-        // previousDomain inconnu → retourne le premier ON
-        $next = $tour->getNextOnDomain('inconnu_xyz');
-        $this->assertSame('geographie', $next);
+        $this->expectException(\App\Exceptions\QuestionBank\KernelCodeEngineException::class);
+        $tour->getNextOnDomain('inconnu_xyz');
     }
 
     // =========================================================================
@@ -226,8 +225,8 @@ class DepthTourStateTest extends TestCase
     public function test_to_array_from_array_round_trip(): void
     {
         $original = DepthTourState::initTour()
-            ->applyEmpty('sport')
-            ->applyEmpty('cinema');
+            ->applyEmpty('SPO')
+            ->applyEmpty('CIN');
 
         $data     = $original->toArray();
         $restored = DepthTourState::fromArray($data);
@@ -239,10 +238,10 @@ class DepthTourStateTest extends TestCase
 
     public function test_from_array_restores_off_domains(): void
     {
-        $original = DepthTourState::initTour()->applyEmpty('cuisine');
+        $original = DepthTourState::initTour()->applyEmpty('CUI');
         $restored = DepthTourState::fromArray($original->toArray());
 
-        $this->assertTrue($restored->isOff('cuisine'), 'cuisine doit rester OFF après restauration');
-        $this->assertTrue($restored->isOn('geographie'), 'geographie doit rester ON');
+        $this->assertTrue($restored->isOff('CUI'), 'CUI doit rester OFF après restauration');
+        $this->assertTrue($restored->isOn('GEO'), 'GEO doit rester ON');
     }
 }

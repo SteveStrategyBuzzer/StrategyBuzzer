@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\QuestionBank\Rotation;
 
 use App\Services\QuestionBank\KernelBlueprint;
+use App\Services\QuestionBank\CreatorDomainRegistry;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -63,7 +64,7 @@ final class KernelRotationPlanner
     public function receiveTaxonomyTerminalFact(string $factId, int $depth, string $domain): void
     {
         $this->assertDepth($depth);
-        $this->assertDomain($domain);
+        $domain = $this->canonicalDomain($domain);
 
         if ($factId === '') {
             throw new RuntimeException('[KRP] fact_id terminal requis.');
@@ -237,7 +238,7 @@ final class KernelRotationPlanner
         int $domainPosition,
     ): void {
         $this->assertDepth($depth);
-        $this->assertDomain($domain);
+        $domain = $this->canonicalDomain($domain);
 
         DB::transaction(function () use ($blueprint, $depth, $domain, $domainPosition) {
             $state = $this->ensureInitializedState($this->stateRepository->firstForUpdate());
@@ -280,6 +281,8 @@ final class KernelRotationPlanner
      */
     public function receiveKernelReceivedV2(string $blueprintId, int $depth, string $domain): void
     {
+        $domain = $this->canonicalDomain($domain);
+
         DB::transaction(function () use ($blueprintId, $depth, $domain) {
             $alreadyReceived = DB::table(self::RECEIPTS_TABLE)
                 ->where('blueprint_id', $blueprintId)
@@ -330,8 +333,7 @@ final class KernelRotationPlanner
             return $state;
         }
 
-        $domain = (string) $fact->domain_code;
-        $this->assertDomain($domain);
+        $domain = $this->canonicalDomain((string) $fact->domain_code);
 
         $domainStates = $this->loadDomainStates($state);
         $depthKey = (string) $activeDepth;
@@ -581,10 +583,18 @@ final class KernelRotationPlanner
 
     private function assertDomain(string $domain): void
     {
-        if (! in_array($domain, DepthTourState::DOMAIN_CYCLE, true)) {
+        $this->canonicalDomain($domain);
+    }
+
+    private function canonicalDomain(string $domain): string
+    {
+        try {
+            return CreatorDomainRegistry::fromInput($domain);
+        } catch (\Throwable $exception) {
             throw new RuntimeException(
                 "[KRP] Domain invalide : '{$domain}'. DomainCycle : "
-                . implode(', ', DepthTourState::DOMAIN_CYCLE) . '.'
+                . implode(', ', DepthTourState::DOMAIN_CYCLE) . '.',
+                previous: $exception,
             );
         }
     }
