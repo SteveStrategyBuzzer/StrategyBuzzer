@@ -15,11 +15,16 @@ Le contrat obligatoire est :
 4. `General` est exclu de la création intellectuelle (Rotation, Blueprint,
    Taxonomy, QuestionIntent et Phase 1), mais demeure la commande d’agrégation
    Shuffle/Gameplay de contenu déjà publié provenant des huit domaines.
+5. Taxonomy reçoit le code créateur de Rotation, utilise le nom anglais du
+   registre et ne peut persister que des sous-domaines, sujets et idées en anglais.
+6. Toute conversion des clés CKR exige l’arrêt vérifié des writers persistants ;
+   un simple verrou de table ne protège pas contre un ancien worker après COMMIT.
 
 **Why:** Une identité créatrice canonique ne doit pas être déduite d’un slug,
 d’un libellé administratif ou d’une commande Gameplay. La séparation empêche
 `General` de devenir un neuvième domaine sans modifier le comportement Shuffle.
 
 **How to apply:** Utiliser un registre fermé partagé et des adaptateurs explicites
-pour les slugs, valeurs anglaises et libellés français. Modifier et valider
-Rotation avant Taxonomy. Toute contradiction avec ce contrat est bloquante.
+pour les slugs, valeurs anglaises et libellés français. Les APIs propriétaires
+exposent des colonnes fixes, jamais un tableau libre. Modifier et valider Rotation
+avant Taxonomy. Toute contradiction avec ce contrat est bloquante.
