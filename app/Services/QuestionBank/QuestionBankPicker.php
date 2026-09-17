@@ -2,6 +2,7 @@
 
 namespace App\Services\QuestionBank;
 
+use App\Services\QuestionBank\Gameplay\GameplayShuffleAdapter;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -120,11 +121,7 @@ class QuestionBankPicker
 
     private function resolveDomainList(string $domain, array $config): array
     {
-        $normalised = strtolower($domain);
-        if ($normalised === 'general' || $normalised === 'général') {
-            return $config['general_sub_domains'];
-        }
-        return [$domain];
+        return GameplayShuffleAdapter::resolveDomainList($domain, $config);
     }
 
     private function randomCognitiveTypeFor(array $resolvedTarget, array $config): ?string

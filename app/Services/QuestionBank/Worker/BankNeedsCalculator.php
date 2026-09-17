@@ -3,6 +3,7 @@
 namespace App\Services\QuestionBank\Worker;
 
 use App\Services\QuestionBank\QuestionBankRepository;
+use App\Services\QuestionBank\Gameplay\GameplayShuffleAdapter;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Redis;
@@ -76,7 +77,7 @@ class BankNeedsCalculator
         $rows = [];
 
         foreach ($this->enumerateProfiles($config) as $profile) {
-            foreach ($config['general_sub_domains'] as $subDomain) {
+            foreach (GameplayShuffleAdapter::subDomains($config) as $subDomain) {
                 $domain = $subDomain; // domain = sub_domain (consistent w/ seeder)
 
                 foreach ($profile['cognitive_mix'] as $cogType => $shareOf100) {

@@ -4,6 +4,7 @@ namespace App\Services\QuestionBank;
 
 use App\Models\MatchQuestionPlan;
 use App\Models\QuestionGroup;
+use App\Services\QuestionBank\Gameplay\GameplayShuffleAdapter;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
@@ -296,10 +297,7 @@ class MatchQuestionPlanner
      */
     private function resolveDomainList(string $domain, array $config): array
     {
-        if (strtolower($domain) === 'general' || strtolower($domain) === 'général') {
-            return $config['general_sub_domains'];
-        }
-        return [$domain];
+        return GameplayShuffleAdapter::resolveDomainList($domain, $config);
     }
 
     /**
@@ -312,7 +310,7 @@ class MatchQuestionPlanner
         if (count($domainList) === 1) {
             return [$domainList[0] => $totalQuestions];
         }
-        $weights = $config['general_sub_domain_weights'] ?? 'equal';
+        $weights = GameplayShuffleAdapter::weights($config);
         $weighted = [];
         foreach ($domainList as $sd) {
             $weighted[$sd] = ($weights === 'equal') ? 100 : (int) ($weights[$sd] ?? 0);
