@@ -32,3 +32,4 @@
 - [RefreshDatabase incompatible SQLite — pattern de contournement](sqlite-refreshdb-workaround.md) — Migration 2026_03_15_100004 contient ADD CONSTRAINT CHECK (syntaxe PG) : RefreshDatabase plante sur SQLite. Pattern : Schema::create() dans setUp() + Schema::dropIfExists() dans tearDown(), PAS de use RefreshDatabase.
 - [Garde anti-rollback pgsql](pgsql-guardrail-schema-removal.md) — migrate:rollback interdit sur Neon ; retrait de schéma ordonné = script transactionnel + garde count=0, jamais par commande artisan.
 - [KRP v3.2 — contrat DOMAIN_EXHAUSTED/DEPTH_EXHAUSTED](krp-v3-exhaustion-contract.md) — VERROUILLÉ 2026-08-13. LOT A+B IMPLÉMENTÉ (106 tests GREEN, 4 migrations Neon). Gap LOT C : pending-transition non branché Outbox. LOT C INTERDIT jusqu'à spec 03_Taxonomy.
+- [Frontière des domaines créateurs](creator-domain-correction-order.md) — Création intellectuelle limitée à 7 Depths × 8 domaines; General reste exclusivement Shuffle/Gameplay.
