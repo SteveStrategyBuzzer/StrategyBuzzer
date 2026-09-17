@@ -7,6 +7,17 @@ namespace Tests\Integration\QuestionBank;
 use App\Services\QuestionBank\KernelBlueprint;
 use App\Services\QuestionBank\KernelCodeEngine;
 use App\Services\QuestionBank\QuestionIntentBlueprintIdReceiver;
+use App\Services\QuestionBank\Rotation\DepthNeedMatrix;
+use App\Services\QuestionBank\Rotation\KernelBlueprintProvisioner;
+use App\Services\QuestionBank\Rotation\KernelBlueprintProvisionedLoader;
+use App\Services\QuestionBank\Rotation\KernelPipelineOrchestrator;
+use App\Services\QuestionBank\Rotation\KernelRotationPlanner;
+use App\Services\QuestionBank\Rotation\KernelRotationStateRepository;
+use App\Services\QuestionBank\Taxonomy\TaxonomyBankRepository;
+use App\Services\QuestionBank\Taxonomy\TaxonomyGeminiClient;
+use App\Services\QuestionBank\Taxonomy\TaxonomyOrchestrator;
+use App\Services\QuestionBank\Taxonomy\TaxonomyPipelineBridge;
+use App\Services\QuestionBank\Taxonomy\ValidationDominantIdeas;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -67,6 +78,8 @@ final class KernelCodeVvvvImmutabilityPostgresTest extends TestCase
             $table->string('kernel_code_suj', 3)->nullable();
             $table->string('kernel_code_ide', 3)->nullable();
             $table->string('kernel_code_vvvv', 4)->nullable();
+            $table->timestampTz('engaged_at')->nullable();
+            $table->timestampTz('received_at')->nullable();
             $table->timestampsTz();
         });
         DB::statement(<<<'SQL'
@@ -204,6 +217,111 @@ SQL);
         $this->assertNotNull(
             DB::table('kernel_blueprint_runs')->where('blueprint_id', 'bp-order-3')->value('kernel_code_vvvv')
         );
+    }
+
+    public function test_real_rotation_taxonomy_question_intent_path_is_ordered_and_idempotent(): void
+    {
+        $this->createRealPipelineSupportSchema();
+        $this->seedDepthMatrix();
+
+        $repo = new TaxonomyBankRepository();
+        $this->seedTaxonomyCell(
+            $repo,
+            DepthNeedMatrix::DEPTH_CYCLE[0],
+            'GEO',
+            'Capitales européennes',
+            'Paris',
+            'Paris est traversée par la Seine',
+        );
+
+        $gemini = $this->createMock(TaxonomyGeminiClient::class);
+        $gemini->expects($this->never())->method('generateOccurrence');
+        $gemini->expects($this->never())->method('generateSubjects');
+        $gemini->expects($this->never())->method('generateIdeas');
+
+        $planner = new KernelRotationPlanner();
+        $bridge = new TaxonomyPipelineBridge(
+            new TaxonomyOrchestrator($repo, $gemini, new ValidationDominantIdeas()),
+            $repo,
+            $planner,
+            new QuestionIntentBlueprintIdReceiver(),
+        );
+        $pipeline = new KernelPipelineOrchestrator(
+            $planner,
+            new KernelRotationStateRepository(),
+            new KernelBlueprintProvisionedLoader(),
+            $bridge,
+        );
+
+        $blueprintId = (new KernelBlueprintProvisioner())
+            ->provisionForTest('test:question-intent:real-path');
+
+        $first = $pipeline->runProvisioned($blueprintId);
+        $runAfterFirst = DB::table('kernel_blueprint_runs')
+            ->where('blueprint_id', $blueprintId)
+            ->first();
+
+        $this->assertSame(KernelPipelineOrchestrator::STATUS_ROTATION_ASSIGNED, $first['status']);
+        $this->assertSame($blueprintId, $first['blueprint_id']);
+        $this->assertSame(DepthNeedMatrix::DEPTH_CYCLE[0], (int) $runAfterFirst->depth);
+        $this->assertSame('GEO', $runAfterFirst->domain_code);
+        $this->assertNotNull($runAfterFirst->kernel_code_dd);
+        $this->assertNotNull($runAfterFirst->kernel_code_do);
+        $this->assertSame('Capitales européennes', $runAfterFirst->subdomain_active);
+        $this->assertSame('Paris', $runAfterFirst->subject_active);
+        $this->assertSame('Paris est traversée par la Seine', $runAfterFirst->dominant_idea_active);
+        $this->assertNotNull($runAfterFirst->kernel_code_sub);
+        $this->assertNotNull($runAfterFirst->kernel_code_suj);
+        $this->assertNotNull($runAfterFirst->kernel_code_ide);
+        $this->assertNotNull($runAfterFirst->kernel_code_vvvv);
+        $this->assertMatchesRegularExpression(KernelCodeEngine::FORMAT_REGEX, $runAfterFirst->kernel_code);
+
+        $vvvv = $runAfterFirst->kernel_code_vvvv;
+        $code = $runAfterFirst->kernel_code;
+
+        $second = $pipeline->runProvisioned($blueprintId);
+        $runAfterReplay = DB::table('kernel_blueprint_runs')
+            ->where('blueprint_id', $blueprintId)
+            ->first();
+
+        $this->assertSame(KernelPipelineOrchestrator::STATUS_ROTATION_ASSIGNED, $second['status']);
+        $this->assertSame($vvvv, $runAfterReplay->kernel_code_vvvv);
+        $this->assertSame($code, $runAfterReplay->kernel_code);
+        $this->assertSame(1, DB::table('kernel_code_sequences')->value('next_value'));
+    }
+
+    public function test_real_question_intent_receiver_refuses_a_provisioned_blueprint_without_rotation(): void
+    {
+        $blueprintId = (new KernelBlueprintProvisioner())
+            ->provisionForTest('test:question-intent:missing-rotation');
+
+        $this->expectException(\RuntimeException::class);
+        (new QuestionIntentBlueprintIdReceiver())->process($blueprintId);
+    }
+
+    public function test_real_rotation_without_taxonomy_is_refused_by_question_intent(): void
+    {
+        $this->createRealPipelineSupportSchema();
+        $this->seedDepthMatrix();
+
+        $blueprintId = (new KernelBlueprintProvisioner())
+            ->provisionForTest('test:question-intent:missing-taxonomy');
+
+        $result = (new KernelPipelineOrchestrator(
+            new KernelRotationPlanner(),
+            new KernelRotationStateRepository(),
+        ))->runProvisioned($blueprintId);
+
+        $this->assertSame(KernelPipelineOrchestrator::STATUS_ROTATION_ASSIGNED, $result['status']);
+        $this->assertNotNull(
+            DB::table('kernel_blueprint_runs')->where('blueprint_id', $blueprintId)->value('depth')
+        );
+        $this->assertNull(
+            DB::table('kernel_blueprint_runs')->where('blueprint_id', $blueprintId)->value('subdomain_active')
+        );
+
+        $this->expectException(\RuntimeException::class);
+        (new QuestionIntentBlueprintIdReceiver())->process($blueprintId);
     }
 
     // =========================================================================
@@ -375,6 +493,165 @@ SQL);
             'database/migrations/2026_09_17_000001_lock_kernel_code_vvvv_immutability.php'
         );
         $migration->up();
+    }
+
+    private function createRealPipelineSupportSchema(): void
+    {
+        Schema::create('kernel_rotation_state_v2', function (Blueprint $table): void {
+            $table->id();
+            $table->smallInteger('active_depth')->nullable();
+            $table->uuid('active_tour_id')->nullable();
+            $table->string('tour_state', 16)->default('OPEN');
+            $table->uuid('last_closed_tour_id')->nullable();
+            $table->unsignedTinyInteger('last_closed_depth')->nullable();
+            $table->string('depth_state', 64)->default('ROTATION_ACTIVE');
+            $table->jsonb('domain_states')->nullable();
+            $table->integer('domain_position')->nullable();
+            $table->string('active_blueprint_identity', 36)->nullable();
+            $table->string('last_counted_blueprint_identity', 36)->nullable();
+            $table->integer('pending_depth_exhausted_depth')->nullable();
+            $table->unsignedBigInteger('lock_version')->default(1);
+            $table->timestampsTz();
+        });
+
+        Schema::create('kernel_depth_matrix', function (Blueprint $table): void {
+            $table->smallInteger('depth')->primary();
+            $table->integer('cycle_target');
+            $table->integer('cycle_completed')->default(0);
+            $table->smallInteger('empty_progress_current_tour')->default(0);
+            $table->string('current_tour_id', 36)->nullable();
+            $table->timestampsTz();
+        });
+
+        Schema::create('kernel_taxonomy_terminal_facts', function (Blueprint $table): void {
+            $table->id();
+            $table->string('fact_id', 128)->unique();
+            $table->unsignedTinyInteger('depth');
+            $table->string('domain_code', 32);
+            $table->uuid('tour_id');
+            $table->timestampTz('received_at');
+            $table->timestampTz('consumed_at')->nullable();
+            $table->timestampsTz();
+        });
+
+        Schema::create('taxonomy_v11_occurrences', function (Blueprint $table): void {
+            $table->id();
+            $table->unsignedTinyInteger('depth');
+            $table->string('domain_code', 32);
+            $table->unsignedInteger('ordinal');
+            $table->string('status', 16)->default('PREPARING');
+            $table->unsignedTinyInteger('consecutive_technical_failures')->default(0);
+            $table->text('last_error')->nullable();
+            $table->timestampTz('exhausted_at')->nullable();
+            $table->timestampsTz();
+            $table->unique(['depth', 'domain_code', 'ordinal']);
+        });
+
+        Schema::create('taxonomy_v11_subdomains', function (Blueprint $table): void {
+            $table->id();
+            $table->foreignId('occurrence_id')->unique()
+                ->constrained('taxonomy_v11_occurrences')->cascadeOnDelete();
+            $table->string('subdomain_name', 256);
+            $table->string('status', 16)->default('ACTIVE');
+            $table->timestampsTz();
+        });
+
+        Schema::create('taxonomy_v11_subjects', function (Blueprint $table): void {
+            $table->id();
+            $table->foreignId('subdomain_id')->constrained('taxonomy_v11_subdomains')->cascadeOnDelete();
+            $table->string('subject_name', 256);
+            $table->string('status', 24)->default('AVAILABLE');
+            $table->unsignedTinyInteger('idea_attempt_count')->default(0);
+            $table->boolean('idea_generation_exhausted')->default(false);
+            $table->timestampsTz();
+            $table->unique(['subdomain_id', 'subject_name']);
+        });
+
+        Schema::create('taxonomy_v11_ideas', function (Blueprint $table): void {
+            $table->id();
+            $table->foreignId('subject_id')->constrained('taxonomy_v11_subjects')->cascadeOnDelete();
+            $table->string('idea_value', 512);
+            $table->string('validation_status', 8);
+            $table->string('fail_reason', 64)->nullable();
+            $table->string('fail_conflict_with', 512)->nullable();
+            $table->string('status', 16);
+            $table->timestampsTz();
+            $table->unique(['subject_id', 'idea_value']);
+        });
+
+        Schema::create('taxonomy_v11_generation_memory', function (Blueprint $table): void {
+            $table->id();
+            $table->foreignId('occurrence_id')->constrained('taxonomy_v11_occurrences')->cascadeOnDelete();
+            $table->string('context_type', 16);
+            $table->string('context_key', 512);
+            $table->unsignedSmallInteger('attempt_number');
+            $table->jsonb('candidates')->nullable();
+            $table->jsonb('pass_items')->nullable();
+            $table->jsonb('fail_items')->nullable();
+            $table->jsonb('covered_directions')->nullable();
+            $table->boolean('generation_exhausted')->default(false);
+            $table->timestampsTz();
+            $table->unique(['occurrence_id', 'context_type', 'context_key', 'attempt_number']);
+        });
+
+        Schema::create('taxonomy_v11_terminal_facts', function (Blueprint $table): void {
+            $table->id();
+            $table->foreignId('occurrence_id')->unique()
+                ->constrained('taxonomy_v11_occurrences')->cascadeOnDelete();
+            $table->string('fact_id', 128)->unique();
+            $table->unsignedTinyInteger('depth');
+            $table->string('domain_code', 32);
+            $table->string('status', 16)->default('PENDING');
+            $table->unsignedSmallInteger('delivery_attempts')->default(0);
+            $table->text('last_error')->nullable();
+            $table->timestampTz('delivered_at')->nullable();
+            $table->timestampsTz();
+        });
+
+        Schema::create('taxonomy_v11_blueprint_assignments', function (Blueprint $table): void {
+            $table->string('blueprint_id', 36)->primary();
+            $table->foreignId('occurrence_id')->constrained('taxonomy_v11_occurrences')->restrictOnDelete();
+            $table->foreignId('subdomain_id')->constrained('taxonomy_v11_subdomains')->restrictOnDelete();
+            $table->foreignId('subject_id')->constrained('taxonomy_v11_subjects')->restrictOnDelete();
+            $table->foreignId('idea_id')->constrained('taxonomy_v11_ideas')->restrictOnDelete();
+            $table->unsignedTinyInteger('depth');
+            $table->string('domain_code', 32);
+            $table->string('subdomain_active', 256);
+            $table->string('subject_active', 256);
+            $table->string('dominant_idea_active', 512);
+            $table->timestampsTz();
+        });
+    }
+
+    private function seedDepthMatrix(): void
+    {
+        foreach (DepthNeedMatrix::DEPTH_CYCLE as $depth) {
+            DB::table('kernel_depth_matrix')->insert([
+                'depth' => $depth,
+                'cycle_target' => DepthNeedMatrix::CYCLE_TARGET[$depth],
+                'cycle_completed' => 0,
+                'empty_progress_current_tour' => 0,
+                'current_tour_id' => null,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+    }
+
+    private function seedTaxonomyCell(
+        TaxonomyBankRepository $repo,
+        int $depth,
+        string $domainCode,
+        string $subdomain,
+        string $subject,
+        string $idea,
+    ): void {
+        $occurrence = $repo->findOrCreateV11Occurrence($depth, $domainCode);
+        $subdomainRow = $repo->createV11Subdomain((int) $occurrence->id, $subdomain);
+        $repo->createV11Subjects((int) $subdomainRow->id, [$subject]);
+        $subjectRow = $repo->getV11SubjectsForSubdomain((int) $subdomainRow->id)[0];
+        $repo->persistV11PassIdea((int) $subjectRow->id, $idea);
+        $repo->markV11OccurrenceOpen((int) $occurrence->id);
     }
 
     private function insertEmpty(string $id): void
