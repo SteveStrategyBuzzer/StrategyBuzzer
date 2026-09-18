@@ -6,7 +6,7 @@
 - [Flow canonique pipeline noyau 2026-08-11](canonical-kernel-flow.md) — VERROUILLÉ : Blueprint KRP→Taxonomy↕VDI→QuestionIntent→…→CKR. 01_KernelBlueprint VERROUILLÉ v1.5 (12 août 2026). 05_QuestionIntent VERROUILLÉ v1.1. 02_KernelRotationPlanner UNDER_REVIEW v3.0 (13 août 2026).
 - [KernelCodeEngine implementation](kernel-code-engine-impl.md) — slug KRP vs canonical + index UNIQUE PARTIEL pgsql + tout test orchestrateur réel besoin de kernel_code_sequences en setUp.
 - [TaxonomyOrchestrator architecture](taxonomy-orchestrator-architecture.md) — TaxonomyProgressManager+Reader+taxonomy.json SUPPRIMÉS ; 4 nouvelles tables ; TaxonomyGeminiClient non-final ; DB::table()->firstOrFail() inexistant ; Schema:: facade pour tests SQLite.
-- [Test DB isolation & $_SERVER precedence](test-db-isolation-server-precedence.md) — phpunit `<env force>` n'écrase pas $_SERVER ; Laravel env() lit $_SERVER d'abord ; forcer AUSSI `<server>` sinon les tests touchent Neon. Runtime = DB_CONNECTION=pgsql.
+- [Isolation PostgreSQL des tests](test-db-isolation-server-precedence.md) — PHPUnit exige une base PostgreSQL jetable aléatoire; lancement direct refusé, migrations complètes puis suppression garantie.
 - [Trap prompt fix](trap-prompt-fix.md) — 5 nouveaux champs trap étaient dans PHP mais absents du prompt Node ; fix appliqué dans question-api.js.
 - [hasCausalConnector gaps](causal-connector-gaps.md) — "If", "Given", "As", "For", "suggests", "indicates" absents de la liste → cogIntegrity=0 sur raisonnements valides.
 - [Depth vs Adversary Personality](depth-vs-personality.md) — Depth = propriété question (complexité) ; Personnalité = propriété adversaire (buzz%, radar, style). Ne jamais confondre.

@@ -44,7 +44,7 @@ class BankNeedsCalculatorTest extends TestCase
 
     public function test_present_count_drops_when_validated_groups_exist(): void
     {
-        // Insert a single validated FR question for Solo band 31-39 / Histoire / recognition.
+        // Insert one validated FR question covered by Duo novice / depth 5.
         $group = QuestionGroup::create([
             'difficulty_level' => 31,
             'difficulty_depth' => 5,
@@ -70,13 +70,16 @@ class BankNeedsCalculatorTest extends TestCase
         $calc = new BankNeedsCalculator(new QuestionBankRepository());
         $deficits = $calc->computeDeficits();
 
-        // The FR/Histoire/recognition row for the duo novice profile must have present=1.
+        // The exact Duo novice depth-5 segment must count the inserted question.
         $matching = array_filter($deficits, fn ($r) =>
-            $r['language'] === 'fr'
+            $r['mode'] === 'duo'
+            && $r['division'] === 'novice'
+            && $r['language'] === 'fr'
             && $r['sub_domain'] === 'Histoire'
             && $r['cognitive_type'] === 'recognition'
             && ($r['mode_target']['type'] ?? null) === 'solo_range'
-            && ($r['mode_target']['levels'][0] ?? null) === 31
+            && ($r['mode_target']['levels'] ?? null) === [1, 39]
+            && $r['depth_range'] === [5, 5]
         );
         $this->assertNotEmpty($matching, 'expected a Duo-novice/Histoire/recognition/fr row');
         foreach ($matching as $row) {

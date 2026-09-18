@@ -47,6 +47,7 @@
         }
     },
     "scripts": {
+        "test": "@php scripts/run-isolated-postgres-tests.php --colors=never",
         "post-autoload-dump": [
             "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
             "@php artisan package:discover --ansi"

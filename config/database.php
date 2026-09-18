@@ -15,9 +15,9 @@ return [
     |
     */
 
-    // Default connection. Honors DB_CONNECTION env var (set by phpunit.xml to "sqlite"
-    // during tests) so tests using RefreshDatabase NEVER touch the live Postgres DB.
-    // Falls back to "pgsql" in normal runtime where DB_CONNECTION is unset.
+    // Tests use a launcher-provisioned disposable PostgreSQL database. The
+    // PHPUnit bootstrap and Tests\TestCase both fail closed if the target is
+    // not the random isolated database created for that one test command.
     'default' => env('DB_CONNECTION', 'pgsql'),
 
     /*

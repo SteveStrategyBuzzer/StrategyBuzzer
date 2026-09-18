@@ -3,43 +3,41 @@
 namespace Tests;
 
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
+use Illuminate\Support\Facades\DB;
 
 abstract class TestCase extends BaseTestCase
 {
     use CreatesApplication;
 
-    /**
-     * Belt-and-suspenders safety guard: refuse to start ANY test if the
-     * active default DB connection is not the in-memory sqlite sandbox.
-     *
-     * Background: phpunit.xml forces DB_CONNECTION=sqlite + DB_DATABASE=:memory:
-     * via <env> blocks, but this only takes effect if config/database.php
-     * actually reads env('DB_CONNECTION'). A hard-coded default (e.g. the
-     * historical 'default' => 'pgsql' on line 19) silently bypasses that
-     * override and lets RefreshDatabase / migrate:fresh wipe the live
-     * Postgres database — which is exactly how the dev DB got nuked.
-     *
-     * This guard hard-fails the suite at setUp() if the safety net is not
-     * in effect, so the regression can never silently destroy data again.
-     */
+    /** Refuse every Laravel test outside the launcher's disposable database. */
     protected function setUp(): void
     {
         parent::setUp();
 
         $defaultConnection = config('database.default');
-        if ($defaultConnection !== 'sqlite') {
+        $expectedDatabase = getenv('TEST_DATABASE_NAME') ?: '';
+        $configuredDatabase = (string) config('database.connections.pgsql.database');
+
+        if ($defaultConnection !== 'pgsql') {
             throw new \RuntimeException(
-                "TEST SAFETY GUARD TRIPPED: default DB connection is '{$defaultConnection}', expected 'sqlite'. " .
-                "Tests must NEVER touch the live database (RefreshDatabase would wipe it). " .
-                "Verify phpunit.xml DB_CONNECTION env override AND config/database.php 'default' honors env('DB_CONNECTION')."
+                "TEST SAFETY GUARD TRIPPED: expected the isolated pgsql connection."
             );
         }
 
-        $sqliteDatabase = config('database.connections.sqlite.database');
-        if ($sqliteDatabase !== ':memory:') {
+        if (
+            preg_match('/\Astrategybuzzer_test_[a-z0-9_]{12,80}\z/', $expectedDatabase) !== 1
+            || $configuredDatabase !== $expectedDatabase
+            || in_array(strtolower($configuredDatabase), ['heliumdb', 'postgres', 'production', 'development'], true)
+        ) {
             throw new \RuntimeException(
-                "TEST SAFETY GUARD TRIPPED: sqlite database is '{$sqliteDatabase}', expected ':memory:'. " .
-                "Tests must use in-memory sqlite. Verify phpunit.xml DB_DATABASE env override."
+                "TEST SAFETY GUARD TRIPPED: configured database is not the disposable test target."
+            );
+        }
+
+        $actualDatabase = DB::connection()->selectOne('SELECT current_database() AS name')->name ?? null;
+        if ($actualDatabase !== $expectedDatabase) {
+            throw new \RuntimeException(
+                "TEST SAFETY GUARD TRIPPED: active database does not match the disposable test target."
             );
         }
     }
