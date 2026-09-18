@@ -3,16 +3,14 @@
 namespace Tests\Unit\QuestionBank\Rotation;
 
 use App\Services\QuestionBank\Rotation\DepthNeedMatrix;
-use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 /**
  * Tests unitaires pour DepthNeedMatrix.
  *
- * DB : SQLite in-memory.
- * Tables créées/détruites manuellement (pas de RefreshDatabase — incompatible PG CHECK).
+ * DB : schéma PostgreSQL officiel créé par la chaîne complète des migrations.
+ * La fixture réinitialise uniquement les lignes utilisées par ces tests.
  */
 class DepthNeedMatrixTest extends TestCase
 {
@@ -22,34 +20,10 @@ class DepthNeedMatrixTest extends TestCase
     {
         parent::setUp();
 
-        Schema::create('kernel_depth_matrix', function (Blueprint $table) {
-            $table->smallInteger('depth')->primary();
-            $table->integer('cycle_target')->default(0);
-            $table->integer('cycle_completed')->default(0);
-            $table->smallInteger('empty_progress_current_tour')->default(0);
-            $table->string('current_tour_id', 36)->nullable();
-            $table->timestamps();
-        });
-
-        Schema::create('kernel_depth_domain_totals', function (Blueprint $table) {
-            $table->smallInteger('depth');
-            $table->string('domain_code', 64);
-            $table->bigInteger('kernel_received_total')->default(0);
-            $table->timestamps();
-            $table->primary(['depth', 'domain_code']);
-        });
-
-        $this->seedDepthMatrix();
-        $this->seedDepthDomainTotals();
+        $this->resetDepthMatrix();
+        $this->resetDepthDomainTotals();
 
         $this->matrix = new DepthNeedMatrix();
-    }
-
-    protected function tearDown(): void
-    {
-        Schema::dropIfExists('kernel_depth_domain_totals');
-        Schema::dropIfExists('kernel_depth_matrix');
-        parent::tearDown();
     }
 
     // =========================================================================
@@ -172,11 +146,11 @@ class DepthNeedMatrixTest extends TestCase
         $this->assertSame(0, $total);
     }
 
-    public function test_legacy_slug_rows_are_read_through_as_canonical_codes(): void
+    public function test_legacy_slug_inputs_are_read_through_canonical_rows(): void
     {
         DB::table('kernel_depth_domain_totals')
             ->where('depth', 2)
-            ->where('domain_code', 'geographie')
+            ->where('domain_code', 'GEO')
             ->update(['kernel_received_total' => 3]);
 
         $this->assertSame(3, $this->matrix->getKernelReceivedTotal(2, 'GEO'));
@@ -217,7 +191,7 @@ class DepthNeedMatrixTest extends TestCase
         // Simuler déjà 20 noyaux
         DB::table('kernel_depth_domain_totals')
             ->where('depth', 8)
-            ->where('domain_code', 'faune')
+            ->where('domain_code', 'FAU')
             ->update(['kernel_received_total' => 20]);
 
         // Initialiser à 10 (inférieur) → ne doit pas écraser
@@ -231,37 +205,42 @@ class DepthNeedMatrixTest extends TestCase
     // Helpers
     // =========================================================================
 
-    private function seedDepthMatrix(): void
+    private function resetDepthMatrix(): void
     {
         $now = now();
 
         foreach (DepthNeedMatrix::CYCLE_TARGET as $depth => $target) {
-            DB::table('kernel_depth_matrix')->insert([
-                'depth'                       => $depth,
+            DB::table('kernel_depth_matrix')
+                ->where('depth', $depth)
+                ->update([
                 'cycle_target'                => $target,
                 'cycle_completed'             => 0,
                 'empty_progress_current_tour' => 0,
                 'current_tour_id'             => null,
-                'created_at'                  => $now,
                 'updated_at'                  => $now,
             ]);
         }
     }
 
-    private function seedDepthDomainTotals(): void
+    private function resetDepthDomainTotals(): void
     {
         $now     = now();
-        $domains = ['geographie', 'histoire', 'faune', 'art', 'sport', 'cinema', 'cuisine', 'science'];
+        $domains = ['GEO', 'HIS', 'FAU', 'ART', 'SPO', 'CIN', 'CUI', 'SCI'];
+
+        DB::table('kernel_depth_domain_totals')
+            ->whereNotIn('domain_code', $domains)
+            ->delete();
 
         foreach (DepthNeedMatrix::DEPTH_CYCLE as $depth) {
             foreach ($domains as $domain) {
-                DB::table('kernel_depth_domain_totals')->insert([
-                    'depth'                 => $depth,
-                    'domain_code'           => $domain,
-                    'kernel_received_total' => 0,
-                    'created_at'            => $now,
-                    'updated_at'            => $now,
-                ]);
+                DB::table('kernel_depth_domain_totals')->updateOrInsert(
+                    ['depth' => $depth, 'domain_code' => $domain],
+                    [
+                        'kernel_received_total' => 0,
+                        'created_at' => $now,
+                        'updated_at' => $now,
+                    ],
+                );
             }
         }
     }

@@ -9,9 +9,7 @@ use App\Services\QuestionBank\Rotation\DepthNeedMatrix;
 use App\Services\QuestionBank\Rotation\DepthTourState;
 use App\Services\QuestionBank\Rotation\KernelRotationPlanner;
 use App\Services\QuestionBank\Rotation\KernelRotationStateRepository;
-use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 /**
@@ -20,7 +18,7 @@ use Tests\TestCase;
 class KernelRotationPlannerV4Test extends TestCase
 {
     private const DOMAINS = [
-        'geographie', 'histoire', 'faune', 'art', 'sport', 'cinema', 'cuisine', 'science',
+        'GEO', 'HIS', 'FAU', 'ART', 'SPO', 'CIN', 'CUI', 'SCI',
     ];
 
     private KernelRotationPlanner $planner;
@@ -29,58 +27,10 @@ class KernelRotationPlannerV4Test extends TestCase
     {
         parent::setUp();
 
-        Schema::create('kernel_rotation_state_v2', function (Blueprint $table): void {
-            $table->id();
-            $table->smallInteger('active_depth')->nullable();
-            $table->string('active_tour_id', 36)->nullable();
-            $table->string('tour_state', 16)->default('OPEN');
-            $table->string('last_closed_tour_id', 36)->nullable();
-            $table->unsignedTinyInteger('last_closed_depth')->nullable();
-            $table->string('depth_state', 64)->default('ROTATION_ACTIVE');
-            $table->text('domain_states')->nullable();
-            $table->integer('domain_position')->nullable();
-            $table->string('active_blueprint_identity', 36)->nullable();
-            $table->string('last_counted_blueprint_identity', 36)->nullable();
-            $table->integer('pending_depth_exhausted_depth')->nullable();
-            $table->unsignedBigInteger('lock_version')->default(1);
-            $table->timestamps();
-        });
-
-        Schema::create('kernel_taxonomy_terminal_facts', function (Blueprint $table): void {
-            $table->id();
-            $table->string('fact_id', 128)->unique();
-            $table->unsignedTinyInteger('depth');
-            $table->string('domain_code', 32);
-            $table->string('tour_id', 36);
-            $table->timestamp('received_at');
-            $table->timestamp('consumed_at')->nullable();
-            $table->timestamps();
-            $table->index(
-                ['depth', 'tour_id', 'consumed_at', 'received_at'],
-                'kttf_pending_tour_idx',
-            );
-        });
-
-        Schema::create('kernel_depth_matrix', function (Blueprint $table): void {
-            $table->smallInteger('depth')->primary();
-            $table->integer('cycle_target');
-            $table->integer('cycle_completed')->default(0);
-            $table->smallInteger('empty_progress_current_tour')->default(0);
-            $table->string('current_tour_id', 36)->nullable();
-            $table->timestamps();
-        });
-
-        $this->seedDepthMatrix();
+        DB::table('kernel_taxonomy_terminal_facts')->delete();
+        DB::table('kernel_rotation_state_v2')->delete();
+        $this->resetDepthMatrix();
         $this->planner = new KernelRotationPlanner();
-    }
-
-    protected function tearDown(): void
-    {
-        Schema::dropIfExists('kernel_taxonomy_terminal_facts');
-        Schema::dropIfExists('kernel_rotation_state_v2');
-        Schema::dropIfExists('kernel_depth_matrix');
-
-        parent::tearDown();
     }
 
     public function test_resolve_returns_the_first_official_rotation_without_persisting_state(): void
@@ -89,7 +39,7 @@ class KernelRotationPlannerV4Test extends TestCase
 
         $this->assertTrue($resolution->isAvailable());
         $this->assertSame(2, $resolution->depth);
-        $this->assertSame('geographie', $resolution->domain);
+        $this->assertSame('GEO', $resolution->domain);
         $this->assertSame(0, $resolution->domainPosition);
         $this->assertSame(0, DB::table('kernel_rotation_state_v2')->count());
     }
@@ -103,9 +53,9 @@ class KernelRotationPlannerV4Test extends TestCase
         });
 
         $this->assertSame(2, $resolution->depth);
-        $this->assertSame('geographie', $resolution->domain);
+        $this->assertSame('GEO', $resolution->domain);
         $this->assertSame(2, $blueprint->depth);
-        $this->assertSame('geographie', $blueprint->domain);
+        $this->assertSame('GEO', $blueprint->domain);
 
         $state = DB::table('kernel_rotation_state_v2')->first();
         $this->assertSame(2, (int) $state->active_depth);
@@ -117,59 +67,59 @@ class KernelRotationPlannerV4Test extends TestCase
 
     public function test_terminal_fact_replay_is_idempotent_before_consumption(): void
     {
-        $this->insertActiveState(2, 'geographie', 'tour-idempotent', 'bp-active');
+        $this->insertActiveState(2, 'GEO', 'tour-idempotent', 'bp-active');
 
-        $this->planner->receiveTaxonomyTerminalFact('fact-idempotent', 2, 'geographie');
-        $this->planner->receiveTaxonomyTerminalFact('fact-idempotent', 2, 'geographie');
+        $this->planner->receiveTaxonomyTerminalFact('fact-idempotent', 2, 'GEO');
+        $this->planner->receiveTaxonomyTerminalFact('fact-idempotent', 2, 'GEO');
 
         $this->assertSame(1, DB::table('kernel_taxonomy_terminal_facts')->count());
         $fact = DB::table('kernel_taxonomy_terminal_facts')->first();
-        $this->assertSame('tour-idempotent', $fact->tour_id);
+        $this->assertSame($this->uuid('tour-idempotent'), $fact->tour_id);
         $this->assertNull($fact->consumed_at);
     }
 
     public function test_replayed_fact_cannot_change_its_identity(): void
     {
-        $this->insertActiveState(2, 'geographie', 'tour-immutable', 'bp-active');
-        $this->planner->receiveTaxonomyTerminalFact('fact-immutable', 2, 'geographie');
+        $this->insertActiveState(2, 'GEO', 'tour-immutable', 'bp-active');
+        $this->planner->receiveTaxonomyTerminalFact('fact-immutable', 2, 'GEO');
 
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessageMatches('/Violation d.immuabilité du fait terminal/');
 
-        $this->planner->receiveTaxonomyTerminalFact('fact-immutable', 4, 'geographie');
+        $this->planner->receiveTaxonomyTerminalFact('fact-immutable', 4, 'GEO');
     }
 
     public function test_terminal_fact_must_match_the_active_blueprint_depth_and_domain(): void
     {
-        $this->insertActiveState(4, 'geographie', 'tour-depth-four', 'bp-active');
+        $this->insertActiveState(4, 'GEO', 'tour-depth-four', 'bp-active');
 
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessageMatches(
             '/depth.domain ne correspondent pas au Blueprint KRP actif/'
         );
 
-        $this->planner->receiveTaxonomyTerminalFact('fact-wrong-depth', 6, 'geographie');
+        $this->planner->receiveTaxonomyTerminalFact('fact-wrong-depth', 6, 'GEO');
     }
 
     public function test_terminal_fact_requires_an_active_correlated_blueprint(): void
     {
-        $this->insertActiveState(2, 'geographie', 'tour-no-blueprint', null);
+        $this->insertActiveState(2, 'GEO', 'tour-no-blueprint', null);
 
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessageMatches('/aucun Blueprint KRP actif à corréler/');
 
-        $this->planner->receiveTaxonomyTerminalFact('fact-no-blueprint', 2, 'geographie');
+        $this->planner->receiveTaxonomyTerminalFact('fact-no-blueprint', 2, 'GEO');
     }
 
     public function test_read_only_resolution_does_not_consume_a_pending_terminal_fact(): void
     {
-        $this->insertActiveState(2, 'geographie', 'tour-read-only', 'bp-active');
-        $this->planner->receiveTaxonomyTerminalFact('fact-read-only', 2, 'geographie');
+        $this->insertActiveState(2, 'GEO', 'tour-read-only', 'bp-active');
+        $this->planner->receiveTaxonomyTerminalFact('fact-read-only', 2, 'GEO');
 
         $state = DB::table('kernel_rotation_state_v2')->first();
         $resolution = $this->planner->resolveNextRotation($state);
 
-        $this->assertSame('histoire', $resolution->domain);
+        $this->assertSame('HIS', $resolution->domain);
         $this->assertNull(
             DB::table('kernel_taxonomy_terminal_facts')
                 ->where('fact_id', 'fact-read-only')
@@ -179,24 +129,24 @@ class KernelRotationPlannerV4Test extends TestCase
             (string) DB::table('kernel_rotation_state_v2')->value('domain_states'),
             true,
         );
-        $this->assertSame('VISIBLE', $domainStates['2']['geographie']);
+        $this->assertSame('VISIBLE', $domainStates['2']['GEO']);
     }
 
     public function test_prepare_consumes_one_fact_and_estompes_its_domain(): void
     {
-        $this->insertActiveState(2, 'geographie', 'tour-domain-close', 'bp-active');
-        $this->planner->receiveTaxonomyTerminalFact('fact-domain-close', 2, 'geographie');
+        $this->insertActiveState(2, 'GEO', 'tour-domain-close', 'bp-active');
+        $this->planner->receiveTaxonomyTerminalFact('fact-domain-close', 2, 'GEO');
 
         $blueprint = $this->newBlueprint('bp-after-domain-close');
         $resolution = $this->prepareBlueprint($blueprint);
 
         $this->assertSame(2, $resolution->depth);
-        $this->assertSame('histoire', $resolution->domain);
-        $this->assertSame('histoire', $blueprint->domain);
+        $this->assertSame('HIS', $resolution->domain);
+        $this->assertSame('HIS', $blueprint->domain);
 
         $state = DB::table('kernel_rotation_state_v2')->first();
         $domainStates = json_decode((string) $state->domain_states, true);
-        $this->assertSame('ESTOMPÉ', $domainStates['2']['geographie']);
+        $this->assertSame('ESTOMPÉ', $domainStates['2']['GEO']);
         $this->assertSame('OPEN', $state->tour_state);
         $this->assertNull($state->last_closed_tour_id);
         $this->assertNotNull(
@@ -210,28 +160,28 @@ class KernelRotationPlannerV4Test extends TestCase
     {
         $domainStates = $this->visibleDomainStates();
         foreach (self::DOMAINS as $domain) {
-            $domainStates['2'][$domain] = $domain === 'science' ? 'VISIBLE' : 'ESTOMPÉ';
+            $domainStates['2'][$domain] = $domain === 'SCI' ? 'VISIBLE' : 'ESTOMPÉ';
         }
 
         $this->insertActiveState(
             2,
-            'science',
+            'SCI',
             'tour-closing-depth-two',
             'bp-active',
             $domainStates,
         );
-        $this->planner->receiveTaxonomyTerminalFact('fact-final-domain', 2, 'science');
+        $this->planner->receiveTaxonomyTerminalFact('fact-final-domain', 2, 'SCI');
 
         $blueprint = $this->newBlueprint('bp-depth-four');
         $resolution = $this->prepareBlueprint($blueprint);
         $state = DB::table('kernel_rotation_state_v2')->first();
 
         $this->assertSame(4, $resolution->depth);
-        $this->assertSame('geographie', $resolution->domain);
-        $this->assertSame('tour-closing-depth-two', $state->last_closed_tour_id);
+        $this->assertSame('GEO', $resolution->domain);
+        $this->assertSame($this->uuid('tour-closing-depth-two'), $state->last_closed_tour_id);
         $this->assertSame(2, (int) $state->last_closed_depth);
         $this->assertSame('OPEN', $state->tour_state);
-        $this->assertNotSame('tour-closing-depth-two', $state->active_tour_id);
+        $this->assertNotSame($this->uuid('tour-closing-depth-two'), $state->active_tour_id);
         $this->assertSame(
             1,
             (int) DB::table('kernel_depth_matrix')->where('depth', 2)->value('cycle_completed')
@@ -256,17 +206,17 @@ class KernelRotationPlannerV4Test extends TestCase
 
         $domainStates = $this->visibleDomainStates();
         foreach (self::DOMAINS as $domain) {
-            $domainStates['10'][$domain] = $domain === 'science' ? 'VISIBLE' : 'ESTOMPÉ';
+            $domainStates['10'][$domain] = $domain === 'SCI' ? 'VISIBLE' : 'ESTOMPÉ';
         }
 
         $this->insertActiveState(
             10,
-            'science',
+            'SCI',
             'tour-final-need',
             'bp-active',
             $domainStates,
         );
-        $this->planner->receiveTaxonomyTerminalFact('fact-final-need', 10, 'science');
+        $this->planner->receiveTaxonomyTerminalFact('fact-final-need', 10, 'SCI');
 
         $blueprint = $this->newBlueprint('bp-unused-on-hold');
         $resolution = $this->prepareBlueprint($blueprint);
@@ -279,7 +229,7 @@ class KernelRotationPlannerV4Test extends TestCase
         );
         $this->assertSame('PRODUCTION_ON_HOLD', $state->depth_state);
         $this->assertSame('CLOSED', $state->tour_state);
-        $this->assertSame('tour-final-need', $state->last_closed_tour_id);
+        $this->assertSame($this->uuid('tour-final-need'), $state->last_closed_tour_id);
         $this->assertSame(10, (int) $state->last_closed_depth);
         $this->assertNull($state->active_blueprint_identity);
         $this->assertNull($blueprint->depth);
@@ -290,26 +240,26 @@ class KernelRotationPlannerV4Test extends TestCase
     {
         $domainStates = $this->visibleDomainStates();
         foreach (self::DOMAINS as $domain) {
-            $domainStates['2'][$domain] = $domain === 'science' ? 'VISIBLE' : 'ESTOMPÉ';
+            $domainStates['2'][$domain] = $domain === 'SCI' ? 'VISIBLE' : 'ESTOMPÉ';
         }
 
         $this->insertActiveState(
             2,
-            'science',
+            'SCI',
             'tour-once-only',
             'bp-active',
             $domainStates,
         );
-        $this->planner->receiveTaxonomyTerminalFact('fact-once-only', 2, 'science');
+        $this->planner->receiveTaxonomyTerminalFact('fact-once-only', 2, 'SCI');
 
         $this->prepareBlueprint($this->newBlueprint('bp-first-after-close'));
         $newTourId = (string) DB::table('kernel_rotation_state_v2')->value('active_tour_id');
 
-        $this->planner->receiveTaxonomyTerminalFact('fact-once-only', 2, 'science');
+        $this->planner->receiveTaxonomyTerminalFact('fact-once-only', 2, 'SCI');
         $secondResolution = $this->prepareBlueprint($this->newBlueprint('bp-second-after-close'));
 
         $this->assertSame(4, $secondResolution->depth);
-        $this->assertSame('histoire', $secondResolution->domain);
+        $this->assertSame('HIS', $secondResolution->domain);
         $this->assertSame(
             1,
             (int) DB::table('kernel_depth_matrix')->where('depth', 2)->value('cycle_completed')
@@ -324,7 +274,7 @@ class KernelRotationPlannerV4Test extends TestCase
     public function test_removed_external_exhaustion_entries_only_act_as_rejection_guards(): void
     {
         try {
-            $this->planner->receiveDomainExhausted(2, 'geographie');
+            $this->planner->receiveDomainExhausted(2, 'GEO');
             $this->fail('The removed domain-exhaustion entry must reject callers.');
         } catch (\RuntimeException $exception) {
             $this->assertStringContainsString('Entrée v3', $exception->getMessage());
@@ -370,7 +320,7 @@ class KernelRotationPlannerV4Test extends TestCase
 
         DB::table('kernel_rotation_state_v2')->insert([
             'active_depth' => $depth,
-            'active_tour_id' => $tourId,
+            'active_tour_id' => $this->uuid($tourId),
             'tour_state' => 'OPEN',
             'last_closed_tour_id' => null,
             'last_closed_depth' => null,
@@ -386,6 +336,20 @@ class KernelRotationPlannerV4Test extends TestCase
         ]);
     }
 
+    private function uuid(string $fixtureId): string
+    {
+        $hex = md5($fixtureId);
+
+        return sprintf(
+            '%s-%s-4%s-a%s-%s',
+            substr($hex, 0, 8),
+            substr($hex, 8, 4),
+            substr($hex, 13, 3),
+            substr($hex, 17, 3),
+            substr($hex, 20, 12),
+        );
+    }
+
     /**
      * @return array<string, array<string, string>>
      */
@@ -399,16 +363,16 @@ class KernelRotationPlannerV4Test extends TestCase
         return $states;
     }
 
-    private function seedDepthMatrix(): void
+    private function resetDepthMatrix(): void
     {
         foreach (DepthNeedMatrix::DEPTH_CYCLE as $depth) {
-            DB::table('kernel_depth_matrix')->insert([
-                'depth' => $depth,
+            DB::table('kernel_depth_matrix')
+                ->where('depth', $depth)
+                ->update([
                 'cycle_target' => DepthNeedMatrix::CYCLE_TARGET[$depth],
                 'cycle_completed' => 0,
                 'empty_progress_current_tour' => 0,
                 'current_tour_id' => null,
-                'created_at' => now(),
                 'updated_at' => now(),
             ]);
         }
