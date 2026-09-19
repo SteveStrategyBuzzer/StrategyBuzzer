@@ -261,8 +261,8 @@ class KernelPhase1GeneratorTest extends TestCase
                         ['key' => 'd', 'text' => 'Berlin'],
                     ]
                     : [
-                        ['key' => 'a', 'text' => 'VRAI'],
-                        ['key' => 'b', 'text' => 'FAUX'],
+                        ['key' => 'a', 'text' => 'TRUE'],
+                        ['key' => 'b', 'text' => 'FALSE'],
                     ],
                 'correct_answer_key' => $isQcm || str_ends_with($type, '_TRUE') ? 'a' : 'b',
                 'sv' => 'Cette explication courte relie clairement la réponse au contexte scientifique.',
@@ -291,7 +291,7 @@ class KernelPhase1GeneratorTest extends TestCase
             'schema_version' => 'phase1.source.v1',
             'blueprint_id' => $this->blueprint->blueprint_id,
             'kernel_code' => $this->blueprint->kernel_code,
-            'source_language' => 'fr',
+            'source_language' => 'en',
             'slots' => $slots,
         ];
     }

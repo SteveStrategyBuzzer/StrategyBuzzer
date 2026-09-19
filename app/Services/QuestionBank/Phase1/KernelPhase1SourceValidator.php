@@ -9,7 +9,7 @@ use App\Services\QuestionBank\KernelBlueprint;
 final class KernelPhase1SourceValidator
 {
     public const SCHEMA_VERSION = 'phase1.source.v1';
-    public const SOURCE_LANGUAGE = 'fr';
+    public const SOURCE_LANGUAGE = 'en';
     private const READING_SPEED_WPM = 150;
     private const REQUIRED_SELF_CHECKS = [
         'question_readable_under_8_seconds',
@@ -322,10 +322,10 @@ final class KernelPhase1SourceValidator
         string $correctAnswerKey,
         string $cognitiveType
     ): void {
-        if ($choices !== ['a' => 'VRAI', 'b' => 'FAUX']) {
+        if ($choices !== ['a' => 'TRUE', 'b' => 'FALSE']) {
             throw new Phase1TechnicalException(
                 'INVALID_SCHEMA',
-                "{$cognitiveType} exige exactement VRAI et FAUX."
+                "{$cognitiveType} requires exactly TRUE and FALSE."
             );
         }
 
@@ -333,7 +333,7 @@ final class KernelPhase1SourceValidator
         if ($correctAnswerKey !== $expectedKey) {
             throw new Phase1TechnicalException(
                 'INVALID_SCHEMA',
-                "{$cognitiveType} ne respecte pas sa polarité Vrai/Faux."
+                "{$cognitiveType} does not respect its True/False polarity."
             );
         }
     }

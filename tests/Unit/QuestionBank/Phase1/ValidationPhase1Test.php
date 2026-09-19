@@ -6,6 +6,7 @@ namespace Tests\Unit\QuestionBank\Phase1;
 
 use App\Services\QuestionBank\KernelBlueprint;
 use App\Services\QuestionBank\KernelBlueprintCognitiveSlotRepository;
+use App\Services\QuestionBank\Phase1\Phase1ExecutionRepository;
 use App\Services\QuestionBank\Phase1\ValidationPhase1;
 use App\Services\QuestionBank\Phase1\ValidationPhase1Reviewer;
 use App\Services\QuestionBank\Phase1\ValidationPhase1EntryBoundary;
@@ -57,6 +58,18 @@ class ValidationPhase1Test extends TestCase
             $table->timestamps();
             $table->primary(['blueprint_id', 'cognitive_type']);
         });
+        Schema::create('kernel_phase1_executions', function (Blueprint $table): void {
+            $table->string('execution_id', 36)->primary();
+            $table->string('blueprint_id', 36);
+            $table->string('identity_revision', 64);
+            $table->string('state', 16);
+            $table->string('lease_token', 36);
+            $table->json('result')->nullable();
+            $table->timestamp('started_at');
+            $table->timestamp('completed_at')->nullable();
+            $table->timestamps();
+            $table->unique(['blueprint_id', 'identity_revision']);
+        });
 
         $this->blueprint = new KernelBlueprint();
         $this->blueprint->initializeBlueprintId('bp-validation-1');
@@ -94,14 +107,41 @@ class ValidationPhase1Test extends TestCase
                 $this->source($type, $index)
             );
         }
+        $revision = (new Phase1ExecutionRepository())->currentIdentityRevision(
+            $this->blueprint->blueprint_id
+        );
+        DB::table('kernel_phase1_executions')->insert([
+            'execution_id' => 'phase1-validation-terminal',
+            'blueprint_id' => $this->blueprint->blueprint_id,
+            'identity_revision' => $revision,
+            'state' => 'COMPLETED',
+            'lease_token' => 'phase1-validation-lease',
+            'result' => json_encode([
+                'phase1_terminal' => Phase1ExecutionRepository::PHASE1_CREATION_COMPLETED,
+                'creation_status' => 'CREATED',
+            ], JSON_THROW_ON_ERROR),
+            'started_at' => now(),
+            'completed_at' => now(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
     }
 
     protected function tearDown(): void
     {
+        Schema::dropIfExists('kernel_phase1_executions');
         Schema::dropIfExists('kernel_blueprint_cognitive_slots');
         Schema::dropIfExists('kernel_blueprint_request_refs');
         Schema::dropIfExists('kernel_blueprint_runs');
         parent::tearDown();
+    }
+
+    public function test_public_validation_boundary_accepts_only_blueprint_id(): void
+    {
+        $method = new \ReflectionMethod(ValidationPhase1::class, 'validate');
+
+        $this->assertSame(1, $method->getNumberOfParameters());
+        $this->assertSame('blueprintId', $method->getParameters()[0]->getName());
     }
 
     public function test_runs_seven_independent_reviews_then_one_limited_cross_review(): void
@@ -329,7 +369,7 @@ class ValidationPhase1Test extends TestCase
         }
     }
 
-    public function test_divergent_persisted_kernel_code_is_rejected_before_review(): void
+    public function test_divergent_persisted_kernel_code_stales_phase1_terminal_before_review(): void
     {
         DB::table('kernel_blueprint_runs')
             ->where('blueprint_id', $this->blueprint->blueprint_id)
@@ -340,7 +380,7 @@ class ValidationPhase1Test extends TestCase
             $this->service($reviewer)->validate($this->blueprint->blueprint_id);
             $this->fail('A divergent persisted kernel_code must be rejected.');
         } catch (LogicException $exception) {
-            $this->assertStringContainsString('kernel_code persistant divergent', $exception->getMessage());
+            $this->assertStringContainsString('Phase 1 non terminale', $exception->getMessage());
         }
         $this->assertCount(0, $reviewer->calls);
     }
@@ -485,12 +525,12 @@ class ValidationPhase1Test extends TestCase
         $isQcm = str_starts_with($type, 'QCM_');
         return [
             'schema_version' => 'phase1.source.v1',
-            'source_language' => 'fr',
+            'source_language' => 'en',
             'cognitive_type' => $type,
             'question' => "Question source distincte {$index} ?",
             'choices' => $isQcm
                 ? ['a' => 'Paris', 'b' => 'Rome', 'c' => 'Madrid', 'd' => 'Berlin']
-                : ['a' => 'VRAI', 'b' => 'FAUX'],
+                : ['a' => 'TRUE', 'b' => 'FALSE'],
             'correct_answer_key' => $isQcm || str_ends_with($type, '_TRUE') ? 'a' : 'b',
             'sv' => 'Cette explication relie la réponse au contexte.',
             'creation_evidence' => [

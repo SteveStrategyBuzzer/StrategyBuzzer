@@ -1725,8 +1725,8 @@ function validatePhase1SourceText(text, expected) {
       return { ok: false, reason: `${type} correct_answer_key must be a` };
     }
     if (type.includes('TRUE_FALSE')) {
-      if (slot.choices[0].text !== 'VRAI' || slot.choices[1].text !== 'FAUX') {
-        return { ok: false, reason: `${type} choices must be VRAI and FAUX` };
+      if (slot.choices[0].text !== 'TRUE' || slot.choices[1].text !== 'FALSE') {
+        return { ok: false, reason: `${type} choices must be TRUE and FALSE` };
       }
       const expectedCorrectKey = type.endsWith('_TRUE') ? 'a' : 'b';
       if (correctKey !== expectedCorrectKey) {
@@ -1768,54 +1768,54 @@ app.post('/generate-kernel-phase1-source', requireAdminToken, async (req, res) =
     }
   }
 
-  if (input.schema_version !== 'phase1.source.v1' || input.source_language !== 'fr') {
+  if (input.schema_version !== 'phase1.source.v1' || input.source_language !== 'en') {
     return res.status(400).json({
       ok: false,
-      error: 'Phase1 requires schema_version=phase1.source.v1 and source_language=fr',
+      error: 'Phase1 requires schema_version=phase1.source.v1 and source_language=en',
     });
   }
 
   const systemPrompt =
-    'Tu crées des questions de culture générale en français. Réponds uniquement avec un objet JSON valide, sans markdown ni prose externe.';
+    'You create rigorous English cognitive questions. Reply only with one valid JSON object, without markdown or surrounding prose.';
 
-  const userPrompt = `Crée exactement SEPT CognitiveSlots autonomes pour UN SEUL KernelBlueprint.
+  const userPrompt = `Create exactly SEVEN autonomous CognitiveSlots for ONE KernelBlueprint.
 
 IDENTITÉ IMMUABLE
 - blueprint_id: ${input.blueprint_id}
 - kernel_code: ${input.kernel_code}
 - depth: ${input.depth}
-- domaine: ${input.domain}
-- sous-domaine: ${input.subdomain_active}
-- sujet: ${input.subject_active}
-- idée dominante: ${input.dominant_idea_active}
-- langue source: fr
+- domain: ${input.domain}
+- subdomain: ${input.subdomain_active}
+- subject: ${input.subject_active}
+- dominant idea: ${input.dominant_idea_active}
+- source language: en
 
-RÈGLES ABSOLUES
-- Produis exactement une entrée pour chacun de ces types: ${PHASE1_COGNITIVE_TYPES.join(', ')}.
-- Aucun slot n'est maître ou dérivé d'un autre. Chaque proposition intellectuelle est distincte.
-- Aucun QCM ne devient mécaniquement un Vrai/Faux. Aucun faux n'est la simple négation du vrai.
-- Toute question se lit en 8 secondes maximum à 150 mots/minute.
-- Tout SV se lit en 30 secondes maximum, explique la bonne réponse et reste dans le même contexte.
-- QCM: quatre choix courts, distincts, plausibles, de même catégorie et forme comparable.
-- QCM: choices.a est TOUJOURS la bonne réponse; choices.b/c/d sont les distracteurs; correct_answer_key="a".
-- Vrai/Faux: choices=[{"key":"a","text":"VRAI"},{"key":"b","text":"FAUX"}].
-- Types finissant par _TRUE: correct_answer_key="a". Types finissant par _FALSE: correct_answer_key="b".
-- QCM_RECOGNITION: rappel factuel direct.
-- QCM_REASONING: au moins un lien logique nécessaire.
-- QCM_TRAP: confusion plausible et loyale, jamais typographique ou ambiguë.
-- TRUE_FALSE_RECOGNITION_TRUE/FALSE: fait atomique vrai/faux.
-- TRUE_FALSE_REASONING_TRUE/FALSE: relation logique vraie/fausse.
-- creation_evidence doit contenir cognitive_operation, cognitive_justification,
-  difference_from_other_slots, truth_basis, trap_basis et self_checks.
-- trap_basis est une chaîne non vide uniquement pour QCM_TRAP; il vaut null ailleurs.
-- Tous les booléens self_checks valent true.
+ABSOLUTE RULES
+- Produce exactly one entry for each type: ${PHASE1_COGNITIVE_TYPES.join(', ')}.
+- No slot is a master or derived from another. Every intellectual proposition is distinct.
+- No QCM is mechanically converted into True/False. No false statement is a simple negation of the true one.
+- Every question must be readable within 8 seconds at 150 words/minute.
+- Every SV must be readable within 30 seconds, explain the correct answer, and remain in context.
+- QCM: four short, distinct, plausible choices in the same category and comparable form.
+- QCM: choices.a is ALWAYS correct; choices.b/c/d are distractors; correct_answer_key="a".
+- True/False: choices=[{"key":"a","text":"TRUE"},{"key":"b","text":"FALSE"}].
+- Types ending in _TRUE: correct_answer_key="a". Types ending in _FALSE: correct_answer_key="b".
+- QCM_RECOGNITION: direct factual recall.
+- QCM_REASONING: requires at least one logical link.
+- QCM_TRAP: fair content confusion, never typographical or ambiguous.
+- TRUE_FALSE_RECOGNITION_TRUE/FALSE: atomic true/false fact.
+- TRUE_FALSE_REASONING_TRUE/FALSE: true/false logical relation.
+- creation_evidence must contain cognitive_operation, cognitive_justification,
+  difference_from_other_slots, truth_basis, trap_basis, and self_checks.
+- trap_basis is non-empty only for QCM_TRAP and null otherwise.
+- All self_checks booleans must be true.
 
 FORMAT JSON EXACT
 {
   "schema_version": "phase1.source.v1",
   "blueprint_id": "${input.blueprint_id}",
   "kernel_code": "${input.kernel_code}",
-  "source_language": "fr",
+  "source_language": "en",
   "slots": [
     {
       "cognitive_type": "QCM_RECOGNITION",
@@ -1876,6 +1876,106 @@ FORMAT JSON EXACT
     provider: routed.provider,
     latency_ms: routed.latencyMs,
   });
+});
+
+// ============================================================================
+// POST /validate-kernel-phase1-source
+//
+// Provider-neutral reviewer boundary. It receives only the review projection
+// assembled by ValidationPhase1; source evidence and self-checks are excluded
+// by the PHP service before this endpoint is called.
+// ============================================================================
+app.post('/validate-kernel-phase1-source', requireAdminToken, async (req, res) => {
+  const input = req.body || {};
+  if (!input.review_level || !input.blueprint_id || !input.kernel_code) {
+    return res.status(400).json({ ok: false, error: 'review_level, blueprint_id and kernel_code are required' });
+  }
+
+  const systemPrompt =
+    'You are an independent English content reviewer. Return only one valid JSON object and never rewrite source content.';
+  const userPrompt = `Review this Phase 1 projection without modifying it.
+Return schema_version "${'validation-phase1.v1'}", blueprint_id "${input.blueprint_id}", kernel_code "${input.kernel_code}".
+For review_level deep, return exactly one slots item with cognitive_type "${input.slot?.cognitive_type || ''}", decision PASS or SUSPICION, and findings.
+For review_level cross_slot, return cross_slot_findings only.
+Allowed deep reason codes: SOURCE_MULTIPLE_CORRECT_ANSWERS, SOURCE_CHOICE_NOT_CONCISE, SOURCE_CHOICE_MULTIPLE_IDEAS, SOURCE_CHOICES_HETEROGENEOUS, SOURCE_FACTUAL_SUSPICION, SOURCE_ANSWER_INCOHERENT, SOURCE_DISTRACTOR_INVALID, SOURCE_AMBIGUOUS, SOURCE_SV_INVALID, SOURCE_CONTEXT_MISMATCH, SOURCE_COGNITIVE_MECHANISM_MISMATCH, SOURCE_TRAP_UNFAIR.
+Allowed cross reason codes: SOURCE_CROSS_SLOT_DUPLICATE, SOURCE_MECHANICAL_QCM_TF_CONVERSION, SOURCE_MECHANICAL_TRUE_FALSE_NEGATION.
+Input projection:
+${JSON.stringify(input)}`;
+
+  let routed;
+  try {
+    routed = await aiRouter.generate({
+      systemPrompt,
+      userPrompt,
+      temperature: 0.1,
+      maxOutputTokens: 3500,
+      responseMimeType: 'application/json',
+      validate: (text) => {
+        let parsed;
+        try { parsed = JSON.parse(text.replace(/^```json\s*|\s*```$/g, '').trim()); }
+        catch (error) { return { ok: false, reason: `invalid JSON: ${error.message}` }; }
+        if (!parsed || parsed.schema_version !== 'validation-phase1.v1'
+            || parsed.blueprint_id !== input.blueprint_id
+            || parsed.kernel_code !== input.kernel_code) {
+          return { ok: false, reason: 'validation identity mismatch' };
+        }
+        const deepCodes = new Set([
+          'SOURCE_MULTIPLE_CORRECT_ANSWERS', 'SOURCE_CHOICE_NOT_CONCISE',
+          'SOURCE_CHOICE_MULTIPLE_IDEAS', 'SOURCE_CHOICES_HETEROGENEOUS',
+          'SOURCE_FACTUAL_SUSPICION', 'SOURCE_ANSWER_INCOHERENT',
+          'SOURCE_DISTRACTOR_INVALID', 'SOURCE_AMBIGUOUS', 'SOURCE_SV_INVALID',
+          'SOURCE_CONTEXT_MISMATCH', 'SOURCE_COGNITIVE_MECHANISM_MISMATCH',
+          'SOURCE_TRAP_UNFAIR',
+        ]);
+        const crossCodes = new Set([
+          'SOURCE_CROSS_SLOT_DUPLICATE',
+          'SOURCE_MECHANICAL_QCM_TF_CONVERSION',
+          'SOURCE_MECHANICAL_TRUE_FALSE_NEGATION',
+        ]);
+        const validFinding = (finding, codes, cross) => {
+          if (!finding || typeof finding !== 'object'
+              || !codes.has(finding.reason_code)
+              || !Array.isArray(finding.field_paths)
+              || finding.field_paths.length === 0
+              || finding.field_paths.some((path) => typeof path !== 'string' || !path.trim())
+              || typeof finding.explanation !== 'string'
+              || !finding.explanation.trim()
+              || !Object.prototype.hasOwnProperty.call(finding, 'evidence')) return false;
+          if (cross && (!Array.isArray(finding.related_cognitive_types)
+              || finding.related_cognitive_types.length === 0)) return false;
+          return true;
+        };
+        if (input.review_level === 'deep') {
+          if (!Array.isArray(parsed.slots) || parsed.slots.length !== 1) {
+            return { ok: false, reason: 'deep review must contain exactly one slot' };
+          }
+          const item = parsed.slots[0];
+          if (!item || item.cognitive_type !== input.slot?.cognitive_type
+              || !['PASS', 'SUSPICION'].includes(item.decision)
+              || !Array.isArray(item.findings)
+              || item.findings.some((finding) => !validFinding(finding, deepCodes, false))
+              || (item.decision === 'PASS') !== (item.findings.length === 0)) {
+            return { ok: false, reason: 'malformed deep review envelope' };
+          }
+        } else if (input.review_level === 'cross_slot') {
+          if (!Array.isArray(parsed.cross_slot_findings)
+              || parsed.cross_slot_findings.some((finding) => !validFinding(finding, crossCodes, true))) {
+            return { ok: false, reason: 'malformed cross-slot review envelope' };
+          }
+        } else {
+          return { ok: false, reason: 'unsupported review level' };
+        }
+        return { ok: true, value: parsed };
+      },
+    });
+  } catch (error) {
+    return res.status(error.name === 'NoProvidersConfiguredError' ? 503 : 502).json({
+      ok: false,
+      error: 'router_error',
+      detail: error.message || String(error),
+    });
+  }
+  return res.json({ ok: true, result: routed.validated, provider: routed.provider, latency_ms: routed.latencyMs });
 });
 // Returns { soft, hard } for a variant key (EN script)
 const bandLimitsForVariant = (variantKey) => {

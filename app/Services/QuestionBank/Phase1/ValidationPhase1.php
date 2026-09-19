@@ -86,6 +86,8 @@ class ValidationPhase1
             new KernelBlueprintCognitiveSlotRepository(),
         private readonly ValidationPhase1EntryBoundary $entry =
             new ValidationPhase1EntryBoundary(),
+        private readonly Phase1ExecutionRepository $executions =
+            new Phase1ExecutionRepository(),
     ) {}
 
     /**
@@ -93,6 +95,7 @@ class ValidationPhase1
      */
     public function validate(string $blueprintId): string
     {
+        $phase1Terminal = $this->executions->validationPrerequisites($blueprintId);
         $blueprint = $this->entry->receive($blueprintId);
         $kernelCode = $this->persistedKernelCode($blueprintId, $blueprint);
         $persistedSlots = $this->slots->allForBlueprint($blueprintId);
@@ -184,7 +187,16 @@ class ValidationPhase1
                 'validation_findings' => $slotFindings,
             ];
         }
-        $this->slots->writeValidationResults($blueprintId, $decisions);
+        $writeResults = fn(): mixed => $this->slots->writeValidationResults(
+            $blueprintId,
+            $decisions,
+        );
+        $this->executions->withCompletedPhase1(
+            $blueprintId,
+            $phase1Terminal['identity_revision'],
+            $phase1Terminal['slots_revision'],
+            $writeResults,
+        );
 
         return $blueprintId;
     }
@@ -369,7 +381,7 @@ class ValidationPhase1
             'subdomain_active' => $blueprint->subdomain_active,
             'subject_active' => $blueprint->subject_active,
             'dominant_idea_active' => $blueprint->dominant_idea_active,
-            'source_language' => 'fr',
+            'source_language' => 'en',
         ];
     }
 

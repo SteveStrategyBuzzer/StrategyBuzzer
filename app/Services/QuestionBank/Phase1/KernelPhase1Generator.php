@@ -8,6 +8,7 @@ use App\Services\QuestionApi\QuestionApiClient;
 use App\Services\QuestionBank\KernelBlueprint;
 use App\Services\QuestionBank\KernelBlueprintCognitiveSlotRepository;
 use App\Services\QuestionBank\Rotation\KernelBlueprintProvisionedLoader;
+use LogicException;
 use Throwable;
 
 class KernelPhase1Generator
@@ -21,12 +22,32 @@ class KernelPhase1Generator
         private readonly KernelPhase1SourceValidator $validator,
         private readonly KernelBlueprintProvisionedLoader $loader =
             new KernelBlueprintProvisionedLoader(),
+        private readonly Phase1ExecutionRepository $executions =
+            new Phase1ExecutionRepository(),
     ) {}
 
-    public function generate(string $blueprintId): string
-    {
+    public function generate(
+        string $blueprintId,
+        ?string $expectedIdentityRevision = null,
+        ?string $executionId = null,
+        ?string $leaseToken = null,
+    ): string {
         $blueprint = $this->loader->loadEngaged($blueprintId);
-        $result = $this->generateSlots($blueprint);
+        // The provider payload is always derived from the persisted aggregate,
+        // never from an object supplied by the previous phase.
+        $this->executions->currentIdentityRevision($blueprintId);
+        if ($expectedIdentityRevision !== null) {
+            $actual = $this->executions->currentIdentityRevision($blueprintId);
+            if (! hash_equals($expectedIdentityRevision, $actual)) {
+                throw new LogicException("[Phase1] Identité persistante obsolète: {$blueprintId}.");
+            }
+        }
+        $result = $this->generateSlots(
+            $blueprint,
+            $expectedIdentityRevision,
+            $executionId,
+            $leaseToken,
+        );
 
         if ($result['failed'] !== []
             || count($result['created']) !== count(KernelBlueprint::COGNITIVE_TYPES)) {
@@ -42,8 +63,12 @@ class KernelPhase1Generator
     /**
      * @return array{status: string, attempts: int, created: string[], failed: string[]}
      */
-    private function generateSlots(KernelBlueprint $blueprint): array
-    {
+    private function generateSlots(
+        KernelBlueprint $blueprint,
+        ?string $expectedIdentityRevision = null,
+        ?string $executionId = null,
+        ?string $leaseToken = null,
+    ): array {
         if (! $blueprint->isComplete()) {
             throw new Phase1TechnicalException(
                 'IDENTITY_MISMATCH',
@@ -114,12 +139,33 @@ class KernelPhase1Generator
 
                 $validated = $this->validator->validate($blueprint, $sourcePayload);
 
-                foreach ($validated['valid'] as $cognitiveType => $source) {
-                    $this->slots->writeCreated(
+                $writeCreated = function () use ($blueprint, $validated): void {
+                    foreach ($validated['valid'] as $cognitiveType => $source) {
+                        $this->slots->writeCreated(
+                            (string) $blueprint->blueprint_id,
+                            $cognitiveType,
+                            $source
+                        );
+                    }
+                };
+                if ($expectedIdentityRevision !== null
+                    && $executionId !== null
+                    && $leaseToken !== null) {
+                    $this->executions->withActiveLease(
+                        $executionId,
+                        $leaseToken,
                         (string) $blueprint->blueprint_id,
-                        $cognitiveType,
-                        $source
+                        $expectedIdentityRevision,
+                        $writeCreated,
                     );
+                } elseif ($expectedIdentityRevision !== null) {
+                    $this->executions->withCurrentIdentity(
+                        (string) $blueprint->blueprint_id,
+                        $expectedIdentityRevision,
+                        $writeCreated,
+                    );
+                } else {
+                    $writeCreated();
                 }
 
                 if ($validated['invalid'] === []) {
@@ -140,29 +186,56 @@ class KernelPhase1Generator
             } catch (Phase1TechnicalException $exception) {
                 $lastFailureType = $exception->failureType;
                 $lastMessage = $exception->getMessage();
+            } catch (LogicException $exception) {
+                throw $exception;
             } catch (Throwable $exception) {
                 $lastFailureType = 'TRANSPORT';
                 $lastMessage = $exception->getMessage();
             }
         }
 
-        $fresh = $this->slots->allForBlueprint((string) $blueprint->blueprint_id);
-        foreach ($pending as $cognitiveType) {
-            if (($fresh[$cognitiveType]['creation_status'] ?? null) !== 'EMPTY') {
-                continue;
+        $writeFailures = function () use (
+            $blueprint,
+            $pending,
+            $lastFailureType,
+            $lastMessage,
+        ): void {
+            $fresh = $this->slots->allForBlueprint((string) $blueprint->blueprint_id);
+            foreach ($pending as $cognitiveType) {
+                if (($fresh[$cognitiveType]['creation_status'] ?? null) !== 'EMPTY') {
+                    continue;
+                }
+                $this->slots->writeCreationFailure(
+                    (string) $blueprint->blueprint_id,
+                    $cognitiveType,
+                    [
+                        'reason_code' => 'PHASE1_TECHNICAL_FAILURE',
+                        'attempt_count' => self::MAX_TECHNICAL_ATTEMPTS,
+                        'last_failure_type' => $lastFailureType,
+                        'message' => $lastMessage,
+                        'occurred_at' => now()->toIso8601String(),
+                    ]
+                );
             }
-
-            $this->slots->writeCreationFailure(
+        };
+        if ($expectedIdentityRevision !== null
+            && $executionId !== null
+            && $leaseToken !== null) {
+            $this->executions->withActiveLease(
+                $executionId,
+                $leaseToken,
                 (string) $blueprint->blueprint_id,
-                $cognitiveType,
-                [
-                    'reason_code' => 'PHASE1_TECHNICAL_FAILURE',
-                    'attempt_count' => self::MAX_TECHNICAL_ATTEMPTS,
-                    'last_failure_type' => $lastFailureType,
-                    'message' => $lastMessage,
-                    'occurred_at' => now()->toIso8601String(),
-                ]
+                $expectedIdentityRevision,
+                $writeFailures,
             );
+        } elseif ($expectedIdentityRevision !== null) {
+            $this->executions->withCurrentIdentity(
+                (string) $blueprint->blueprint_id,
+                $expectedIdentityRevision,
+                $writeFailures,
+            );
+        } else {
+            $writeFailures();
         }
 
         $fresh = $this->slots->allForBlueprint((string) $blueprint->blueprint_id);
@@ -187,6 +260,13 @@ class KernelPhase1Generator
             'blueprint_id' => $blueprint->blueprint_id,
             'kernel_code' => $blueprint->kernel_code,
             'depth' => $blueprint->depth,
+            'domain_code' => $blueprint->domain,
+            'kernel_code_dd' => $blueprint->kernel_code_dd,
+            'kernel_code_do' => $blueprint->kernel_code_do,
+            'kernel_code_sub' => $blueprint->kernel_code_sub,
+            'kernel_code_suj' => $blueprint->kernel_code_suj,
+            'kernel_code_ide' => $blueprint->kernel_code_ide,
+            'kernel_code_vvvv' => $blueprint->kernel_code_vvvv,
             'domain' => $blueprint->domain,
             'subdomain_active' => $blueprint->subdomain_active,
             'subject_active' => $blueprint->subject_active,
@@ -195,7 +275,7 @@ class KernelPhase1Generator
             'cognitive_rules' => [
                 'types' => KernelBlueprint::COGNITIVE_TYPES,
                 'qcm_correct_answer_key' => 'a',
-                'true_false_choices' => ['a' => 'VRAI', 'b' => 'FAUX'],
+                'true_false_choices' => ['a' => 'TRUE', 'b' => 'FALSE'],
                 'independent_slots' => true,
                 'no_master_slot' => true,
             ],
