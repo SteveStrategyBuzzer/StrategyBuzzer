@@ -252,6 +252,112 @@ module.exports.__test = {
   ADMIN_JWT_JTI_PREFIX,
 };
 
+const PHASE2_COMPARATIVE_CODES = new Set([
+  'MEANING_DRIFT', 'FACTUAL_ACCURACY_DRIFT', 'DEPTH_LEVEL_DRIFT', 'SUBJECT_ALIGNMENT_DRIFT',
+  'DOMINANT_IDEA_DRIFT', 'COGNITIVE_FUNCTION_DRIFT', 'QUESTION_ANSWER_MISMATCH',
+  'REASONING_RELATION_DRIFT', 'TRAP_CONFUSION_DRIFT', 'SV_CONTRADICTS_SOURCE',
+  'SV_CONTRADICTS_ANSWER', 'ANSWER_KEY_CHANGED', 'ANSWER_TEXT_KEY_MISMATCH',
+  'CHOICE_COUNT_CHANGED', 'TRUE_FALSE_POLARITY_CHANGED', 'DISTRACTOR_BECAME_TRUE',
+  'DISTRACTOR_PLAUSIBILITY_LOST', 'CHOICE_SEMANTIC_CATEGORY_DRIFT',
+  'CHOICE_GRAMMATICAL_COHERENCE_DRIFT', 'FALSE_STATEMENT_ERROR_COUNT_DRIFT',
+]);
+
+function isPlainObject(value) {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function nonEmptyText(value) {
+  return typeof value === 'string' && value.trim().length > 0;
+}
+
+function nonEmptyTextList(value) {
+  return Array.isArray(value) && value.length > 0 && value.every(nonEmptyText);
+}
+
+function validateKernelPhase2Finding(input, finding) {
+  const findingKeys = ['field_path', 'rule_code', 'severity', 'evidence'];
+  if (!isPlainObject(finding)
+      || Object.keys(finding).length !== findingKeys.length
+      || Object.keys(finding).some((key) => !findingKeys.includes(key))
+      || !isPlainObject(input.rule_registry)
+      || !Object.prototype.hasOwnProperty.call(input.rule_registry, finding.rule_code)
+      || !isPlainObject(input.finding_schema)
+      || !Array.isArray(input.finding_schema.field_path)
+      || !Array.isArray(input.finding_schema.severity)
+      || !input.finding_schema.severity.includes(finding.severity)
+      || input.rule_registry[finding.rule_code] !== finding.severity
+      || !isPlainObject(finding.evidence)
+      || Object.prototype.hasOwnProperty.call(finding.evidence, 'field_path')) {
+    return false;
+  }
+
+  const rootPaths = input.finding_schema.field_path;
+  const choicePattern = input.finding_schema.choice_field_path_pattern;
+  const choiceMatch = choicePattern === 'choices.[a-d].text'
+    ? /^choices\.[a-d]\.text$/.test(finding.field_path)
+    : choicePattern === 'choices.[a-b].text' && /^choices\.[a-b]\.text$/.test(finding.field_path);
+  if (!rootPaths.includes(finding.field_path) && !choiceMatch) return false;
+
+  const evidenceKeys = [
+    'expected_rule', 'observed_result', 'source_excerpt', 'source_excerpts',
+    'target_excerpt', 'target_excerpts', 'details', 'language_code',
+    'source_revision', 'translation_revision', 'components_concerned',
+    'contract_rules_in_conflict', 'explanation',
+  ];
+  const evidence = finding.evidence;
+  if (Object.keys(evidence).some((key) => !evidenceKeys.includes(key))
+      || !nonEmptyText(evidence.expected_rule)
+      || !nonEmptyText(evidence.observed_result)) {
+    return false;
+  }
+
+  for (const key of ['source_excerpt', 'target_excerpt', 'details', 'explanation', 'language_code', 'source_revision']) {
+    if (Object.prototype.hasOwnProperty.call(evidence, key) && !nonEmptyText(evidence[key])) return false;
+  }
+  for (const key of ['source_excerpts', 'target_excerpts', 'components_concerned', 'contract_rules_in_conflict']) {
+    if (Object.prototype.hasOwnProperty.call(evidence, key) && !nonEmptyTextList(evidence[key])) return false;
+  }
+  const hasSourceProof = nonEmptyText(evidence.source_excerpt) || nonEmptyTextList(evidence.source_excerpts);
+  const hasTargetProof = nonEmptyText(evidence.target_excerpt) || nonEmptyTextList(evidence.target_excerpts);
+  if (!hasSourceProof && !nonEmptyText(evidence.details)) return false;
+
+  if (PHASE2_COMPARATIVE_CODES.has(finding.rule_code) && (!hasSourceProof || !hasTargetProof)) return false;
+  if (finding.rule_code === 'CONTENT_UNTRANSLATABLE') {
+    return finding.field_path === 'translation'
+      && evidence.language_code === input.target_language
+      && /^[a-f0-9]{64}$/i.test(evidence.source_revision)
+      && Number.isInteger(evidence.translation_revision) && evidence.translation_revision > 0
+      && nonEmptyTextList(evidence.components_concerned)
+      && nonEmptyTextList(evidence.contract_rules_in_conflict)
+      && nonEmptyTextList(evidence.source_excerpts)
+      && nonEmptyTextList(evidence.target_excerpts)
+      && nonEmptyText(evidence.explanation);
+  }
+  return true;
+}
+
+function validateKernelPhase2Response(input, text) {
+  let parsed;
+  try { parsed = JSON.parse(text.replace(/^```json\s*|\s*```$/g, '').trim()); }
+  catch (error) { return { ok: false, reason: `invalid JSON: ${error.message}` }; }
+  const resultKeys = ['validation_request_reference', 'validator_request_id', 'decision', 'findings'];
+  if (!isPlainObject(parsed)
+      || Object.keys(parsed).some((key) => !resultKeys.includes(key))
+      || parsed.validation_request_reference !== input.validation_request_reference
+      || !nonEmptyText(parsed.validator_request_id)
+      || !['PASS', 'SUSPICION'].includes(parsed.decision)
+      || !Array.isArray(parsed.findings)
+      || parsed.findings.some((finding) => !validateKernelPhase2Finding(input, finding))
+      || (parsed.decision === 'PASS' && parsed.findings.length !== 0)
+      || (parsed.decision === 'SUSPICION' && parsed.findings.length === 0)) {
+    return { ok: false, reason: 'malformed validation phase2 response' };
+  }
+  return { ok: true, value: parsed };
+}
+
+module.exports.__test.validateKernelPhase2Response = validateKernelPhase2Response;
+module.exports.__test.app = app;
+
 // Mapping des langues supportées avec traductions vrai/faux
 const LANGUAGES = {
   'fr': { name: 'Français', dict: 'français', true: 'Vrai', false: 'Faux' },
@@ -1976,6 +2082,74 @@ ${JSON.stringify(input)}`;
     });
   }
   return res.json({ ok: true, result: routed.validated, provider: routed.provider, latency_ms: routed.latencyMs });
+});
+
+// POST /validate-kernel-phase2 — independent, provider-neutral validator.
+app.post('/validate-kernel-phase2', requireAdminToken, async (req, res) => {
+  const input = req.body || {};
+  const allowed = ['validation_request_reference', 'external_validation_idempotency_key',
+    'source_language', 'target_language', 'cognitive_type', 'source', 'target',
+    'context', 'rule_registry', 'finding_schema'];
+  const itemKeys = ['question', 'choices', 'correct_answer_key', 'sv'];
+  const validItem = (item) => item && typeof item === 'object'
+    && Object.keys(item).every((key) => itemKeys.includes(key))
+    && typeof item.question === 'string' && typeof item.sv === 'string'
+    && item.choices && typeof item.choices === 'object'
+    && typeof item.correct_answer_key === 'string';
+  if (Object.keys(input).some((key) => !allowed.includes(key))
+      || typeof input.validation_request_reference !== 'string'
+      || typeof input.external_validation_idempotency_key !== 'string'
+      || input.source_language !== 'en' || typeof input.target_language !== 'string'
+      || typeof input.cognitive_type !== 'string' || !validItem(input.source) || !validItem(input.target)
+      || !isPlainObject(input.rule_registry)
+      || Object.keys(input.rule_registry).length === 0
+      || Object.values(input.rule_registry).some((severity) => severity !== 'BLOCKING')
+      || !isPlainObject(input.finding_schema)
+      || Object.keys(input.finding_schema).some((key) => !['field_path', 'choice_field_path_pattern', 'severity'].includes(key))
+      || !Array.isArray(input.finding_schema.field_path)
+      || !['choices.[a-d].text', 'choices.[a-b].text'].includes(input.finding_schema.choice_field_path_pattern)
+      || !Array.isArray(input.finding_schema.severity)
+      || input.finding_schema.severity.some((severity) => severity !== 'BLOCKING')) {
+    return res.status(400).json({ ok: false, error: 'invalid_validation_phase2_projection' });
+  }
+  const systemPrompt = 'You are an independent translation validator. Return only JSON and never rewrite content.';
+  const userPrompt = `Validate the target against the English source for ${input.cognitive_type} in ${input.target_language}.
+Return validation_request_reference "${input.validation_request_reference}", validator_request_id, decision PASS or SUSPICION, and complete findings.
+${JSON.stringify({ source: input.source, target: input.target, context: input.context, rule_registry: input.rule_registry, finding_schema: input.finding_schema })}`;
+  let routed;
+  try {
+    routed = await aiRouter.generate({
+      systemPrompt,
+      userPrompt,
+      temperature: 0.1,
+      maxOutputTokens: 3500,
+      responseMimeType: 'application/json',
+      validate: (text) => validateKernelPhase2Response(input, text),
+    });
+  } catch (error) {
+    if (error.name === 'NoProvidersConfiguredError') {
+      return res.status(503).json({ ok: false, error: 'no_providers_configured', detail: error.message });
+    }
+    if (error.name === 'AllProvidersExhaustedError') {
+      try {
+        const failures = JSON.parse(error.message);
+        if (Array.isArray(failures) && failures.length > 0
+            && failures.every((failure) => failure && failure.status === 'invalid_contract')) {
+          return res.status(502).json({ ok: false, error: 'invalid_validation_response', detail: error.message });
+        }
+      } catch (_) {
+        // Preserve the generic exhausted-provider classification below.
+      }
+      return res.status(503).json({ ok: false, error: 'all_providers_exhausted', detail: error.message });
+    }
+    return res.status(502).json({ ok: false, error: 'router_error', detail: error.message || String(error) });
+  }
+  return res.json({
+    ok: true,
+    result: { ...routed.validated, external_validation_idempotency_key: input.external_validation_idempotency_key },
+    provider: routed.provider,
+    latency_ms: routed.latencyMs,
+  });
 });
 // Returns { soft, hard } for a variant key (EN script)
 const bandLimitsForVariant = (variantKey) => {

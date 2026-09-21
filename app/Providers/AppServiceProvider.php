@@ -4,6 +4,9 @@ namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
 use App\Services\FirebaseService;
+use App\Services\QuestionBank\ValidationPhase2\ValidationPhase2Reviewer;
+use App\Services\QuestionBank\ValidationPhase2\QuestionApiValidationPhase2Reviewer;
+use App\Services\QuestionApi\QuestionApiClient;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -14,6 +17,9 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->app->singleton(FirebaseService::class, function ($app) {
             return FirebaseService::getInstance();
+        });
+        $this->app->singleton(ValidationPhase2Reviewer::class, function ($app) {
+            return new QuestionApiValidationPhase2Reviewer($app->make(QuestionApiClient::class));
         });
     }
 
