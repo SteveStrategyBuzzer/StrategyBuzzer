@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\QuestionBank\Quarantine;
 
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use LogicException;
 use Illuminate\Support\Str;
 
@@ -35,11 +36,42 @@ final class KernelCurrentKernelReceivedRouter
             $gate = DB::table('kernel_current_kernel_route_gate')
                 ->where('gate_id', 1)->lockForUpdate()->first();
             if ($gate === null) {
-                DB::table('kernel_current_kernel_route_gate')->insert([
+                DB::table('kernel_current_kernel_route_gate')->insertOrIgnore([
                     'gate_id' => 1, 'created_at' => now(), 'updated_at' => now(),
                 ]);
                 $gate = DB::table('kernel_current_kernel_route_gate')
                     ->where('gate_id', 1)->lockForUpdate()->first();
+            }
+            $existing = DB::table('kernel_current_kernel_dispatches')
+                ->where('event_id', $eventId)->first();
+            if ($existing !== null) {
+                return $this->map($existing);
+            }
+            if ($gate->active_copy_id !== null
+                && Schema::hasColumn('kernel_quarantine_work_copies', 'claim_expires_at')) {
+                $expired = DB::table('kernel_quarantine_work_copies')
+                    ->where('copy_id', $gate->active_copy_id)
+                    ->where('state', 'IN_FLIGHT')
+                    ->whereNotNull('claim_expires_at')
+                    ->where('claim_expires_at', '<=', now())
+                    ->update([
+                        'state' => 'READY',
+                        'claim_token' => null,
+                        'claimed_version' => null,
+                        'claimed_at' => null,
+                        'claim_expires_at' => null,
+                        'updated_at' => now(),
+                    ]);
+                if ($expired === 1) {
+                    DB::table('kernel_current_kernel_route_gate')->where('gate_id', 1)->update([
+                        'active_copy_id' => null,
+                        'active_copy_version' => null,
+                        'active_claim_token' => null,
+                        'updated_at' => now(),
+                    ]);
+                    $gate = DB::table('kernel_current_kernel_route_gate')
+                        ->where('gate_id', 1)->lockForUpdate()->first();
+                }
             }
 
             $copy = null;
@@ -53,15 +85,29 @@ final class KernelCurrentKernelReceivedRouter
                     ->lockForUpdate()->first();
             }
             if ($copy !== null && (string) $copy->state === 'IN_FLIGHT') {
-                return [
+                $decision = [
                     'direction' => self::BLOCKED,
                     'event_id' => $eventId,
                     'blueprint_id' => $blueprintId,
                     'copy_id' => (string) $copy->copy_id,
                     'copy_version' => (int) $copy->copy_version,
-                    'claim_token' => (string) ($copy->claim_token ?? ''),
+                    'claim_token' => null,
                     'state' => 'BLOCKED',
                 ];
+                DB::table('kernel_current_kernel_dispatches')->insert([
+                    'event_id' => $eventId,
+                    'blueprint_id' => $blueprintId,
+                    'direction' => self::BLOCKED,
+                    'copy_id' => $copy->copy_id,
+                    'copy_version' => $copy->copy_version,
+                    'ready_order' => $copy->ready_order,
+                    'claim_token' => null,
+                    'state' => 'BLOCKED',
+                    'claimed_at' => null,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+                return $decision;
             }
 
             $token = null;
@@ -84,6 +130,11 @@ final class KernelCurrentKernelReceivedRouter
                             'claimed_at' => now(),
                             'updated_at' => now(),
                         ]);
+                    if (Schema::hasColumn('kernel_quarantine_work_copies', 'claim_expires_at')) {
+                        DB::table('kernel_quarantine_work_copies')->where('copy_id', $copy->copy_id)->update([
+                            'claim_expires_at' => now()->addSeconds(KernelQuarantineWorkCopyRepository::DEFAULT_CLAIM_TTL_SECONDS),
+                        ]);
+                    }
                     if ($updated !== 1) {
                         throw new LogicException('La copie Quarantaine a été réclamée par un autre worker.');
                     }

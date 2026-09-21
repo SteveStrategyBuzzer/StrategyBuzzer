@@ -39,16 +39,25 @@ final class KernelQuarantineWorkCopySlotRepository
     public function insert(string $copyId, string $type, array $slot): void
     {
         $this->assertType($type);
-        DB::table(self::TABLE)->insert([
+        $source = $slot['source'] ?? KernelBlueprint::emptyCognitiveSlotSource($type);
+        $sourceRevision = $this->sourceRevision($source);
+        $translations = $slot['translations'] ?? [];
+        foreach ($translations as &$translation) {
+            if (is_array($translation)) {
+                $translation['source_revision'] ??= $sourceRevision;
+            }
+        }
+        unset($translation);
+        $values = [
             'copy_id' => $copyId,
             'cognitive_type' => $type,
             'canonical_base_revision' => (int) ($slot['canonical_base_revision'] ?? 1),
             'slot_revision' => (int) ($slot['slot_revision'] ?? 1),
             'manual_revision' => (int) ($slot['manual_revision'] ?? 0),
             'color' => $this->color($slot),
-            'source' => $this->json($slot['source'] ?? KernelBlueprint::emptyCognitiveSlotSource($type)),
+            'source' => $this->json($source),
             'creation_failure' => isset($slot['creation_failure']) ? $this->json($slot['creation_failure']) : null,
-            'translations' => $this->json($slot['translations'] ?? []),
+            'translations' => $this->json($translations),
             'creation_status' => $slot['creation_status'] ?? 'EMPTY',
             'validation_status' => $slot['validation_status'] ?? 'NOT_VALIDATED',
             'validation_findings' => $this->json($slot['validation_findings'] ?? []),
@@ -56,7 +65,11 @@ final class KernelQuarantineWorkCopySlotRepository
             'manual_revision' => (int) ($slot['manual_revision'] ?? 0),
             'created_at' => now(),
             'updated_at' => now(),
-        ]);
+        ];
+        if (\Illuminate\Support\Facades\Schema::hasColumn(self::TABLE, 'source_revision')) {
+            $values['source_revision'] = (string) ($slot['source_revision'] ?? $sourceRevision);
+        }
+        DB::table(self::TABLE)->insert($values);
     }
 
     /** @param array<string,mixed> $patch */
@@ -78,6 +91,10 @@ final class KernelQuarantineWorkCopySlotRepository
             if (array_key_exists($key, $patch)) {
                 $values[$key] = $patch[$key];
             }
+        }
+        if (array_key_exists('source', $patch)
+            && \Illuminate\Support\Facades\Schema::hasColumn(self::TABLE, 'source_revision')) {
+            $values['source_revision'] = $this->sourceRevision($patch['source']);
         }
         $values += [
             'manually_modified' => true,
@@ -124,6 +141,7 @@ final class KernelQuarantineWorkCopySlotRepository
         return [
             'cognitive_type' => (string) $row->cognitive_type,
             'source' => $decode($row->source) ?? [],
+            'source_revision' => property_exists($row, 'source_revision') ? $row->source_revision : null,
             'creation_failure' => $decode($row->creation_failure),
             'translations' => $decode($row->translations) ?? [],
             'creation_status' => (string) $row->creation_status,
@@ -147,5 +165,15 @@ final class KernelQuarantineWorkCopySlotRepository
     private function json(array $value): string
     {
         return json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
+    }
+
+    private function sourceRevision(array $source): string
+    {
+        return hash('sha256', json_encode([
+            'question' => $source['question'] ?? null,
+            'choices' => $source['choices'] ?? null,
+            'correct_answer_key' => $source['correct_answer_key'] ?? null,
+            'sv' => $source['sv'] ?? null,
+        ], JSON_THROW_ON_ERROR));
     }
 }

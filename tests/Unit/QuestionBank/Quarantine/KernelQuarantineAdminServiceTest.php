@@ -78,6 +78,7 @@ final class KernelQuarantineAdminServiceTest extends TestCase
             'QCM_RECOGNITION',
             ['source' => KernelBlueprint::emptyCognitiveSlotSource('QCM_RECOGNITION')],
             1,
+            0,
         );
 
         self::assertSame(2, $result['copy_version']);
@@ -90,7 +91,7 @@ final class KernelQuarantineAdminServiceTest extends TestCase
             ->where('copy_id', $copy['copy_id'])->where('cognitive_type', 'QCM_RECOGNITION')->value('color'));
 
         $this->expectException(LogicException::class);
-        $service->editSlot($copy['copy_id'], 'QCM_RECOGNITION', [], 1);
+        $service->editSlot($copy['copy_id'], 'QCM_RECOGNITION', [], 1, 0);
     }
 
     public function test_enqueue_is_idempotent_and_does_not_claim_copy(): void
@@ -117,10 +118,10 @@ final class KernelQuarantineAdminServiceTest extends TestCase
         $service = new KernelQuarantineAdminService();
         $first = $service->createCopyFromCanonical('bp-admin');
         $second = $service->createCopyFromCanonical('bp-admin');
-        $service->editSlot($first['copy_id'], 'QCM_RECOGNITION', [], 1);
+        $service->editSlot($first['copy_id'], 'QCM_RECOGNITION', [], 1, 0);
 
         $this->expectException(LogicException::class);
-        $service->editSlot($second['copy_id'], 'QCM_RECOGNITION', [], 1);
+        $service->editSlot($second['copy_id'], 'QCM_RECOGNITION', [], 1, 0);
     }
 
     public function test_router_shape_is_identical_on_first_decision_and_replay(): void
@@ -163,7 +164,7 @@ final class KernelQuarantineAdminServiceTest extends TestCase
 
         try {
             (new KernelQuarantineAdminService())->editSlot(
-                $copy['copy_id'], 'QCM_RECOGNITION', [], 1, null, $canonicalRevision - 1
+                $copy['copy_id'], 'QCM_RECOGNITION', [], 1, 0, $canonicalRevision - 1
             );
             self::fail('An explicitly stale canonical revision must be rejected.');
         } catch (LogicException) {
@@ -174,7 +175,7 @@ final class KernelQuarantineAdminServiceTest extends TestCase
             'QCM_RECOGNITION',
             [],
             1,
-            null,
+            0,
             $canonicalRevision,
         );
         self::assertSame(2, $result['copy_version']);
