@@ -215,6 +215,14 @@ class QuestionBankHealthDryTest extends TestCase
         $response->assertJsonMissingPath('dry');
     }
 
+    public function test_health_endpoint_does_not_accept_query_token(): void
+    {
+        $response = $this->getJson('/api/admin/questions/health?token=' . self::TEST_TOKEN);
+
+        $response->assertStatus(403);
+        $response->assertJsonMissingPath('dry');
+    }
+
     private function flushDryKeys(): void
     {
         try {

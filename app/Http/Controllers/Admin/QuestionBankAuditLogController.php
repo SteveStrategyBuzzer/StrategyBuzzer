@@ -13,15 +13,8 @@ use Illuminate\Support\Carbon;
  * Strict scope: observability + audit only. No AI logic, no gameplay touch,
  * no schema change (the table was created in #94).
  *
- * Auth model: same shared secret as `/api/admin/questions/health`
- * (env `QB_HEALTH_TOKEN`), same timing-safe `hash_equals` comparison, same
- * deny-by-default behaviour if the env var is unset. Two transports are
- * accepted so the page is usable from a browser without weakening the secret:
- *   1. `Authorization: Bearer <token>` header (preferred — no log leak)
- *   2. `?token=<token>` query param (fallback for plain browser viewing)
- * Both go through the same `hash_equals` check; the secret itself is the
- * same as the JSON health endpoint, satisfying the "same auth or stricter"
- * requirement of #109.
+ * Authorization is provided centrally by the `auth` and `admin` route
+ * middleware. The technical health endpoint remains separately Bearer-gated.
  */
 class QuestionBankAuditLogController extends Controller
 {
@@ -29,10 +22,6 @@ class QuestionBankAuditLogController extends Controller
 
     public function __invoke(Request $request)
     {
-        if (!$this->isAuthorized($request)) {
-            return response()->view('admin.question_audit_log_forbidden', [], 403);
-        }
-
         $filters = $this->extractFilters($request);
 
         $query = AdminQuestionAuditLog::query()
@@ -66,19 +55,6 @@ class QuestionBankAuditLogController extends Controller
             'filters' => $filters,
             'endpoints' => $endpoints,
         ]);
-    }
-
-    private function isAuthorized(Request $request): bool
-    {
-        $expected = (string) env('QB_HEALTH_TOKEN', '');
-        if ($expected === '') {
-            return false;
-        }
-        $given = (string) ($request->bearerToken() ?: $request->query('token', ''));
-        if ($given === '') {
-            return false;
-        }
-        return hash_equals($expected, $given);
     }
 
     /**

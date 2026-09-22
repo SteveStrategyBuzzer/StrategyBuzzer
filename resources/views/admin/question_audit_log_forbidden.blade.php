@@ -14,7 +14,7 @@
 <body>
     <div class="box">
         <h1>{{ __('Forbidden') }}</h1>
-        <p>{{ __('Provide a valid admin token via Authorization header or ?token= query.') }}</p>
+        <p>{{ __('An authenticated administrator account is required.') }}</p>
     </div>
 </body>
 </html>

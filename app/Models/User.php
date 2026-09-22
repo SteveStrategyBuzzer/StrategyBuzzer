@@ -72,7 +72,13 @@ class User extends Authenticatable
         'infinite_lives_until'    => 'datetime',
         'temp_access_expires_at'  => 'datetime',
         'match_started_at'        => 'datetime',
+        'is_admin'               => 'boolean',
     ];
+
+    public function isAdmin(): bool
+    {
+        return $this->getAttribute('is_admin') === true;
+    }
 
     public function playerDuoStat()
     {

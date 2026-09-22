@@ -117,8 +117,7 @@
         } catch (\Throwable $e) {
             $taxError = $e->getMessage();
         }
-        $taxDetailUrl = url('/admin/questions/taxonomy-gaps')
-            . (request()->query('token') ? '?token=' . urlencode(request()->query('token')) : '');
+        $taxDetailUrl = url('/admin/questions/taxonomy-gaps');
     @endphp
     <div class="panel {{ $taxCount > 0 ? 'alert-panel' : 'ok-panel' }}">
         <div class="tax-gap-panel">
@@ -151,9 +150,6 @@
 
     <div class="panel">
         <form class="filters" method="GET" action="{{ url()->current() }}">
-            @if(request()->query('token'))
-                <input type="hidden" name="token" value="{{ request()->query('token') }}">
-            @endif
             <div>
                 <label for="f-user">{{ __('User (name or ID)') }}</label>
                 <input type="text" id="f-user" name="user" value="{{ $filters['user'] }}" placeholder="{{ __('Search by user name or ID') }}">
@@ -185,7 +181,7 @@
             </div>
             <div class="actions">
                 <button type="submit">{{ __('Filter') }}</button>
-                <a class="btn secondary" href="{{ url()->current() }}@if(request()->query('token'))?token={{ request()->query('token') }}@endif">{{ __('Reset') }}</a>
+                <a class="btn secondary" href="{{ url()->current() }}">{{ __('Reset') }}</a>
             </div>
         </form>
     </div>

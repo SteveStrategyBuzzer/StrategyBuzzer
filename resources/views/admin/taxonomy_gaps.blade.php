@@ -94,7 +94,7 @@
 <body>
 
     <div class="nav">
-        <a href="{{ url('/admin/questions/audit-log') }}@if(request()->query('token'))?token={{ request()->query('token') }}@endif">
+        <a href="{{ url('/admin/questions/audit-log') }}">
             ← Audit Log
         </a>
     </div>
