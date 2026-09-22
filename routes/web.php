@@ -536,6 +536,23 @@ Route::middleware(['auth', 'admin'])->group(function (): void {
     // #127 Taxonomy-gaps detail page.
     Route::get('/admin/questions/taxonomy-gaps', \App\Http\Controllers\Admin\TaxonomyGapsController::class)
         ->name('admin.questions.taxonomy-gaps');
+
+    Route::get('/admin/questions/quarantine', [App\Http\Controllers\Admin\QuarantineAdminController::class, 'index'])
+        ->name('admin.quarantine.index');
+    Route::get('/admin/questions/quarantine/{copyId}', [App\Http\Controllers\Admin\QuarantineAdminController::class, 'show'])
+        ->name('admin.quarantine.show');
+    Route::post('/admin/questions/quarantine/{copyId}/claim', [App\Http\Controllers\Admin\QuarantineAdminController::class, 'claim'])
+        ->name('admin.quarantine.claim');
+    Route::post('/admin/questions/quarantine/{copyId}/source', [App\Http\Controllers\Admin\QuarantineAdminController::class, 'source'])
+        ->name('admin.quarantine.source');
+    Route::post('/admin/questions/quarantine/{copyId}/translation', [App\Http\Controllers\Admin\QuarantineAdminController::class, 'translation'])
+        ->name('admin.quarantine.translation');
+    Route::post('/admin/questions/quarantine/{copyId}/regenerate', [App\Http\Controllers\Admin\QuarantineAdminController::class, 'regenerate'])
+        ->name('admin.quarantine.regenerate');
+    Route::post('/admin/questions/quarantine/{copyId}/ready', [App\Http\Controllers\Admin\QuarantineAdminController::class, 'ready'])
+        ->name('admin.quarantine.ready');
+    Route::post('/admin/questions/quarantine/{copyId}/return-owner', [App\Http\Controllers\Admin\QuarantineAdminController::class, 'returnToOwner'])
+        ->name('admin.quarantine.return-owner');
 });
 
 Route::view('/data-deletion', 'data-deletion')->name('data.deletion');

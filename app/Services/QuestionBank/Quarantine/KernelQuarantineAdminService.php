@@ -397,6 +397,22 @@ final class KernelQuarantineAdminService
         });
     }
 
+    /**
+     * Claim a READY copy for the Admin boundary. The token is returned only
+     * to the trusted controller so it can be kept in the encrypted session.
+     */
+    public function claimForAdmin(string $copyId, int $expectedCopyVersion, string $claimToken): bool
+    {
+        if ($claimToken === '') {
+            throw new LogicException('Claim Quarantaine absent.');
+        }
+        if (! $this->copies->claim($copyId, $expectedCopyVersion, $claimToken)) {
+            throw new LogicException('La copie est déjà réclamée, périmée ou hors FIFO.');
+        }
+
+        return true;
+    }
+
     /** Explicit backend naming used by Admin adapters. */
     public function updateSlot(
         string $copyId,
@@ -440,12 +456,16 @@ final class KernelQuarantineAdminService
         }
         $old = $this->decode($current->source) ?? [];
         $expectedManualRevision ??= (int) $current->manual_revision;
-        $this->assertCompletePayload($cognitiveType, $source, false);
         if (array_key_exists('correct_answer_key', $source)
             && array_key_exists('correct_answer_key', $old)
             && $source['correct_answer_key'] !== $old['correct_answer_key']) {
             throw new LogicException('La clé de réponse canonique est immuable.');
         }
+        if (! array_key_exists('correct_answer_key', $old)) {
+            throw new LogicException('La clé de réponse canonique est absente.');
+        }
+        $source['correct_answer_key'] = $old['correct_answer_key'];
+        $this->assertCompletePayload($cognitiveType, $source, false);
         $translations = $this->decode($current->translations) ?? [];
         foreach ($translations as $language => &$value) {
             if (is_array($value)) {
@@ -495,18 +515,23 @@ final class KernelQuarantineAdminService
         $translations = $this->decode($slot->translations) ?? [];
         $existing = $translations[$languageCode] ?? [];
         $expectedManualRevision ??= (int) $slot->manual_revision;
-        $this->assertCompletePayload($cognitiveType, $translation, true);
         $source = $this->decode($slot->source) ?? [];
-        if (($source['correct_answer_key'] ?? null) !== ($translation['correct_answer_key'] ?? null)) {
+        if (! array_key_exists('correct_answer_key', $source)) {
+            throw new LogicException('La clé de réponse canonique est absente.');
+        }
+        if (array_key_exists('correct_answer_key', $translation)
+            && $source['correct_answer_key'] !== $translation['correct_answer_key']) {
             throw new LogicException('La clé de réponse canonique est immuable.');
         }
-        unset($translation['translation_revision'], $translation['validation_status'], $translation['source_revision']);
         if (is_array($existing)
             && array_key_exists('correct_answer_key', $translation)
             && array_key_exists('correct_answer_key', $existing)
             && $translation['correct_answer_key'] !== $existing['correct_answer_key']) {
             throw new LogicException('La clé de réponse canonique est immuable.');
         }
+        $translation['correct_answer_key'] = $source['correct_answer_key'];
+        $this->assertCompletePayload($cognitiveType, $translation, true);
+        unset($translation['translation_revision'], $translation['validation_status'], $translation['source_revision']);
         $translations[$languageCode] = $translation + [
             'translation_revision' => (int) (($existing['translation_revision'] ?? 0)) + 1,
             'source_revision' => $this->slotSourceRevision($slot),
